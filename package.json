@@ -1,0 +1,8 @@
+{
+  "name": "gallery-100",
+  "private": true,
+  "scripts": {
+    "web": "pnpm --filter web dev",
+    "mobile": "pnpm --filter mobile start"
+  }
+}
