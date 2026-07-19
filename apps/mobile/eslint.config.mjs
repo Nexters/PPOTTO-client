@@ -1,9 +1,11 @@
 import galleryRules from '@gallery/eslint-rules';
+import baseRules from '@gallery/eslint-rules/base';
 import { defineConfig } from 'eslint/config';
 import expoConfig from 'eslint-config-expo/flat.js';
 
 export default defineConfig([
   ...expoConfig,
+  ...baseRules,
   {
     files: ['**/*.{ts,tsx,jsx}'],
     plugins: { classname: galleryRules },
@@ -12,6 +14,6 @@ export default defineConfig([
     },
   },
   {
-    ignores: ['dist/**', '.expo/**'],
+    ignores: ['dist/**', '.expo/**', 'scripts/**'],
   },
 ]);

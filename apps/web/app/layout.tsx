@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import '@/app/styles/globals.css';
 
 import { QueryProvider } from '@/app/providers/query-provider';
+import { cn } from '@/shared/lib/cn';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -27,7 +28,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[#f4f4f2] dark:bg-zinc-900">
-        <div className="mx-auto flex min-h-screen w-full max-w-[450px] flex-col bg-background shadow-[0_0_24px_rgba(0,0,0,0.08)] dark:shadow-[0_0_24px_rgba(0,0,0,0.5)]">
+        <div
+          className={cn(
+            'mx-auto flex min-h-screen w-full max-w-[450px] flex-col bg-background',
+            'shadow-[0_0_24px_rgba(0,0,0,0.08)] dark:shadow-[0_0_24px_rgba(0,0,0,0.5)]',
+          )}
+        >
           <QueryProvider>{children}</QueryProvider>
         </div>
       </body>

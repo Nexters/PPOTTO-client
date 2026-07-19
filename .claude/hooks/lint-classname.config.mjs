@@ -21,7 +21,7 @@ export default [
     languageOptions,
     plugins: { classname: galleryRules },
     rules: {
-      'classname/no-long-classname': ['warn', { maxClasses: 9, cnImportPath: '@/shared/lib/cn' }],
+      'classname/no-long-classname': ['warn', { maxClasses: 7, cnImportPath: '@/shared/lib/cn' }],
     },
   },
   {

@@ -2,10 +2,12 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 import galleryRules from '@gallery/eslint-rules';
+import baseRules from '@gallery/eslint-rules/base';
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  ...baseRules,
   {
     files: ['**/*.{ts,tsx,jsx}'],
     plugins: { classname: galleryRules },
