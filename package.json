@@ -6,6 +6,7 @@
     "mobile": "pnpm --filter mobile start"
   },
   "devDependencies": {
+    "@gallery/eslint-rules": "workspace:*",
     "eslint": "^9.39.5",
     "prettier": "^3.9.5",
     "typescript-eslint": "^8.64.0"
