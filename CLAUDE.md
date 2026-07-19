@@ -1,5 +1,28 @@
 # gallery-100
 
-pnpm 모노레포: `apps/mobile`(Expo SDK 55 + NativeWind), `apps/web`(Next 16 + Tailwind v4), `packages/tokens`(공유 디자인 토큰).
+pnpm 모노레포:
 
-커밋/PR 규칙은 `.claude/rules/` 참고.
+- `apps/mobile`: Expo SDK 55 + NativeWind
+- `apps/web`: Next.js 16 + Tailwind CSS v4
+- `packages/tokens`: 공유 디자인 토큰
+
+커밋 또는 PR 작업을 수행할 때는 `.claude/rules/`의 관련 규칙을 확인한다.
+
+## Product specification
+
+`docs/prd.md`는 제품 동작과 정책의 기준 문서다.
+
+현재 작업이 제품 정책에 의존할 때만 PRD에서 관련 섹션을 찾아 확인한다.
+단순 UI 구현, 스타일 수정, 리팩토링, 인프라 작업에서는 불필요하게 전체 PRD를 읽지 않는다.
+
+다음 경우에는 관련 PRD 섹션을 반드시 확인한다.
+
+- 사진 선정·그룹화·제외 정책을 구현하거나 변경할 때
+- 테마 분류·스티커 생성 규칙을 구현하거나 변경할 때
+- 보드·테마 리캡의 동작이나 표시 데이터를 결정할 때
+- 요구사항이 불명확하거나 여러 기능에 걸쳐 있을 때
+
+관련 섹션만 우선 확인하고, 기능 간 정책 충돌이나 전체 흐름 판단이 필요한 경우에만 문서 전체를 읽는다.
+
+PRD에 없는 제품 정책은 임의로 확정하지 않는다.
+PRD와 현재 구현 또는 요청 내용이 충돌하면 임의로 해석하지 말고 충돌 지점을 먼저 명시한다.
