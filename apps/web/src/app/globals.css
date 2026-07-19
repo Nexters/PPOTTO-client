@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @config "../../../../packages/tokens/tailwind-preset.js";
 
 :root {
