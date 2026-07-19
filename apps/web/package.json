@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@gallery/api": "workspace:*",
+    "@tanstack/react-query": "^5.101.2",
     "next": "16.2.10",
     "react": "19.2.0",
     "react-dom": "19.2.0"
