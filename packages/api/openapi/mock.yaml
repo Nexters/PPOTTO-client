@@ -1,0 +1,32 @@
+# 더미 스펙 — 코드젠 파이프라인 검증 및 핸들러 패턴 예시용.
+# 백엔드 OpenAPI 문서가 나오면 package.json의 gen 스크립트 입력을 실제 스펙 URL/경로로 교체한다.
+openapi: 3.1.0
+info:
+  title: gallery-100 API (mock)
+  version: 0.0.0
+paths:
+  /photos:
+    get:
+      operationId: listPhotos
+      responses:
+        '200':
+          description: 사진 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Photo'
+components:
+  schemas:
+    Photo:
+      type: object
+      required: [id, capturedAt, url]
+      properties:
+        id:
+          type: string
+        capturedAt:
+          type: string
+          format: date-time
+        url:
+          type: string
