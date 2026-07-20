@@ -8,5 +8,5 @@ export const photoKeys = {
 };
 
 export function usePhotoList() {
-  return useQuery({ queryKey: photoKeys.list(), queryFn: () => get.list() });
+  return useQuery({ queryKey: photoKeys.list(), queryFn: ({ signal }) => get.list({ signal }) });
 }
