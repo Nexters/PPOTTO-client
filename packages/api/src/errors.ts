@@ -8,26 +8,11 @@ export class HttpError extends Error {
   }
 }
 
-export class NetworkError extends Error {
-  constructor(cause: unknown) {
-    super('Network request failed', { cause });
-    this.name = 'NetworkError';
-  }
-}
-
-/**
- * openapi-fetch의 `{ data, error, response }` 반환을 data-또는-throw로 변환한다.
- * react-query의 queryFn/mutationFn은 실패 시 throw를 기대하므로 핸들러에서 이걸로 감싼다.
- */
+/** openapi-fetch 결과에서 data만 추출. 4xx/5xx → HttpError, 그 외 예외는 원형 전파 */
 export async function unwrap<T>(
   result: Promise<{ data?: T; error?: unknown; response: Response }>,
 ): Promise<T> {
-  let settled;
-  try {
-    settled = await result;
-  } catch (cause) {
-    throw new NetworkError(cause);
-  }
+  const settled = await result;
   if (settled.error !== undefined || !settled.response.ok) {
     throw new HttpError(settled.response.status, settled.error);
   }
