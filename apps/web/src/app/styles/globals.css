@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@config "../../../packages/tokens/tailwind-preset.js";
+@import 'tailwindcss';
+@config "../../../../../packages/tokens/tailwind-preset.js";
 
 :root {
   --background: #ffffff;

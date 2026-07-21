@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/fix-classnames.sh",
+            "timeout": 30,
+            "statusMessage": "className 자동 줄임 중..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-changed-files.sh",
+            "timeout": 60,
+            "statusMessage": "변경된 파일 Prettier 포매팅 중..."
+          }
+        ]
+      }
+    ]
+  }
+}

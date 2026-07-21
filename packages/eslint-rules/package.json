@@ -1,0 +1,10 @@
+{
+  "name": "@gallery/eslint-rules",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./base": "./base.js"
+  }
+}

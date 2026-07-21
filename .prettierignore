@@ -1,0 +1,4 @@
+pnpm-lock.yaml
+.next
+.expo
+packages/api/src/generated
