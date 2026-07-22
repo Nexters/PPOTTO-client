@@ -10,6 +10,8 @@ export default function WebScreen() {
 
   const { pushMessage } = useNativeBridge(ref, contract, {
     GET_ACCESS_TOKEN: () => ({ accessToken: null }),
+    // eslint-disable-next-line no-console
+    LOG: ({ level, args }) => console[level]('[web]', ...args),
   });
 
   return (

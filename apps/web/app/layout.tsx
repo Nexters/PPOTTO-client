@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '@/app/styles/globals.css';
 
+import { ConsoleMirror } from '@/app/providers/console-mirror';
 import { QueryProvider } from '@/app/providers/query-provider';
 import { BridgeProvider } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
@@ -25,6 +26,7 @@ export default function RootLayout({
           )}
         >
           <BridgeProvider>
+            <ConsoleMirror />
             <QueryProvider>{children}</QueryProvider>
           </BridgeProvider>
         </div>
