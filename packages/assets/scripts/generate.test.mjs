@@ -20,6 +20,18 @@ test('generates a PascalCase component with an overridable default color', async
   assert.match(code, /\.\.\.props/);
 });
 
+test('preserves the original colors of a multicolor icon', async () => {
+  const code = await generateComponent(
+    '<svg><path fill="red" d="M0 0h1v1z"/><path stroke="blue" d="M0 0h1"/></svg>',
+    'MulticolorIcon',
+    'multicolor-icon.svg',
+  );
+
+  assert.match(code, /fill="red"/);
+  assert.match(code, /stroke="blue"/);
+  assert.doesNotMatch(code, /currentColor|--icon-default-color/);
+});
+
 test('regenerates modified icons and removes deleted output', async (context) => {
   const root = await mkdtemp(path.join(tmpdir(), 'svg-generator-'));
   const inputDir = path.join(root, 'svg');
@@ -37,4 +49,17 @@ test('regenerates modified icons and removes deleted output', async (context) =>
   const component = await readFile(path.join(outputDir, 'SampleIcon.tsx'), 'utf8');
   assert.match(component, /--icon-default-color, black/);
   await assert.rejects(access(path.join(outputDir, 'DeletedIcon.tsx')));
+});
+
+test('rejects an output directory containing the input directory', async (context) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'svg-generator-'));
+  const inputDir = path.join(root, 'svg');
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(inputDir);
+
+  await assert.rejects(
+    generateIcons({ inputDir, outputDir: root }),
+    /Output directory must not contain the input directory/,
+  );
+  await access(inputDir);
 });

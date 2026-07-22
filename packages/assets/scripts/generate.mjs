@@ -1,3 +1,13 @@
+/**
+ * SVG 파일을 React 컴포넌트로 변환
+ * 단색 SVG는 외부에서 색상을 변경할 수 있고, 다색 SVG는 원본 색상을 유지
+ *
+ * 실행 흐름:
+ * 1. 입출력 경로를 검증하고 SVG 파일을 수집
+ * 2. 파일명을 PascalCase로 바꾸고 각 SVG를 React 컴포넌트로 변환
+ * 3. 모든 변환이 성공하면 generated 디렉터리를 새 결과로 교체
+ * 4. 생성된 컴포넌트를 내보내는 배럴파일 작성
+ */
 import { access, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,7 +45,7 @@ export function toComponentName(fileName) {
   return /^\d/.test(name) ? `Svg${name}` : name;
 }
 
-export function findDefaultColor(svg, fileName) {
+export function findDefaultColor(svg) {
   const paints = [...svg.matchAll(/\b(?:fill|stroke)=["']([^"']+)["']/gi)].map(([, value]) =>
     value.trim(),
   );
@@ -54,15 +64,11 @@ export function findDefaultColor(svg, fileName) {
   if (colors.size === 0 && paints.some((paint) => paint.toLowerCase() === 'currentcolor')) {
     return 'black';
   }
-  if (colors.size !== 1) {
-    throw new Error(`${fileName} must contain exactly one fill/stroke color`);
-  }
-
-  return colors.values().next().value;
+  return colors.size === 1 ? colors.values().next().value : null;
 }
 
 export async function generateComponent(svg, componentName, filePath = componentName) {
-  const defaultColor = findDefaultColor(svg, filePath);
+  const defaultColor = findDefaultColor(svg);
   const code = await transform(
     svg,
     {
@@ -70,8 +76,10 @@ export async function generateComponent(svg, componentName, filePath = component
       typescript: true,
       jsxRuntime: 'automatic',
       expandProps: 'end',
-      replaceAttrValues: { [defaultColor]: 'currentColor' },
-      svgProps: { color: `var(--icon-default-color, ${defaultColor})` },
+      ...(defaultColor && {
+        replaceAttrValues: { [defaultColor]: 'currentColor' },
+        svgProps: { color: `var(--icon-default-color, ${defaultColor})` },
+      }),
       svgoConfig: {
         plugins: [
           {
@@ -89,8 +97,18 @@ export async function generateComponent(svg, componentName, filePath = component
 }
 
 export async function generateIcons(options = {}) {
-  const sourceDir = options.inputDir ?? inputDir;
-  const targetDir = options.outputDir ?? outputDir;
+  const sourceDir = path.resolve(options.inputDir ?? inputDir);
+  const targetDir = path.resolve(options.outputDir ?? outputDir);
+  const relativeSourceDir = path.relative(targetDir, sourceDir);
+
+  if (
+    relativeSourceDir === '' ||
+    (relativeSourceDir !== '..' &&
+      !relativeSourceDir.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relativeSourceDir))
+  ) {
+    throw new Error('Output directory must not contain the input directory');
+  }
 
   if (!(await exists(sourceDir))) {
     throw new Error(`SVG directory does not exist: ${sourceDir}`);
