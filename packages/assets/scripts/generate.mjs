@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -88,19 +88,20 @@ export async function generateComponent(svg, componentName, filePath = component
   return format(code, { parser: 'typescript', singleQuote: true });
 }
 
-export async function generateIcons() {
-  if (!(await exists(inputDir))) {
-    throw new Error(`SVG directory does not exist: ${inputDir}`);
+export async function generateIcons(options = {}) {
+  const sourceDir = options.inputDir ?? inputDir;
+  const targetDir = options.outputDir ?? outputDir;
+
+  if (!(await exists(sourceDir))) {
+    throw new Error(`SVG directory does not exist: ${sourceDir}`);
   }
 
-  await mkdir(outputDir, { recursive: true });
-  const svgFiles = (await readdir(inputDir, { withFileTypes: true }))
+  const svgFiles = (await readdir(sourceDir, { withFileTypes: true }))
     .filter((entry) => entry.isFile() && entry.name.endsWith('.svg'))
     .map((entry) => entry.name)
     .sort();
   const names = new Set();
-  let generated = 0;
-  let skipped = 0;
+  const components = [];
 
   for (const fileName of svgFiles) {
     const componentName = toComponentName(fileName);
@@ -109,31 +110,33 @@ export async function generateIcons() {
     }
     names.add(componentName);
 
-    const outputPath = path.join(outputDir, `${componentName}.tsx`);
-    if (await exists(outputPath)) {
-      skipped += 1;
-      continue;
-    }
-
-    const svgPath = path.join(inputDir, fileName);
+    const svgPath = path.join(sourceDir, fileName);
     const svg = await readFile(svgPath, 'utf8');
-    await writeFile(outputPath, await generateComponent(svg, componentName, fileName));
-    generated += 1;
+    components.push({
+      name: componentName,
+      code: await generateComponent(svg, componentName, fileName),
+    });
+  }
+
+  await rm(targetDir, { recursive: true, force: true });
+  await mkdir(targetDir, { recursive: true });
+  for (const component of components) {
+    await writeFile(path.join(targetDir, `${component.name}.tsx`), component.code);
   }
 
   const index = [...names]
     .sort()
     .map((name) => `export { default as ${name} } from './${name}';`)
     .join('\n');
-  await writeFile(path.join(outputDir, 'index.ts'), `${index}\n`);
+  await writeFile(path.join(targetDir, 'index.ts'), `${index}\n`);
 
-  return { generated, skipped };
+  return { generated: components.length };
 }
 
 if (path.resolve(process.argv[1] ?? '') === scriptPath) {
   generateIcons()
-    .then(({ generated, skipped }) => {
-      process.stdout.write(`SVG generation complete: generated=${generated}, skipped=${skipped}\n`);
+    .then(({ generated }) => {
+      process.stdout.write(`SVG generation complete: generated=${generated}\n`);
     })
     .catch((error) => {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
