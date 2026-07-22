@@ -2,11 +2,16 @@
   "name": "gallery-100",
   "private": true,
   "scripts": {
+    "assets:generate": "node packages/assets/scripts/generate.mjs",
+    "assets:test": "node --test packages/assets/scripts/generate.test.mjs",
     "web": "pnpm --filter web dev",
     "mobile": "pnpm --filter mobile start"
   },
   "devDependencies": {
     "@gallery/eslint-rules": "workspace:*",
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
+    "@svgr/plugin-svgo": "^8.1.0",
     "eslint": "^9.39.5",
     "prettier": "^3.9.5",
     "typescript-eslint": "^8.64.0"
