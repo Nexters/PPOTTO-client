@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import { generateComponent, generateIcons, toComponentName } from './generate.mjs';
 
-test('generates a PascalCase component with an overridable default color', async () => {
+test('PascalCase 컴포넌트를 생성하고 기본 색상을 덮어쓸 수 있다', async () => {
   assert.equal(toComponentName('finger-test.svg'), 'FingerTest');
 
   const code = await generateComponent(
@@ -20,7 +20,7 @@ test('generates a PascalCase component with an overridable default color', async
   assert.match(code, /\.\.\.props/);
 });
 
-test('preserves the original colors of a multicolor icon', async () => {
+test('다색 아이콘은 원본 색상을 그대로 유지한다', async () => {
   const code = await generateComponent(
     '<svg><path fill="red" d="M0 0h1v1z"/><path stroke="blue" d="M0 0h1"/></svg>',
     'MulticolorIcon',
@@ -32,7 +32,7 @@ test('preserves the original colors of a multicolor icon', async () => {
   assert.doesNotMatch(code, /currentColor|--icon-default-color/);
 });
 
-test('regenerates modified icons and removes deleted output', async (context) => {
+test('수정된 아이콘은 재생성하고 삭제된 아이콘의 결과물은 제거한다', async (context) => {
   const root = await mkdtemp(path.join(tmpdir(), 'svg-generator-'));
   const inputDir = path.join(root, 'svg');
   const outputDir = path.join(root, 'generated');
@@ -51,7 +51,7 @@ test('regenerates modified icons and removes deleted output', async (context) =>
   await assert.rejects(access(path.join(outputDir, 'DeletedIcon.tsx')));
 });
 
-test('rejects an output directory containing the input directory', async (context) => {
+test('output 디렉터리가 input 디렉터리를 포함하면 거부한다', async (context) => {
   const root = await mkdtemp(path.join(tmpdir(), 'svg-generator-'));
   const inputDir = path.join(root, 'svg');
   context.after(() => rm(root, { recursive: true, force: true }));
