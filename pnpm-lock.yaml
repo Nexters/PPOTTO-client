@@ -114,8 +114,8 @@ importers:
         specifier: ^3.6.0
         version: 3.6.0
       webview-bridge-kit:
-        specifier: ^0.1.1
-        version: 0.1.1(react@19.2.0)
+        specifier: ^0.2.0
+        version: 0.2.0(react@19.2.0)(typescript@5.9.3)
     devDependencies:
       '@gallery/eslint-rules':
         specifier: workspace:*
@@ -163,8 +163,8 @@ importers:
         specifier: ^3.6.0
         version: 3.6.0
       webview-bridge-kit:
-        specifier: ^0.1.1
-        version: 0.1.1(react@19.2.0)
+        specifier: ^0.2.0
+        version: 0.2.0(react@19.2.0)(typescript@5.9.3)
     devDependencies:
       '@gallery/eslint-rules':
         specifier: workspace:*
@@ -210,8 +210,8 @@ importers:
   packages/bridge:
     dependencies:
       webview-bridge-kit:
-        specifier: ^0.1.1
-        version: 0.1.1(react@19.2.0)
+        specifier: ^0.2.0
+        version: 0.2.0(react@19.2.0)(typescript@5.9.3)
       zod:
         specifier: ^4.0.0
         version: 4.4.3
@@ -4956,13 +4956,17 @@ packages:
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
 
-  webview-bridge-kit@0.1.1:
-    resolution: {integrity: sha512-1OmK2C0EvX5zvF1CeQUcusUDV6XwMvZ4ABaK7usaHldAJ5F30ejUJoIfgcoE3zU5g8zfD4AM9lYvXErf/k1rFw==}
+  webview-bridge-kit@0.2.0:
+    resolution: {integrity: sha512-wxYvDLdMiZn7n6VrRKW8DopzKu1vH8hFG/FJ46Bh5qGAECHlnG9QyEBRK5Nb2E0CaB+DKteNQCWLA53AAsUXdw==}
     engines: {node: '>=18'}
+    hasBin: true
     peerDependencies:
       react: '>=18'
+      typescript: '>=5'
     peerDependenciesMeta:
       react:
+        optional: true
+      typescript:
         optional: true
 
   whatwg-fetch@3.6.20:
@@ -10831,9 +10835,10 @@ snapshots:
 
   webidl-conversions@3.0.1: {}
 
-  webview-bridge-kit@0.1.1(react@19.2.0):
+  webview-bridge-kit@0.2.0(react@19.2.0)(typescript@5.9.3):
     optionalDependencies:
       react: 19.2.0
+      typescript: 5.9.3
 
   whatwg-fetch@3.6.20: {}
 
