@@ -22,6 +22,7 @@
     "expo-glass-effect": "~55.0.11",
     "expo-image": "~55.0.11",
     "expo-linking": "~55.0.16",
+    "expo-media-library": "^55.0.19",
     "expo-router": "~55.0.16",
     "expo-splash-screen": "~55.0.22",
     "expo-status-bar": "~55.0.6",
