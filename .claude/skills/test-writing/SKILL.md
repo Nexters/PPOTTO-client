@@ -1,5 +1,5 @@
 ---
-name: tdd-writing
+name: test-writing
 description: 테스트 코드(Vitest/Jest, React Testing Library)를 작성하거나 수정할 때 반드시 적용하는 작성 원칙. 새 테스트 작성, it.todo 채우기, 기존 테스트 리팩토링, 테스트 리뷰 시 이 스킬을 로드한다.
 ---
 
