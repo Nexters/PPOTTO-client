@@ -76,6 +76,10 @@ function scopeConflict(a, b) {
   return a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
 }
 
+function passedVerification(result) {
+  return result?.pass === true && Array.isArray(result.issues) && result.issues.length === 0;
+}
+
 const units = args;
 
 if (!Array.isArray(units) || units.length === 0) {
@@ -214,7 +218,7 @@ const blockedUnits = unitReports.filter(
 );
 const verificationFailedUnits = unitReports.filter(
   ({ implementation, verify }) =>
-    implementation && implementation.status === 'completed' && (!verify || verify.pass !== true),
+    implementation && implementation.status === 'completed' && !passedVerification(verify),
 );
 
 log(
@@ -235,8 +239,7 @@ return {
   pass:
     verificationFailedUnits.length === 0 &&
     blockedUnits.length === 0 &&
-    !!integration &&
-    integration.pass === true,
+    passedVerification(integration),
   total: units.length,
   unitReports,
   blockedUnits: blockedUnits.map(({ unit }) => unit),

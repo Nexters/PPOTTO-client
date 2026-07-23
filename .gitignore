@@ -3,3 +3,4 @@ node_modules
 .next
 .omc
 .claude/settings.local.json
+_workspace
