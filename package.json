@@ -10,8 +10,12 @@
     "typecheck": "pnpm -r --filter './apps/**' run typecheck"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
+    "apps/web/**/*.{ts,tsx}": [
+      "pnpm --filter web exec eslint --fix",
+      "prettier --write"
+    ],
+    "apps/mobile/**/*.{ts,tsx}": [
+      "pnpm --filter mobile exec eslint --fix",
       "prettier --write"
     ],
     "*.{js,mjs,json,md}": [
