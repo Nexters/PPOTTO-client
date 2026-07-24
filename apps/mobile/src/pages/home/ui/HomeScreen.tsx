@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GalleryPermissionRequest } from './gallery-permission-request';
+import { GalleryPermissionRequest } from './GalleryPermissionRequest';
 
 export function HomeScreen() {
   return (
