@@ -21,10 +21,6 @@ function computeResizeTarget(
   return { width: Math.round(photo.width * scale), height: Math.round(photo.height * scale) };
 }
 
-/**
- * `photo.uri`는 이미 로컬 파일 경로(`file://`)여야 한다. iOS의 `ph://` asset URI를
- * 그대로 넘기면 리사이즈/저장이 실패하거나 예상과 다르게 동작할 수 있다.
- */
 export async function compressPhoto(
   photo: GalleryPhoto,
   options?: CompressPhotoOptions,
