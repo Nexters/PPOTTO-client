@@ -63,7 +63,6 @@ module.exports = {
           900: '#5F2100',
         },
       },
-      // 8px 베이스 그리드. Corner smoothing(60%)은 CSS/RN 토큰으로 표현 불가 — 값만 정의
       borderRadius: {
         8: '8px',
         16: '16px',
@@ -72,10 +71,8 @@ module.exports = {
         40: '40px',
       },
       fontFamily: {
-        // 실제 폰트 로딩은 앱별로: web은 next/font/local, mobile은 expo-font
         sans: ['Pretendard', 'sans-serif'],
       },
-      // [size, { lineHeight, letterSpacing, fontWeight }] — 클래스 하나에 스펙 전부. 자간 -3% = -0.03em
       fontSize: {
         'header-01': ['36px', { lineHeight: '48px', letterSpacing: '-0.03em', fontWeight: '700' }],
         'header-02': ['32px', { lineHeight: '48px', letterSpacing: '-0.03em', fontWeight: '700' }],
