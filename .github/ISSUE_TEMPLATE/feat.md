@@ -1,7 +1,7 @@
 ---
 name: ✨ feat
 about: 새로운 기능 개발
-title: 'feat: '
+title: '✨ Feat: '
 labels: feat
 ---
 
