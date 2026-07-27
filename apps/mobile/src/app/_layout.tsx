@@ -7,7 +7,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)/index" />
         <Stack.Screen name="photo-select" />
         <Stack.Screen name="loading" />
       </Stack>
