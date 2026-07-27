@@ -1,7 +1,7 @@
 import { contract } from '@gallery/bridge';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
@@ -19,7 +19,7 @@ export function AppWebView({ path = '' }: { path?: string }) {
   });
 
   return (
-    <View className="flex-1 bg-gray-900">
+    <View style={{ flex: 1 }}>
       <WebView
         ref={ref}
         source={{ uri: `${WEB_URL}${path}` }}
@@ -27,7 +27,13 @@ export function AppWebView({ path = '' }: { path?: string }) {
         onLoadEnd={() => setLoaded(true)}
         allowsBackForwardNavigationGestures={false}
       />
-      {!loaded && <View pointerEvents="none" className="absolute inset-0 bg-gray-900" />}
+      {!loaded && (
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]}
+          className="bg-yellow-400"
+        />
+      )}
     </View>
   );
 }
