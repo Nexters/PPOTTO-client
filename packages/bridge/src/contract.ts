@@ -12,6 +12,7 @@ export const contract = defineContract({
       args: z.array(z.string()),
     }),
   }),
+  OPEN_PHOTO_SELECT: command(),
 });
 
 export type BridgeContract = typeof contract;
