@@ -1,13 +1,16 @@
 import { contract } from '@gallery/bridge';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useRef } from 'react';
 import { WebView } from 'react-native-webview';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
-const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'http://192.168.1.218:3000';
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:3000';
 
 export function WebViewScreen() {
   const ref = useRef<WebView>(null);
+
+  const { path } = useLocalSearchParams<{ path?: string }>();
+  const uri = `${WEB_URL}${path ?? ''}`;
 
   const { pushMessage } = useNativeBridge(ref, contract, {
     GET_ACCESS_TOKEN: () => ({ accessToken: null }),
@@ -18,7 +21,7 @@ export function WebViewScreen() {
   return (
     <WebView
       ref={ref}
-      source={{ uri: WEB_URL }}
+      source={{ uri }}
       onMessage={(e) => pushMessage(e.nativeEvent.data)}
       allowsBackForwardNavigationGestures={false}
     />
