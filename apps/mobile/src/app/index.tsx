@@ -1,1 +1,1 @@
-export { HomeScreen as default } from '@/pages/home';
+export { WebViewScreen as default } from '@/pages/webview';

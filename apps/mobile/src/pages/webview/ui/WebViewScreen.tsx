@@ -5,12 +5,12 @@ import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:3000';
 
-export default function WebScreen() {
+export function WebViewScreen() {
   const ref = useRef<WebView>(null);
 
   const { pushMessage } = useNativeBridge(ref, contract, {
     GET_ACCESS_TOKEN: () => ({ accessToken: null }),
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line
     LOG: ({ level, args }) => console[level]('[web]', ...args),
   });
 

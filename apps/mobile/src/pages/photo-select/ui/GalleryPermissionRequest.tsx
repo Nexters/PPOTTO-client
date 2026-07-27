@@ -3,7 +3,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 
-import { cn } from '@/lib/cn';
+import { cn } from '@/shared/lib/cn';
 
 export function GalleryPermissionRequest() {
   const [permission, requestPermission] = MediaLibrary.usePermissions();

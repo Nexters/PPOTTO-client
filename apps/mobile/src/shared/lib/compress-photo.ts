@@ -1,6 +1,6 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
-import type { GalleryPhoto } from '@/types/photo';
+import type { GalleryPhoto } from '@/shared/lib/photo';
 
 const DEFAULT_MAX_DIMENSION = 1280;
 const DEFAULT_QUALITY = 0.8;
