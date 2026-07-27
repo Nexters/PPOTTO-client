@@ -21,5 +21,5 @@ export const config = defineConfig({
     { name: 'Settings', route: '/settings' },
   ],
   initialActivity: () => 'Login',
-  transitionDuration: 350,
+  transitionDuration: 300,
 });
