@@ -9,7 +9,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)/index" />
         <Stack.Screen name="photo-select" />
-        <Stack.Screen name="loading" />
+        <Stack.Screen name="board" />
       </Stack>
     </ThemeProvider>
   );

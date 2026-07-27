@@ -1,1 +1,1 @@
-export { PhotoSelectScreen } from './ui/PhotoSelectScreen';
+export { PhotoSelectScreen } from './PhotoSelectScreen';
