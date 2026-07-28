@@ -7,7 +7,7 @@
     "web": "pnpm --filter web dev",
     "mobile": "pnpm --filter mobile start",
     "prepare": "husky",
-    "typecheck": "pnpm -r --filter './apps/**' run typecheck"
+    "typecheck": "pnpm -r --filter './apps/**' --filter './packages/**' run typecheck"
   },
   "lint-staged": {
     "apps/web/**/*.{ts,tsx}": [
