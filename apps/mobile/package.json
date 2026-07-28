@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gallery/bridge": "workspace:*",
+    "@ppotto/api": "workspace:*",
+    "@ppotto/bridge": "workspace:*",
     "@react-native-seoul/kakao-login": "^5.4.2",
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",
@@ -50,7 +51,7 @@
     "webview-bridge-kit": "^0.2.0"
   },
   "devDependencies": {
-    "@gallery/eslint-rules": "workspace:*",
+    "@ppotto/eslint-rules": "workspace:*",
     "@types/react": "~19.2.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "^57.0.0",

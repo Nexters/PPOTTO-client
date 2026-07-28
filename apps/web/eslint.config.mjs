@@ -1,8 +1,8 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
-import galleryRules from '@gallery/eslint-rules';
-import baseRules from '@gallery/eslint-rules/base';
+import ppottoRules from '@ppotto/eslint-rules';
+import baseRules from '@ppotto/eslint-rules/base';
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -10,7 +10,7 @@ const eslintConfig = defineConfig([
   ...baseRules,
   {
     files: ['**/*.{ts,tsx,jsx}'],
-    plugins: { classname: galleryRules },
+    plugins: { classname: ppottoRules },
     rules: {
       'classname/no-long-classname': ['warn', { maxClasses: 7, cnImportPath: '@/shared/lib/cn' }],
     },

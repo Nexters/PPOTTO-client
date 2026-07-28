@@ -1,4 +1,4 @@
-# gallery-100
+# ppotto
 
 pnpm 모노레포:
 

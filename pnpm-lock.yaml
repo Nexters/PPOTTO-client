@@ -11,7 +11,7 @@ importers:
       '@commitlint/cli':
         specifier: ^21.2.1
         version: 21.2.1(@types/node@22.20.1)(conventional-commits-parser@7.1.0)(typescript@5.9.3)
-      '@gallery/eslint-rules':
+      '@ppotto/eslint-rules':
         specifier: workspace:*
         version: link:packages/eslint-rules
       '@svgr/core':
@@ -41,7 +41,10 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@gallery/bridge':
+      '@ppotto/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@ppotto/bridge':
         specifier: workspace:*
         version: link:../../packages/bridge
       '@react-native-seoul/kakao-login':
@@ -150,7 +153,7 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0(react@19.2.0)(typescript@5.9.3)
     devDependencies:
-      '@gallery/eslint-rules':
+      '@ppotto/eslint-rules':
         specifier: workspace:*
         version: link:../../packages/eslint-rules
       '@types/react':
@@ -171,10 +174,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@gallery/api':
+      '@ppotto/api':
         specifier: workspace:*
         version: link:../../packages/api
-      '@gallery/bridge':
+      '@ppotto/bridge':
         specifier: workspace:*
         version: link:../../packages/bridge
       '@stackflow/config':
@@ -214,7 +217,7 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0(react@19.2.0)(typescript@5.9.3)
     devDependencies:
-      '@gallery/eslint-rules':
+      '@ppotto/eslint-rules':
         specifier: workspace:*
         version: link:../../packages/eslint-rules
       '@tailwindcss/postcss':

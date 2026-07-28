@@ -7,7 +7,7 @@ import { BridgeProvider } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 
 export const metadata: Metadata = {
-  title: 'gallery-100',
+  title: 'ppotto',
   description: '방치된 갤러리 사진을 테마별 스티커로 만드는 포토 리캡',
 };
 
