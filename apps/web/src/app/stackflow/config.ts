@@ -20,6 +20,5 @@ export const config = defineConfig({
     { name: 'Recap', route: '/recap' },
     { name: 'Settings', route: '/settings' },
   ],
-  initialActivity: () => 'Login',
   transitionDuration: 300,
 });
