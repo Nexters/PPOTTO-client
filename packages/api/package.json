@@ -9,12 +9,14 @@
   "scripts": {
     "gen": "openapi-typescript openapi/ppotto-api.json -o src/generated/schema.d.ts --alphabetize",
     "gen:check": "openapi-typescript openapi/ppotto-api.json -o src/generated/schema.d.ts --alphabetize --check",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test"
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3"
   }
