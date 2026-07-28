@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": ["mobile", "kakao8bb095f9377c5c02587c344363241458"],
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
@@ -13,6 +13,7 @@
       "bundleIdentifier": "com.ppotto.mobile"
     },
     "android": {
+      "package": "com.ppotto.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -27,8 +28,7 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO"
-      ],
-      "package": "com.ppotto.mobile"
+      ]
     },
     "web": {
       "output": "static",
@@ -64,6 +64,22 @@
             "./assets/fonts/Pretendard-SemiBold.otf",
             "./assets/fonts/Pretendard-Bold.otf"
           ]
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"]
+          }
+        }
+      ],
+      [
+        "@react-native-seoul/kakao-login",
+        {
+          "kakaoAppKey": "8bb095f9377c5c02587c344363241458",
+          "overrideKakaoSDKVersion": "2.11.2",
+          "kotlinVersion": "2.0.21"
         }
       ]
     ],
