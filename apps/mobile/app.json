@@ -41,7 +41,7 @@
         "expo-media-library",
         {
           "photosPermission": "최근 사진을 불러오기 위해 갤러리 접근 권한이 필요해요.",
-          "savePhotosPermission": false,
+          "savePhotosPermission": "생성된 스티커를 갤러리에 저장하기 위해 접근 권한이 필요해요.",
           "isAccessMediaLocationEnabled": false
         }
       ],
