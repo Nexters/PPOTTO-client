@@ -4,3 +4,5 @@ node_modules
 .omc
 .claude/settings.local.json
 _workspace
+.DS_Store
+build/
