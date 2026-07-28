@@ -1,15 +1,23 @@
-import createClient, { type Middleware } from 'openapi-fetch';
+import createClient, { type ClientOptions, type Middleware } from 'openapi-fetch';
 
+import { NetworkError } from './errors.ts';
 import type { paths } from './generated/schema';
 
 export interface ApiClientOptions {
   baseUrl: string;
-  /** 인증 토큰 공급자. web은 세션에서, RN은 네이티브 저장소에서 주입. */
   getToken?: () => string | null | Promise<string | null>;
+  fetch?: ClientOptions['fetch'];
 }
 
-export function createApiClient({ baseUrl, getToken }: ApiClientOptions) {
-  const client = createClient<paths>({ baseUrl });
+export function createApiClient({ baseUrl, getToken, fetch }: ApiClientOptions) {
+  const client = createClient<paths>({ baseUrl, fetch });
+
+  client.use({
+    onError({ error }) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      return new NetworkError(error);
+    },
+  });
 
   if (getToken) {
     const auth: Middleware = {

@@ -9,7 +9,9 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noUncheckedIndexedAccess": true,
-    "types": ["node"]
+    "types": ["node"],
+    // 테스트는 node --test로 직접 실행돼 ESM 확장자가 필요하다 (소스는 번들러가 해석)
+    "allowImportingTsExtensions": true
   },
   "include": ["src"]
 }
