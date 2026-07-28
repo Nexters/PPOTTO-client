@@ -4,17 +4,413 @@
  */
 
 export interface paths {
-    "/photos": {
+    "/analysis": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["listPhotos"];
+        get?: never;
+        put?: never;
+        /**
+         * 분석 생성 + 업로드 URL 일괄 발급
+         * @description "이 사진으로 보드 만들기" 시점에 호출합니다. photos 행을 미리 만들고 사진별
+         *     업로드 URL(만료 15분)을 발급합니다. 결과 스티커(최대 6개)는 boardId 보드에 붙습니다.
+         *
+         *     - 클라이언트는 각 URL로 GCS에 직접 PUT 합니다. Content-Type은 요청값과 일치해야 합니다.
+         *     - 업로드 URL에는 장당 15MB 크기 제한이 서명되어 있습니다 (x-goog-content-length-range).
+         *     - 업로드된 사진은 전부 분석에 사용합니다.
+         *     - 분석은 사용자당 하루 5회로 제한됩니다 (운영 설정값). 초과 시 429 ANALYSIS-006.
+         *     - 진행 중인 분석이 있으면 409가 반환됩니다 (보드와 무관하게 유저당 1개).
+         *       `/analysis/active`로 복귀하거나 취소 후 다시 시도합니다.
+         *     - 아래 예시는 지면상 3장만 표기했지만 실제 요청은 90~100장입니다.
+         */
+        post: operations["createAnalysis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analysis/{analysisId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 분석 상태 조회 (로딩 화면 폴링)
+         * @description 로딩 화면에서 2~3초 간격으로 폴링합니다. 단계 문구는 클라이언트가 progress
+         *     구간으로 매핑합니다. COMPLETED가 되면 보드를 다시 조회합니다.
+         */
+        get: operations["getAnalysis"];
+        put?: never;
+        post?: never;
+        /**
+         * 분석 취소 (업로드 중 이탈)
+         * @description UPLOADING 상태에서만 취소할 수 있습니다. FAILED(failedReason=CANCELED)로
+         *     기록되어 점유가 풀립니다. start 이후에는 파이프라인이 끝까지 돕니다.
+         *     취소하지 못하고 죽은 분석은 서버 배치가 정리합니다 (failedReason=EXPIRED).
+         */
+        delete: operations["cancelAnalysis"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analysis/{analysisId}/reissue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 업로드 URL 재발급
+         * @description 분석 생성 응답을 유실했거나 업로드 URL(15분)이 만료됐을 때 호출합니다.
+         *     아직 업로드가 확인되지 않은(PENDING) 사진의 URL만 새로 발급합니다.
+         *     UPLOADING 상태에서만 사용할 수 있습니다.
+         */
+        post: operations["reissueUploadUrls"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analysis/{analysisId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 업로드 완료 통보 + 분석 시작
+         * @description 업로드를 모두 마친 뒤 호출합니다. 서버는 GCS 오브젝트 존재를 확인해
+         *     없는 사진은 FAILED로 제외하고 분석 파이프라인을 시작합니다.
+         *
+         *     파이프라인: 주제 분류 → 스티커 생성 → 리캡 코멘트 생성 → 보드 배치
+         *
+         *     배치 단계에서 새 스티커는 중앙에 크게, 기존 스티커는 외곽에 작게 재배치됩니다.
+         *     이후 진행 상황은 GET 폴링으로 확인합니다.
+         */
+        post: operations["startAnalysis"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analysis/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 진행 중 분석 조회 (앱 재진입 복구)
+         * @description 앱을 껐다 켰을 때 진행 중인 분석이 있는지 확인합니다. 없으면 data가 null입니다.
+         *     UPLOADING 상태면 `/reissue`로 URL을 재발급받아 이어서 올리거나,
+         *     취소하고 새로 시작합니다.
+         */
+        get: operations["getActiveAnalysis"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 소셜 로그인 (가입 겸용)
+         * @description 카카오 또는 애플 계정으로 로그인합니다. 처음 보는 계정이면 가입과 기본 보드
+         *     생성까지 한 번에 처리됩니다.
+         *
+         *     **카카오**
+         *     - 클라이언트가 카카오 SDK로 받은 `accessToken`을 보내면, 서버가 먼저
+         *       `/v1/user/access_token_info`로 토큰의 `app_id`가 우리 앱인지 확인합니다
+         *       (다른 서비스에서 수집한 토큰으로 로그인하는 토큰 치환 공격 차단, 불일치 시 AUTH-001).
+         *       이후 `/v2/user/me`로 회원번호를 조회해 `providerUserId`로 사용합니다.
+         *     - 이메일은 필수입니다. 동의하지 않았으면 403 `AUTH-004`로 거부되며,
+         *       클라이언트는 추가 동의(`account_email` 스코프)를 요청한 뒤 다시 로그인합니다.
+         *
+         *     **애플**
+         *     - `identityToken`(JWT)을 애플 JWKS로 검증합니다 (iss / aud / exp / nonce).
+         *       `nonce` 클레임은 함께 보낸 `rawNonce`의 SHA-256 해시와 대조합니다.
+         *     - 토큰의 `sub`를 `providerUserId`로 사용합니다.
+         *     - `authorizationCode`는 5분 안에 refresh token으로 교환해 탈퇴(revoke)용으로
+         *       보관합니다. 앱스토어 심사 필수 사항이며, 재로그인 시에는 교환이 실패해도
+         *       로그인은 통과됩니다.
+         *
+         *     응답의 `pendingTerms`가 비어 있지 않으면 약관 동의 화면으로 이동합니다.
+         */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 로그아웃
+         * @description refresh token만 폐기합니다. 서버 데이터는 유지되므로 재로그인하면 그대로 다시 불러옵니다.
+         */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 토큰 재발급
+         * @description accessToken이 만료되면(401 COMMON-004) 호출합니다. refreshToken은 매번 새 값으로
+         *     교체되므로 응답을 받는 즉시 저장값을 갱신해야 합니다.
+         *     AUTH-002가 내려오면 다시 로그인해야 합니다.
+         */
+        post: operations["refreshToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/boards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 보드 목록 (드롭다운)
+         * @description 상단 타이틀 드롭다운의 보드 전환 목록입니다. id(uuidv7) 오름차순 = 생성순입니다.
+         */
+        get: operations["listBoards"];
+        put?: never;
+        /**
+         * 보드 생성
+         * @description 보드를 새로 만듭니다. 유저당 최대 100개입니다.
+         *     name을 생략하면 서버가 기본 이름을 부여합니다.
+         */
+        post: operations["createBoard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/boards/{boardId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 보드 상세 조회 (보드 렌더링)
+         * @description 보드, 스티커, 드로잉을 한 번에 반환합니다. isNew가 빨간 점 표시 여부입니다.
+         *     imageUrl은 만료가 있으므로 보드에 진입할 때마다 새로 조회합니다.
+         */
+        get: operations["getBoard"];
+        put?: never;
+        post?: never;
+        /**
+         * 보드 삭제
+         * @description 보드와 그 위의 스티커, 리캡(코멘트·사진 연결), 드로잉을 함께 삭제합니다.
+         *     마지막 남은 보드는 삭제할 수 없고(BOARD-004), 진행 중인 분석이 이 보드를
+         *     대상으로 하면 분석이 끝나거나 취소된 뒤에 삭제할 수 있습니다(BOARD-005).
+         */
+        delete: operations["deleteBoard"];
+        options?: never;
+        head?: never;
+        /**
+         * 보드 이름 변경
+         * @description 최대 10자입니다.
+         */
+        patch: operations["renameBoard"];
+        trace?: never;
+    };
+    "/boards/{boardId}/layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 편집 결과 일괄 저장 (편집 모드 종료 시)
+         * @description 편집 모드를 끌 때 해당 모드에서 바뀐 것만 보냅니다. 모든 필드는 선택입니다.
+         *
+         *     | 편집 모드 | 보내는 필드 |
+         *     |---|---|
+         *     | 스티커 이동 | `stickers` (배치) |
+         *     | 텍스트 | `stickers` (제목 + 뱃지 배치) |
+         *     | 드로잉 | `drawings.created` / `drawings.deletedIds` |
+         *
+         *     드로잉 id는 클라이언트가 uuidv7로 생성해 보내고 서버는 upsert합니다.
+         *     타임아웃 후 재시도해도 중복 저장되지 않습니다 (멱등).
+         *     본인 소유가 아닌 id가 섞여 있으면 `BOARD-001`로 전체 거부됩니다 (부분 저장 없음).
+         */
+        patch: operations["saveBoardLayout"];
+        trace?: never;
+    };
+    "/stickers/{stickerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 리캡 상세 조회
+         * @description 리캡 화면에 필요한 데이터를 모두 반환합니다. 스티커 1개 = 리캡 1개입니다.
+         *     photos는 takenAt, id 오름차순이며 기간 표시는 클라이언트가 계산합니다.
+         *     빨간 점 제거는 별도로 /view를 호출합니다.
+         */
+        get: operations["getStickerRecap"];
+        put?: never;
+        post?: never;
+        /**
+         * 스티커 묶음 삭제
+         * @description 스티커 묶음을 삭제합니다. 연결된 드로잉과 리캡(코멘트, 사진 연결)도 함께 삭제됩니다.
+         */
+        delete: operations["deleteSticker"];
+        options?: never;
+        head?: never;
+        /**
+         * 스티커 제목 수정
+         * @description 리캡 화면의 연필로 제목을 수정할 때 사용합니다. 보드 편집 중에는 layout API를
+         *     사용합니다. 제목을 수정해도 빨간 점 상태는 바뀌지 않습니다. 최대 15자.
+         */
+        patch: operations["updateStickerTitle"];
+        trace?: never;
+    };
+    "/stickers/{stickerId}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 리캡 열람 처리 (빨간 점 제거)
+         * @description 리캡 진입 시 호출해 빨간 점을 제거합니다. 멱등이라 여러 번 호출해도 안전합니다.
+         */
+        post: operations["markStickerViewed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 현재 유효 약관 목록
+         * @description code별로 현재 유효한 버전을 1건씩 반환합니다. agreed가 false면 재동의 대상입니다.
+         *     설정 화면의 약관 링크에도 contentUrl을 사용합니다.
+         */
+        get: operations["getTerms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/terms/agreements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 약관 동의 제출
+         * @description 동의 이력을 누적합니다. 이미 동의한 약관은 무시되며(멱등), 필수 약관이 빠져 있으면 TERM-001을 반환합니다.
+         */
+        post: operations["agreeTerms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 정보 조회 (설정 화면)
+         * @description 설정 화면의 내 계정 영역에 사용합니다.
+         */
+        get: operations["getMe"];
+        put?: never;
+        post?: never;
+        /**
+         * 회원 탈퇴
+         * @description 애플 계정은 보관 중인 refresh token으로 revoke를 호출합니다 (앱스토어 심사 필수).
+         *     email과 provider refresh token은 즉시 파기(익명화)하고, 나머지 데이터는
+         *     soft delete 후 유예기간이 지나면 GCS 사진 원본까지 배치로 하드 삭제합니다.
+         *     같은 계정으로 다시 로그인하면 신규 가입이 됩니다.
+         */
+        delete: operations["deleteMe"];
         options?: never;
         head?: never;
         patch?: never;
@@ -24,22 +420,1338 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        Photo: {
-            id: string;
+        Analysis: {
+            /**
+             * Format: uuid
+             * @description 결과 스티커가 붙을 보드
+             */
+            boardId: string;
             /** Format: date-time */
-            capturedAt: string;
-            url: string;
+            completedAt?: string | null;
+            failedReason?: string | null;
+            /** Format: uuid */
+            id: string;
+            /** @description 0~100 */
+            progress: number;
+            /**
+             * Format: date-time
+             * @description start 호출로 분석이 시작된 시각
+             */
+            startedAt?: string | null;
+            /**
+             * @description UPLOADING 업로드 중(생성 직후부터) / ANALYZING 분석 중 /
+             *     GENERATING 생성·배치 중 / COMPLETED 완료 / FAILED 실패·취소·만료
+             * @enum {string}
+             */
+            status: "UPLOADING" | "ANALYZING" | "GENERATING" | "COMPLETED" | "FAILED";
+        };
+        AnalysisCreateResult: {
+            /** Format: uuid */
+            analysisId: string;
+            /** @description 요청 photos 와 같은 순서 */
+            uploads: {
+                /** Format: uuid */
+                photoId: string;
+                /** @description GCS 쓰기용 signed URL. 만료 15분, PUT 전용 */
+                uploadUrl: string;
+            }[];
+        };
+        ApiErrorResponse: {
+            data?: unknown;
+            /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+            error: {
+                /** @example COMMON-001 */
+                code: string;
+                /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                fieldErrors: {
+                    /** @example name */
+                    field: string;
+                    reason?: string | null;
+                    value?: string | null;
+                }[];
+                message: string;
+                /**
+                 * Format: date-time
+                 * @description 에러 발생 시각 (Instant, UTC)
+                 */
+                timestamp: string;
+            };
+            /** @constant */
+            success: false;
+        };
+        ApiResponse: {
+            data?: unknown;
+            error?: unknown;
+            success: boolean;
+        };
+        AppleLoginRequest: {
+            /**
+             * @description refresh token 교환용입니다. 발급 후 5분, 1회만 유효합니다.
+             * @example c8ef1d2a90b34c5d8e7f6a5b4c3d2e1f0.0.srtwx.k9J8h7G6f5E4d3C2b1A0
+             */
+            authorizationCode: string;
+            /**
+             * @description 애플 로그인 결과로 받은 identity token (JWT)
+             * @example eyJraWQiOiJXNldjT0tCIiwiYWxnIjoiUlMyNTYifQ...
+             */
+            identityToken: string;
+            /** @enum {string} */
+            provider: "APPLE";
+            /**
+             * @description 클라이언트가 생성한 원본 nonce. 애플 로그인 요청에는 SHA-256 해시를 넣고 서버에는 원본을 보냅니다.
+             * @example 4A7F0E2B-9C31-45D8-A6F2-8B0C3D9E1F52
+             */
+            rawNonce: string;
+        };
+        Board: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        BoardDetail: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        } & {
+            drawings: {
+                /** @example #FFD400 */
+                color: string;
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                scope: "STICKER" | "BOARD";
+                /**
+                 * Format: uuid
+                 * @description scope=STICKER 일 때만
+                 */
+                stickerId?: string | null;
+                /** @description 점 배열 등 선 데이터. 포맷은 클라 정의를 그대로 저장 */
+                stroke: Record<string, never>;
+                /** @example 4 */
+                strokeWidth: number;
+            }[];
+            stickers: {
+                /** @description 스티커 기준 상대 좌표. 일정 범위 내로 제한 */
+                badgeOffsetX: number;
+                badgeOffsetY: number;
+                badgeRotation: number;
+                /** Format: uuid */
+                id: string;
+                /** @description IMAGE 형. 누끼 PNG 의 읽기용 signed URL (만료 1시간) */
+                imageUrl?: string | null;
+                /** @description viewed_at IS NULL. 뱃지에 빨간 점 표시 */
+                isNew: boolean;
+                /** @description 보드 좌표. 기준 해상도는 클라 정의를 따른다 */
+                posX: number;
+                posY: number;
+                /** @description degree */
+                rotation: number;
+                /** @example 1 */
+                scale: number;
+                /** @description TEXT 형 문구 */
+                textContent?: string | null;
+                /** @description 제목 뱃지 문구이자 리캡 제목 */
+                title: string;
+                /** @enum {string} */
+                type: "IMAGE" | "TEXT";
+                zIndex: number;
+            }[];
+        };
+        Drawing: {
+            /** @example #FFD400 */
+            color: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            scope: "STICKER" | "BOARD";
+            /**
+             * Format: uuid
+             * @description scope=STICKER 일 때만
+             */
+            stickerId?: string | null;
+            /** @description 점 배열 등 선 데이터. 포맷은 클라 정의를 그대로 저장 */
+            stroke: Record<string, never>;
+            /** @example 4 */
+            strokeWidth: number;
+        };
+        DrawingCreate: {
+            color: string;
+            /**
+             * Format: uuid
+             * @description 클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert합니다.
+             */
+            id: string;
+            /** @enum {string} */
+            scope: "STICKER" | "BOARD";
+            /**
+             * Format: uuid
+             * @description scope=STICKER 필수
+             */
+            stickerId?: string;
+            stroke: Record<string, never>;
+            strokeWidth: number;
+        };
+        KakaoLoginRequest: {
+            /**
+             * @description 카카오 SDK가 발급한 OAuth access token
+             * @example v1.eyJraWQiOiI5ZjI1MmRhZGQ1ZjIzM2Y5M2QyZmE1MjhkMTJmZWEi...
+             */
+            accessToken: string;
+            /** @enum {string} */
+            provider: "KAKAO";
+        };
+        LoginResult: {
+            /** @description JWT. Authorization Bearer 헤더에 넣습니다. */
+            accessToken: string;
+            /**
+             * @description accessToken 만료까지 남은 초
+             * @example 3600
+             */
+            accessTokenExpiresIn: number;
+            /** @description 서버가 생성한 랜덤 값입니다 (JWT 아님). Keychain 등 보안 저장소에 보관합니다. */
+            refreshToken: string;
+        } & {
+            isNewUser: boolean;
+            /** @description 동의가 필요한 현재 버전 약관. 비어 있으면 바로 진입 */
+            pendingTerms: {
+                /** @description 요청 사용자의 동의 여부 */
+                agreed: boolean;
+                /** @example TOS */
+                code: string;
+                /** @description 노션 등 외부 문서 링크 */
+                contentUrl?: string | null;
+                /** Format: uuid */
+                id: string;
+                isRequired: boolean;
+                /** @example 1.0 */
+                version: string;
+            }[];
+        };
+        RecapComment: {
+            content: string;
+            /** Format: uuid */
+            id: string;
+            /** @description true 면 스티커 주변 말풍선, false 면 하단 순차 노출 */
+            isFloat: boolean;
+            /** @description isFloat 일 때 스티커 기준 상대 좌표 */
+            posX?: number | null;
+            posY?: number | null;
+        };
+        RecapDetail: {
+            /** @description id(uuidv7) 오름차순 */
+            comments: {
+                content: string;
+                /** Format: uuid */
+                id: string;
+                /** @description true 면 스티커 주변 말풍선, false 면 하단 순차 노출 */
+                isFloat: boolean;
+                /** @description isFloat 일 때 스티커 기준 상대 좌표 */
+                posX?: number | null;
+                posY?: number | null;
+            }[];
+            /** @description takenAt, id 오름차순. 열람용 사진 포함 */
+            photos: {
+                /** Format: uuid */
+                id: string;
+                /** @description 읽기용 signed URL (만료 1시간) */
+                imageUrl: string;
+                /** Format: date-time */
+                takenAt: string;
+            }[];
+            sticker: {
+                /** @description 스티커 기준 상대 좌표. 일정 범위 내로 제한 */
+                badgeOffsetX: number;
+                badgeOffsetY: number;
+                badgeRotation: number;
+                /** Format: uuid */
+                id: string;
+                /** @description IMAGE 형. 누끼 PNG 의 읽기용 signed URL (만료 1시간) */
+                imageUrl?: string | null;
+                /** @description viewed_at IS NULL. 뱃지에 빨간 점 표시 */
+                isNew: boolean;
+                /** @description 보드 좌표. 기준 해상도는 클라 정의를 따른다 */
+                posX: number;
+                posY: number;
+                /** @description degree */
+                rotation: number;
+                /** @example 1 */
+                scale: number;
+                /** @description TEXT 형 문구 */
+                textContent?: string | null;
+                /** @description 제목 뱃지 문구이자 리캡 제목 */
+                title: string;
+                /** @enum {string} */
+                type: "IMAGE" | "TEXT";
+                zIndex: number;
+            };
+        };
+        RecapPhoto: {
+            /** Format: uuid */
+            id: string;
+            /** @description 읽기용 signed URL (만료 1시간) */
+            imageUrl: string;
+            /** Format: date-time */
+            takenAt: string;
+        };
+        Sticker: {
+            /** @description 스티커 기준 상대 좌표. 일정 범위 내로 제한 */
+            badgeOffsetX: number;
+            badgeOffsetY: number;
+            badgeRotation: number;
+            /** Format: uuid */
+            id: string;
+            /** @description IMAGE 형. 누끼 PNG 의 읽기용 signed URL (만료 1시간) */
+            imageUrl?: string | null;
+            /** @description viewed_at IS NULL. 뱃지에 빨간 점 표시 */
+            isNew: boolean;
+            /** @description 보드 좌표. 기준 해상도는 클라 정의를 따른다 */
+            posX: number;
+            posY: number;
+            /** @description degree */
+            rotation: number;
+            /** @example 1 */
+            scale: number;
+            /** @description TEXT 형 문구 */
+            textContent?: string | null;
+            /** @description 제목 뱃지 문구이자 리캡 제목 */
+            title: string;
+            /** @enum {string} */
+            type: "IMAGE" | "TEXT";
+            zIndex: number;
+        };
+        StickerLayout: {
+            badgeOffsetX: number;
+            badgeOffsetY: number;
+            badgeRotation: number;
+            /** Format: uuid */
+            id: string;
+            posX: number;
+            posY: number;
+            rotation: number;
+            scale: number;
+            /** @description 텍스트 모드에서 제목을 바꿨을 때만 보낸다 */
+            title?: string;
+            zIndex: number;
+        };
+        Term: {
+            /** @description 요청 사용자의 동의 여부 */
+            agreed: boolean;
+            /** @example TOS */
+            code: string;
+            /** @description 노션 등 외부 문서 링크 */
+            contentUrl?: string | null;
+            /** Format: uuid */
+            id: string;
+            isRequired: boolean;
+            /** @example 1.0 */
+            version: string;
+        };
+        TokenPair: {
+            /** @description JWT. Authorization Bearer 헤더에 넣습니다. */
+            accessToken: string;
+            /**
+             * @description accessToken 만료까지 남은 초
+             * @example 3600
+             */
+            accessTokenExpiresIn: number;
+            /** @description 서버가 생성한 랜덤 값입니다 (JWT 아님). Keychain 등 보안 저장소에 보관합니다. */
+            refreshToken: string;
+        };
+        User: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @description 항상 존재합니다. 애플 이메일 가리기 유저는 private relay 주소입니다. */
+            email: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            provider: "KAKAO" | "APPLE";
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        /** @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+        AnalysisId: string;
+        /** @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b */
+        BoardId: string;
+        /** @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+        StickerId: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    listPhotos: {
+    createAnalysis: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "boardId": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                 *       "photos": [
+                 *         {
+                 *           "takenAt": "2026-06-14T13:22:10+09:00",
+                 *           "contentType": "image/jpeg"
+                 *         },
+                 *         {
+                 *           "takenAt": "2026-06-14T13:24:02+09:00",
+                 *           "contentType": "image/heic"
+                 *         },
+                 *         {
+                 *           "takenAt": "2026-07-02T19:05:44+09:00",
+                 *           "contentType": "image/jpeg"
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description 결과 스티커가 붙을 보드
+                     */
+                    boardId: string;
+                    /** @description 촬영 시각 오름차순으로 보낸다 */
+                    photos: {
+                        /**
+                         * @default image/jpeg
+                         * @enum {string}
+                         */
+                        contentType?: "image/jpeg" | "image/png" | "image/heic";
+                        /**
+                         * Format: date-time
+                         * @description 클라가 정한 사진 시각. EXIF 없으면 갤러리 등록 시각 폴백
+                         */
+                        takenAt: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description 발급 완료 (status=UPLOADING) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "analysisId": "01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *         "uploads": [
+                     *           {
+                     *             "photoId": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *             "uploadUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-1a2b.jpg?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=900&X-Goog-Signature=3e8a..."
+                     *           },
+                     *           {
+                     *             "photoId": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                     *             "uploadUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-2b3c.heic?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=900&X-Goog-Signature=b41c..."
+                     *           }
+                     *         ]
+                     *       },
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** Format: uuid */
+                            analysisId: string;
+                            /** @description 요청 photos 와 같은 순서 */
+                            uploads: {
+                                /** Format: uuid */
+                                photoId: string;
+                                /** @description GCS 쓰기용 signed URL. 만료 15분, PUT 전용 */
+                                uploadUrl: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description ANALYSIS-001: 사진 수 정책 위반 (90~100) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-001",
+                     *         "message": "사진은 90장 이상 100장 이하로 보내야 합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description BOARD-002: 보드 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "BOARD-002",
+                     *         "message": "보드를 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description ANALYSIS-002: 진행 중인 분석 존재 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-002",
+                     *         "message": "이미 진행 중인 분석이 있습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description ANALYSIS-006: 일일 분석 횟수 초과 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-006",
+                     *         "message": "오늘 분석 가능 횟수를 모두 사용했습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    getAnalysis: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+                analysisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 분석 상태 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /**
+                             * Format: uuid
+                             * @description 결과 스티커가 붙을 보드
+                             */
+                            boardId: string;
+                            /** Format: date-time */
+                            completedAt?: string | null;
+                            failedReason?: string | null;
+                            /** Format: uuid */
+                            id: string;
+                            /** @description 0~100 */
+                            progress: number;
+                            /**
+                             * Format: date-time
+                             * @description start 호출로 분석이 시작된 시각
+                             */
+                            startedAt?: string | null;
+                            /**
+                             * @description UPLOADING 업로드 중(생성 직후부터) / ANALYZING 분석 중 /
+                             *     GENERATING 생성·배치 중 / COMPLETED 완료 / FAILED 실패·취소·만료
+                             * @enum {string}
+                             */
+                            status: "UPLOADING" | "ANALYZING" | "GENERATING" | "COMPLETED" | "FAILED";
+                        };
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description ANALYSIS-005: 분석 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-005",
+                     *         "message": "분석을 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    cancelAnalysis: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+                analysisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 취소 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": null,
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description ANALYSIS-005: 분석 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-005",
+                     *         "message": "분석을 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description ANALYSIS-004: 이미 분석이 시작된 세션 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-004",
+                     *         "message": "분석이 시작되어 취소할 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    reissueUploadUrls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+                analysisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 재발급된 URL 목록 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "uploads": [
+                     *           {
+                     *             "photoId": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *             "uploadUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-1a2b.jpg?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=900&X-Goog-Signature=a77d..."
+                     *           }
+                     *         ]
+                     *       },
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            uploads: {
+                                /** Format: uuid */
+                                photoId: string;
+                                uploadUrl: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description ANALYSIS-005: 분석 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-005",
+                     *         "message": "분석을 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description ANALYSIS-003: 이미 시작되었거나 종료된 분석 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-003",
+                     *         "message": "이미 분석이 시작되었습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    startAnalysis: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+                analysisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 분석 시작됨 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "uploadedCount": 97,
+                     *         "failedCount": 1,
+                     *         "failedPhotoIds": [
+                     *           "01983f2e-9f8e-7d6c-b5a4-3c2b1a0f9e8d"
+                     *         ]
+                     *       },
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** @description GCS 에 없는 사진 수. FAILED 처리되고 분석에서 제외 */
+                            failedCount?: number;
+                            failedPhotoIds?: string[];
+                            uploadedCount?: number;
+                        };
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description ANALYSIS-005: 분석 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-005",
+                     *         "message": "분석을 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description ANALYSIS-003: 이미 시작되었거나 종료된 분석 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "ANALYSIS-003",
+                     *         "message": "이미 분석이 시작되었습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    getActiveAnalysis: {
         parameters: {
             query?: never;
             header?: never;
@@ -48,13 +1760,2534 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 사진 목록 */
+            /** @description 진행 중 분석 또는 null */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Photo"][];
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /**
+                             * Format: uuid
+                             * @description 결과 스티커가 붙을 보드
+                             */
+                            boardId: string;
+                            /** Format: date-time */
+                            completedAt?: string | null;
+                            failedReason?: string | null;
+                            /** Format: uuid */
+                            id: string;
+                            /** @description 0~100 */
+                            progress: number;
+                            /**
+                             * Format: date-time
+                             * @description start 호출로 분석이 시작된 시각
+                             */
+                            startedAt?: string | null;
+                            /**
+                             * @description UPLOADING 업로드 중(생성 직후부터) / ANALYZING 분석 중 /
+                             *     GENERATING 생성·배치 중 / COMPLETED 완료 / FAILED 실패·취소·만료
+                             * @enum {string}
+                             */
+                            status: "UPLOADING" | "ANALYZING" | "GENERATING" | "COMPLETED" | "FAILED";
+                        } | null;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description 카카오 SDK가 발급한 OAuth access token
+                     * @example v1.eyJraWQiOiI5ZjI1MmRhZGQ1ZjIzM2Y5M2QyZmE1MjhkMTJmZWEi...
+                     */
+                    accessToken: string;
+                    /** @enum {string} */
+                    provider: "KAKAO";
+                } | {
+                    /**
+                     * @description refresh token 교환용입니다. 발급 후 5분, 1회만 유효합니다.
+                     * @example c8ef1d2a90b34c5d8e7f6a5b4c3d2e1f0.0.srtwx.k9J8h7G6f5E4d3C2b1A0
+                     */
+                    authorizationCode: string;
+                    /**
+                     * @description 애플 로그인 결과로 받은 identity token (JWT)
+                     * @example eyJraWQiOiJXNldjT0tCIiwiYWxnIjoiUlMyNTYifQ...
+                     */
+                    identityToken: string;
+                    /** @enum {string} */
+                    provider: "APPLE";
+                    /**
+                     * @description 클라이언트가 생성한 원본 nonce. 애플 로그인 요청에는 SHA-256 해시를 넣고 서버에는 원본을 보냅니다.
+                     * @example 4A7F0E2B-9C31-45D8-A6F2-8B0C3D9E1F52
+                     */
+                    rawNonce: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 로그인 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** @description JWT. Authorization Bearer 헤더에 넣습니다. */
+                            accessToken: string;
+                            /**
+                             * @description accessToken 만료까지 남은 초
+                             * @example 3600
+                             */
+                            accessTokenExpiresIn: number;
+                            /** @description 서버가 생성한 랜덤 값입니다 (JWT 아님). Keychain 등 보안 저장소에 보관합니다. */
+                            refreshToken: string;
+                        } & {
+                            isNewUser: boolean;
+                            /** @description 동의가 필요한 현재 버전 약관. 비어 있으면 바로 진입 */
+                            pendingTerms: {
+                                /** @description 요청 사용자의 동의 여부 */
+                                agreed: boolean;
+                                /** @example TOS */
+                                code: string;
+                                /** @description 노션 등 외부 문서 링크 */
+                                contentUrl?: string | null;
+                                /** Format: uuid */
+                                id: string;
+                                isRequired: boolean;
+                                /** @example 1.0 */
+                                version: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description COMMON-001: provider 별 필수 필드 누락 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-001",
+                     *         "message": "잘못된 입력입니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /**
+             * @description AUTH-001: provider 토큰 검증 실패 (만료, 위조, aud/app_id 불일치, nonce 불일치)
+             *     AUTH-003: 애플 authorization code 교환 실패 (만료 또는 재사용, 최초 로그인만 치명)
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description AUTH-004: 카카오 이메일 동의 필요. 클라이언트는 account_email 추가 동의 후 재시도합니다. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "AUTH-004",
+                     *         "message": "이메일 제공에 동의해야 가입할 수 있습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 로그아웃 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": null,
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    refreshToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "refreshToken": "rT8fK2mZ7pL4vQ9xN3jW6yB1cD5gH0aS9uE2iO7kM4wRt"
+                 *     }
+                 */
+                "application/json": {
+                    refreshToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 재발급 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIwMTk4M2YyYS03YzMxLTdiMDItOTNkNC0xZjJlM2Q0YzViNmEi...",
+                     *         "refreshToken": "gQ4kD7sF0aZ9xW2cV5bN8mR1tY6uL3pH7eK0iS4jO9nGc",
+                     *         "accessTokenExpiresIn": 3600
+                     *       },
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** @description JWT. Authorization Bearer 헤더에 넣습니다. */
+                            accessToken: string;
+                            /**
+                             * @description accessToken 만료까지 남은 초
+                             * @example 3600
+                             */
+                            accessTokenExpiresIn: number;
+                            /** @description 서버가 생성한 랜덤 값입니다 (JWT 아님). Keychain 등 보안 저장소에 보관합니다. */
+                            refreshToken: string;
+                        };
+                    };
+                };
+            };
+            /** @description AUTH-002: refresh token 만료 또는 위조. 재로그인 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "AUTH-002",
+                     *         "message": "로그인이 만료되었습니다. 다시 로그인해 주세요.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    listBoards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 보드 목록 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": [
+                     *         {
+                     *           "id": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                     *           "name": "Board 7"
+                     *         },
+                     *         {
+                     *           "id": "01983f2a-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
+                     *           "name": "여름 휴가"
+                     *         }
+                     *       ],
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    createBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "name": "여름 휴가"
+                 *     }
+                 */
+                "application/json": {
+                    name?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 생성된 보드 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "id": "01983f2a-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
+                     *         "name": "여름 휴가"
+                     *       },
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description COMMON-001: 이름 형식 오류 (10자 초과 등)
+             *     BOARD-003: 보드 개수 제한(100개) 초과
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "BOARD-003",
+                     *         "message": "보드는 최대 100개까지 만들 수 있습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    getBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b */
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 보드 상태 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "id": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                     *         "name": "Board 7",
+                     *         "stickers": [
+                     *           {
+                     *             "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *             "title": "동물 밈 짤줍",
+                     *             "isNew": false,
+                     *             "type": "IMAGE",
+                     *             "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b-1a2b.png?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=3600&X-Goog-Signature=8f3a...",
+                     *             "textContent": null,
+                     *             "posX": 62.5,
+                     *             "posY": 318,
+                     *             "scale": 0.8,
+                     *             "rotation": -12,
+                     *             "zIndex": 3,
+                     *             "badgeOffsetX": -24,
+                     *             "badgeOffsetY": 96,
+                     *             "badgeRotation": 0
+                     *           },
+                     *           {
+                     *             "id": "01983f2b-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                     *             "title": "언제까지 일해요",
+                     *             "isNew": true,
+                     *             "type": "TEXT",
+                     *             "imageUrl": null,
+                     *             "textContent": "whats in my mac",
+                     *             "posX": 228,
+                     *             "posY": 250.5,
+                     *             "scale": 1,
+                     *             "rotation": 8.5,
+                     *             "zIndex": 5,
+                     *             "badgeOffsetX": 12,
+                     *             "badgeOffsetY": -60,
+                     *             "badgeRotation": -4
+                     *           }
+                     *         ],
+                     *         "drawings": [
+                     *           {
+                     *             "id": "01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *             "scope": "STICKER",
+                     *             "stickerId": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *             "stroke": {
+                     *               "points": [
+                     *                 [
+                     *                   10.5,
+                     *                   22
+                     *                 ],
+                     *                 [
+                     *                   14.2,
+                     *                   25.1
+                     *                 ],
+                     *                 [
+                     *                   19.8,
+                     *                   27.4
+                     *                 ]
+                     *               ]
+                     *             },
+                     *             "color": "#FFD400",
+                     *             "strokeWidth": 4
+                     *           },
+                     *           {
+                     *             "id": "01983f2c-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                     *             "scope": "BOARD",
+                     *             "stickerId": null,
+                     *             "stroke": {
+                     *               "points": [
+                     *                 [
+                     *                   120,
+                     *                   480.5
+                     *                 ],
+                     *                 [
+                     *                   126.4,
+                     *                   483.2
+                     *                 ],
+                     *                 [
+                     *                   133.1,
+                     *                   481
+                     *                 ]
+                     *               ]
+                     *             },
+                     *             "color": "#FFFFFF",
+                     *             "strokeWidth": 2.5
+                     *           }
+                     *         ]
+                     *       },
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        } & {
+                            drawings: {
+                                /** @example #FFD400 */
+                                color: string;
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                scope: "STICKER" | "BOARD";
+                                /**
+                                 * Format: uuid
+                                 * @description scope=STICKER 일 때만
+                                 */
+                                stickerId?: string | null;
+                                /** @description 점 배열 등 선 데이터. 포맷은 클라 정의를 그대로 저장 */
+                                stroke: Record<string, never>;
+                                /** @example 4 */
+                                strokeWidth: number;
+                            }[];
+                            stickers: {
+                                /** @description 스티커 기준 상대 좌표. 일정 범위 내로 제한 */
+                                badgeOffsetX: number;
+                                badgeOffsetY: number;
+                                badgeRotation: number;
+                                /** Format: uuid */
+                                id: string;
+                                /** @description IMAGE 형. 누끼 PNG 의 읽기용 signed URL (만료 1시간) */
+                                imageUrl?: string | null;
+                                /** @description viewed_at IS NULL. 뱃지에 빨간 점 표시 */
+                                isNew: boolean;
+                                /** @description 보드 좌표. 기준 해상도는 클라 정의를 따른다 */
+                                posX: number;
+                                posY: number;
+                                /** @description degree */
+                                rotation: number;
+                                /** @example 1 */
+                                scale: number;
+                                /** @description TEXT 형 문구 */
+                                textContent?: string | null;
+                                /** @description 제목 뱃지 문구이자 리캡 제목 */
+                                title: string;
+                                /** @enum {string} */
+                                type: "IMAGE" | "TEXT";
+                                zIndex: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description BOARD-002: 보드 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "BOARD-002",
+                     *         "message": "보드를 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    deleteBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b */
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 삭제 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": null,
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description BOARD-002: 보드 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "BOARD-002",
+                     *         "message": "보드를 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /**
+             * @description BOARD-004: 마지막 보드는 삭제 불가
+             *     BOARD-005: 진행 중인 분석이 이 보드를 대상으로 함
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    renameBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b */
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "name": "뽀또의 보드"
+                 *     }
+                 */
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 변경된 보드 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "id": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                     *         "name": "뽀또의 보드"
+                     *       },
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        };
+                    };
+                };
+            };
+            /** @description COMMON-001: 빈 이름 또는 10자 초과 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-001",
+                     *         "message": "잘못된 입력입니다.",
+                     *         "fieldErrors": [
+                     *           {
+                     *             "field": "name",
+                     *             "value": "열자가넘는아주긴보드이름",
+                     *             "reason": "크기가 1에서 10 사이여야 합니다"
+                     *           }
+                     *         ],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description BOARD-002: 보드 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "BOARD-002",
+                     *         "message": "보드를 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    saveBoardLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b */
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    drawings?: {
+                        created?: {
+                            color: string;
+                            /**
+                             * Format: uuid
+                             * @description 클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert합니다.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            scope: "STICKER" | "BOARD";
+                            /**
+                             * Format: uuid
+                             * @description scope=STICKER 필수
+                             */
+                            stickerId?: string;
+                            stroke: Record<string, never>;
+                            strokeWidth: number;
+                        }[];
+                        deletedIds?: string[];
+                    };
+                    stickers?: {
+                        badgeOffsetX: number;
+                        badgeOffsetY: number;
+                        badgeRotation: number;
+                        /** Format: uuid */
+                        id: string;
+                        posX: number;
+                        posY: number;
+                        rotation: number;
+                        scale: number;
+                        /** @description 텍스트 모드에서 제목을 바꿨을 때만 보낸다 */
+                        title?: string;
+                        zIndex: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description 저장 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": null,
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    };
+                };
+            };
+            /**
+             * @description COMMON-001: 필드 형식 오류 (제목 15자 초과 등)
+             *     BOARD-001: 소유하지 않은 항목 포함
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "BOARD-001",
+                     *         "message": "편집할 수 없는 항목이 포함되어 있습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description BOARD-002: 보드 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "BOARD-002",
+                     *         "message": "보드를 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    getStickerRecap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 리캡 상세 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "sticker": {
+                     *           "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *           "title": "동물 밈 짤줍",
+                     *           "isNew": false,
+                     *           "type": "IMAGE",
+                     *           "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b-1a2b.png?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=3600&X-Goog-Signature=8f3a...",
+                     *           "textContent": null,
+                     *           "posX": 62.5,
+                     *           "posY": 318,
+                     *           "scale": 0.8,
+                     *           "rotation": -12,
+                     *           "zIndex": 3,
+                     *           "badgeOffsetX": -24,
+                     *           "badgeOffsetY": 96,
+                     *           "badgeRotation": 0
+                     *         },
+                     *         "comments": [
+                     *           {
+                     *             "id": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *             "content": "웃기고 귀여우면 일단 주워요",
+                     *             "isFloat": true,
+                     *             "posX": 0,
+                     *             "posY": -140
+                     *           },
+                     *           {
+                     *             "id": "01983f2d-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                     *             "content": "또 주웠네",
+                     *             "isFloat": true,
+                     *             "posX": -120,
+                     *             "posY": -40
+                     *           },
+                     *           {
+                     *             "id": "01983f2d-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                     *             "content": "또 고양이가 주워왔네요",
+                     *             "isFloat": false,
+                     *             "posX": null,
+                     *             "posY": null
+                     *           },
+                     *           {
+                     *             "id": "01983f2d-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
+                     *             "content": "저장한 동물 짤 중 62%가 고양이였어요 야옹!",
+                     *             "isFloat": false,
+                     *             "posX": null,
+                     *             "posY": null
+                     *           }
+                     *         ],
+                     *         "photos": [
+                     *           {
+                     *             "id": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-1a2b.jpg?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=3600&X-Goog-Signature=1c9b...",
+                     *             "takenAt": "2026-06-14T13:22:10+09:00"
+                     *           },
+                     *           {
+                     *             "id": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                     *             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-2b3c.jpg?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=3600&X-Goog-Signature=7d2e...",
+                     *             "takenAt": "2026-07-02T19:05:44+09:00"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** @description id(uuidv7) 오름차순 */
+                            comments: {
+                                content: string;
+                                /** Format: uuid */
+                                id: string;
+                                /** @description true 면 스티커 주변 말풍선, false 면 하단 순차 노출 */
+                                isFloat: boolean;
+                                /** @description isFloat 일 때 스티커 기준 상대 좌표 */
+                                posX?: number | null;
+                                posY?: number | null;
+                            }[];
+                            /** @description takenAt, id 오름차순. 열람용 사진 포함 */
+                            photos: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @description 읽기용 signed URL (만료 1시간) */
+                                imageUrl: string;
+                                /** Format: date-time */
+                                takenAt: string;
+                            }[];
+                            sticker: {
+                                /** @description 스티커 기준 상대 좌표. 일정 범위 내로 제한 */
+                                badgeOffsetX: number;
+                                badgeOffsetY: number;
+                                badgeRotation: number;
+                                /** Format: uuid */
+                                id: string;
+                                /** @description IMAGE 형. 누끼 PNG 의 읽기용 signed URL (만료 1시간) */
+                                imageUrl?: string | null;
+                                /** @description viewed_at IS NULL. 뱃지에 빨간 점 표시 */
+                                isNew: boolean;
+                                /** @description 보드 좌표. 기준 해상도는 클라 정의를 따른다 */
+                                posX: number;
+                                posY: number;
+                                /** @description degree */
+                                rotation: number;
+                                /** @example 1 */
+                                scale: number;
+                                /** @description TEXT 형 문구 */
+                                textContent?: string | null;
+                                /** @description 제목 뱃지 문구이자 리캡 제목 */
+                                title: string;
+                                /** @enum {string} */
+                                type: "IMAGE" | "TEXT";
+                                zIndex: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description STICKER-001: 스티커 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "STICKER-001",
+                     *         "message": "스티커를 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    deleteSticker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 삭제 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": null,
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description STICKER-001: 스티커 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "STICKER-001",
+                     *         "message": "스티커를 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    updateStickerTitle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "title": "고양이 모음집"
+                 *     }
+                 */
+                "application/json": {
+                    title: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 수정 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *         "title": "고양이 모음집"
+                     *       },
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** Format: uuid */
+                            id: string;
+                            title: string;
+                        };
+                    };
+                };
+            };
+            /** @description COMMON-001: 빈 제목 또는 15자 초과 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-001",
+                     *         "message": "잘못된 입력입니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description STICKER-001: 스티커 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "STICKER-001",
+                     *         "message": "스티커를 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    markStickerViewed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 처리 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": null,
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description STICKER-001: 스티커 없음 또는 소유자 불일치 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "STICKER-001",
+                     *         "message": "스티커를 찾을 수 없습니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    getTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 약관 목록 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": [
+                     *         {
+                     *           "id": "01983f2a-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                     *           "code": "TOS",
+                     *           "version": "1.0",
+                     *           "isRequired": true,
+                     *           "contentUrl": "https://nexters.notion.site/ppotto-tos",
+                     *           "agreed": true
+                     *         },
+                     *         {
+                     *           "id": "01983f2a-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                     *           "code": "PRIVACY",
+                     *           "version": "1.1",
+                     *           "isRequired": true,
+                     *           "contentUrl": "https://nexters.notion.site/ppotto-privacy",
+                     *           "agreed": false
+                     *         }
+                     *       ],
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** @description 요청 사용자의 동의 여부 */
+                            agreed: boolean;
+                            /** @example TOS */
+                            code: string;
+                            /** @description 노션 등 외부 문서 링크 */
+                            contentUrl?: string | null;
+                            /** Format: uuid */
+                            id: string;
+                            isRequired: boolean;
+                            /** @example 1.0 */
+                            version: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    agreeTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "termIds": [
+                 *         "01983f2a-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                 *         "01983f2a-2b3c-7d4e-9f5a-6b7c8d9e0f1a"
+                 *       ]
+                 *     }
+                 */
+                "application/json": {
+                    termIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description 동의 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": null,
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    };
+                };
+            };
+            /** @description TERM-001: 필수 약관 미포함 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "TERM-001",
+                     *         "message": "필수 약관에 동의해야 합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 내 정보 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    } & {
+                        data?: {
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** @description 항상 존재합니다. 애플 이메일 가리기 유저는 private relay 주소입니다. */
+                            email: string;
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            provider: "KAKAO" | "APPLE";
+                        };
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
+                };
+            };
+        };
+    };
+    deleteMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 탈퇴 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": null,
+                     *       "error": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        error?: unknown;
+                        success: boolean;
+                    };
+                };
+            };
+            /** @description COMMON-004: 인증 필요 (Authorization 헤더 누락 또는 accessToken 만료) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "data": null,
+                     *       "error": {
+                     *         "code": "COMMON-004",
+                     *         "message": "인증이 필요합니다.",
+                     *         "fieldErrors": [],
+                     *         "timestamp": "2026-07-27T05:02:11Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data?: unknown;
+                        /** @description global/error/ErrorResponse.kt 와 동일 구조 */
+                        error: {
+                            /** @example COMMON-001 */
+                            code: string;
+                            /** @description 바디 검증 실패(MethodArgumentNotValid)일 때만 채워진다. 그 외 빈 배열 */
+                            fieldErrors: {
+                                /** @example name */
+                                field: string;
+                                reason?: string | null;
+                                value?: string | null;
+                            }[];
+                            message: string;
+                            /**
+                             * Format: date-time
+                             * @description 에러 발생 시각 (Instant, UTC)
+                             */
+                            timestamp: string;
+                        };
+                        /** @constant */
+                        success: false;
+                    };
                 };
             };
         };

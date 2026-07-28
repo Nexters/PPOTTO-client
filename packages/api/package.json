@@ -1,5 +1,5 @@
 {
-  "name": "@gallery/api",
+  "name": "@ppotto/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,12 +7,16 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "gen": "openapi-typescript openapi/mock.yaml -o src/generated/schema.d.ts"
+    "gen": "openapi-typescript openapi/ppotto-api.json -o src/generated/schema.d.ts --alphabetize",
+    "gen:check": "openapi-typescript openapi/ppotto-api.json -o src/generated/schema.d.ts --alphabetize --check",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test"
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3"
   }

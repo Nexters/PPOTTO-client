@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gallery/api": "workspace:*",
-    "@gallery/bridge": "workspace:*",
+    "@ppotto/api": "workspace:*",
+    "@ppotto/bridge": "workspace:*",
     "@stackflow/config": "^2.0.0",
     "@stackflow/plugin-basic-ui": "^1.18.3",
     "@stackflow/plugin-history-sync": "^1.12.0",
@@ -26,7 +26,7 @@
     "webview-bridge-kit": "^0.2.0"
   },
   "devDependencies": {
-    "@gallery/eslint-rules": "workspace:*",
+    "@ppotto/eslint-rules": "workspace:*",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

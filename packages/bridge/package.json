@@ -1,10 +1,13 @@
 {
-  "name": "@gallery/bridge",
+  "name": "@ppotto/bridge",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "webview-bridge-kit": "^0.2.0",

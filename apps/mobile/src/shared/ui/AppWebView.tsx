@@ -1,4 +1,4 @@
-import { contract } from '@gallery/bridge';
+import { contract } from '@ppotto/bridge';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';

@@ -1,5 +1,5 @@
 {
-  "name": "gallery-100",
+  "name": "ppotto",
   "private": true,
   "scripts": {
     "assets:generate": "node packages/assets/scripts/generate.mjs",
@@ -7,7 +7,7 @@
     "web": "pnpm --filter web dev",
     "mobile": "pnpm --filter mobile start",
     "prepare": "husky",
-    "typecheck": "pnpm -r --filter './apps/**' run typecheck"
+    "typecheck": "pnpm -r --filter './apps/**' --filter './packages/**' run typecheck"
   },
   "lint-staged": {
     "apps/web/**/*.{ts,tsx}": [
@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
-    "@gallery/eslint-rules": "workspace:*",
+    "@ppotto/eslint-rules": "workspace:*",
     "@svgr/core": "^8.1.0",
     "@svgr/plugin-jsx": "^8.1.0",
     "@svgr/plugin-svgo": "^8.1.0",
