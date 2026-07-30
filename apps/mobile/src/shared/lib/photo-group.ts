@@ -7,30 +7,25 @@ export const GROUP_WINDOW_MS = 5 * 60_000;
 export const MAX_GROUP_PHOTOS = 10;
 
 export interface PhotoGroup {
-  /** 대표가 바뀌어도 변하지 않는 식별자. */
   id: string;
-  /** 촬영 시각 오름차순. photos[0]이 대표다. */
   photos: GalleryPhoto[];
 }
 
 export interface PhotoSelection {
   groups: PhotoGroup[];
-  /** 그룹 id → 앞에서 제외된 장수. photos.length면 그룹 전체가 제외된 상태다. */
   excludedCounts: Readonly<Record<string, number>>;
 }
 
 export interface PhotoUnit {
   groupId: string;
-  /** 현재 대표. 제외된 그룹은 복구 대상인 첫 사진을 보여준다. */
   photo: GalleryPhoto;
   excluded: boolean;
 }
 
 /**
- * 최신 사진을 앵커로 잡고 그 이전 5분을 한 그룹으로 묶는다. 반환은 최신 그룹 우선.
+ * 최신 사진을 앵커로 잡고 그 이전 GROUP_WINDOW_MS를 한 그룹으로 묶는다. 반환은 최신 그룹 우선.
  *
- * 창 안의 사진이 10장을 넘으면 앵커에 가까운 10장만 담고 나머지는 버린다. 버린 사진은
- * 다음 앵커가 되지 않는다 — 재앵커링을 허용하면 긴 연사가 여러 그룹으로 쪼개진다.
+ * 창 안의 사진이 10장을 넘으면 앵커에 가까운 MAX_GROUP_PHOTOS장만 담고 나머지는 버린다.
  */
 export function groupPhotos(photos: GalleryPhoto[]): PhotoGroup[] {
   const newestFirst = [...photos].sort(
