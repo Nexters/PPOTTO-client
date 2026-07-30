@@ -1,5 +1,5 @@
 /**
- * SVG 파일을 React 컴포넌트로 변환
+ * SVG 파일을 Web·React Native 공용 react-native-svg 컴포넌트로 변환
  * 단색 SVG는 외부에서 색상을 변경할 수 있고, 다색 SVG는 원본 색상을 유지
  *
  * 실행 흐름:
@@ -73,12 +73,13 @@ export async function generateComponent(svg, componentName, filePath = component
     svg,
     {
       plugins: [svgo, jsx],
+      native: true,
       typescript: true,
       jsxRuntime: 'automatic',
       expandProps: 'end',
       ...(defaultColor && {
         replaceAttrValues: { [defaultColor]: 'currentColor' },
-        svgProps: { color: `var(--icon-default-color, ${defaultColor})` },
+        svgProps: { color: `{props.color ?? "${defaultColor}"}` },
       }),
       svgoConfig: {
         plugins: [
@@ -86,6 +87,8 @@ export async function generateComponent(svg, componentName, filePath = component
             name: 'preset-default',
             params: { overrides: { removeViewBox: false, convertColors: false } },
           },
+          { name: 'removeXMLNS' },
+          { name: 'removeAttrs', params: { attrs: 'svg:overflow' } },
           { name: 'prefixIds', params: { prefix: `icon-${componentName}` } },
         ],
       },

@@ -1,0 +1,23 @@
+{
+  "name": "@ppotto/assets",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./generated/index.ts"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "test": "node --test scripts/generate.test.mjs"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native-svg": "*"
+  },
+  "devDependencies": {
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
+    "@svgr/plugin-svgo": "^8.1.0",
+    "prettier": "^3.9.5"
+  }
+}
