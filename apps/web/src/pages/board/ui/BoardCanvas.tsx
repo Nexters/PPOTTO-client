@@ -1,12 +1,18 @@
 'use client';
 
-import { Layer, Rect, Stage } from 'react-konva';
+import { Layer, Stage } from 'react-konva';
+
+import { mockStickers } from '../model/mock-stickers';
+
+import { Sticker } from './Sticker';
 
 export function BoardCanvas() {
   return (
-    <Stage width={400} height={400}>
+    <Stage width={360} height={740}>
       <Layer>
-        <Rect x={50} y={50} width={100} height={100} fill="#FFD400" />
+        {mockStickers.map((sticker) => (
+          <Sticker key={sticker.id} sticker={sticker} />
+        ))}
       </Layer>
     </Stage>
   );
