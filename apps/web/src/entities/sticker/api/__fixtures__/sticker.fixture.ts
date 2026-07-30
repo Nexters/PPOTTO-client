@@ -1,15 +1,12 @@
-import type { paths } from '@ppotto/api';
+import type { StickerRecap } from '../sticker-api';
 
-type StickerRecapData =
-  paths['/stickers/{stickerId}']['get']['responses']['200']['content']['application/json']['data'];
-
-export const stickerFixture: StickerRecapData = {
+export const stickerFixture: StickerRecap = {
   sticker: {
     id: '01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f',
     title: '동물 밈 짤줍',
     isNew: true,
     type: 'IMAGE',
-    imageUrl: 'https://picsum.photos/seed/sticker/400/400',
+    imageUrl: '/mock/sticker-cat.png',
     textContent: null,
     posX: 62.5,
     posY: 318.0,
@@ -25,22 +22,22 @@ export const stickerFixture: StickerRecapData = {
       id: '01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f',
       content: '야옹~',
       isFloat: true,
-      posX: 0.0,
-      posY: -140.0,
+      posX: -103.31,
+      posY: -85,
     },
     {
       id: '01983f2d-2b3c-7d4e-9f5a-6b7c8d9e0f1a',
       content: '또 주웠네!',
       isFloat: true,
-      posX: -120.0,
-      posY: -40.0,
+      posX: -113.81,
+      posY: 50.32,
     },
     {
       id: '01983f2d-3c4d-7e5f-a6b7-8c9d0e1f2a3b',
       content: '복슬복슬',
       isFloat: true,
-      posX: 120.0,
-      posY: -20.0,
+      posX: 111,
+      posY: 30,
     },
     {
       id: '01983f2d-4d5e-7f6a-b7c8-9d0e1f2a3b4c',
@@ -71,8 +68,43 @@ export const stickerFixture: StickerRecapData = {
       posY: null,
     },
     {
+      id: '01983f2d-8a9b-7c0d-e1f2-3a4b5c6d7e8f',
+      content: '복슬복슬',
+      isFloat: false,
+      posX: null,
+      posY: null,
+    },
+    {
       id: '01983f2d-8b9c-7d0e-f1a2-3b4c5d6e7f8a',
       content: '저장한 동물 짤 중 62%가 고양이다냥!',
+      isFloat: false,
+      posX: null,
+      posY: null,
+    },
+    {
+      id: '01983f2d-9c0d-7e1f-a2b3-4c5d6e7f8a9b',
+      content: '감도 높은 취향',
+      isFloat: false,
+      posX: null,
+      posY: null,
+    },
+    {
+      id: '01983f2d-ad1e-7f2a-b3c4-5d6e7f8a9b0c',
+      content: '밈잘알',
+      isFloat: false,
+      posX: null,
+      posY: null,
+    },
+    {
+      id: '01983f2d-be2f-7a3b-c4d5-6e7f8a9b0c1d',
+      content: '밈 고르는 안목 보소',
+      isFloat: false,
+      posX: null,
+      posY: null,
+    },
+    {
+      id: '01983f2d-cf3a-7b4c-d5e6-7f8a9b0c1d2e',
+      content: '근데 소랑 돌고래가 같이 나는 사진은 뭐임? 🤔',
       isFloat: false,
       posX: null,
       posY: null,
@@ -81,33 +113,18 @@ export const stickerFixture: StickerRecapData = {
   photos: [
     {
       id: '01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f',
-      imageUrl: 'https://picsum.photos/seed/photo1/300/300',
+      imageUrl: '/mock/photo-1.png',
       takenAt: '2026-06-14T13:22:10+09:00',
     },
     {
       id: '01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a',
-      imageUrl: 'https://picsum.photos/seed/photo2/300/300',
+      imageUrl: '/mock/photo-2.png',
       takenAt: '2026-07-02T19:05:44+09:00',
     },
     {
       id: '01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b',
-      imageUrl: 'https://picsum.photos/seed/photo3/300/300',
+      imageUrl: '/mock/photo-3.png',
       takenAt: '2026-07-10T09:15:00+09:00',
-    },
-    {
-      id: '01983f2e-4d5e-7f6a-b7c8-9d0e1f2a3b4c',
-      imageUrl: 'https://picsum.photos/seed/photo4/300/300',
-      takenAt: '2026-07-14T11:40:00+09:00',
-    },
-    {
-      id: '01983f2e-5e6f-7a7b-c8d9-0e1f2a3b4c5d',
-      imageUrl: 'https://picsum.photos/seed/photo5/300/300',
-      takenAt: '2026-07-18T16:25:00+09:00',
-    },
-    {
-      id: '01983f2e-6f7a-7b8c-d9e0-1f2a3b4c5d6e',
-      imageUrl: 'https://picsum.photos/seed/photo6/300/300',
-      takenAt: '2026-07-22T20:10:00+09:00',
     },
   ],
 };
