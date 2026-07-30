@@ -2,14 +2,16 @@
 
 import dynamic from 'next/dynamic';
 
+import { DotBackground } from '@/shared/ui/DotBackground';
+
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
 });
 
 export function BoardPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center">
+    <DotBackground className="flex items-center justify-center">
       <BoardCanvas />
-    </main>
+    </DotBackground>
   );
 }

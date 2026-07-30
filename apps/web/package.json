@@ -25,6 +25,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-konva": "^19.2.5",
+    "react-konva-utils": "^2.0.0",
     "react-native-svg": "15.15.3",
     "react-native-web": "0.21.2",
     "tailwind-merge": "^3.6.0",
