@@ -1,8 +1,14 @@
-import { unwrapData, unwrapVoid } from '@ppotto/api';
+import { type paths, unwrapData, unwrapVoid } from '@ppotto/api';
 
 import { api } from '@/shared/api/client';
 
 import { stickerFixture } from './__fixtures__/sticker.fixture';
+
+export type StickerRecap = NonNullable<
+  paths['/stickers/{stickerId}']['get']['responses']['200']['content']['application/json']['data']
+>;
+export type StickerComment = StickerRecap['comments'][number];
+export type StickerPhoto = StickerRecap['photos'][number];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
