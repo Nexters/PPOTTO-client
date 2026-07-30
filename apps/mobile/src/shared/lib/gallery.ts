@@ -8,7 +8,7 @@ export async function extractGalleryPhoto(asset: Asset): Promise<GalleryPhoto> {
   return {
     id: info.id,
     uri: info.localUri ?? info.uri,
-    creationTime: info.creationTime ?? undefined,
+    creationTime: info.creationTime,
     width: info.width,
     height: info.height,
   };

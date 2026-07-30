@@ -1,7 +1,7 @@
 export interface GalleryPhoto {
   id: string;
   uri: string;
-  creationTime?: number;
+  creationTime: number;
   width: number;
   height: number;
 }
