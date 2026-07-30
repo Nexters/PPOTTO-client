@@ -1,4 +1,4 @@
-import type { GalleryPhoto } from './photo';
+import type { GalleryPhoto } from './gallery-photo';
 import {
   createSelection,
   excludeRepresentative,
@@ -24,7 +24,7 @@ import {
  * 여러 개 차지한다.
  *
  * 제외: 그룹이 살아있는 동안 이전 대표로 되돌리기 — 소진 후 복구로 대체 가능
- * 제외: 100그룹을 채우기 위한 페이지 로딩 루프 — 로딩 계층(화면) 책임
+ * 제외: 100그룹을 채우기 위한 페이지 로딩 루프 — load-photo-groups 책임
  */
 
 const BASE_TIME = Date.parse('2026-07-30T10:00:00.000Z');

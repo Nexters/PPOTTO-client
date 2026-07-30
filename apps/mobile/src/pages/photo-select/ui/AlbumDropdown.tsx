@@ -1,58 +1,80 @@
-import { Image } from 'expo-image';
+import { ChevronDown, ChevronUp } from '@ppotto/assets';
 import { useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-const CHEVRON_DOWN = require('@/assets/icons/chevron-down.svg');
-const CHEVRON_UP = require('@/assets/icons/chevron-up.svg');
+import { cn } from '@/shared/lib/cn';
 
-export const ALBUM_KEYS = ['RECENT', 'FAVORITES', 'SCREENSHOTS'] as const;
+const PANEL_SHADOW = {
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.16,
+  shadowRadius: 10,
+  elevation: 8,
+} as const;
 
-export type AlbumKey = (typeof ALBUM_KEYS)[number];
-
-export const ALBUM_LABELS: Record<AlbumKey, string> = {
-  RECENT: '최근 항목',
-  FAVORITES: '즐겨찾기',
-  SCREENSHOTS: '스크린샷',
-};
-
-interface AlbumDropdownProps {
-  selected: AlbumKey;
-  onSelect: (album: AlbumKey) => void;
+export interface AlbumOption<Value extends string> {
+  value: Value;
+  label: string;
 }
 
-/** 앨범 3개 고정 선택기. 열림/닫힘만 자기 상태로 갖고 선택은 위임한다. */
-export function AlbumDropdown({ selected, onSelect }: AlbumDropdownProps) {
+interface AlbumDropdownProps<Value extends string> {
+  options: readonly AlbumOption<Value>[];
+  selected: Value;
+  onSelect: (value: Value) => void;
+}
+
+export function AlbumDropdown<Value extends string>({
+  options,
+  selected,
+  onSelect,
+}: AlbumDropdownProps<Value>) {
   const [expanded, setExpanded] = useState(false);
+  const [triggerPressed, setTriggerPressed] = useState(false);
   const [anchor, setAnchor] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<View>(null);
+  const selectedLabel = options.find((option) => option.value === selected)?.label ?? selected;
 
-  const toggle = () => {
-    // 패널을 트리거 아래에 띄우려면 화면 좌표가 필요하다. 콜백이 늦어도 열기는 즉시 진행한다.
+  /** 패널은 Modal(별도 네이티브 창) 안에 있어 화면 좌표가 필요하다. 트리거 자체를 재야 정확하다. */
+  const measureTrigger = () => {
     triggerRef.current?.measureInWindow((x, y, _width, height) =>
       setAnchor({ x, y: y + height + 8 }),
     );
-    setExpanded((previous) => !previous);
   };
 
-  const choose = (album: AlbumKey) => {
+  const choose = (value: Value) => {
     setExpanded(false);
-    onSelect(album);
+    onSelect(value);
   };
 
   return (
-    <View ref={triggerRef} collapsable={false}>
+    <View>
       <Pressable
         accessibilityLabel="앨범 선택"
         accessibilityRole="button"
         accessibilityState={{ expanded }}
-        onPress={toggle}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+        className={cn('flex-row items-center gap-1', triggerPressed && 'opacity-60')}
+        collapsable={false}
+        onLayout={measureTrigger}
+        onPress={() => {
+          measureTrigger();
+          setExpanded((previous) => !previous);
+        }}
+        onPressIn={() => setTriggerPressed(true)}
+        onPressOut={() => setTriggerPressed(false)}
+        ref={triggerRef}
       >
-        <Text className="text-body-05 text-white">{ALBUM_LABELS[selected]}</Text>
-        <Image source={expanded ? CHEVRON_UP : CHEVRON_DOWN} style={{ width: 24, height: 24 }} />
+        <Text className="text-white text-body-05">{selectedLabel}</Text>
+        <View className="items-center justify-center size-6">
+          {expanded ? <ChevronUp /> : <ChevronDown />}
+        </View>
       </Pressable>
 
-      <Modal animationType="none" onRequestClose={toggle} transparent visible={expanded}>
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setExpanded(false)}
+        transparent
+        visible={expanded}
+      >
         <Pressable
           accessibilityLabel="목록 닫기"
           accessibilityRole="button"
@@ -60,36 +82,21 @@ export function AlbumDropdown({ selected, onSelect }: AlbumDropdownProps) {
           style={StyleSheet.absoluteFill}
         />
         <View
-          className="bg-gray-900"
-          style={{
-            position: 'absolute',
-            left: anchor.x,
-            top: anchor.y,
-            borderRadius: 16,
-            padding: 8,
-            gap: 4,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.16,
-            shadowRadius: 10,
-            elevation: 8,
-          }}
+          className="absolute gap-1 p-2 bg-gray-900 rounded-16"
+          style={{ left: anchor.x, top: anchor.y, ...PANEL_SHADOW }}
         >
-          {ALBUM_KEYS.map((album) => (
+          {options.map((option) => (
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ selected: album === selected }}
-              className={album === selected ? 'bg-gray-800' : undefined}
-              key={album}
-              onPress={() => choose(album)}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 4,
-                borderRadius: 8,
-                alignItems: 'center',
-              }}
+              accessibilityState={{ selected: option.value === selected }}
+              className={cn(
+                'w-full items-center rounded-8 px-3 py-1',
+                option.value === selected && 'bg-gray-800',
+              )}
+              key={option.value}
+              onPress={() => choose(option.value)}
             >
-              <Text className="text-body-06 text-white">{ALBUM_LABELS[album]}</Text>
+              <Text className="text-white text-body-06">{option.label}</Text>
             </Pressable>
           ))}
         </View>

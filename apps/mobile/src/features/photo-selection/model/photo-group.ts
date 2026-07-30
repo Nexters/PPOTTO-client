@@ -1,4 +1,4 @@
-import type { GalleryPhoto } from './photo';
+import type { GalleryPhoto } from './gallery-photo';
 
 /** 근접 촬영으로 볼 시간 창. PRD 초기 가설값이며 실사용 데이터로 조정한다. */
 export const GROUP_WINDOW_MS = 5 * 60_000;
@@ -20,6 +20,8 @@ export interface PhotoUnit {
   groupId: string;
   photo: GalleryPhoto;
   excluded: boolean;
+  /** 그룹이 담은 사진 수. 1보다 크면 연속 촬영 묶음이다. */
+  photoCount: number;
 }
 
 /**
@@ -59,6 +61,15 @@ export function createSelection(groups: PhotoGroup[]): PhotoSelection {
   return { groups, excludedCounts: {} };
 }
 
+export function excludeAllGroups(selection: PhotoSelection): PhotoSelection {
+  return {
+    groups: selection.groups,
+    excludedCounts: Object.fromEntries(
+      selection.groups.map((group) => [group.id, group.photos.length]),
+    ),
+  };
+}
+
 /** 대표를 제외한다. 마지막 사진까지 제외하면 그룹 전체가 분석 대상에서 빠진다. */
 export function excludeRepresentative(selection: PhotoSelection, groupId: string): PhotoSelection {
   const group = selection.groups.find((g) => g.id === groupId);
@@ -91,6 +102,7 @@ export function units(selection: PhotoSelection): PhotoUnit[] {
       groupId: group.id,
       photo: excluded ? group.photos[0]! : group.photos[excludedCount]!,
       excluded,
+      photoCount: group.photos.length,
     };
   });
 }
