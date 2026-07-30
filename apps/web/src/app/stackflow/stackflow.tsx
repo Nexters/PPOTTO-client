@@ -40,7 +40,11 @@ const BoardActivity: ActivityComponentType<'Board'> = () => {
     <AppScreen>
       <BoardPage />
       <div className="fixed inset-x-0 bottom-8 flex justify-center gap-2">
-        <button className={tempButton} onClick={() => push('Recap', {})}>
+        {/* TODO: 임시 디버그 버튼, 실제로는 보드의 스티커 클릭 시 해당 stickerId로 push('Recap', ...) 호출 */}
+        <button
+          className={tempButton}
+          onClick={() => push('Recap', { stickerId: '01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f' })}
+        >
           리캡 보기
         </button>
         <button className={tempButton} onClick={() => bridge.send('OPEN_PHOTO_SELECT')}>
@@ -63,9 +67,9 @@ const TermsActivity: ActivityComponentType<'Terms'> = () => (
   </AppScreen>
 );
 
-const RecapActivity: ActivityComponentType<'Recap'> = () => (
+const RecapActivity: ActivityComponentType<'Recap'> = ({ params }) => (
   <AppScreen>
-    <RecapPage />
+    <RecapPage stickerId={params.stickerId} />
   </AppScreen>
 );
 
