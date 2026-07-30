@@ -6,6 +6,7 @@ import { DotBackground } from '@/shared/ui/DotBackground';
 import { cn } from '@/shared/lib/cn';
 
 import { BoardHeader } from './ui/BoardHeader';
+import { BoardToolbar } from './ui/BoardToolbar';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
@@ -22,6 +23,7 @@ export function BoardPage() {
       >
         <BoardHeader />
         <BoardCanvas />
+        <BoardToolbar />
       </div>
     </DotBackground>
   );
