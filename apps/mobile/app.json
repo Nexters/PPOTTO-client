@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": ["mobile", "kakao8bb095f9377c5c02587c344363241458"],
+    "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
@@ -78,11 +78,12 @@
       [
         "@react-native-seoul/kakao-login",
         {
-          "kakaoAppKey": "8bb095f9377c5c02587c344363241458",
+          "kakaoAppKey": "8434de838d07c6355f3d848b5f5e8b91",
           "overrideKakaoSDKVersion": "2.22.0",
           "kotlinVersion": "2.0.21"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
