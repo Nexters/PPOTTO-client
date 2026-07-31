@@ -1,5 +1,6 @@
 'use client';
 
+import type { paths } from '@ppotto/api';
 import { useEffect, useState } from 'react';
 import { Group, Image as KonvaImage, Text as KonvaText } from 'react-konva';
 import { Html } from 'react-konva-utils';
@@ -10,10 +11,16 @@ const TEXT_BG_URL = '/board/stickers/text-bg.svg';
 const TEXT_BOX_WIDTH = 129.13;
 const TEXT_BOX_HEIGHT = 93.26;
 
+type BoardDetail = NonNullable<
+  paths['/boards/{boardId}']['get']['responses']['200']['content']['application/json']['data']
+>;
+type ApiSticker = BoardDetail['stickers'][number];
+
 export type StickerImage = {
   url: string;
-  width: number;
-  height: number;
+  /** 지정 안 하면 로드된 이미지의 원본 크기(자연 크기) × scale을 쓴다. 크롭 등으로 렌더 크기를 원본과 다르게 둬야 할 때만 명시한다. */
+  width?: number;
+  height?: number;
   offsetX?: number;
   offsetY?: number;
   rotation?: number;
@@ -23,20 +30,13 @@ export type StickerImage = {
   borderColor?: string;
 };
 
-export type StickerData = {
-  id: string;
-  type: 'IMAGE' | 'TEXT';
-  title: string;
-  isNew: boolean;
-  posX: number;
-  posY: number;
-  rotation: number;
-  scale: number;
-  zIndex: number;
-  badgeOffsetX: number;
-  badgeOffsetY: number;
+/**
+ * badgeRotation은 명세에 있지만, 뱃지는 항상 스티커 회전의 반대로 고정돼야 한다는 디자인 결정에 따라
+ * 무시하고 -rotation을 직접 계산해서 쓴다. imageUrl은 크기 정보가 없어 렌더링에 필요한 값을 담은
+ * image로 대체한다.
+ */
+export type StickerData = Omit<ApiSticker, 'badgeRotation' | 'imageUrl'> & {
   image?: StickerImage;
-  textContent?: string;
 };
 
 function useStickerImage(src?: string) {
@@ -60,8 +60,8 @@ export function Sticker({ sticker }: StickerProps) {
   const photoImage = useStickerImage(sticker.type === 'IMAGE' ? sticker.image?.url : undefined);
   const textBgImage = useStickerImage(sticker.type === 'TEXT' ? TEXT_BG_URL : undefined);
 
-  const photoWidth = (sticker.image?.width ?? 0) * sticker.scale;
-  const photoHeight = (sticker.image?.height ?? 0) * sticker.scale;
+  const photoWidth = (sticker.image?.width ?? photoImage?.naturalWidth ?? 0) * sticker.scale;
+  const photoHeight = (sticker.image?.height ?? photoImage?.naturalHeight ?? 0) * sticker.scale;
   const textBoxWidth = TEXT_BOX_WIDTH * sticker.scale;
   const textBoxHeight = TEXT_BOX_HEIGHT * sticker.scale;
 
@@ -96,7 +96,7 @@ export function Sticker({ sticker }: StickerProps) {
             height={textBoxHeight}
           />
           <KonvaText
-            text={sticker.textContent}
+            text={sticker.textContent ?? ''}
             x={-textBoxWidth / 2 + 14}
             y={-textBoxHeight / 2 + 14}
             width={textBoxWidth - 28}
