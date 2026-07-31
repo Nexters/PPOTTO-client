@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 
 import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
 import { cn } from '@/shared/lib/cn';
+
+import { useFilmstripSync } from '../model/use-filmstrip-sync';
 
 type PhotoFilmstripProps = {
   photos: StickerPhoto[];
@@ -11,20 +12,16 @@ type PhotoFilmstripProps = {
 };
 
 export function PhotoFilmstrip({ photos, selectedIndex, onSelect }: PhotoFilmstripProps) {
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const isFirstScroll = useRef(true);
-
-  useEffect(() => {
-    itemRefs.current[selectedIndex]?.scrollIntoView({
-      behavior: isFirstScroll.current ? 'auto' : 'smooth',
-      inline: 'center',
-      block: 'nearest',
-    });
-    isFirstScroll.current = false;
-  }, [selectedIndex]);
+  const { containerRef, itemRefs } = useFilmstripSync(selectedIndex, onSelect);
 
   return (
-    <div className="flex w-full gap-2 overflow-x-auto px-[calc(50%-24px)] py-3 scrollbar-none">
+    <div
+      ref={containerRef}
+      className={cn(
+        'flex w-full snap-x snap-mandatory gap-2 overflow-x-auto scrollbar-none',
+        'px-[calc(50%-24px)] py-3',
+      )}
+    >
       {photos.map((photo, index) => (
         <button
           key={photo.id}
@@ -34,7 +31,8 @@ export function PhotoFilmstrip({ photos, selectedIndex, onSelect }: PhotoFilmstr
           type="button"
           onClick={() => onSelect(index)}
           className={cn(
-            'relative h-12 w-12 shrink-0 overflow-hidden rounded-8 border',
+            'relative h-12 w-12 shrink-0 snap-center overflow-hidden rounded-8',
+            'border',
             index === selectedIndex ? 'border-gray-50' : 'border-transparent',
           )}
         >
