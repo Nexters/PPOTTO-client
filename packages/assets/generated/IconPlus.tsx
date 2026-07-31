@@ -1,25 +1,21 @@
-import type { SVGProps } from 'react';
-const IconPlus = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
+import Svg, { Path } from 'react-native-svg';
+import type { SvgProps } from 'react-native-svg';
+const IconPlus = (props: SvgProps) => (
+  <Svg
     width={19.133}
     height={19.133}
     fill="none"
-    overflow="visible"
     preserveAspectRatio="none"
-    style={{
-      display: 'block',
-    }}
     viewBox="0 0 19.133 19.133"
-    color="var(--icon-default-color, black)"
+    color={props.color ?? 'black'}
     {...props}
   >
-    <path
+    <Path
       stroke="currentColor"
       strokeLinecap="round"
       strokeWidth={2.333}
       d="M9.567 1.167v16.8m8.4-8.4h-16.8"
     />
-  </svg>
+  </Svg>
 );
 export default IconPlus;

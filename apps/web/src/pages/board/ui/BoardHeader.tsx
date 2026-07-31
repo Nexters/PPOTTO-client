@@ -12,7 +12,7 @@ export function BoardHeader() {
       <div className="flex w-full items-center justify-between">
         <Image src="/logo/Logo.svg" alt="PPOTTO" width={105} height={32} className="h-8 w-auto" />
         <button type="button" aria-label="설정">
-          <IconSettings className="text-white" />
+          <IconSettings color="white" />
         </button>
       </div>
     </div>

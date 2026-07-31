@@ -1,23 +1,19 @@
-import type { SVGProps } from 'react';
-const IconText = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
+import Svg, { Path } from 'react-native-svg';
+import type { SvgProps } from 'react-native-svg';
+const IconText = (props: SvgProps) => (
+  <Svg
     width={19.216}
     height={14.258}
     fill="none"
-    overflow="visible"
     preserveAspectRatio="none"
-    style={{
-      display: 'block',
-    }}
     viewBox="0 0 19.216 14.258"
-    color="var(--icon-default-color, white)"
+    color={props.color ?? 'white'}
     {...props}
   >
-    <path
+    <Path
       fill="currentColor"
       d="M11.036 13.058 6.35.558a.86.86 0 0 0-1.61 0l-4.687 12.5a.86.86 0 0 0 1.61.603l1.412-3.767a.08.08 0 0 1 .073-.05H7.94a.08.08 0 0 1 .073.05l1.413 3.767a.86.86 0 0 0 1.61-.603m-7.26-5.04 1.695-4.517a.078.078 0 0 1 .146 0L7.311 8.02a.078.078 0 0 1-.073.106H3.85a.078.078 0 0 1-.073-.106M15.263 3.75c-1.63-.012-3.09.932-3.711 2.398a.86.86 0 1 0 1.582.672c.347-.816 1.163-1.345 2.083-1.351 1.262-.009 2.281 1.035 2.281 2.298a.06.06 0 0 1-.056.06c-.857.023-1.872.08-2.779.187-2.138.251-3.415 1.417-3.415 3.119 0 .906.342 1.719.964 2.292.583.537 1.38.833 2.24.833 1.21 0 2.253-.313 3.044-.907h.002a.86.86 0 0 0 1.719.007V7.772c0-2.194-1.758-4.006-3.954-4.022m-.812 8.789c-.684 0-1.484-.368-1.484-1.406 0-.417.15-.709.486-.947.326-.231.828-.397 1.411-.465.825-.098 1.751-.151 2.545-.175a.08.08 0 0 1 .078.082c-.106 1.958-1.104 2.911-3.036 2.911"
     />
-  </svg>
+  </Svg>
 );
 export default IconText;

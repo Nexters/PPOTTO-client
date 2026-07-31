@@ -17,21 +17,21 @@ export function BoardToolbar() {
           aria-label="그리기"
           className="flex size-8 items-center justify-center rounded-full"
         >
-          <IconDraw className="text-white" />
+          <IconDraw color="white" />
         </button>
         <button
           type="button"
           aria-label="텍스트"
           className="flex size-8 items-center justify-center rounded-full"
         >
-          <IconText className="text-white" />
+          <IconText color="white" />
         </button>
         <button
           type="button"
           aria-label="선택"
           className="flex size-8 items-center justify-center rounded-full"
         >
-          <IconHand className="text-white" />
+          <IconHand color="white" />
         </button>
       </div>
       <button
@@ -39,7 +39,7 @@ export function BoardToolbar() {
         aria-label="스티커 추가"
         className="flex size-12 items-center justify-center rounded-full bg-white"
       >
-        <IconPlus className="size-4.5" />
+        <IconPlus width={18} height={18} />
       </button>
     </div>
   );
