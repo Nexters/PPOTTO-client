@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next';
 
+const allowedDevOrigin = process.env.NEXT_ALLOWED_DEV_ORIGIN;
+
 const nextConfig: NextConfig = {
   transpilePackages: ['@ppotto/api', '@ppotto/assets', '@ppotto/bridge'],
   turbopack: {
@@ -8,7 +10,7 @@ const nextConfig: NextConfig = {
       'react-native-svg': 'react-native-svg/lib/module/elements.web.js',
     },
   },
-  allowedDevOrigins: ['172.30.1.61'],
+  allowedDevOrigins: allowedDevOrigin ? [allowedDevOrigin] : [],
 };
 
 export default nextConfig;
