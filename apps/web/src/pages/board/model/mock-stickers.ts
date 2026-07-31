@@ -10,6 +10,7 @@ export const mockStickers: StickerData[] = [
     posY: 203.9,
     rotation: -12.95,
     scale: 1,
+    zIndex: 1,
     badgeOffsetX: 45.17,
     badgeOffsetY: -39.78,
     image: {
@@ -27,6 +28,7 @@ export const mockStickers: StickerData[] = [
     posY: 315.35,
     rotation: 12.43,
     scale: 1,
+    zIndex: 2,
     badgeOffsetX: -24.79,
     badgeOffsetY: 49.68,
     image: {
@@ -44,6 +46,7 @@ export const mockStickers: StickerData[] = [
     posY: 459.56,
     rotation: 0,
     scale: 1,
+    zIndex: 3,
     badgeOffsetX: 46,
     badgeOffsetY: 75,
     image: {
@@ -61,6 +64,7 @@ export const mockStickers: StickerData[] = [
     posY: 459.55,
     rotation: -17.76,
     scale: 1,
+    zIndex: 4,
     badgeOffsetX: -30.42,
     badgeOffsetY: 42.49,
     image: {
@@ -85,11 +89,10 @@ export const mockStickers: StickerData[] = [
     posY: 320.21,
     rotation: 12.69,
     scale: 1,
+    zIndex: 5,
     badgeOffsetX: 11.19,
     badgeOffsetY: -54.71,
     textContent:
       '흔히들 말한다. 상대가 원하는 걸 해주는 것이 사랑이라고. 하지만 그건 작은 사랑인지도 모른다. 상대가 싫어하는 걸 하지 않는 것이야말로 큰 사랑이 아닐까.',
-    textBoxWidth: 129.13,
-    textBoxHeight: 93.26,
   },
 ];

@@ -7,6 +7,8 @@ import { Html } from 'react-konva-utils';
 import { StickerBadge } from './StickerBadge';
 
 const TEXT_BG_URL = '/board/stickers/text-bg.svg';
+const TEXT_BOX_WIDTH = 129.13;
+const TEXT_BOX_HEIGHT = 93.26;
 
 export type StickerImage = {
   url: string;
@@ -30,12 +32,11 @@ export type StickerData = {
   posY: number;
   rotation: number;
   scale: number;
+  zIndex: number;
   badgeOffsetX: number;
   badgeOffsetY: number;
   image?: StickerImage;
   textContent?: string;
-  textBoxWidth?: number;
-  textBoxHeight?: number;
 };
 
 function useStickerImage(src?: string) {
@@ -61,8 +62,8 @@ export function Sticker({ sticker }: StickerProps) {
 
   const photoWidth = (sticker.image?.width ?? 0) * sticker.scale;
   const photoHeight = (sticker.image?.height ?? 0) * sticker.scale;
-  const textBoxWidth = (sticker.textBoxWidth ?? 0) * sticker.scale;
-  const textBoxHeight = (sticker.textBoxHeight ?? 0) * sticker.scale;
+  const textBoxWidth = TEXT_BOX_WIDTH * sticker.scale;
+  const textBoxHeight = TEXT_BOX_HEIGHT * sticker.scale;
 
   return (
     <Group x={sticker.posX} y={sticker.posY} rotation={sticker.rotation}>
