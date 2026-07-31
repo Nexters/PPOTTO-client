@@ -1,9 +1,12 @@
+import type { UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
+
 /**
  * 스티커 초기 배치. PRD상 테마(=스티커) 수는 4~6개로 고정 범위라, 개수별로 미리 튜닝해둔
  * 슬롯 세트를 쓴다. 5개짜리는 Figma 실측값 그대로다. 기준 좌표계는 360×740(REFERENCE_WIDTH/HEIGHT).
  *
- * 서버가 스티커를 처음 만들 때 내려주는 posX/posY는 무시하고, 여기서 계산한 값으로 덮어써서
- * 화면에 반영한 뒤 API로 저장한다.
+ * "이미 배치된 보드인지"는 posX/posY가 전부 0인지로 판단한다 — 아직 배치 안 된 스티커는
+ * posX/posY(및 나머지 배치 필드)를 0으로 내려준다고 가정함(합의 필요). 0이면 여기서 계산해서
+ * 화면에 반영한 뒤 API로 저장하고, 이미 값이 있으면(사용자가 옮긴 결과 포함) 그대로 쓰고 저장하지 않는다.
  */
 
 export type LayoutSlot = {
@@ -38,6 +41,10 @@ const LAYOUT_PRESETS: Record<4 | 5 | 6, LayoutSlot[]> = {
   ],
 };
 
+export function needsInitialLayout(stickers: { posX: number; posY: number }[]): boolean {
+  return stickers.every((sticker) => sticker.posX === 0 && sticker.posY === 0);
+}
+
 function presetFor(count: number): LayoutSlot[] {
   const clamped = Math.min(6, Math.max(4, count)) as 4 | 5 | 6;
   return LAYOUT_PRESETS[clamped];
@@ -65,4 +72,28 @@ export function computeInitialLayout<T extends { id: string; type: string }>(
       zIndex: index + 1,
     };
   });
+}
+
+type LaidOutSticker = LayoutSlot & { id: string; scale: number; zIndex: number };
+
+/**
+ * computeInitialLayout 결과를 저장 API 요청 바디로 변환한다. badgeRotation은 명세엔 필수지만
+ * 우리는 항상 -rotation으로 렌더링하므로(Sticker.tsx), 저장값도 그 계산 결과와 맞춰 보낸다.
+ */
+export function toLayoutInput(stickers: LaidOutSticker[]): UpdateBoardLayoutInput {
+  return {
+    stickers: stickers.map(
+      ({ id, posX, posY, rotation, scale, zIndex, badgeOffsetX, badgeOffsetY }) => ({
+        id,
+        posX,
+        posY,
+        rotation,
+        scale,
+        zIndex,
+        badgeOffsetX,
+        badgeOffsetY,
+        badgeRotation: -rotation,
+      }),
+    ),
+  };
 }

@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Layer, Stage } from 'react-konva';
 
+import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 
-import { computeInitialLayout } from '../model/board-layout';
+import { computeInitialLayout, needsInitialLayout, toLayoutInput } from '../model/board-layout';
 
 import { Sticker, type StickerData } from './Sticker';
 
@@ -20,6 +21,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(REFERENCE_WIDTH);
   const { data, isLoading, isError } = useBoardQuery(boardId);
+  const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
 
   useEffect(() => {
     const container = containerRef.current;
@@ -32,6 +34,15 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     return () => observer.disconnect();
   }, []);
 
+  const unlaidOut = data ? needsInitialLayout(data.stickers) : false;
+  const layout = data ? (unlaidOut ? computeInitialLayout(data.stickers) : data.stickers) : null;
+
+  useEffect(() => {
+    if (!layout || !unlaidOut) return;
+    saveLayout({ boardId, input: toLayoutInput(layout) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardId, data]);
+
   const scale = width / REFERENCE_WIDTH;
 
   if (isLoading) {
@@ -42,7 +53,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     );
   }
 
-  if (isError || !data) {
+  if (isError || !data || !layout) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p className="text-body-04 text-gray-400">보드를 불러오지 못했어요</p>
@@ -50,7 +61,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     );
   }
 
-  const stickers: StickerData[] = computeInitialLayout(data.stickers)
+  const stickers: StickerData[] = layout
     .map(({ imageUrl, ...sticker }) => ({
       ...sticker,
       image: imageUrl ? { url: imageUrl } : undefined,
