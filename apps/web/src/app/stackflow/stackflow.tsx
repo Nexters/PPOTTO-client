@@ -24,7 +24,10 @@ const LoginActivity: ActivityComponentType<'Login'> = () => {
     <AppScreen>
       <LoginPage />
       <div className="fixed inset-x-0 bottom-8 flex justify-center">
-        <button className={tempButton} onClick={() => push('Board', {})}>
+        <button
+          className={tempButton}
+          onClick={() => push('Board', { boardId: '01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b' })}
+        >
           보드로
         </button>
       </div>
@@ -32,10 +35,10 @@ const LoginActivity: ActivityComponentType<'Login'> = () => {
   );
 };
 
-const BoardActivity: ActivityComponentType<'Board'> = () => {
+const BoardActivity: ActivityComponentType<'Board'> = ({ params }) => {
   return (
     <AppScreen>
-      <BoardPage />
+      <BoardPage boardId={params.boardId} />
     </AppScreen>
   );
 };

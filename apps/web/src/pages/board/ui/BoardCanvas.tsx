@@ -3,16 +3,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Layer, Stage } from 'react-konva';
 
-import { mockStickers } from '../model/mock-stickers';
+import { useBoardQuery } from '@/entities/board/api/board-queries';
 
-import { Sticker } from './Sticker';
+import { Sticker, type StickerData } from './Sticker';
 
 const REFERENCE_WIDTH = 360;
 const REFERENCE_HEIGHT = 740;
 
-export function BoardCanvas() {
+type BoardCanvasProps = {
+  boardId: string;
+};
+
+export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(REFERENCE_WIDTH);
+  const { data, isLoading, isError } = useBoardQuery(boardId);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -26,13 +31,35 @@ export function BoardCanvas() {
   }, []);
 
   const scale = width / REFERENCE_WIDTH;
-  const stickersByZIndex = [...mockStickers].sort((a, b) => a.zIndex - b.zIndex);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="text-body-04 text-gray-400">보드를 불러오는 중이에요</p>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="text-body-04 text-gray-400">보드를 불러오지 못했어요</p>
+      </div>
+    );
+  }
+
+  const stickers: StickerData[] = data.stickers
+    .map(({ imageUrl, ...sticker }) => ({
+      ...sticker,
+      image: imageUrl ? { url: imageUrl } : undefined,
+    }))
+    .sort((a, b) => a.zIndex - b.zIndex);
 
   return (
     <div ref={containerRef} className="flex h-full w-full items-center justify-center">
       <Stage width={width} height={REFERENCE_HEIGHT * scale} scaleX={scale} scaleY={scale}>
         <Layer>
-          {stickersByZIndex.map((sticker) => (
+          {stickers.map((sticker) => (
             <Sticker key={sticker.id} sticker={sticker} />
           ))}
         </Layer>
