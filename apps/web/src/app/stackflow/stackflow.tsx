@@ -13,29 +13,20 @@ import { OnboardingPage } from '@/pages/onboarding';
 import { RecapPage } from '@/pages/recap';
 import { SettingsPage } from '@/pages/settings';
 import { TermsPage } from '@/pages/terms';
-import { useBridge } from '@/shared/lib/bridge';
+import { bridge } from '@/shared/lib/bridge';
 
 import { config } from './config';
 
 const tempButton = 'rounded-12 bg-gray-900 px-4 py-2 text-body-04 text-gray-50';
 
-const LoginActivity: ActivityComponentType<'Login'> = () => {
-  const { push } = useFlow();
-  return (
-    <AppScreen>
-      <LoginPage />
-      <div className="fixed inset-x-0 bottom-8 flex justify-center">
-        <button className={tempButton} onClick={() => push('Board', {})}>
-          보드로
-        </button>
-      </div>
-    </AppScreen>
-  );
-};
+const LoginActivity: ActivityComponentType<'Login'> = () => (
+  <AppScreen>
+    <LoginPage />
+  </AppScreen>
+);
 
 const BoardActivity: ActivityComponentType<'Board'> = () => {
   const { push } = useFlow();
-  const bridge = useBridge();
   return (
     <AppScreen>
       <BoardPage />
