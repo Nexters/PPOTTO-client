@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 
-import { stickerFixture } from '@/entities/sticker/api/__fixtures__/sticker.fixture';
+import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 
 import { PhotoFilmstrip } from './ui/PhotoFilmstrip';
 import { PhotoViewerHeader } from './ui/PhotoViewerHeader';
@@ -14,13 +14,13 @@ type PhotoViewerPageProps = {
   onBack: () => void;
 };
 
-export function PhotoViewerPage({
-  stickerId: _stickerId,
-  initialIndex,
-  onBack,
-}: PhotoViewerPageProps) {
-  const photos = stickerFixture.photos;
+export function PhotoViewerPage({ stickerId, initialIndex, onBack }: PhotoViewerPageProps) {
+  const { data } = useStickerQuery(stickerId);
   const [selectedIndex, setSelectedIndex] = useState(Number(initialIndex));
+
+  if (!data) return null;
+
+  const photos = data.photos;
   const selectedPhoto = photos[selectedIndex];
 
   return (
