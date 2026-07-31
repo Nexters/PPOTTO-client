@@ -17,7 +17,10 @@ export function AppWebView({ path = '' }: { path?: string }) {
   const { pushMessage } = useNativeBridge(ref, contract, {
     APPLE_LOGIN: () => loginWithApple(),
     KAKAO_LOGIN: () => loginWithKakao(),
-    GET_ACCESS_TOKEN: async () => ({ accessToken: await getAccessToken() }),
+    GET_ACCESS_TOKEN: async ({ forceRefresh }) => ({
+      accessToken: await getAccessToken({ forceRefresh }),
+    }),
+    AUTH_EXPIRED: () => router.replace('/'),
     LOG: ({ level, args }) => console.warn('[web]', level, ...args),
     OPEN_PHOTO_SELECT: () => router.push('/photo-select'),
   });
