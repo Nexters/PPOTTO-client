@@ -153,6 +153,24 @@ expect(formatPriceMock).toHaveBeenCalledTimes(1);
 - 스냅샷: UI 전체 스냅샷은 사용하지 않는다. 출력 전체가 계약인 코드 생성기·직렬화기 등에서만 작은 범위로 허용하되, 핵심 동작 assertion을 대체하지 않으며 사유를 주석으로 남긴다.
 - API mock은 fetch 함수 mock보다 msw 같은 네트워크 경계 mock을 우선한다.
 
+### React Native에서는 `render`를 await 한다
+
+`@testing-library/react-native` v14의 `render`는 Promise를 반환한다(React 19 동시성 렌더링). `await`를 빼면 렌더가 끝나기 전에 쿼리가 실행돼, `render`를 호출했는데도 **``render` function has not been called``** 라는 엉뚱한 메시지가 나온다. 원인을 짚기 어려운 함정이므로 항상 await 한다.
+
+웹(`@testing-library/react`)의 `render`는 동기이므로 이 규칙은 RN 테스트에만 적용된다.
+
+```tsx
+it('탭하면 onPress가 호출된다', async () => {
+  const onPress = jest.fn();
+  const user = userEvent.setup();
+  await render(<PhotoTile uri="file:///a.jpg" selected={false} onPress={onPress} />);
+
+  await user.press(screen.getByRole('checkbox'));
+
+  expect(onPress).toHaveBeenCalledTimes(1);
+});
+```
+
 ## 8. 실패가 원인을 말하게 한다
 
 - 테스트 하나가 깨지면 원인 후보가 하나로 좁혀져야 한다. 여러 동작을 한 테스트에 넣으면 이게 무너진다 (1번과 연결).
