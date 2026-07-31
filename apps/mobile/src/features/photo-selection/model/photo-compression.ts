@@ -3,7 +3,7 @@ import type { PhotoGroup } from './photo-group';
 
 type CompressPhoto = (photo: GalleryPhoto) => Promise<GalleryPhoto>;
 
-const CONCURRENCY = 3;
+const CONCURRENCY = 5;
 
 export function createPhotoCompressionQueue(compress: CompressPhoto) {
   let currentRunId = 0;

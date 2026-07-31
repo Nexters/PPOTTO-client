@@ -1,4 +1,4 @@
-import { render, screen, userEvent } from '@testing-library/react-native';
+import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PhotoSelectScreen } from './PhotoSelectScreen';
@@ -10,7 +10,7 @@ import { PhotoSelectScreen } from './PhotoSelectScreen';
  * 다르게 동작한다 — 1장 그룹은 제외, 여러 장 그룹은 다음 사진으로 승계.
  * 제외 개수에 상한은 없고 90 미만이면 CTA만 비활성화한다(PRD의 "최대 10개"는 제출 범위 90~100).
  *
- * 대역은 expo-media-library와 expo-router 두 경계뿐이다. loadPhotoGroups·groupPhotos·
+ * 대역은 expo-media-library·expo-router·expo-image-manipulator 경계뿐이다. loadPhotoGroups·groupPhotos·
  * AlbumDropdown·PhotoTile은 실제로 돌린다.
  *
  * 검증 지점 이동 — 아래는 여기서 다시 보지 않는다.
@@ -21,7 +21,7 @@ import { PhotoSelectScreen } from './PhotoSelectScreen';
  *   카운터 경고 색상, 타일 dim, chevron 방향   → 스타일이라 시안 대조 항목
  *
  * 제외: 진입 시 갤러리 전체에 100그룹 미만 → 생성 불가 안내 화면 — 별도 작업, Unable 시안 없음
- * 제외: 권한 요청·거부 흐름 — 앱 진입에서 처리
+ * 제외: 권한 거부 안내·설정 이동 — 별도 시안 필요
  * 제외: 백그라운드 중 설정에서 권한 회수 후 복귀 — 드묾, 실제 문제 시 추가
  * 제외: CTA의 분석 생성 API 연동 — 이번엔 라우팅만, useCreateAnalysisMutation 연결은 다음 작업
  * 제외: 로딩 중 타일 표현 — 시안의 회색 타일은 샘플 필러이지 플레이스홀더가 아님
@@ -31,12 +31,31 @@ import { PhotoSelectScreen } from './PhotoSelectScreen';
 
 jest.mock('expo-media-library', () => ({
   getAssetsAsync: jest.fn(),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
   SortBy: { creationTime: 'creationTime' },
 }));
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-image-manipulator', () => ({
+  ImageManipulator: {
+    manipulate: jest.fn((uri: string) => {
+      const context = {
+        renderAsync: jest.fn(async () => ({
+          saveAsync: jest.fn(async () => ({ uri, width: 1280, height: 1280 })),
+          release: jest.fn(),
+        })),
+        release: jest.fn(),
+      };
+      return { ...context, resize: jest.fn(() => context) };
+    }),
+  },
+  SaveFormat: { JPEG: 'jpeg' },
+}));
 
-const { getAssetsAsync } = jest.requireMock('expo-media-library') as { getAssetsAsync: jest.Mock };
+const { getAssetsAsync, requestPermissionsAsync } = jest.requireMock('expo-media-library') as {
+  getAssetsAsync: jest.Mock;
+  requestPermissionsAsync: jest.Mock;
+};
 const { router } = jest.requireMock('expo-router') as { router: { push: jest.Mock } };
 
 const BASE_TIME = Date.parse('2026-07-30T10:00:00.000Z');
@@ -103,6 +122,19 @@ it('진입 시 불러온 그룹을 전체 선택 상태로 표시하고 카운�
 
   expect(counter('100 / 100')).toBeOnTheScreen();
   expect(screen.getAllByRole('checkbox')[0]).toBeChecked();
+});
+
+it('사진 권한을 거부하면 갤러리를 조회하지 않는다', async () => {
+  requestPermissionsAsync.mockResolvedValueOnce({ granted: false });
+
+  render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <PhotoSelectScreen />
+    </SafeAreaProvider>,
+  );
+
+  await waitFor(() => expect(requestPermissionsAsync).toHaveBeenCalledTimes(1));
+  expect(getAssetsAsync).not.toHaveBeenCalled();
 });
 
 it('단일 사진을 누르면 제외되고 다시 누르면 복구된다', async () => {

@@ -64,8 +64,9 @@ it('압축은 한 번 재시도하고 또 실패하면 원본을 보관한 뒤 �
   expect(result.get('next')).toEqual(compressed(next));
 });
 
-it('세 장씩 압축하고 새 목록이 시작되면 대기 중인 이전 사진은 시작하지 않는다', async () => {
+it('다섯 장씩 압축하고 새 목록이 시작되면 대기 중인 이전 사진은 시작하지 않는다', async () => {
   const finishOldPhotos = new Map<string, (result: GalleryPhoto) => void>();
+  const oldPhotos = Array.from({ length: 6 }, (_, index) => photo(`old-${index}`));
   const compress = jest.fn((source: GalleryPhoto) => {
     if (!source.id.startsWith('old-')) return Promise.resolve(compressed(source));
 
@@ -75,19 +76,19 @@ it('세 장씩 압축하고 새 목록이 시작되면 대기 중인 이전 사�
   });
   const queue = createPhotoCompressionQueue(compress);
 
-  queue.start([group(photo('old-a'), photo('old-b'), photo('old-c'), photo('old-d'))]);
+  queue.start([group(...oldPhotos)]);
   queue.start([group(photo('new-a'), photo('new-b'))]);
 
   const latest = await queue.wait();
-  finishOldPhotos.get('old-a')!(compressed(photo('old-a')));
-  finishOldPhotos.get('old-b')!(compressed(photo('old-b')));
-  finishOldPhotos.get('old-c')!(compressed(photo('old-c')));
+  oldPhotos
+    .slice(0, 5)
+    .forEach((oldPhoto) => finishOldPhotos.get(oldPhoto.id)!(compressed(oldPhoto)));
   await Promise.resolve();
 
   expect(new Set(compress.mock.calls.map(([source]) => source.id))).toEqual(
-    new Set(['old-a', 'old-b', 'old-c', 'new-a', 'new-b']),
+    new Set([...oldPhotos.slice(0, 5).map(({ id }) => id), 'new-a', 'new-b']),
   );
-  expect(compress).not.toHaveBeenCalledWith(expect.objectContaining({ id: 'old-d' }));
+  expect(compress).not.toHaveBeenCalledWith(expect.objectContaining({ id: oldPhotos[5]!.id }));
   expect(new Set(latest.keys())).toEqual(new Set(['new-a', 'new-b']));
   expect(new Set((await queue.wait()).keys())).toEqual(new Set(['new-a', 'new-b']));
 });

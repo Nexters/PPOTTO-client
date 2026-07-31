@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
-const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:3000';
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'http://172.30.1.61:3000';
 
 // 앱 표준 웹뷰
 export function AppWebView({ path = '' }: { path?: string }) {
