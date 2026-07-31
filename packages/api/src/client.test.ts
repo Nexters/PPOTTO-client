@@ -2,15 +2,18 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { createApiClient, type ApiClientOptions } from './client.ts';
-import { NetworkError, unwrapData, unwrapVoid } from './errors.ts';
+import { HttpError, NetworkError, unwrapData, unwrapVoid } from './errors.ts';
 
 /**
- * 동작 범위 (2026-07-28 인터뷰)
+ * 동작 범위 (2026-07-28, 2026-07-31 인터뷰)
  *
  * 커스텀 fetch 주입(ClientOptions.fetch)으로 Request를 가로채 검증한다. mock 라이브러리 없음.
  *
- * 제외: 401 → refresh rotation 자동 재시도 — 브릿지 경계 작업에서 별도 결정
- * [팀확인] getToken이 네이티브 브릿지 호출이 될지 여부 — 브릿지 경계 작업에서 결정
+ * 인증 토큰의 발급·저장·동시 갱신은 RN 세션 책임이다. 이 모듈은 토큰을 헤더에 넣고,
+ * 401 COMMON-004에서 토큰 갱신 후 원 요청을 한 번만 재실행한다.
+ *
+ * 제외: refreshToken 저장과 회전 — RN auth-session 책임
+ * 제외: 인증 만료 후 화면 이동 — RN AppWebView 책임
  */
 
 /**
@@ -66,6 +69,89 @@ describe('createApiClient auth 미들웨어', () => {
       return true;
     });
     assert.equal(requests.length, 0);
+  });
+});
+
+describe('createApiClient 인증 갱신', () => {
+  it('401 COMMON-004를 받으면 토큰을 갱신하고 원래 요청을 새 토큰으로 한 번 다시 보낸다', async () => {
+    const requests: Request[] = [];
+    let token = 'expired-access-token';
+    let refreshCount = 0;
+    const options: ApiClientOptions = {
+      baseUrl: 'http://api.test',
+      getToken: () => token,
+      refreshAccessToken: async () => {
+        refreshCount += 1;
+        token = 'fresh-access-token';
+        return token;
+      },
+      fetch: async (request) => {
+        requests.push(request.clone());
+        if (requests.length === 1) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              data: null,
+              error: { code: 'COMMON-004', message: '인증이 필요합니다.' },
+            }),
+            { status: 401, headers: { 'content-type': 'application/json' } },
+          );
+        }
+        return new Response(JSON.stringify({ success: true, data: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      },
+    };
+    const client = createApiClient(options);
+
+    await unwrapData(client.GET('/terms'));
+
+    assert.equal(refreshCount, 1);
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0]?.headers.get('Authorization'), 'Bearer expired-access-token');
+    assert.equal(requests[1]?.headers.get('Authorization'), 'Bearer fresh-access-token');
+  });
+
+  it('다시 보낸 요청도 401이면 추가 갱신 없이 인증 만료를 알린다', async () => {
+    const requests: Request[] = [];
+    let authExpiredCount = 0;
+    let refreshCount = 0;
+    const unauthorized = () =>
+      new Response(
+        JSON.stringify({
+          success: false,
+          data: null,
+          error: { code: 'COMMON-004', message: '인증이 필요합니다.' },
+        }),
+        { status: 401, headers: { 'content-type': 'application/json' } },
+      );
+    const options: ApiClientOptions = {
+      baseUrl: 'http://api.test',
+      getToken: () => 'expired-access-token',
+      refreshAccessToken: async () => {
+        refreshCount += 1;
+        return 'fresh-access-token';
+      },
+      onAuthExpired: () => {
+        authExpiredCount += 1;
+      },
+      fetch: async (request) => {
+        requests.push(request.clone());
+        return unauthorized();
+      },
+    };
+    const client = createApiClient(options);
+
+    await assert.rejects(unwrapData(client.GET('/terms')), (error: unknown) => {
+      assert.ok(error instanceof HttpError);
+      assert.equal(error.code, 'COMMON-004');
+      return true;
+    });
+
+    assert.equal(refreshCount, 1);
+    assert.equal(authExpiredCount, 1);
+    assert.equal(requests.length, 2);
   });
 });
 
