@@ -54,9 +54,10 @@ function useStickerImage(src?: string) {
 
 type StickerProps = {
   sticker: StickerData;
+  onClick?: () => void;
 };
 
-export function Sticker({ sticker }: StickerProps) {
+export function Sticker({ sticker, onClick }: StickerProps) {
   const photoImage = useStickerImage(sticker.type === 'IMAGE' ? sticker.image?.url : undefined);
   const textBgImage = useStickerImage(sticker.type === 'TEXT' ? TEXT_BG_URL : undefined);
 
@@ -66,7 +67,21 @@ export function Sticker({ sticker }: StickerProps) {
   const textBoxHeight = TEXT_BOX_HEIGHT * sticker.scale;
 
   return (
-    <Group x={sticker.posX} y={sticker.posY} rotation={sticker.rotation}>
+    <Group
+      x={sticker.posX}
+      y={sticker.posY}
+      rotation={sticker.rotation}
+      onClick={onClick}
+      onTap={onClick}
+      onMouseEnter={(e) => {
+        const stage = e.target.getStage();
+        if (stage && onClick) stage.container().style.cursor = 'pointer';
+      }}
+      onMouseLeave={(e) => {
+        const stage = e.target.getStage();
+        if (stage) stage.container().style.cursor = 'default';
+      }}
+    >
       {sticker.type === 'IMAGE' && photoImage && sticker.image && (
         <Group
           x={sticker.image.offsetX ?? 0}

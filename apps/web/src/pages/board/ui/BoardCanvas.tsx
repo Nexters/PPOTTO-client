@@ -1,5 +1,6 @@
 'use client';
 
+import { useFlow } from '@stackflow/react';
 import { useEffect, useRef, useState } from 'react';
 import { Layer, Stage } from 'react-konva';
 
@@ -22,6 +23,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const [width, setWidth] = useState(REFERENCE_WIDTH);
   const { data, isLoading, isError } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
+  const { push } = useFlow();
 
   useEffect(() => {
     const container = containerRef.current;
@@ -73,7 +75,11 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
       <Stage width={width} height={REFERENCE_HEIGHT * scale} scaleX={scale} scaleY={scale}>
         <Layer>
           {stickers.map((sticker) => (
-            <Sticker key={sticker.id} sticker={sticker} />
+            <Sticker
+              key={sticker.id}
+              sticker={sticker}
+              onClick={() => push('Recap', { stickerId: sticker.id })}
+            />
           ))}
         </Layer>
       </Stage>
