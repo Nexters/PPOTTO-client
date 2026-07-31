@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { fetchPhotoPage } from '../api/fetch-photo-page';
 
 import { loadPhotoGroups } from './load-photo-groups';
+import { photoCompressionQueue } from './photo-compression-queue';
 import {
   createSelection,
   excludeAllGroups,
@@ -31,7 +32,10 @@ export function usePhotoSelection({
     let cancelled = false;
 
     void loadPhotoGroups({ fetchPage: fetchPhotoPage, targetUnits }).then((groups) => {
-      if (!cancelled) setSelection(createSelection(groups));
+      if (!cancelled) {
+        setSelection(createSelection(groups));
+        photoCompressionQueue.start(groups);
+      }
     });
 
     return () => {
