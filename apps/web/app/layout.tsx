@@ -21,7 +21,8 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-[#f4f4f2] dark:bg-zinc-900">
         <div
           className={cn(
-            'mx-auto flex min-h-screen w-full max-w-[450px] flex-col bg-background',
+            'relative mx-auto flex min-h-screen w-full max-w-112.5',
+            'flex-col bg-background',
             'shadow-[0_0_24px_rgba(0,0,0,0.08)] dark:shadow-[0_0_24px_rgba(0,0,0,0.5)]',
           )}
         >
