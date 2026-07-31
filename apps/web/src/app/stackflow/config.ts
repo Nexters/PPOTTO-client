@@ -5,7 +5,7 @@ declare module '@stackflow/config' {
     Login: Record<string, never>;
     Onboarding: Record<string, never>;
     Terms: Record<string, never>;
-    Board: Record<string, never>;
+    Board: { boardId: string };
     Recap: { stickerId: string };
     PhotoViewer: { stickerId: string; initialIndex: string };
     Settings: Record<string, never>;
