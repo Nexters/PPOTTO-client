@@ -15,7 +15,8 @@ test('PascalCase 컴포넌트를 생성하고 기본 색상을 덮어쓸 수 있
     'finger-test.svg',
   );
 
-  assert.match(code, /color="var\(--icon-default-color, white\)"/);
+  assert.match(code, /from 'react-native-svg'/);
+  assert.match(code, /color=\{props\.color \?\? 'white'\}/);
   assert.match(code, /fill="currentColor"/);
   assert.match(code, /\.\.\.props/);
 });
@@ -47,7 +48,7 @@ test('수정된 아이콘은 재생성하고 삭제된 아이콘의 결과물은
   await generateIcons({ inputDir, outputDir });
 
   const component = await readFile(path.join(outputDir, 'SampleIcon.tsx'), 'utf8');
-  assert.match(component, /--icon-default-color, black/);
+  assert.match(component, /color=\{props\.color \?\? 'black'\}/);
   await assert.rejects(access(path.join(outputDir, 'DeletedIcon.tsx')));
 });
 

@@ -2,8 +2,8 @@
   "name": "ppotto",
   "private": true,
   "scripts": {
-    "assets:generate": "node packages/assets/scripts/generate.mjs",
-    "assets:test": "node --test packages/assets/scripts/generate.test.mjs",
+    "assets:generate": "pnpm --filter @ppotto/assets generate",
+    "assets:test": "pnpm --filter @ppotto/assets test",
     "web": "pnpm --filter web dev",
     "mobile": "pnpm --filter mobile start",
     "prepare": "husky",
@@ -25,9 +25,6 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
     "@ppotto/eslint-rules": "workspace:*",
-    "@svgr/core": "^8.1.0",
-    "@svgr/plugin-jsx": "^8.1.0",
-    "@svgr/plugin-svgo": "^8.1.0",
     "eslint": "^9.39.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.2.0",

@@ -1,11 +1,12 @@
 import Svg, { Path } from 'react-native-svg';
 import type { SvgProps } from 'react-native-svg';
-const ChevronLeft = (props: SvgProps) => (
+const ChevronDown = (props: SvgProps) => (
   <Svg
-    width={24}
-    height={24}
+    width={12}
+    height={6.58}
     fill="none"
-    viewBox="0 0 24 24"
+    preserveAspectRatio="none"
+    viewBox="0 0 12 6.58"
     color={props.color ?? 'white'}
     {...props}
   >
@@ -14,8 +15,8 @@ const ChevronLeft = (props: SvgProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M16.5 19.5 9 12l7.5-7.5"
+      d="m1 1 5 4.58L11 1"
     />
   </Svg>
 );
-export default ChevronLeft;
+export default ChevronDown;

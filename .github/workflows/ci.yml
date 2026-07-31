@@ -108,3 +108,5 @@ jobs:
         run: pnpm --filter mobile lint
       - name: Typecheck
         run: pnpm --filter mobile typecheck
+      - name: Test
+        run: pnpm --filter mobile test --passWithNoTests
