@@ -1,4 +1,3 @@
-import { File } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import type { GalleryPhoto } from '../model/gallery-photo';
@@ -10,23 +9,6 @@ export type CompressPhotoOptions = {
   maxDimension?: number;
   quality?: number;
 };
-
-export type CompressionSizes = {
-  originalBytes: number;
-  outputBytes: number;
-};
-
-const compressionSizes = new WeakMap<GalleryPhoto, CompressionSizes>();
-
-export const getCompressionSizes = (photo: GalleryPhoto) => compressionSizes.get(photo);
-
-function getFileSize(uri: string) {
-  try {
-    return new File(uri).size;
-  } catch {
-    return 0;
-  }
-}
 
 function computeResizeTarget(
   photo: GalleryPhoto,
@@ -46,10 +28,6 @@ export async function compressPhoto(
   const maxDimension = options?.maxDimension ?? DEFAULT_MAX_DIMENSION;
   const quality = options?.quality ?? DEFAULT_QUALITY;
   const sourceUri = photo.uri;
-  const originalBytes = getFileSize(sourceUri);
-  if (originalBytes > 0) {
-    compressionSizes.set(photo, { originalBytes, outputBytes: originalBytes });
-  }
 
   const target = computeResizeTarget(photo, maxDimension);
   const context = target
@@ -67,10 +45,6 @@ export async function compressPhoto(
         width: result.width,
         height: result.height,
       };
-      const outputBytes = getFileSize(result.uri);
-      if (originalBytes > 0 && outputBytes > 0) {
-        compressionSizes.set(compressed, { originalBytes, outputBytes });
-      }
       return compressed;
     } finally {
       image.release();
