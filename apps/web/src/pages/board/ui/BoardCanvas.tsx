@@ -5,6 +5,8 @@ import { Layer, Stage } from 'react-konva';
 
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 
+import { computeInitialLayout } from '../model/board-layout';
+
 import { Sticker, type StickerData } from './Sticker';
 
 const REFERENCE_WIDTH = 360;
@@ -48,7 +50,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     );
   }
 
-  const stickers: StickerData[] = data.stickers
+  const stickers: StickerData[] = computeInitialLayout(data.stickers)
     .map(({ imageUrl, ...sticker }) => ({
       ...sticker,
       image: imageUrl ? { url: imageUrl } : undefined,
