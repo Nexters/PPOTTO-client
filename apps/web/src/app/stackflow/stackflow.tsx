@@ -13,7 +13,6 @@ import { OnboardingPage } from '@/pages/onboarding';
 import { RecapPage } from '@/pages/recap';
 import { SettingsPage } from '@/pages/settings';
 import { TermsPage } from '@/pages/terms';
-import { useBridge } from '@/shared/lib/bridge';
 
 import { config } from './config';
 
@@ -34,19 +33,9 @@ const LoginActivity: ActivityComponentType<'Login'> = () => {
 };
 
 const BoardActivity: ActivityComponentType<'Board'> = () => {
-  const { push } = useFlow();
-  const bridge = useBridge();
   return (
     <AppScreen>
       <BoardPage />
-      <div className="fixed inset-x-0 bottom-8 flex justify-center gap-2">
-        <button className={tempButton} onClick={() => push('Recap', {})}>
-          리캡 보기
-        </button>
-        <button className={tempButton} onClick={() => bridge.send('OPEN_PHOTO_SELECT')}>
-          이미지 추가
-        </button>
-      </div>
     </AppScreen>
   );
 };
