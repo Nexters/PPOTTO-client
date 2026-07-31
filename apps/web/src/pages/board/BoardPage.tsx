@@ -11,12 +11,16 @@ const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.B
   ssr: false,
 });
 
-export function BoardPage() {
+type BoardPageProps = {
+  boardId: string;
+};
+
+export function BoardPage({ boardId }: BoardPageProps) {
   return (
     <DotBackground>
       <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
         <BoardHeader />
-        <BoardCanvas />
+        <BoardCanvas boardId={boardId} />
         <BoardToolbar />
       </div>
     </DotBackground>
