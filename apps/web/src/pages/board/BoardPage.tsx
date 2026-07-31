@@ -1,7 +1,24 @@
+'use client';
+
+import dynamic from 'next/dynamic';
+
+import { DotBackground } from '@/shared/ui/DotBackground';
+
+import { BoardHeader } from './ui/BoardHeader';
+import { BoardToolbar } from './ui/BoardToolbar';
+
+const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
+  ssr: false,
+});
+
 export function BoardPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center">
-      <h1 className="text-header-01 text-gray-900">보드입니다.</h1>
-    </main>
+    <DotBackground>
+      <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
+        <BoardHeader />
+        <BoardCanvas />
+        <BoardToolbar />
+      </div>
+    </DotBackground>
   );
 }
