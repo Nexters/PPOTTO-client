@@ -3,7 +3,6 @@
 import dynamic from 'next/dynamic';
 
 import { DotBackground } from '@/shared/ui/DotBackground';
-import { cn } from '@/shared/lib/cn';
 
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardToolbar } from './ui/BoardToolbar';
@@ -15,12 +14,7 @@ const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.B
 export function BoardPage() {
   return (
     <DotBackground>
-      <div
-        className={cn(
-          'relative mx-auto flex h-dvh w-full max-w-107.5 items-center',
-          'justify-center overflow-hidden',
-        )}
-      >
+      <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
         <BoardHeader />
         <BoardCanvas />
         <BoardToolbar />
