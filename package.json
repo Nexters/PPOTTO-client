@@ -2,6 +2,9 @@
   "name": "ppotto",
   "private": true,
   "scripts": {
+    "openapi:update": "pnpm --filter @ppotto/api openapi:update",
+    "gen": "pnpm --filter @ppotto/api gen",
+    "gen:check": "pnpm --filter @ppotto/api gen:check",
     "assets:generate": "pnpm --filter @ppotto/assets generate",
     "assets:test": "pnpm --filter @ppotto/assets test",
     "web": "pnpm --filter web dev",
