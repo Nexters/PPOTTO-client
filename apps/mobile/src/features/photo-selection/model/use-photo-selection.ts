@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { fetchPhotoPage } from '../api/fetch-photo-page';
+import { fetchPhotoPage, requestPhotoLibraryPermission } from '../api/fetch-photo-page';
 
 import { loadPhotoGroups } from './load-photo-groups';
+import { photoCompressionQueue } from './photo-compression-queue';
 import {
   createSelection,
   excludeAllGroups,
@@ -30,9 +31,17 @@ export function usePhotoSelection({
   useEffect(() => {
     let cancelled = false;
 
-    void loadPhotoGroups({ fetchPage: fetchPhotoPage, targetUnits }).then((groups) => {
-      if (!cancelled) setSelection(createSelection(groups));
-    });
+    const load = async () => {
+      if (!(await requestPhotoLibraryPermission())) return;
+
+      const groups = await loadPhotoGroups({ fetchPage: fetchPhotoPage, targetUnits });
+      if (!cancelled) {
+        setSelection(createSelection(groups));
+        photoCompressionQueue.start(groups);
+      }
+    };
+
+    void load();
 
     return () => {
       cancelled = true;
