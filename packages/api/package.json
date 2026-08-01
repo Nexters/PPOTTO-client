@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "openapi:update": "node scripts/update-openapi.mjs && prettier --write openapi/ppotto-api.json",
     "gen": "openapi-typescript openapi/ppotto-api.json -o src/generated/schema.d.ts --alphabetize",
     "gen:check": "openapi-typescript openapi/ppotto-api.json -o src/generated/schema.d.ts --alphabetize --check",
     "typecheck": "tsc --noEmit",
