@@ -341,7 +341,7 @@ export interface components {
              *       "01983f2a-2b3c-7d4e-9f5a-6b7c8d9e0f1a"
              *     ]
              */
-            termIds?: string[];
+            termIds: string[];
         };
         /** @description 분석 상태 */
         AnalysisStatusResponse: {
@@ -350,7 +350,7 @@ export interface components {
              * @description 결과 스티커가 붙을 보드 ID
              * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
              */
-            boardId?: string;
+            boardId: string;
             /**
              * Format: date-time
              * @description 분석이 완료된 시각
@@ -367,13 +367,13 @@ export interface components {
              * @description 분석 ID (uuidv7)
              * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * Format: int32
              * @description 진행률 0~100
              * @example 45
              */
-            progress?: number;
+            progress: number;
             /**
              * Format: date-time
              * @description 분석이 시작된 시각
@@ -385,14 +385,14 @@ export interface components {
              * @example ANALYZING
              * @enum {string}
              */
-            status?: "UPLOADING" | "ANALYZING" | "COMPLETED" | "FAILED";
+            status: "UPLOADING" | "ANALYZING" | "COMPLETED" | "FAILED";
         };
         /** @description 공통 실패 응답 봉투 */
         ApiErrorResponse: {
             /** @description 실패 시 항상 null */
             data?: null;
             /** @description 에러 코드와 메시지 */
-            error?: components["schemas"]["ErrorResponse"];
+            error: components["schemas"]["ErrorResponse"];
             /**
              * @description 요청 성공 여부
              * @example false
@@ -535,20 +535,20 @@ export interface components {
         /** @description 보드와 배치된 스티커 및 그림 */
         BoardDetailResponse: {
             /** @description 보드와 스티커 위의 그림 목록 */
-            drawings?: components["schemas"]["DrawingResponse"][];
+            drawings: components["schemas"]["DrawingResponse"][];
             /**
              * Format: uuid
              * @description 보드 ID (uuidv7)
              * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
              */
-            id?: string;
+            id: string;
             /**
              * @description 보드 이름
              * @example Board 7
              */
-            name?: string;
+            name: string;
             /** @description 보드에 배치된 스티커 목록 */
-            stickers?: components["schemas"]["BoardStickerResponse"][];
+            stickers: components["schemas"]["BoardStickerResponse"][];
         };
         /** @description 보드 편집 결과 일괄 저장 요청. 편집 모드에서 바뀐 것만 보냄 */
         BoardLayoutRequest: {
@@ -563,12 +563,12 @@ export interface components {
              * @description 보드 ID (uuidv7). 오름차순이 생성순
              * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
              */
-            id?: string;
+            id: string;
             /**
              * @description 보드 이름. 최대 10자
              * @example 여름 휴가
              */
-            name?: string;
+            name: string;
         };
         /** @description 보드에 배치된 스티커 */
         BoardStickerResponse: {
@@ -577,25 +577,25 @@ export interface components {
              * @description 스티커 기준 뱃지 상대 좌표 X
              * @example -24
              */
-            badgeOffsetX?: number;
+            badgeOffsetX: number;
             /**
              * Format: double
              * @description 스티커 기준 뱃지 상대 좌표 Y
              * @example 96
              */
-            badgeOffsetY?: number;
+            badgeOffsetY: number;
             /**
              * Format: double
              * @description 뱃지 회전 각도(degree)
              * @example 0
              */
-            badgeRotation?: number;
+            badgeRotation: number;
             /**
              * Format: uuid
              * @description 스티커 ID (uuidv7)
              * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * @description IMAGE 형의 누끼 PNG 읽기용 signed URL (만료 1시간)
              * @example https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample
@@ -605,31 +605,31 @@ export interface components {
              * @description 미열람 여부. 뱃지에 빨간 점 표시
              * @example false
              */
-            isNew?: boolean;
+            isNew: boolean;
             /**
              * Format: double
              * @description 보드 좌표 X
              * @example 62.5
              */
-            posX?: number;
+            posX: number;
             /**
              * Format: double
              * @description 보드 좌표 Y
              * @example 318
              */
-            posY?: number;
+            posY: number;
             /**
              * Format: double
              * @description 회전 각도(degree)
              * @example -12
              */
-            rotation?: number;
+            rotation: number;
             /**
              * Format: double
              * @description 확대 비율
              * @example 0.8
              */
-            scale?: number;
+            scale: number;
             /**
              * @description TEXT 형 문구
              * @example whats in my mac
@@ -639,19 +639,19 @@ export interface components {
              * @description 제목 뱃지 문구이자 리캡 제목
              * @example 동물 밈 짤줍
              */
-            title?: string;
+            title: string;
             /**
              * @description 스티커 형식
              * @example IMAGE
              * @enum {string}
              */
-            type?: "IMAGE" | "TEXT";
+            type: "IMAGE" | "TEXT";
             /**
              * Format: int32
              * @description 겹침 순서
              * @example 3
              */
-            zIndex?: number;
+            zIndex: number;
         };
         /** @description 분석 생성과 사진 업로드 URL 발급 요청 */
         CreateAnalysisRequest: {
@@ -662,7 +662,7 @@ export interface components {
              */
             boardId: string;
             /** @description 촬영 시각 오름차순으로 보내는 사진 90~100장 */
-            photos?: components["schemas"]["PhotoUploadItem"][];
+            photos: components["schemas"]["PhotoUploadItem"][];
         };
         /** @description 생성된 분석과 사진별 업로드 URL */
         CreateAnalysisResponse: {
@@ -671,9 +671,9 @@ export interface components {
              * @description 생성된 분석 ID (uuidv7)
              * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            analysisId?: string;
+            analysisId: string;
             /** @description 요청 photos와 같은 순서의 업로드 URL 목록 */
-            uploads?: components["schemas"]["PhotoUploadUrlItem"][];
+            uploads: components["schemas"]["PhotoUploadUrlItem"][];
         };
         /** @description 보드 생성 요청 */
         CreateBoardRequest: {
@@ -707,13 +707,13 @@ export interface components {
              * @description 클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함
              * @example 01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b
              */
-            id?: string;
+            id: string;
             /**
              * @description 그림이 붙는 대상
              * @example STICKER
              * @enum {string}
              */
-            scope?: "STICKER" | "BOARD";
+            scope: "STICKER" | "BOARD";
             /**
              * Format: uuid
              * @description scope=STICKER일 때 필수
@@ -747,7 +747,7 @@ export interface components {
              * @description 선 굵기
              * @example 4
              */
-            strokeWidth?: number;
+            strokeWidth: number;
         };
         /** @description 보드 또는 스티커 위의 그림 */
         DrawingResponse: {
@@ -755,19 +755,19 @@ export interface components {
              * @description 선 색상
              * @example #FFD400
              */
-            color?: string;
+            color: string;
             /**
              * Format: uuid
              * @description 그림 ID (uuidv7)
              * @example 01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * @description 그림이 붙는 대상
              * @example STICKER
              * @enum {string}
              */
-            scope?: "STICKER" | "BOARD";
+            scope: "STICKER" | "BOARD";
             /**
              * Format: uuid
              * @description scope=STICKER일 때만 값이 있음
@@ -793,7 +793,7 @@ export interface components {
              *       ]
              *     }
              */
-            stroke?: {
+            stroke: {
                 [key: string]: unknown;
             };
             /**
@@ -801,7 +801,7 @@ export interface components {
              * @description 선 굵기
              * @example 4
              */
-            strokeWidth?: number;
+            strokeWidth: number;
         };
         /** @description 실패 응답 상세 */
         ErrorResponse: {
@@ -809,20 +809,20 @@ export interface components {
              * @description 클라이언트 분기 기준이 되는 에러 코드
              * @example COMMON-001
              */
-            code?: string;
+            code: string;
             /** @description 요청 바디 검증 실패 시 필드별 오류. 그 외 빈 배열 */
-            fieldErrors?: components["schemas"]["FieldErrorDetail"][];
+            fieldErrors: components["schemas"]["FieldErrorDetail"][];
             /**
              * @description 사용자 또는 개발자 확인용 메시지
              * @example 잘못된 입력입니다.
              */
-            message?: string;
+            message: string;
             /**
              * Format: date-time
              * @description 에러 발생 시각. UTC ISO-8601
              * @example 2026-07-27T05:02:11Z
              */
-            timestamp?: string;
+            timestamp: string;
         };
         /** @description 요청 바디 필드 검증 실패 상세 */
         FieldErrorDetail: {
@@ -830,7 +830,7 @@ export interface components {
              * @description 검증에 실패한 필드
              * @example name
              */
-            field?: string;
+            field: string;
             /**
              * @description 실패 사유
              * @example 크기가 1에서 10 사이여야 합니다
@@ -877,25 +877,25 @@ export interface components {
              * @description JWT. Authorization Bearer 헤더에 넣음
              * @example eyJhbGciOiJIUzI1NiJ9.sample-access-token.sample-signature
              */
-            accessToken?: string;
+            accessToken: string;
             /**
              * Format: int64
              * @description accessToken 만료까지 남은 초
              * @example 3600
              */
-            accessTokenExpiresIn?: number;
+            accessTokenExpiresIn: number;
             /**
              * @description 이번 로그인으로 새로 가입했는지 여부
              * @example true
              */
-            isNewUser?: boolean;
+            isNewUser: boolean;
             /** @description 동의가 필요한 현재 버전 약관. 비어 있으면 바로 보드로 진입 */
-            pendingTerms?: components["schemas"]["PendingTermResponse"][];
+            pendingTerms: components["schemas"]["PendingTermResponse"][];
             /**
              * @description 서버가 생성한 랜덤 값 (JWT 아님). Keychain 등 보안 저장소에 보관
              * @example sample-refresh-token-01983f2a7c317b02
              */
-            refreshToken?: string;
+            refreshToken: string;
         };
         /** @description 로그인 후 동의가 필요한 약관 */
         PendingTermResponse: {
@@ -903,12 +903,12 @@ export interface components {
              * @description 요청 사용자의 동의 여부
              * @example false
              */
-            agreed?: boolean;
+            agreed: boolean;
             /**
              * @description 약관 코드
              * @example TOS
              */
-            code?: string;
+            code: string;
             /**
              * @description 노션 등 외부 문서 링크
              * @example https://nexters.notion.site/ppotto-tos
@@ -919,25 +919,26 @@ export interface components {
              * @description 약관 ID (uuidv7)
              * @example 01983f2a-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * @description 필수 동의 여부
              * @example true
              */
-            isRequired?: boolean;
+            isRequired: boolean;
             /**
              * @description 약관 버전
              * @example 1.0
              */
-            version?: string;
+            version: string;
         };
         /** @description 업로드할 사진 정보 */
         PhotoUploadItem: {
             /**
              * @description 지원 형식. 업로드 시 Content-Type과 일치해야 함
              * @example image/jpeg
+             * @enum {string}
              */
-            contentType: string;
+            contentType: "image/jpeg" | "image/png" | "image/heic";
             /**
              * Format: date-time
              * @description 사진 촬영 시각
@@ -952,12 +953,12 @@ export interface components {
              * @description 사진 ID (uuidv7)
              * @example 01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            photoId?: string;
+            photoId: string;
             /**
              * @description GCS 업로드용 signed URL (만료 15분, 장당 15MB 제한)
              * @example https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Expires=900
              */
-            uploadUrl?: string;
+            uploadUrl: string;
         };
         /** @description 분석 리캡 코멘트. posX, posY가 있으면 스티커 주변 말풍선, null이면 하단 키워드 칩 */
         RecapCommentResponse: {
@@ -965,13 +966,13 @@ export interface components {
              * @description 코멘트 문구
              * @example 야옹~
              */
-            content?: string;
+            content: string;
             /**
              * Format: uuid
              * @description 코멘트 ID (uuidv7)
              * @example 01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * Format: double
              * @description 스티커 기준 상대 좌표 X. null이면 하단 키워드 칩
@@ -988,16 +989,16 @@ export interface components {
         /** @description 스티커와 분석 리캡 */
         RecapDetailResponse: {
             /** @description 분석 코멘트. id(uuidv7) 오름차순 */
-            comments?: components["schemas"]["RecapCommentResponse"][];
+            comments: components["schemas"]["RecapCommentResponse"][];
             /** @description 리캡 사진. takenAt, id 오름차순 */
-            photos?: components["schemas"]["RecapPhotoResponse"][];
+            photos: components["schemas"]["RecapPhotoResponse"][];
             /** @description 리캡 대상 스티커 */
-            sticker?: components["schemas"]["StickerResponse"];
+            sticker: components["schemas"]["StickerResponse"];
             /**
              * @description 한 줄 요약. 스티커당 1개인 강조 문장
              * @example 웃기고 귀여우면 일단 주워요
              */
-            summary?: string;
+            summary: string;
         };
         /** @description 분석 리캡 사진 */
         RecapPhotoResponse: {
@@ -1006,18 +1007,18 @@ export interface components {
              * @description 사진 ID (uuidv7)
              * @example 01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * @description 읽기용 signed URL (만료 1시간)
              * @example https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample
              */
-            imageUrl?: string;
+            imageUrl: string;
             /**
              * Format: date-time
              * @description 촬영 시각
              * @example 2026-06-14T13:22:10+09:00
              */
-            takenAt?: string;
+            takenAt: string;
         };
         /** @description 토큰 재발급 요청 */
         RefreshRequest: {
@@ -1042,20 +1043,20 @@ export interface components {
              * @description GCS에 없어 분석에서 제외된 사진 수
              * @example 1
              */
-            failedCount?: number;
+            failedCount: number;
             /**
              * @description 제외된 사진 ID 목록
              * @example [
              *       "01983f2e-9f8e-7d6c-b5a4-3c2b1a0f9e8d"
              *     ]
              */
-            failedPhotoIds?: string[];
+            failedPhotoIds: string[];
             /**
              * Format: int32
              * @description 업로드가 확인되어 분석에 사용할 사진 수
              * @example 97
              */
-            uploadedCount?: number;
+            uploadedCount: number;
         };
         /** @description 스티커 배치와 제목 */
         StickerLayoutRequest: {
@@ -1064,49 +1065,49 @@ export interface components {
              * @description 스티커 기준 뱃지 상대 좌표 X
              * @example -24
              */
-            badgeOffsetX?: number;
+            badgeOffsetX: number;
             /**
              * Format: double
              * @description 스티커 기준 뱃지 상대 좌표 Y
              * @example 96
              */
-            badgeOffsetY?: number;
+            badgeOffsetY: number;
             /**
              * Format: double
              * @description 뱃지 회전 각도(degree)
              * @example 0
              */
-            badgeRotation?: number;
+            badgeRotation: number;
             /**
              * Format: uuid
              * @description 스티커 ID (uuidv7)
              * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * Format: double
              * @description 보드 좌표 X
              * @example 80
              */
-            posX?: number;
+            posX: number;
             /**
              * Format: double
              * @description 보드 좌표 Y
              * @example 290.5
              */
-            posY?: number;
+            posY: number;
             /**
              * Format: double
              * @description 회전 각도(degree)
              * @example -8
              */
-            rotation?: number;
+            rotation: number;
             /**
              * Format: double
              * @description 확대 비율
              * @example 1.1
              */
-            scale?: number;
+            scale: number;
             /**
              * @description 텍스트 모드에서 제목을 바꿨을 때만 보냄. 최대 15자
              * @example 고양이 모음집
@@ -1117,7 +1118,7 @@ export interface components {
              * @description 겹침 순서
              * @example 6
              */
-            zIndex?: number;
+            zIndex: number;
         };
         /** @description 스티커 내용과 보드 배치 */
         StickerResponse: {
@@ -1126,25 +1127,25 @@ export interface components {
              * @description 스티커 기준 뱃지 상대 좌표 X
              * @example -24
              */
-            badgeOffsetX?: number;
+            badgeOffsetX: number;
             /**
              * Format: double
              * @description 스티커 기준 뱃지 상대 좌표 Y
              * @example 96
              */
-            badgeOffsetY?: number;
+            badgeOffsetY: number;
             /**
              * Format: double
              * @description 뱃지 회전 각도(degree)
              * @example 0
              */
-            badgeRotation?: number;
+            badgeRotation: number;
             /**
              * Format: uuid
              * @description 스티커 ID (uuidv7)
              * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * @description IMAGE 형의 누끼 PNG 읽기용 signed URL (만료 1시간)
              * @example https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample
@@ -1154,31 +1155,31 @@ export interface components {
              * @description 미열람 여부. 뱃지에 빨간 점 표시
              * @example false
              */
-            isNew?: boolean;
+            isNew: boolean;
             /**
              * Format: double
              * @description 보드 좌표 X
              * @example 62.5
              */
-            posX?: number;
+            posX: number;
             /**
              * Format: double
              * @description 보드 좌표 Y
              * @example 318
              */
-            posY?: number;
+            posY: number;
             /**
              * Format: double
              * @description 회전 각도(degree)
              * @example -12
              */
-            rotation?: number;
+            rotation: number;
             /**
              * Format: double
              * @description 확대 비율
              * @example 0.8
              */
-            scale?: number;
+            scale: number;
             /**
              * @description TEXT 형 문구
              * @example whats in my mac
@@ -1188,19 +1189,19 @@ export interface components {
              * @description 제목 뱃지 문구이자 리캡 제목
              * @example 동물 밈 짤줍
              */
-            title?: string;
+            title: string;
             /**
              * @description 스티커 형식
              * @example IMAGE
              * @enum {string}
              */
-            type?: "IMAGE" | "TEXT";
+            type: "IMAGE" | "TEXT";
             /**
              * Format: int32
              * @description 겹침 순서
              * @example 3
              */
-            zIndex?: number;
+            zIndex: number;
         };
         /** @description 현재 유효한 약관과 사용자 동의 상태 */
         TermResponse: {
@@ -1208,12 +1209,12 @@ export interface components {
              * @description 요청 사용자의 동의 여부. 인증하지 않은 요청은 항상 false
              * @example true
              */
-            agreed?: boolean;
+            agreed: boolean;
             /**
              * @description 약관 코드
              * @example TOS
              */
-            code?: string;
+            code: string;
             /**
              * @description 노션 등 외부 문서 링크
              * @example https://nexters.notion.site/ppotto-tos
@@ -1224,17 +1225,17 @@ export interface components {
              * @description 약관 ID (uuidv7)
              * @example 01983f2a-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * @description 필수 동의 여부
              * @example true
              */
-            isRequired?: boolean;
+            isRequired: boolean;
             /**
              * @description 약관 버전
              * @example 1.0
              */
-            version?: string;
+            version: string;
         };
         /** @description 재발급된 서비스 토큰 */
         TokenPairResponse: {
@@ -1242,18 +1243,18 @@ export interface components {
              * @description JWT. Authorization Bearer 헤더에 넣음
              * @example eyJhbGciOiJIUzI1NiJ9.sample-access-token.sample-signature
              */
-            accessToken?: string;
+            accessToken: string;
             /**
              * Format: int64
              * @description accessToken 만료까지 남은 초
              * @example 3600
              */
-            accessTokenExpiresIn?: number;
+            accessTokenExpiresIn: number;
             /**
              * @description 서버가 생성한 랜덤 값 (JWT 아님). Keychain 등 보안 저장소에 보관
              * @example sample-refresh-token-01983f2a4d5e7f6a
              */
-            refreshToken?: string;
+            refreshToken: string;
         };
         /** @description 스티커 제목 변경 요청 */
         UpdateStickerTitleRequest: {
@@ -1270,12 +1271,12 @@ export interface components {
              * @description 스티커 ID (uuidv7)
              * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
-            id?: string;
+            id: string;
             /**
              * @description 변경된 제목
              * @example 고양이 모음집
              */
-            title?: string;
+            title: string;
         };
         /** @description 현재 사용자 공개 정보 */
         UserResponse: {
@@ -1284,24 +1285,24 @@ export interface components {
              * @description 가입 시각
              * @example 2026-07-01T09:12:33+09:00
              */
-            createdAt?: string;
+            createdAt: string;
             /**
              * @description 항상 존재함. 애플 이메일 가리기 사용자는 private relay 주소
              * @example ppotto@kakao.com
              */
-            email?: string;
+            email: string;
             /**
              * Format: uuid
              * @description 사용자 ID (uuidv7)
              * @example 01983f2a-7c31-7b02-93d4-1f2e3d4c5b6a
              */
-            id?: string;
+            id: string;
             /**
              * @description 소셜 로그인 제공자
              * @example KAKAO
              * @enum {string}
              */
-            provider?: "KAKAO" | "APPLE";
+            provider: "KAKAO" | "APPLE";
         };
     };
     responses: never;
@@ -1337,7 +1338,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseCreateAnalysisResponse"];
+                    "application/json": components["schemas"]["ApiResponseCreateAnalysisResponse"];
                 };
             };
             /** @description 요청 값이 올바르지 않음 (COMMON-001, ANALYSIS-001) */
@@ -1405,7 +1406,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseAnalysisStatusResponse"];
+                    "application/json": components["schemas"]["ApiResponseAnalysisStatusResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -1455,7 +1456,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseStartUploadResponse"];
+                    "application/json": components["schemas"]["ApiResponseStartUploadResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -1508,7 +1509,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseAnalysisStatusResponse"];
+                    "application/json": components["schemas"]["ApiResponseAnalysisStatusResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -1547,7 +1548,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseLoginResponse"];
+                    "application/json": components["schemas"]["ApiResponseLoginResponse"];
                 };
             };
             /** @description 요청 값이 올바르지 않음 (COMMON-001) */
@@ -1600,7 +1601,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseUnit"];
+                    "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -1639,7 +1640,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseTokenPairResponse"];
+                    "application/json": components["schemas"]["ApiResponseTokenPairResponse"];
                 };
             };
             /** @description refresh token이 유효하지 않음 (AUTH-002) */
@@ -1674,7 +1675,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListBoardResponse"];
+                    "application/json": components["schemas"]["ApiResponseListBoardResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -1713,7 +1714,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseBoardResponse"];
+                    "application/json": components["schemas"]["ApiResponseBoardResponse"];
                 };
             };
             /** @description 요청 값이 올바르지 않음 (COMMON-001, BOARD-003) */
@@ -1772,7 +1773,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseBoardDetailResponse"];
+                    "application/json": components["schemas"]["ApiResponseBoardDetailResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -1822,7 +1823,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseUnit"];
+                    "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -1885,7 +1886,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseBoardResponse"];
+                    "application/json": components["schemas"]["ApiResponseBoardResponse"];
                 };
             };
             /** @description 요청 값이 올바르지 않음 (COMMON-001) */
@@ -1948,7 +1949,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseUnit"];
+                    "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
             /** @description 요청 값이 올바르지 않음 (COMMON-001, BOARD-001) */
@@ -2007,7 +2008,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseRecapDetailResponse"];
+                    "application/json": components["schemas"]["ApiResponseRecapDetailResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -2057,7 +2058,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseUnit"];
+                    "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -2111,7 +2112,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseUpdateStickerTitleResponse"];
+                    "application/json": components["schemas"]["ApiResponseUpdateStickerTitleResponse"];
                 };
             };
             /** @description 요청 값이 올바르지 않음 (COMMON-001) */
@@ -2170,7 +2171,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseUnit"];
+                    "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -2214,7 +2215,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListTermResponse"];
+                    "application/json": components["schemas"]["ApiResponseListTermResponse"];
                 };
             };
             /** @description 전달한 access token이 유효하지 않음 (COMMON-004) */
@@ -2253,7 +2254,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseUnit"];
+                    "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
             /** @description 요청 값이 올바르지 않음 (COMMON-001, TERM-001) */
@@ -2297,7 +2298,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseUserResponse"];
+                    "application/json": components["schemas"]["ApiResponseUserResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -2332,7 +2333,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseUnit"];
+                    "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
