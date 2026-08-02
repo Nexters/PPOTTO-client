@@ -2,7 +2,7 @@
   "name": "ppotto",
   "private": true,
   "scripts": {
-    "openapi:update": "pnpm --filter @ppotto/api openapi:update",
+    "openapi:update": "node --env-file=.env packages/api/scripts/update-openapi.mjs && pnpm --filter @ppotto/api exec prettier --write openapi/ppotto-api.json",
     "gen": "pnpm --filter @ppotto/api gen",
     "gen:check": "pnpm --filter @ppotto/api gen:check",
     "assets:generate": "pnpm --filter @ppotto/assets generate",

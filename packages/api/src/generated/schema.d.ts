@@ -397,7 +397,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example false
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseAnalysisStatusResponse: {
@@ -407,7 +407,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseBoardDetailResponse: {
@@ -417,7 +417,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseBoardResponse: {
@@ -427,7 +427,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseCreateAnalysisResponse: {
@@ -437,7 +437,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseListBoardResponse: {
@@ -448,7 +448,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseListTermResponse: {
@@ -459,7 +459,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseLoginResponse: {
@@ -469,7 +469,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseRecapDetailResponse: {
@@ -479,7 +479,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseStartUploadResponse: {
@@ -489,7 +489,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseTokenPairResponse: {
@@ -499,7 +499,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseUnit: {
@@ -510,7 +510,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseUpdateStickerTitleResponse: {
@@ -520,7 +520,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 공통 응답 봉투 */
         ApiResponseUserResponse: {
@@ -530,7 +530,7 @@ export interface components {
              * @description 요청 성공 여부
              * @example true
              */
-            success?: boolean;
+            success: boolean;
         };
         /** @description 보드와 배치된 스티커 및 그림 */
         BoardDetailResponse: {

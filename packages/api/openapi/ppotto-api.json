@@ -87,7 +87,7 @@
           "200": {
             "description": "처리 완료. data는 항상 null",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseUnit"
                 },
@@ -206,7 +206,7 @@
           "200": {
             "description": "처리 완료. data는 항상 null",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseUnit"
                 },
@@ -301,7 +301,7 @@
           "200": {
             "description": "보드 목록",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListBoardResponse"
                 },
@@ -397,7 +397,7 @@
           "200": {
             "description": "생성된 보드",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBoardResponse"
                 },
@@ -550,7 +550,7 @@
           "200": {
             "description": "재발급 성공",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseTokenPairResponse"
                 },
@@ -622,7 +622,7 @@
           "200": {
             "description": "처리 완료. data는 항상 null",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseUnit"
                 },
@@ -729,7 +729,7 @@
           "200": {
             "description": "로그인 성공",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseLoginResponse"
                 },
@@ -947,7 +947,7 @@
           "200": {
             "description": "발급 완료 (status=UPLOADING)",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseCreateAnalysisResponse"
                 },
@@ -1129,7 +1129,7 @@
           "202": {
             "description": "분석 시작됨",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseStartUploadResponse"
                 },
@@ -1278,7 +1278,7 @@
           "200": {
             "description": "리캡 상세",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseRecapDetailResponse"
                 },
@@ -1468,7 +1468,7 @@
           "200": {
             "description": "처리 완료. data는 항상 null",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseUnit"
                 },
@@ -1590,7 +1590,7 @@
           "200": {
             "description": "수정 완료",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseUpdateStickerTitleResponse"
                 },
@@ -1744,7 +1744,7 @@
           "200": {
             "description": "보드 상태",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBoardDetailResponse"
                 },
@@ -1913,7 +1913,7 @@
           "200": {
             "description": "처리 완료. data는 항상 null",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseUnit"
                 },
@@ -2073,7 +2073,7 @@
           "200": {
             "description": "변경된 보드",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBoardResponse"
                 },
@@ -2312,7 +2312,7 @@
           "200": {
             "description": "처리 완료. data는 항상 null",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseUnit"
                 },
@@ -2445,7 +2445,7 @@
           "200": {
             "description": "내 정보",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseUserResponse"
                 },
@@ -2531,7 +2531,7 @@
           "200": {
             "description": "처리 완료. data는 항상 null",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseUnit"
                 },
@@ -2601,7 +2601,7 @@
           "200": {
             "description": "code별 현재 유효 버전 1건씩",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListTermResponse"
                 },
@@ -2717,7 +2717,7 @@
           "200": {
             "description": "분석 상태",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseAnalysisStatusResponse"
                 },
@@ -2847,7 +2847,7 @@
           "200": {
             "description": "진행 중 분석 또는 null",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseAnalysisStatusResponse"
                 },
@@ -2925,7 +2925,8 @@
               "format": "uuid"
             }
           }
-        }
+        },
+        "required": ["termIds"]
       },
       "ApiErrorResponse": {
         "type": "object",
@@ -2944,7 +2945,8 @@
             "$ref": "#/components/schemas/ErrorResponse",
             "description": "에러 코드와 메시지"
           }
-        }
+        },
+        "required": ["error", "success"]
       },
       "ErrorResponse": {
         "type": "object",
@@ -2973,7 +2975,8 @@
             "description": "에러 발생 시각. UTC ISO-8601",
             "example": "2026-07-27T05:02:11Z"
           }
-        }
+        },
+        "required": ["code", "fieldErrors", "message", "timestamp"]
       },
       "FieldErrorDetail": {
         "type": "object",
@@ -2994,7 +2997,8 @@
             "description": "실패 사유",
             "example": "크기가 1에서 10 사이여야 합니다"
           }
-        }
+        },
+        "required": ["field"]
       },
       "ApiResponseUnit": {
         "type": "object",
@@ -3019,7 +3023,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "CreateBoardRequest": {
         "type": "object",
@@ -3063,7 +3068,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "BoardResponse": {
         "type": "object",
@@ -3080,7 +3086,8 @@
             "description": "보드 ID (uuidv7). 오름차순이 생성순",
             "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
           }
-        }
+        },
+        "required": ["id", "name"]
       },
       "RefreshRequest": {
         "type": "object",
@@ -3124,7 +3131,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "TokenPairResponse": {
         "type": "object",
@@ -3146,7 +3154,8 @@
             "description": "accessToken 만료까지 남은 초",
             "example": 3600
           }
-        }
+        },
+        "required": ["accessToken", "accessTokenExpiresIn", "refreshToken"]
       },
       "LoginRequest": {
         "type": "object",
@@ -3210,7 +3219,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "LoginResponse": {
         "type": "object",
@@ -3244,7 +3254,14 @@
             "description": "이번 로그인으로 새로 가입했는지 여부",
             "example": true
           }
-        }
+        },
+        "required": [
+          "accessToken",
+          "accessTokenExpiresIn",
+          "isNewUser",
+          "pendingTerms",
+          "refreshToken"
+        ]
       },
       "PendingTermResponse": {
         "type": "object",
@@ -3281,7 +3298,8 @@
             "description": "약관 ID (uuidv7)",
             "example": "01983f2a-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
-        }
+        },
+        "required": ["agreed", "code", "id", "isRequired", "version"]
       },
       "CreateAnalysisRequest": {
         "type": "object",
@@ -3298,10 +3316,12 @@
             "description": "촬영 시각 오름차순으로 보내는 사진 90~100장",
             "items": {
               "$ref": "#/components/schemas/PhotoUploadItem"
-            }
+            },
+            "maxItems": 100,
+            "minItems": 90
           }
         },
-        "required": ["boardId"]
+        "required": ["boardId", "photos"]
       },
       "PhotoUploadItem": {
         "type": "object",
@@ -3316,8 +3336,8 @@
           "contentType": {
             "type": "string",
             "description": "지원 형식. 업로드 시 Content-Type과 일치해야 함",
-            "example": "image/jpeg",
-            "minLength": 1
+            "enum": ["image/jpeg", "image/png", "image/heic"],
+            "example": "image/jpeg"
           }
         },
         "required": ["contentType", "takenAt"]
@@ -3351,7 +3371,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "CreateAnalysisResponse": {
         "type": "object",
@@ -3370,7 +3391,8 @@
               "$ref": "#/components/schemas/PhotoUploadUrlItem"
             }
           }
-        }
+        },
+        "required": ["analysisId", "uploads"]
       },
       "PhotoUploadUrlItem": {
         "type": "object",
@@ -3387,7 +3409,8 @@
             "description": "GCS 업로드용 signed URL (만료 15분, 장당 15MB 제한)",
             "example": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Expires=900"
           }
-        }
+        },
+        "required": ["photoId", "uploadUrl"]
       },
       "ApiResponseStartUploadResponse": {
         "type": "object",
@@ -3418,7 +3441,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "StartUploadResponse": {
         "type": "object",
@@ -3445,7 +3469,8 @@
               "format": "uuid"
             }
           }
-        }
+        },
+        "required": ["failedCount", "failedPhotoIds", "uploadedCount"]
       },
       "UpdateStickerTitleRequest": {
         "type": "object",
@@ -3490,7 +3515,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "UpdateStickerTitleResponse": {
         "type": "object",
@@ -3507,7 +3533,8 @@
             "description": "스티커 ID (uuidv7)",
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
-        }
+        },
+        "required": ["id", "title"]
       },
       "RenameBoardRequest": {
         "type": "object",
@@ -3616,7 +3643,7 @@
             "example": "01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
           }
         },
-        "required": ["color", "stroke"]
+        "required": ["color", "id", "scope", "stroke", "strokeWidth"]
       },
       "StickerLayoutRequest": {
         "type": "object",
@@ -3683,7 +3710,18 @@
             "description": "겹침 순서",
             "example": 6
           }
-        }
+        },
+        "required": [
+          "badgeOffsetX",
+          "badgeOffsetY",
+          "badgeRotation",
+          "id",
+          "posX",
+          "posY",
+          "rotation",
+          "scale",
+          "zIndex"
+        ]
       },
       "ApiResponseUserResponse": {
         "type": "object",
@@ -3714,7 +3752,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "UserResponse": {
         "type": "object",
@@ -3743,7 +3782,8 @@
             "description": "사용자 ID (uuidv7)",
             "example": "01983f2a-7c31-7b02-93d4-1f2e3d4c5b6a"
           }
-        }
+        },
+        "required": ["createdAt", "email", "id", "provider"]
       },
       "ApiResponseListTermResponse": {
         "type": "object",
@@ -3771,7 +3811,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "TermResponse": {
         "type": "object",
@@ -3808,7 +3849,8 @@
             "description": "약관 ID (uuidv7)",
             "example": "01983f2a-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
-        }
+        },
+        "required": ["agreed", "code", "id", "isRequired", "version"]
       },
       "ApiResponseRecapDetailResponse": {
         "type": "object",
@@ -3839,7 +3881,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "RecapCommentResponse": {
         "type": "object",
@@ -3868,7 +3911,8 @@
             "description": "스티커 기준 상대 좌표 Y. posX와 항상 함께 null이거나 함께 채워진다",
             "example": -140
           }
-        }
+        },
+        "required": ["content", "id"]
       },
       "RecapDetailResponse": {
         "type": "object",
@@ -3897,7 +3941,8 @@
               "$ref": "#/components/schemas/RecapPhotoResponse"
             }
           }
-        }
+        },
+        "required": ["comments", "photos", "sticker", "summary"]
       },
       "RecapPhotoResponse": {
         "type": "object",
@@ -3920,7 +3965,8 @@
             "description": "사진 ID (uuidv7)",
             "example": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
-        }
+        },
+        "required": ["id", "imageUrl", "takenAt"]
       },
       "StickerResponse": {
         "type": "object",
@@ -4006,7 +4052,21 @@
             "description": "겹침 순서",
             "example": 3
           }
-        }
+        },
+        "required": [
+          "badgeOffsetX",
+          "badgeOffsetY",
+          "badgeRotation",
+          "id",
+          "isNew",
+          "posX",
+          "posY",
+          "rotation",
+          "scale",
+          "title",
+          "type",
+          "zIndex"
+        ]
       },
       "ApiResponseListBoardResponse": {
         "type": "object",
@@ -4034,7 +4094,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "ApiResponseBoardDetailResponse": {
         "type": "object",
@@ -4065,7 +4126,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       },
       "BoardDetailResponse": {
         "type": "object",
@@ -4096,7 +4158,8 @@
             "description": "보드 ID (uuidv7)",
             "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
           }
-        }
+        },
+        "required": ["drawings", "id", "name", "stickers"]
       },
       "BoardStickerResponse": {
         "type": "object",
@@ -4182,7 +4245,21 @@
             "description": "겹침 순서",
             "example": 3
           }
-        }
+        },
+        "required": [
+          "badgeOffsetX",
+          "badgeOffsetY",
+          "badgeRotation",
+          "id",
+          "isNew",
+          "posX",
+          "posY",
+          "rotation",
+          "scale",
+          "title",
+          "type",
+          "zIndex"
+        ]
       },
       "DrawingResponse": {
         "type": "object",
@@ -4229,7 +4306,8 @@
             "description": "그림 ID (uuidv7)",
             "example": "01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
-        }
+        },
+        "required": ["color", "id", "scope", "stroke", "strokeWidth"]
       },
       "AnalysisStatusResponse": {
         "type": "object",
@@ -4276,7 +4354,8 @@
             "description": "분석이 완료된 시각",
             "example": "2026-07-27T14:03:38+09:00"
           }
-        }
+        },
+        "required": ["boardId", "id", "progress", "status"]
       },
       "ApiResponseAnalysisStatusResponse": {
         "type": "object",
@@ -4307,7 +4386,8 @@
               }
             ]
           }
-        }
+        },
+        "required": ["success"]
       }
     },
     "securitySchemes": {

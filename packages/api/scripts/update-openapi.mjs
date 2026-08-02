@@ -21,6 +21,12 @@ if (typeof document.openapi !== 'string' || typeof document.paths !== 'object') 
   throw new Error('Response is not an OpenAPI document');
 }
 
+for (const schema of Object.values(document.components?.schemas ?? {})) {
+  if (schema.properties?.success) {
+    schema.required = [...new Set([...(schema.required ?? []), 'success'])];
+  }
+}
+
 const output = new URL('../openapi/ppotto-api.json', import.meta.url);
 const temporary = new URL(`../openapi/.ppotto-api.${process.pid}.tmp`, import.meta.url);
 
