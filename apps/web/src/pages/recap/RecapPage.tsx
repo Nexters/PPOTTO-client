@@ -28,9 +28,8 @@ export function RecapPage({ stickerId }: RecapPageProps) {
 
   if (!data) return null;
 
-  const floatComments = data.comments.filter((comment) => comment.isFloat);
-  // TODO: 일단 첫 번째 댓글을 요약으로 가정, 이후 수정 필요
-  const [summary, ...tags] = data.comments.filter((comment) => !comment.isFloat);
+  const floatComments = data.comments.filter((comment) => comment.posX != null);
+  const tags = data.comments.filter((comment) => comment.posX == null);
 
   return (
     <div className={cn('flex min-h-full w-full flex-col gap-10 bg-black px-5', 'pt-16 pb-5.5')}>
@@ -41,7 +40,7 @@ export function RecapPage({ stickerId }: RecapPageProps) {
             imageUrl={data.sticker.imageUrl ?? ''}
             floatComments={floatComments}
           />
-          {summary && <RecapSummary content={summary.content} />}
+          <RecapSummary content={data.summary} />
         </div>
         <RecapThemeTags tags={tags.map((tag) => tag.content)} />
       </div>
