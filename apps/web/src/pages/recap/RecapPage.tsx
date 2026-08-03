@@ -47,7 +47,7 @@ export function RecapPage({ stickerId }: RecapPageProps) {
         </div>
         <RecapThemeTags tags={tags.map((tag) => tag.content)} />
       </div>
-      <RecapPhotoGrid stickerId={stickerId} photos={data.photos} />
+      <RecapPhotoGrid stickerId={stickerId} photos={data.photos} onImageError={() => refetch()} />
     </div>
   );
 }

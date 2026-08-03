@@ -9,9 +9,15 @@ type PhotoFilmstripProps = {
   photos: StickerPhoto[];
   selectedIndex: number;
   onSelect: (index: number) => void;
+  onImageError?: () => void;
 };
 
-export function PhotoFilmstrip({ photos, selectedIndex, onSelect }: PhotoFilmstripProps) {
+export function PhotoFilmstrip({
+  photos,
+  selectedIndex,
+  onSelect,
+  onImageError,
+}: PhotoFilmstripProps) {
   const { containerRef, getItemRef } = useFilmstripSync(selectedIndex, onSelect);
 
   return (
@@ -34,7 +40,14 @@ export function PhotoFilmstrip({ photos, selectedIndex, onSelect }: PhotoFilmstr
             index === selectedIndex ? 'border-gray-50' : 'border-transparent',
           )}
         >
-          <Image src={photo.imageUrl} alt="" fill sizes="48px" className="object-cover" />
+          <Image
+            src={photo.imageUrl}
+            alt=""
+            fill
+            sizes="48px"
+            className="object-cover"
+            onError={onImageError}
+          />
         </button>
       ))}
     </div>

@@ -6,9 +6,10 @@ import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
 type RecapPhotoGridProps = {
   stickerId: string;
   photos: StickerPhoto[];
+  onImageError?: () => void;
 };
 
-export function RecapPhotoGrid({ stickerId, photos }: RecapPhotoGridProps) {
+export function RecapPhotoGrid({ stickerId, photos, onImageError }: RecapPhotoGridProps) {
   const { push } = useFlow();
 
   return (
@@ -25,7 +26,14 @@ export function RecapPhotoGrid({ stickerId, photos }: RecapPhotoGridProps) {
             className="relative aspect-square w-full overflow-hidden rounded-8"
             onClick={() => push('PhotoViewer', { stickerId, initialIndex: String(index) })}
           >
-            <Image src={photo.imageUrl} alt="" fill sizes="33vw" className="object-cover" />
+            <Image
+              src={photo.imageUrl}
+              alt=""
+              fill
+              sizes="33vw"
+              className="object-cover"
+              onError={onImageError}
+            />
           </button>
         ))}
       </div>
