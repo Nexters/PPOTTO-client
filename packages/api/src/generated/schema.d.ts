@@ -3291,34 +3291,27 @@ export interface operations {
                      *           "badgeOffsetY": 96,
                      *           "badgeRotation": 0
                      *         },
+                     *         "summary": "웃기고 귀여우면 일단 주워요",
                      *         "comments": [
                      *           {
                      *             "id": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
-                     *             "content": "웃기고 귀여우면 일단 주워요",
-                     *             "isFloat": true,
+                     *             "content": "야옹~",
                      *             "posX": 0,
                      *             "posY": -140
                      *           },
                      *           {
                      *             "id": "01983f2d-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
                      *             "content": "또 주웠네",
-                     *             "isFloat": true,
                      *             "posX": -120,
                      *             "posY": -40
                      *           },
                      *           {
                      *             "id": "01983f2d-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
-                     *             "content": "또 고양이가 주워왔네요",
-                     *             "isFloat": false,
-                     *             "posX": null,
-                     *             "posY": null
+                     *             "content": "또 고양이가 주워왔네요"
                      *           },
                      *           {
                      *             "id": "01983f2d-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
-                     *             "content": "저장한 동물 짤 중 62%가 고양이였어요 야옹!",
-                     *             "isFloat": false,
-                     *             "posX": null,
-                     *             "posY": null
+                     *             "content": "저장한 동물 짤 중 62%가 고양이였어요 야옹!"
                      *           }
                      *         ],
                      *         "photos": [
@@ -3343,16 +3336,15 @@ export interface operations {
                         success: boolean;
                     } & {
                         data?: {
-                            /** @description id(uuidv7) 오름차순 */
+                            /** @description id(uuidv7) 오름차순. posX/posY가 있으면 스티커 주변 말풍선, 없으면 테마 분석 태그로 하단 노출 */
                             comments: {
                                 content: string;
                                 /** Format: uuid */
                                 id: string;
-                                /** @description true 면 스티커 주변 말풍선, false 면 하단 순차 노출 */
-                                isFloat: boolean;
-                                /** @description isFloat 일 때 스티커 기준 상대 좌표 */
-                                posX?: number | null;
-                                posY?: number | null;
+                                /** @description 말풍선일 때만 존재. 스티커 기준 상대 좌표 */
+                                posX?: number;
+                                /** @description 말풍선일 때만 존재 */
+                                posY?: number;
                             }[];
                             /** @description takenAt, id 오름차순. 열람용 사진 포함 */
                             photos: {
@@ -3389,6 +3381,8 @@ export interface operations {
                                 type: "IMAGE" | "TEXT";
                                 zIndex: number;
                             };
+                            /** @description 한 줄 요약 */
+                            summary: string;
                         };
                     };
                 };

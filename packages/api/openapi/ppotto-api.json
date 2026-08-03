@@ -3104,7 +3104,7 @@
                       "properties": {
                         "data": {
                           "type": "object",
-                          "required": ["sticker", "comments", "photos"],
+                          "required": ["sticker", "summary", "comments", "photos"],
                           "properties": {
                             "sticker": {
                               "type": "object",
@@ -3178,12 +3178,16 @@
                                 }
                               }
                             },
+                            "summary": {
+                              "type": "string",
+                              "description": "한 줄 요약"
+                            },
                             "comments": {
                               "type": "array",
-                              "description": "id(uuidv7) 오름차순",
+                              "description": "id(uuidv7) 오름차순. posX/posY가 있으면 스티커 주변 말풍선, 없으면 테마 분석 태그로 하단 노출",
                               "items": {
                                 "type": "object",
-                                "required": ["id", "content", "isFloat"],
+                                "required": ["id", "content"],
                                 "properties": {
                                   "id": {
                                     "type": "string",
@@ -3192,16 +3196,13 @@
                                   "content": {
                                     "type": "string"
                                   },
-                                  "isFloat": {
-                                    "type": "boolean",
-                                    "description": "true 면 스티커 주변 말풍선, false 면 하단 순차 노출"
-                                  },
                                   "posX": {
-                                    "type": ["number", "null"],
-                                    "description": "isFloat 일 때 스티커 기준 상대 좌표"
+                                    "type": "number",
+                                    "description": "말풍선일 때만 존재. 스티커 기준 상대 좌표"
                                   },
                                   "posY": {
-                                    "type": ["number", "null"]
+                                    "type": "number",
+                                    "description": "말풍선일 때만 존재"
                                   }
                                 }
                               }
@@ -3253,34 +3254,27 @@
                       "badgeOffsetY": 96.0,
                       "badgeRotation": 0.0
                     },
+                    "summary": "웃기고 귀여우면 일단 주워요",
                     "comments": [
                       {
                         "id": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
-                        "content": "웃기고 귀여우면 일단 주워요",
-                        "isFloat": true,
+                        "content": "야옹~",
                         "posX": 0.0,
                         "posY": -140.0
                       },
                       {
                         "id": "01983f2d-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
                         "content": "또 주웠네",
-                        "isFloat": true,
                         "posX": -120.0,
                         "posY": -40.0
                       },
                       {
                         "id": "01983f2d-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
-                        "content": "또 고양이가 주워왔네요",
-                        "isFloat": false,
-                        "posX": null,
-                        "posY": null
+                        "content": "또 고양이가 주워왔네요"
                       },
                       {
                         "id": "01983f2d-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
-                        "content": "저장한 동물 짤 중 62%가 고양이였어요 야옹!",
-                        "isFloat": false,
-                        "posX": null,
-                        "posY": null
+                        "content": "저장한 동물 짤 중 62%가 고양이였어요 야옹!"
                       }
                     ],
                     "photos": [
