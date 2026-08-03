@@ -6,6 +6,7 @@ import { Layer, Stage } from 'react-konva';
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
+import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import { computeInitialLayout, needsInitialLayout, toLayoutInput } from '../model/board-layout';
 
@@ -21,9 +22,11 @@ type BoardCanvasProps = {
 export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(REFERENCE_WIDTH);
-  const { data, isLoading, isError } = useBoardQuery(boardId);
+  const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
+
+  useRefetchOnActive(refetch, isStale);
 
   useEffect(() => {
     const container = containerRef.current;
