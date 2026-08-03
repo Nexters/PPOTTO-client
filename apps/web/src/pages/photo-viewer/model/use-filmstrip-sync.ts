@@ -62,5 +62,9 @@ export function useFilmstripSync(selectedIndex: number, onSelect: (index: number
     };
   }, [selectedIndex, onSelect]);
 
-  return { containerRef, itemRefs };
+  const getItemRef = (index: number) => (el: HTMLButtonElement | null) => {
+    itemRefs.current[index] = el;
+  };
+
+  return { containerRef, getItemRef };
 }

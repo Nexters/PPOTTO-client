@@ -12,7 +12,7 @@ type PhotoFilmstripProps = {
 };
 
 export function PhotoFilmstrip({ photos, selectedIndex, onSelect }: PhotoFilmstripProps) {
-  const { containerRef, itemRefs } = useFilmstripSync(selectedIndex, onSelect);
+  const { containerRef, getItemRef } = useFilmstripSync(selectedIndex, onSelect);
 
   return (
     <div
@@ -25,9 +25,7 @@ export function PhotoFilmstrip({ photos, selectedIndex, onSelect }: PhotoFilmstr
       {photos.map((photo, index) => (
         <button
           key={photo.id}
-          ref={(el) => {
-            itemRefs.current[index] = el;
-          }}
+          ref={getItemRef(index)}
           type="button"
           onClick={() => onSelect(index)}
           className={cn(
