@@ -7,15 +7,15 @@ const SCROLL_END_DELAY_MS = 100;
 export function useFilmstripSync(selectedIndex: number, onSelect: (index: number) => void) {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const isFirstScroll = useRef(true);
+  const skipAnimationRef = useRef(true);
 
   useEffect(() => {
     itemRefs.current[selectedIndex]?.scrollIntoView({
-      behavior: isFirstScroll.current ? 'auto' : 'smooth',
+      behavior: skipAnimationRef.current ? 'auto' : 'smooth',
       inline: 'center',
       block: 'nearest',
     });
-    isFirstScroll.current = false;
+    skipAnimationRef.current = false;
   }, [selectedIndex]);
 
   // 위 effect의 스크롤도 감지되지만 같은 인덱스라 재호출 없음
