@@ -3,6 +3,26 @@ import { useEffect, useRef } from 'react';
 // scrollend는 구형 WebView 미지원 → scroll로 대체
 const SCROLL_END_DELAY_MS = 100;
 
+function findClosestIndex(container: HTMLDivElement, items: (HTMLButtonElement | null)[]) {
+  const containerRect = container.getBoundingClientRect();
+  const containerCenter = containerRect.left + containerRect.width / 2;
+
+  let closestIndex = 0;
+  let minDistance = Infinity;
+  items.forEach((item, index) => {
+    if (!item) return;
+    const itemRect = item.getBoundingClientRect();
+    const itemCenter = itemRect.left + itemRect.width / 2;
+    const distance = Math.abs(itemCenter - containerCenter);
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestIndex = index;
+    }
+  });
+
+  return closestIndex;
+}
+
 // 필름스트립과 selectedIndex를 양방향으로 동기화
 export function useFilmstripSync(selectedIndex: number, onSelect: (index: number) => void) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,22 +46,7 @@ export function useFilmstripSync(selectedIndex: number, onSelect: (index: number
     let scrollEndTimer: ReturnType<typeof setTimeout>;
 
     const handleScrollEnd = () => {
-      const containerRect = container.getBoundingClientRect();
-      const containerCenter = containerRect.left + containerRect.width / 2;
-
-      let closestIndex = selectedIndex;
-      let minDistance = Infinity;
-      itemRefs.current.forEach((item, index) => {
-        if (!item) return;
-        const itemRect = item.getBoundingClientRect();
-        const itemCenter = itemRect.left + itemRect.width / 2;
-        const distance = Math.abs(itemCenter - containerCenter);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestIndex = index;
-        }
-      });
-
+      const closestIndex = findClosestIndex(container, itemRefs.current);
       if (closestIndex !== selectedIndex) onSelect(closestIndex);
     };
 
