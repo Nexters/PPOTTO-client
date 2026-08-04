@@ -33,6 +33,8 @@ export function AppWebView({ path = '' }: { path?: string }) {
         onMessage={(e) => pushMessage(e.nativeEvent.data)}
         onLoadEnd={() => setLoaded(true)}
         allowsBackForwardNavigationGestures={false}
+        bounces={false}
+        overScrollMode="never"
       />
       {!loaded && (
         <View
