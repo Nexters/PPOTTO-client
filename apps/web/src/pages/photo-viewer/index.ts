@@ -1,0 +1,1 @@
+export { PhotoViewerPage } from './PhotoViewerPage';
