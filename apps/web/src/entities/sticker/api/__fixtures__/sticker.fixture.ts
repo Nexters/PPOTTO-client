@@ -1,6 +1,7 @@
 import type { StickerRecap } from '../sticker-api';
 
 export const stickerFixture: StickerRecap = {
+  summary: '웃기고 귀여우면 일단 주워요',
   sticker: {
     id: '01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f',
     title: '동물 밈 짤줍',
@@ -17,7 +18,6 @@ export const stickerFixture: StickerRecap = {
     badgeOffsetY: 96.0,
     badgeRotation: 0.0,
   },
-  summary: '웃기고 귀여우면 일단 주워요',
   comments: [
     {
       id: '01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f',
@@ -40,38 +40,56 @@ export const stickerFixture: StickerRecap = {
     {
       id: '01983f2d-5e6f-7a7b-c8d9-0e1f2a3b4c5d',
       content: '냥집사',
+      posX: null,
+      posY: null,
     },
     {
       id: '01983f2d-6f7a-7b8c-d9e0-1f2a3b4c5d6e',
       content: '웃긴 동물들',
+      posX: null,
+      posY: null,
     },
     {
       id: '01983f2d-7a8b-7c9d-e0f1-2a3b4c5d6e7f',
       content: '당신은 밈 수집가?',
+      posX: null,
+      posY: null,
     },
     {
       id: '01983f2d-8a9b-7c0d-e1f2-3a4b5c6d7e8f',
       content: '복슬복슬',
+      posX: null,
+      posY: null,
     },
     {
       id: '01983f2d-8b9c-7d0e-f1a2-3b4c5d6e7f8a',
       content: '저장한 동물 짤 중 62%가 고양이다냥!',
+      posX: null,
+      posY: null,
     },
     {
       id: '01983f2d-9c0d-7e1f-a2b3-4c5d6e7f8a9b',
       content: '감도 높은 취향',
+      posX: null,
+      posY: null,
     },
     {
       id: '01983f2d-ad1e-7f2a-b3c4-5d6e7f8a9b0c',
       content: '밈잘알',
+      posX: null,
+      posY: null,
     },
     {
       id: '01983f2d-be2f-7a3b-c4d5-6e7f8a9b0c1d',
       content: '밈 고르는 안목 보소',
+      posX: null,
+      posY: null,
     },
     {
       id: '01983f2d-cf3a-7b4c-d5e6-7f8a9b0c1d2e',
       content: '근데 소랑 돌고래가 같이 나는 사진은 뭐임? 🤔',
+      posX: null,
+      posY: null,
     },
   ],
   photos: [

@@ -2,12 +2,18 @@
   "name": "ppotto",
   "private": true,
   "scripts": {
+    "openapi:update": "node --env-file=.env packages/api/scripts/update-openapi.mjs && pnpm --filter @ppotto/api exec prettier --write openapi/ppotto-api.json && pnpm gen",
+    "gen": "pnpm --filter @ppotto/api gen",
+    "gen:check": "pnpm --filter @ppotto/api gen:check",
     "assets:generate": "pnpm --filter @ppotto/assets generate",
     "assets:test": "pnpm --filter @ppotto/assets test",
     "web": "pnpm --filter web dev",
     "mobile": "pnpm --filter mobile start",
     "prepare": "husky",
-    "typecheck": "pnpm -r --filter './apps/**' --filter './packages/**' run typecheck"
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "build": "pnpm -r run build"
   },
   "lint-staged": {
     "apps/web/**/*.{ts,tsx}": [

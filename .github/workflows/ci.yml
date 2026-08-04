@@ -7,36 +7,8 @@ on:
     branches: [main, develop]
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      web: ${{ steps.filter.outputs.web }}
-      mobile: ${{ steps.filter.outputs.mobile }}
-      api: ${{ steps.filter.outputs.api }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Detect changes
-        uses: dorny/paths-filter@v4
-        id: filter
-        with:
-          filters: |
-            web:
-              - 'apps/web/**'
-              - 'packages/**'
-              - 'pnpm-lock.yaml'
-            mobile:
-              - 'apps/mobile/**'
-              - 'packages/**'
-              - 'pnpm-lock.yaml'
-            api:
-              - 'packages/api/**'
-              - 'pnpm-lock.yaml'
-
-  api:
-    name: API
-    needs: changes
-    if: needs.changes.outputs.api == 'true'
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -52,61 +24,13 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
       - name: Typecheck
-        run: pnpm --filter @ppotto/api typecheck
+        run: pnpm typecheck
       - name: Test
-        run: pnpm --filter @ppotto/api test
+        run: pnpm test
       - name: Check generated schema
-        run: pnpm --filter @ppotto/api gen:check
-
-  web:
-    name: Web
-    needs: changes
-    if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Lint
-        run: pnpm --filter web lint
-      - name: Typecheck
-        run: pnpm --filter web typecheck
+        run: pnpm gen:check
       - name: Build
-        run: pnpm --filter web build
-
-  mobile:
-    name: Mobile
-    needs: changes
-    if: needs.changes.outputs.mobile == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Lint
-        run: pnpm --filter mobile lint
-      - name: Typecheck
-        run: pnpm --filter mobile typecheck
-      - name: Test
-        run: pnpm --filter mobile test --passWithNoTests
+        run: pnpm build

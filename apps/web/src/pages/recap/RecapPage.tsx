@@ -28,8 +28,8 @@ export function RecapPage({ stickerId }: RecapPageProps) {
 
   if (!data) return null;
 
-  const floatComments = data.comments.filter((comment) => comment.posX !== undefined);
-  const tags = data.comments.filter((comment) => comment.posX === undefined);
+  const floatComments = data.comments.filter((comment) => comment.posX != null);
+  const tags = data.comments.filter((comment) => comment.posX == null);
 
   return (
     <div className={cn('flex min-h-full w-full flex-col gap-10 bg-black px-5', 'pt-16 pb-5.5')}>
