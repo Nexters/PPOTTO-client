@@ -1,7 +1,7 @@
 'use client';
 
 import { useFlow } from '@stackflow/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Layer, Stage } from 'react-konva';
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
@@ -11,30 +11,26 @@ import { computeInitialLayout, needsInitialLayout, toLayoutInput } from '../mode
 
 import { Sticker, type StickerData } from './Sticker';
 
-const REFERENCE_WIDTH = 360;
-const REFERENCE_HEIGHT = 740;
-
 type BoardCanvasProps = {
   boardId: string;
 };
 
 export function BoardCanvas({ boardId }: BoardCanvasProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(REFERENCE_WIDTH);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const { data, isLoading, isError } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
 
   useEffect(() => {
-    const container = containerRef.current;
     if (!container) return;
 
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) setWidth(entry.contentRect.width);
+      if (entry) setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
     });
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [container]);
 
   const unlaidOut = data ? needsInitialLayout(data.stickers) : false;
   const layout = data ? (unlaidOut ? computeInitialLayout(data.stickers) : data.stickers) : null;
@@ -44,8 +40,6 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     saveLayout({ boardId, input: toLayoutInput(layout) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId, data]);
-
-  const scale = width / REFERENCE_WIDTH;
 
   if (isLoading) {
     return (
@@ -71,8 +65,8 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     .sort((a, b) => a.zIndex - b.zIndex);
 
   return (
-    <div ref={containerRef} className="flex h-full w-full items-center justify-center">
-      <Stage width={width} height={REFERENCE_HEIGHT * scale} scaleX={scale} scaleY={scale}>
+    <div ref={setContainer} className="h-full w-full touch-none">
+      <Stage draggable width={viewport.width} height={viewport.height}>
         <Layer>
           {stickers.map((sticker) => (
             <Sticker
