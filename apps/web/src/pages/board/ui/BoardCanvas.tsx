@@ -2,7 +2,7 @@
 
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useFlow } from '@stackflow/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Layer, Stage } from 'react-konva';
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
@@ -94,10 +94,11 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
 
   // ResizeObserver가 아직 실제 크기를 못 잰 첫 렌더 순간에는 배치를 미룸
   const hasViewport = viewport.width > 0 && viewport.height > 0;
-  const newLayout =
-    data && hasViewport && unplacedStickers.length > 0
-      ? computeInitialLayout(unplacedStickers, placedStickers, viewport)
-      : [];
+  const newLayout = useMemo(() => {
+    if (!data || !hasViewport || unplacedStickers.length === 0) return [];
+    return computeInitialLayout(unplacedStickers, placedStickers, viewport);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, hasViewport]);
   const layout = data ? [...placedStickers, ...newLayout] : null;
 
   useEffect(() => {
