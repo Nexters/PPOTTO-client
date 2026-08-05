@@ -1,15 +1,14 @@
 /**
- * 동작 범위 (2026-08-04 인터뷰)
+ * 동작 범위 (2026-08-04 인터뷰, 2026-08-05 재구성)
  *
- * 제외: 새 스티커 추가/혼합 배치(일부는 배치됨 + 일부는 신규) — 별도 기능, 슬롯·zIndex 재계산 설계 필요
  * 제외: 리페치 시 중복 저장 방지 — TanStack Query 구조적 공유로 실제론 완화되나, mock 기반 유닛 테스트로는 검증 불가
  * 제외: 로딩/에러 문구 렌더링 — 임시로 작성한 문구라 디자인 미확정
  *
- * [팀확인] 스티커 새로 생성 시 기존 배치된 스티커를 자동으로 구석에 재배치하는지 — 기획 확인 대기
- * [팀확인] 새로 생성된 스티커끼리 모아서 배치해야 하는지, 빈 곳 아무데나 둬도 되는지 — 기획/디자인 확인 대기
+ * "새 스티커 추가/혼합 배치"(일부는 배치됨 + 일부는 신규)는 이제 지원 대상이다 — 기존 스티커는
+ * 재배치하지 않고, 새 스티커만 빈 공간을 찾아 뭉쳐서 배치한다.
  *
  * 검증 지점 이동 — 아래는 여기서 다시 보지 않는다.
- *   배치 좌표·zIndex·badgeOffsetY 계산 규칙 → board-layout.test.ts
+ *   빈 공간 탐색·군집·회전·zIndex 등 배치 계산 규칙 → board-layout.test.ts
  */
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,9 +19,20 @@ import { useBoardQuery } from '@/entities/board/api/board-queries';
 
 import { BoardCanvas } from './BoardCanvas';
 
-// jsdom엔 ResizeObserver가 없어서(BoardCanvas가 컨테이너 너비 관찰에 사용) 최소 스텁으로 대체한다.
+// jsdom엔 ResizeObserver가 없어서(BoardCanvas가 컨테이너 크기 관찰에 사용) 최소 스텁으로 대체한다.
+// BoardCanvas가 이제 뷰포트 크기를 알아야 배치를 계산하므로(뷰포트 중앙 앵커), observe() 즉시 가짜 크기를 콜백으로 흘려보낸다.
 class ResizeObserverStub {
-  observe() {}
+  #callback: ResizeObserverCallback;
+
+  constructor(callback: ResizeObserverCallback) {
+    this.#callback = callback;
+  }
+
+  observe() {
+    const entry = { contentRect: { width: 800, height: 600 } } as ResizeObserverEntry;
+    this.#callback([entry], this as unknown as ResizeObserver);
+  }
+
   unobserve() {}
   disconnect() {}
 }

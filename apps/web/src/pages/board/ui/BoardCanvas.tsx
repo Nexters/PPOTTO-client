@@ -88,14 +88,23 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     pinchTouchesRef.current = null;
   };
 
-  const unlaidOut = data ? needsInitialLayout(data.stickers) : false;
-  const layout = data ? (unlaidOut ? computeInitialLayout(data.stickers) : data.stickers) : null;
+  // 스티커를 이미 배치된 것과 새로 생긴 것으로 나눔
+  const placedStickers = data?.stickers.filter((sticker) => !needsInitialLayout([sticker])) ?? [];
+  const unplacedStickers = data?.stickers.filter((sticker) => needsInitialLayout([sticker])) ?? [];
+
+  // ResizeObserver가 아직 실제 크기를 못 잰 첫 렌더 순간에는 배치를 미룸
+  const hasViewport = viewport.width > 0 && viewport.height > 0;
+  const newLayout =
+    data && hasViewport && unplacedStickers.length > 0
+      ? computeInitialLayout(unplacedStickers, placedStickers, viewport)
+      : [];
+  const layout = data ? [...placedStickers, ...newLayout] : null;
 
   useEffect(() => {
-    if (!layout || !unlaidOut) return;
-    saveLayout({ boardId, input: toLayoutInput(layout) });
+    if (newLayout.length === 0) return;
+    saveLayout({ boardId, input: toLayoutInput(newLayout) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardId, data]);
+  }, [boardId, data, hasViewport]);
 
   if (isLoading) {
     return (
