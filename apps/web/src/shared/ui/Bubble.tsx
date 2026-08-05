@@ -30,7 +30,7 @@ export function Bubble({ content, direction }: BubbleProps) {
         )}
       >
         <svg viewBox="0 0 17 21" className="h-[20.322px] w-[16.417px]">
-          <path d={tailPath[direction]} className="fill-gray-200" />
+          <path d={tailPath[direction]} fill="#EEEEEE" />
         </svg>
       </div>
     </div>
