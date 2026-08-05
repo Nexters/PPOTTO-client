@@ -1,19 +1,20 @@
 /**
- * 동작 범위 (2026-08-04 인터뷰)
+ * 동작 범위 (2026-08-04 인터뷰, 2026-08-05 재구성)
  *
- * 제외: 스티커 4개 미만(분석 실패로 부분 생성 추정) — 실제 발생 여부 불확실
- * 제외: 스티커 6개 초과 — 발생 가능성 낮음, 정책상 4~6 고정
+ * 보드가 무한 캔버스로 바뀌면서 computeInitialLayout을 고정 프리셋 방식에서
+ * 빈 공간 탐색(무작위 후보 + 충돌 검사) 방식으로 교체한다.
  *
- * [팀확인] 스티커 새로 생성 시 기존 배치된 스티커를 자동으로 구석에 재배치하는지 — 기획 확인 대기
- * [팀확인] 새로 생성된 스티커끼리 모아서 배치해야 하는지, 빈 곳 아무데나 둬도 되는지 — 기획/디자인 확인 대기
+ * - 새 스티커는 무작위 후보 + 충돌 검사(rejection sampling)로 배치. 난수 생성 함수를 인자로 받아
+ *   테스트 가능하게 한다(기본값 Math.random).
+ * - 기존 배치된 스티커는 위치를 그대로 두고(재배치하지 않음), 새 스티커만 그 근처 빈 공간에 배치한다.
+ * - 충돌 판정은 실제 이미지 크기가 아니라 고정 반경(플레이스홀더, 85px)으로 한다.
+ *
+ * [팀확인] 실제 스티커 크기 정규화 규칙(가로 고정/가로+세로 고정 등) — 백엔드·디자인 확인 대기,
+ * 지금은 반경 85px 플레이스홀더로 진행한다.
  */
 import { describe, expect, it } from 'vitest';
 
-import { computeInitialLayout, needsInitialLayout, toLayoutInput } from './board-layout';
-
-function fakeSticker(overrides: Partial<{ id: string; type: string }> = {}) {
-  return { id: 'sticker-1', type: 'IMAGE', ...overrides };
-}
+import { needsInitialLayout, toLayoutInput } from './board-layout';
 
 describe('needsInitialLayout', () => {
   it('모든 스티커의 posX/posY가 0이면 true를 반환한다', () => {
@@ -40,45 +41,14 @@ describe('needsInitialLayout', () => {
 });
 
 describe('computeInitialLayout', () => {
-  // 정책상 스티커는 항상 4~6개이므로, 테스트 입력도 이 범위 안에서만 구성한다.
-  it('스티커 개수만큼 zIndex를 1부터 순서대로 매긴다', () => {
-    const stickers = [
-      fakeSticker({ id: 'a' }),
-      fakeSticker({ id: 'b' }),
-      fakeSticker({ id: 'c' }),
-      fakeSticker({ id: 'd' }),
-    ];
-
-    const result = computeInitialLayout(stickers);
-
-    expect(result.map((sticker) => sticker.zIndex)).toEqual([1, 2, 3, 4]);
-  });
-
-  it('TEXT 타입 스티커는 badgeOffsetY가 -56으로 고정된다', () => {
-    const stickers = [
-      fakeSticker({ id: 'a' }),
-      fakeSticker({ id: 'b' }),
-      fakeSticker({ id: 'c' }),
-      fakeSticker({ id: 'd', type: 'TEXT' }),
-    ];
-
-    const result = computeInitialLayout(stickers);
-
-    expect(result[3]?.badgeOffsetY).toBe(-56);
-  });
-
-  it('IMAGE 타입 스티커는 프리셋의 badgeOffsetY를 그대로 사용한다', () => {
-    const stickers = [
-      fakeSticker({ id: 'a' }),
-      fakeSticker({ id: 'b' }),
-      fakeSticker({ id: 'c' }),
-      fakeSticker({ id: 'd' }),
-    ];
-
-    const result = computeInitialLayout(stickers);
-
-    expect(result[0]?.badgeOffsetY).toBe(-38);
-  });
+  it.todo('새 스티커들은 서로 겹치지 않게 배치된다');
+  it.todo('기존 배치된 스티커가 있으면 그 스티커들의 경계 상자 근처에 새 스티커들을 배치한다');
+  it.todo('기존 배치된 스티커가 없으면 뷰포트 중앙 근처에 새 스티커들을 배치한다');
+  it.todo('배치된 새 스티커들은 서로 가까이 뭉쳐 있다');
+  it.todo('최대 시도 횟수 동안 겹치지 않는 자리를 못 찾으면 겹치더라도 마지막 후보를 사용한다');
+  it.todo('회전 각도는 -15도에서 15도 사이로 무작위 배정된다');
+  it.todo('zIndex는 기존 스티커의 최댓값보다 크게 이어서 매겨진다');
+  it.todo('TEXT 타입 스티커는 badgeOffsetY가 -56으로 고정된다');
 });
 
 describe('toLayoutInput', () => {
