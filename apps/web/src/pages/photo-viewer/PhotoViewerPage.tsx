@@ -2,9 +2,9 @@
 
 import { useFlow } from '@stackflow/react';
 import { useState } from 'react';
-import Image from 'next/image';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
+import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 
 import { useSwipeNavigation } from './model/use-swipe-navigation';
 import { PhotoFilmstrip } from './ui/PhotoFilmstrip';
@@ -16,7 +16,7 @@ type PhotoViewerPageProps = {
 };
 
 export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProps) {
-  const { data, refetch } = useStickerQuery(stickerId);
+  const { data } = useStickerQuery(stickerId);
   const [selectedIndex, setSelectedIndex] = useState(Number(initialIndex));
   const swipeHandlers = useSwipeNavigation(data?.photos.length ?? 0, setSelectedIndex);
   const { pop } = useFlow();
@@ -32,20 +32,20 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
       <div className="mt-4 flex flex-1 flex-col gap-11">
         <div className="relative w-full flex-1" {...swipeHandlers}>
           {selectedPhoto && (
-            <Image
+            <StickerPhotoImage
+              stickerId={stickerId}
               src={selectedPhoto.imageUrl}
               alt=""
               fill
               className="object-contain"
-              onError={() => refetch()}
             />
           )}
         </div>
         <PhotoFilmstrip
+          stickerId={stickerId}
           photos={photos}
           selectedIndex={selectedIndex}
           onSelect={setSelectedIndex}
-          onImageError={() => refetch()}
         />
       </div>
     </div>

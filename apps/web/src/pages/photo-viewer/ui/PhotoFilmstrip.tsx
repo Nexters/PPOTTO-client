@@ -1,22 +1,21 @@
-import Image from 'next/image';
-
 import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
+import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 import { cn } from '@/shared/lib/cn';
 
 import { useFilmstripSync } from '../model/use-filmstrip-sync';
 
 type PhotoFilmstripProps = {
+  stickerId: string;
   photos: StickerPhoto[];
   selectedIndex: number;
   onSelect: (index: number) => void;
-  onImageError?: () => void;
 };
 
 export function PhotoFilmstrip({
+  stickerId,
   photos,
   selectedIndex,
   onSelect,
-  onImageError,
 }: PhotoFilmstripProps) {
   const { containerRef, getItemRef } = useFilmstripSync(selectedIndex, onSelect);
 
@@ -40,13 +39,13 @@ export function PhotoFilmstrip({
             index === selectedIndex ? 'border-gray-50' : 'border-transparent',
           )}
         >
-          <Image
+          <StickerPhotoImage
+            stickerId={stickerId}
             src={photo.imageUrl}
             alt=""
             fill
             sizes="48px"
             className="object-cover"
-            onError={onImageError}
           />
         </button>
       ))}
