@@ -1,5 +1,7 @@
 import type { UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
 
+import { centroid, type Point } from './geometry';
+
 export type LayoutSlot = {
   posX: number;
   posY: number;
@@ -14,8 +16,6 @@ export type ExistingSticker = {
   zIndex: number;
 };
 
-type Point = { x: number; y: number };
-
 // 스티커 크기 정규화 규칙은 충돌 판정용 대표 반지름을 일단 이 값으로 임시로 정해두고 써보고 이상하면 조정할 예정
 const STICKER_COLLISION_RADIUS = 85;
 // 스티커 두 개가 이 거리보다 가까우면 겹친 것으로 봄
@@ -29,15 +29,6 @@ const BADGE_OFFSET = { x: 0, y: 60 };
 
 function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-// 여러 점들의 중심점 계산
-function centroid(points: Point[]): Point {
-  const sum = points.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), {
-    x: 0,
-    y: 0,
-  });
-  return { x: sum.x / points.length, y: sum.y / points.length };
 }
 
 // 새 스티커 무리가 시작될 기준점을 찾음. 첫 배치면 뷰포트 중앙, 기존 스티커가 있으면 그 오른쪽.

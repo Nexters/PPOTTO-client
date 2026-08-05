@@ -1,3 +1,5 @@
+import { centroid, type Point } from './geometry';
+
 export type CameraState = {
   scale: number;
   x: number;
@@ -32,18 +34,10 @@ export function zoomCamera(
   };
 }
 
-function centroid(points: { x: number; y: number }[]): { x: number; y: number } {
-  const sum = points.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), {
-    x: 0,
-    y: 0,
-  });
-  return { x: sum.x / points.length, y: sum.y / points.length };
-}
-
 // 새로 배치된 스티커 무리의 중심이 뷰포트 중앙에 오는 카메라 상태를 계산한다.
 export function computeFocusTarget(
   camera: CameraState,
-  targets: { x: number; y: number }[],
+  targets: Point[],
   viewport: { width: number; height: number },
 ): CameraState {
   const center = centroid(targets);
