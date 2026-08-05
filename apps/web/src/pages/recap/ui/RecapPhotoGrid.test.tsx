@@ -1,10 +1,14 @@
-import { fireEvent, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
 
 vi.mock('@stackflow/react', () => ({
   useFlow: () => ({ push: vi.fn() }),
+}));
+
+vi.mock('@/entities/sticker/api/sticker-queries', () => ({
+  useStickerQuery: () => ({ refetch: vi.fn() }),
 }));
 
 // fill은 next/image 전용 boolean prop이라 DOM에 그대로 넘기면 경고가 나 제외
@@ -33,38 +37,5 @@ describe('RecapPhotoGrid', () => {
     const { container } = render(<RecapPhotoGrid stickerId="sticker-1" photos={photos} />);
 
     expect(container.querySelectorAll('img')).toHaveLength(3);
-  });
-
-  it('이미지 로드 실패 시 onImageError를 호출한다', () => {
-    const onImageError = vi.fn();
-
-    const { container } = render(
-      <RecapPhotoGrid stickerId="sticker-1" photos={[fakePhoto()]} onImageError={onImageError} />,
-    );
-
-    fireEvent.error(container.querySelector('img')!);
-
-    expect(onImageError).toHaveBeenCalledTimes(1);
-  });
-
-  it('사진마다 로드 실패 시 각각 onImageError를 호출한다', () => {
-    const onImageError = vi.fn();
-    const photos = [fakePhoto({ id: 'a' }), fakePhoto({ id: 'b' })];
-
-    const { container } = render(
-      <RecapPhotoGrid stickerId="sticker-1" photos={photos} onImageError={onImageError} />,
-    );
-
-    const images = container.querySelectorAll('img');
-    fireEvent.error(images[0]!);
-    fireEvent.error(images[1]!);
-
-    expect(onImageError).toHaveBeenCalledTimes(2);
-  });
-
-  it('onImageError를 안 넘겨도 로드 실패 시 에러가 나지 않는다', () => {
-    const { container } = render(<RecapPhotoGrid stickerId="sticker-1" photos={[fakePhoto()]} />);
-
-    expect(() => fireEvent.error(container.querySelector('img')!)).not.toThrow();
   });
 });
