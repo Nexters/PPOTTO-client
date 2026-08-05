@@ -8,7 +8,13 @@ import { Layer, Stage } from 'react-konva';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 
-import { type CameraState, panCamera, pinchToZoomParams, zoomCamera } from '../model/board-camera';
+import {
+  type CameraState,
+  computeFocusTarget,
+  panCamera,
+  pinchToZoomParams,
+  zoomCamera,
+} from '../model/board-camera';
 import { computeInitialLayout, needsInitialLayout, toLayoutInput } from '../model/board-layout';
 
 import { Sticker, type StickerData } from './Sticker';
@@ -19,11 +25,18 @@ type BoardCanvasProps = {
 
 type TouchPoint = { x: number; y: number };
 
+const CAMERA_FOCUS_ANIMATION_MS = 350;
+
+function easeOutCubic(progress: number): number {
+  return 1 - (1 - progress) ** 3;
+}
+
 export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
+  const cameraFocusFrameRef = useRef<number | null>(null);
   const { data, isLoading, isError } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
@@ -101,9 +114,36 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
   }, [data, hasViewport]);
   const layout = data ? [...placedStickers, ...newLayout] : null;
 
+  // 새 스티커가 배치되면 저장 요청을 보내고, 그 무리의 중심으로 카메라를 부드럽게 이동시킴
   useEffect(() => {
     if (newLayout.length === 0) return;
     saveLayout({ boardId, input: toLayoutInput(newLayout) });
+
+    const startCamera = camera;
+    const targetCamera = computeFocusTarget(
+      startCamera,
+      newLayout.map((sticker) => ({ x: sticker.posX, y: sticker.posY })),
+      viewport,
+    );
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const progress = Math.min((now - startTime) / CAMERA_FOCUS_ANIMATION_MS, 1);
+      const eased = easeOutCubic(progress);
+      setCamera({
+        scale: startCamera.scale + (targetCamera.scale - startCamera.scale) * eased,
+        x: startCamera.x + (targetCamera.x - startCamera.x) * eased,
+        y: startCamera.y + (targetCamera.y - startCamera.y) * eased,
+      });
+      if (progress < 1) {
+        cameraFocusFrameRef.current = requestAnimationFrame(animate);
+      }
+    };
+    cameraFocusFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (cameraFocusFrameRef.current !== null) cancelAnimationFrame(cameraFocusFrameRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId, data, hasViewport]);
 
