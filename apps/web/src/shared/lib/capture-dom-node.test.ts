@@ -14,7 +14,7 @@ describe('captureDomNode', () => {
 
     const result = await captureDomNode(element);
 
-    expect(toCanvas).toHaveBeenCalledWith(element);
+    expect(toCanvas).toHaveBeenCalledWith(element, { includeQueryParams: true });
     expect(result).toBe(canvas);
   });
 });
