@@ -2,9 +2,9 @@
 
 import { useFlow } from '@stackflow/react';
 import { useState } from 'react';
-import Image from 'next/image';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
+import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 
 import { useSwipeNavigation } from './model/use-swipe-navigation';
 import { PhotoFilmstrip } from './ui/PhotoFilmstrip';
@@ -32,10 +32,21 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
       <div className="mt-4 flex flex-1 flex-col gap-11">
         <div className="relative w-full flex-1" {...swipeHandlers}>
           {selectedPhoto && (
-            <Image src={selectedPhoto.imageUrl} alt="" fill className="object-contain" />
+            <StickerPhotoImage
+              stickerId={stickerId}
+              src={selectedPhoto.imageUrl}
+              alt=""
+              fill
+              className="object-contain"
+            />
           )}
         </div>
-        <PhotoFilmstrip photos={photos} selectedIndex={selectedIndex} onSelect={setSelectedIndex} />
+        <PhotoFilmstrip
+          stickerId={stickerId}
+          photos={photos}
+          selectedIndex={selectedIndex}
+          onSelect={setSelectedIndex}
+        />
       </div>
     </div>
   );

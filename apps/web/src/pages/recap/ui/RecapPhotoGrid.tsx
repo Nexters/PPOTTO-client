@@ -1,7 +1,7 @@
 import { useFlow } from '@stackflow/react';
-import Image from 'next/image';
 
 import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
+import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 
 type RecapPhotoGridProps = {
   stickerId: string;
@@ -25,7 +25,14 @@ export function RecapPhotoGrid({ stickerId, photos }: RecapPhotoGridProps) {
             className="relative aspect-square w-full overflow-hidden rounded-8"
             onClick={() => push('PhotoViewer', { stickerId, initialIndex: String(index) })}
           >
-            <Image src={photo.imageUrl} alt="" fill sizes="33vw" className="object-cover" />
+            <StickerPhotoImage
+              stickerId={stickerId}
+              src={photo.imageUrl}
+              alt=""
+              fill
+              sizes="33vw"
+              className="object-cover"
+            />
           </button>
         ))}
       </div>

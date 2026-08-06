@@ -41,6 +41,7 @@ vi.mock('./Sticker', () => ({
 
 vi.mock('@stackflow/react', () => ({
   useFlow: () => ({ push: vi.fn() }),
+  useActivity: () => ({ isActive: true }),
 }));
 
 vi.mock('@/entities/board/api/board-queries', () => ({
@@ -78,6 +79,8 @@ function mockBoardData(stickers: BoardDetail['stickers']) {
     data: { id: 'board-1', name: '보드', drawings: [], stickers },
     isLoading: false,
     isError: false,
+    refetch: vi.fn(),
+    isStale: false,
   } as unknown as ReturnType<typeof useBoardQuery>);
 }
 
