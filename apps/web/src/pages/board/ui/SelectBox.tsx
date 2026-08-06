@@ -2,7 +2,7 @@
 
 import { Group, Rect } from 'react-konva';
 
-import { TEXT_BOX_HEIGHT, TEXT_BOX_WIDTH, useStickerImage, type StickerData } from './Sticker';
+import { getPhotoSize, useStickerImage, type StickerData } from './Sticker';
 
 const SELECT_BOX_COLOR = '#009fff';
 const SELECT_BOX_HANDLE_SIZE = 4;
@@ -12,14 +12,8 @@ type SelectBoxProps = {
 };
 
 export function SelectBox({ sticker }: SelectBoxProps) {
-  const photoImage = useStickerImage(sticker.type === 'IMAGE' ? sticker.image?.url : undefined);
-
-  const photoWidth = (sticker.image?.width ?? photoImage?.naturalWidth ?? 0) * sticker.scale;
-  const photoHeight = (sticker.image?.height ?? photoImage?.naturalHeight ?? 0) * sticker.scale;
-  const textBoxWidth = TEXT_BOX_WIDTH * sticker.scale;
-  const textBoxHeight = TEXT_BOX_HEIGHT * sticker.scale;
-  const boxWidth = sticker.type === 'IMAGE' ? photoWidth : textBoxWidth;
-  const boxHeight = sticker.type === 'IMAGE' ? photoHeight : textBoxHeight;
+  const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
+  const { width: boxWidth, height: boxHeight } = getPhotoSize(photoImage, sticker.scale);
 
   if (boxWidth <= 0 || boxHeight <= 0) return null;
 

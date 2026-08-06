@@ -182,12 +182,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     );
   }
 
-  const stickers: StickerData[] = layout
-    .map(({ imageUrl, ...sticker }) => ({
-      ...sticker,
-      image: imageUrl ? { url: imageUrl } : undefined,
-    }))
-    .sort((a, b) => a.zIndex - b.zIndex);
+  const stickers: StickerData[] = [...layout].sort((a, b) => a.zIndex - b.zIndex);
   const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
 
   return (
