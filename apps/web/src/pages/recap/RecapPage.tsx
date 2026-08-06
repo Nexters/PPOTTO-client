@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useMarkStickerViewedMutation } from '@/entities/sticker/api/sticker-mutations';
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { cn } from '@/shared/lib/cn';
+import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import { RecapHeader } from './ui/RecapHeader';
 import { RecapPhotoGrid } from './ui/RecapPhotoGrid';
@@ -16,9 +17,11 @@ type RecapPageProps = {
 };
 
 export function RecapPage({ stickerId }: RecapPageProps) {
-  const { data } = useStickerQuery(stickerId);
+  const { data, refetch, isStale } = useStickerQuery(stickerId);
   const { mutate: markViewed } = useMarkStickerViewedMutation();
   const { pop } = useFlow();
+
+  useRefetchOnActive(refetch, isStale);
 
   useEffect(() => {
     if (data?.sticker.isNew) {
@@ -44,7 +47,7 @@ export function RecapPage({ stickerId }: RecapPageProps) {
         </div>
         <RecapThemeTags tags={tags.map((tag) => tag.content)} />
       </div>
-      <RecapPhotoGrid photos={data.photos} />
+      <RecapPhotoGrid stickerId={stickerId} photos={data.photos} />
     </div>
   );
 }

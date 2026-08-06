@@ -11,4 +11,5 @@ export const useUpdateBoardLayoutMutation = () =>
   useMutation({
     mutationFn: ({ boardId, input }: UpdateBoardLayoutVariables) =>
       boardApi.updateLayout(boardId, input),
+    retry: 2,
   });

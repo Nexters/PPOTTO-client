@@ -10,6 +10,7 @@ import { stackflow, useFlow, type ActivityComponentType } from '@stackflow/react
 import { BoardPage } from '@/pages/board';
 import { LoginPage } from '@/pages/login';
 import { OnboardingPage } from '@/pages/onboarding';
+import { PhotoViewerPage } from '@/pages/photo-viewer';
 import { RecapPage } from '@/pages/recap';
 import { SettingsPage } from '@/pages/settings';
 import { TermsPage } from '@/pages/terms';
@@ -58,6 +59,12 @@ const RecapActivity: ActivityComponentType<'Recap'> = ({ params }) => (
   </AppScreen>
 );
 
+const PhotoViewerActivity: ActivityComponentType<'PhotoViewer'> = ({ params }) => (
+  <AppScreen>
+    <PhotoViewerPage stickerId={params.stickerId} initialIndex={params.initialIndex} />
+  </AppScreen>
+);
+
 const SettingsActivity: ActivityComponentType<'Settings'> = () => (
   <AppScreen>
     <SettingsPage />
@@ -72,6 +79,7 @@ export const { Stack } = stackflow({
     Terms: TermsActivity,
     Board: BoardActivity,
     Recap: RecapActivity,
+    PhotoViewer: PhotoViewerActivity,
     Settings: SettingsActivity,
   },
   plugins: [
