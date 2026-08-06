@@ -13,6 +13,7 @@ const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL;
 export function AppWebView({ path = '' }: { path?: string }) {
   const ref = useRef<WebView>(null);
   const [loaded, setLoaded] = useState(false);
+  const [boardActive, setBoardActive] = useState(false);
 
   const { pushMessage } = useNativeBridge(ref, contract, {
     APPLE_LOGIN: () => loginWithApple(),
@@ -23,6 +24,7 @@ export function AppWebView({ path = '' }: { path?: string }) {
     AUTH_EXPIRED: () => router.replace('/'),
     LOG: ({ level, args }) => console.warn('[web]', level, ...args),
     OPEN_PHOTO_SELECT: () => router.push('/photo-select'),
+    SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
   });
 
   return (
@@ -33,6 +35,8 @@ export function AppWebView({ path = '' }: { path?: string }) {
         onMessage={(e) => pushMessage(e.nativeEvent.data)}
         onLoadEnd={() => setLoaded(true)}
         allowsBackForwardNavigationGestures={false}
+        bounces={!boardActive}
+        overScrollMode={boardActive ? 'never' : 'always'}
       />
       {!loaded && (
         <View
