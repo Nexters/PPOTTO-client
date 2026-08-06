@@ -13,6 +13,7 @@
     "@ppotto/api": "workspace:*",
     "@ppotto/assets": "workspace:*",
     "@ppotto/bridge": "workspace:*",
+    "@radix-ui/react-dialog": "^1.1.23",
     "@stackflow/config": "^2.0.0",
     "@stackflow/plugin-basic-ui": "^1.18.3",
     "@stackflow/plugin-history-sync": "^1.12.0",

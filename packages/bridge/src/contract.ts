@@ -26,6 +26,8 @@ export const contract = defineContract({
     payload: z.object({ forceRefresh: z.boolean().optional() }),
     response: z.object({ accessToken: z.string().nullable() }),
   }),
+  LOGOUT: request(),
+  WITHDRAW: request(),
   AUTH_EXPIRED: command(),
   LOG: command({
     payload: z.object({
