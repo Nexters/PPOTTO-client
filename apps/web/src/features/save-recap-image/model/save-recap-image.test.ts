@@ -17,4 +17,15 @@ describe('saveRecapImage', () => {
 
     expect(result).toBeInstanceOf(Blob);
   });
+
+  it('toCanvas를 includeQueryParams: true 옵션으로 호출한다', async () => {
+    const canvas = document.createElement('canvas');
+    canvas.toBlob = (callback) => callback(new Blob(['fake']));
+    toCanvas.mockResolvedValue(canvas);
+    const element = document.createElement('div');
+
+    await saveRecapImage(element);
+
+    expect(toCanvas).toHaveBeenCalledWith(element, { includeQueryParams: true });
+  });
 });
