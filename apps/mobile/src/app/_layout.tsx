@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
+import { ToastProvider } from '@/shared/ui/Toast';
+
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
@@ -13,11 +15,13 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)/index" />
-          <Stack.Screen name="photo-select" />
-          <Stack.Screen name="board" />
-        </Stack>
+        <ToastProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)/index" />
+            <Stack.Screen name="photo-select" />
+            <Stack.Screen name="board" />
+          </Stack>
+        </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

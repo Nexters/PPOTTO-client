@@ -4,6 +4,7 @@ import '@/app/styles/globals.css';
 import { ConsoleMirror } from '@/app/providers/console-mirror';
 import { QueryProvider } from '@/app/providers/query-provider';
 import { cn } from '@/shared/lib/cn';
+import { ToastProvider } from '@/shared/ui/common/Toast';
 
 export const metadata: Metadata = {
   title: 'ppotto',
@@ -26,7 +27,9 @@ export default function RootLayout({
           )}
         >
           <ConsoleMirror />
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </QueryProvider>
         </div>
       </body>
     </html>
