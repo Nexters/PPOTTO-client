@@ -9,8 +9,9 @@ export const useBoardListQuery = () =>
     queryFn: boardApi.list,
   });
 
-export const useBoardQuery = (boardId: string) =>
+export const useBoardQuery = (boardId?: string) =>
   useQuery({
     queryKey: boardQueryKeys.detail(boardId),
-    queryFn: () => boardApi.get(boardId),
+    queryFn: () => boardApi.get(boardId!),
+    enabled: !!boardId,
   });
