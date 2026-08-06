@@ -13,6 +13,7 @@
  *   빈 공간 탐색·군집·회전·zIndex 등 배치 계산 규칙 → board-layout.test.ts
  *   포커스 대상 계산(중심점, 배율 유지) 규칙 → board-camera.test.ts
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,6 +22,16 @@ import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutatio
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 
 import { BoardCanvas } from './BoardCanvas';
+
+// BoardCanvas가 드래그 이동 시 useQueryClient()로 캐시를 직접 갱신하므로 실제 QueryClient가 필요하다.
+function renderBoardCanvas(boardId: string) {
+  const queryClient = new QueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <BoardCanvas boardId={boardId} mode="default" />
+    </QueryClientProvider>,
+  );
+}
 
 // jsdom엔 ResizeObserver가 없어서(BoardCanvas가 컨테이너 크기 관찰에 사용) 최소 스텁으로 대체한다.
 // BoardCanvas가 이제 뷰포트 크기를 알아야 배치를 계산하므로(뷰포트 중앙 앵커), observe() 즉시 가짜 크기를 콜백으로 흘려보낸다.
@@ -121,7 +132,7 @@ describe('초기 배치 저장 분기', () => {
       fakeApiSticker({ id: 'b', posX: 0, posY: 0 }),
     ]);
 
-    render(<BoardCanvas boardId="board-1" mode="default" />);
+    renderBoardCanvas('board-1');
 
     await waitFor(() => expect(saveLayout).toHaveBeenCalledTimes(1));
     expect(saveLayout).toHaveBeenCalledWith({
@@ -141,7 +152,7 @@ describe('초기 배치 저장 분기', () => {
       fakeApiSticker({ id: 'b', posX: 250, posY: 400 }),
     ]);
 
-    render(<BoardCanvas boardId="board-1" mode="default" />);
+    renderBoardCanvas('board-1');
 
     expect(saveLayout).not.toHaveBeenCalled();
   });
@@ -150,7 +161,7 @@ describe('초기 배치 저장 분기', () => {
     saveLayout.mockRejectedValue(new Error('network error'));
     mockBoardData([fakeApiSticker({ id: 'a', posX: 0, posY: 0 })]);
 
-    const { container } = render(<BoardCanvas boardId="board-1" mode="default" />);
+    const { container } = renderBoardCanvas('board-1');
 
     await waitFor(() => expect(saveLayout).toHaveBeenCalledTimes(1));
     expect(container).not.toBeEmptyDOMElement();

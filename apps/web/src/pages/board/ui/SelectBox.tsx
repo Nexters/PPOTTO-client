@@ -9,16 +9,21 @@ const SELECT_BOX_HANDLE_SIZE = 4;
 
 type SelectBoxProps = {
   sticker: StickerData;
+  position?: { x: number; y: number };
 };
 
-export function SelectBox({ sticker }: SelectBoxProps) {
+export function SelectBox({ sticker, position }: SelectBoxProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const { width: boxWidth, height: boxHeight } = getPhotoSize(photoImage, sticker.scale);
 
   if (boxWidth <= 0 || boxHeight <= 0) return null;
 
   return (
-    <Group x={sticker.posX} y={sticker.posY} rotation={sticker.rotation}>
+    <Group
+      x={position?.x ?? sticker.posX}
+      y={position?.y ?? sticker.posY}
+      rotation={sticker.rotation}
+    >
       <Rect
         x={-boxWidth / 2}
         y={-boxHeight / 2}

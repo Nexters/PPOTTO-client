@@ -1,6 +1,7 @@
 'use client';
 
 import type { paths } from '@ppotto/api';
+import type { KonvaEventObject } from 'konva/lib/Node';
 import { useEffect, useState } from 'react';
 import { Group, Image as KonvaImage } from 'react-konva';
 import { Html } from 'react-konva-utils';
@@ -51,10 +52,13 @@ export function getPhotoSize(
 
 type StickerProps = {
   sticker: StickerData;
+  draggable?: boolean;
   onClick?: () => void;
+  onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
+  onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 };
 
-export function Sticker({ sticker, onClick }: StickerProps) {
+export function Sticker({ sticker, draggable, onClick, onDragMove, onDragEnd }: StickerProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const { width: photoWidth, height: photoHeight } = getPhotoSize(photoImage, sticker.scale);
 
@@ -63,6 +67,9 @@ export function Sticker({ sticker, onClick }: StickerProps) {
       x={sticker.posX}
       y={sticker.posY}
       rotation={sticker.rotation}
+      draggable={draggable}
+      onDragMove={onDragMove}
+      onDragEnd={onDragEnd}
       onClick={onClick}
       onTap={onClick}
       onMouseEnter={(e) => {

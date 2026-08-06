@@ -2,10 +2,13 @@
 
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useFlow } from '@stackflow/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Layer, Stage } from 'react-konva';
 
+import type { BoardDetail } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
+import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
 
@@ -40,11 +43,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
   const cameraFocusFrameRef = useRef<number | null>(null);
   const { data, isLoading, isError } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
+  const queryClient = useQueryClient();
   const isEditMode = mode === 'move';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
   const selectedId = isEditMode ? selectedStickerId : null;
@@ -81,7 +86,9 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   };
 
   // 드래그가 끝난 뒤 결과 위치를 camera 상태에 맞춰둠 -> 다음 줌 계산이 최신 위치를 기준으로 이뤄지게 함
+  // dragend는 자식(스티커) -> 부모로 버블링되므로, Stage 자신의 드래그가 끝난 경우만 처리해야 함
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
+    if (e.target !== e.target.getStage()) return;
     setCamera((current) => ({ ...current, x: e.target.x(), y: e.target.y() }));
   };
 
@@ -118,6 +125,43 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   // 편집 모드에서 스티커가 아닌 빈 공간을 탭하면 선택 해제
   const handleStageClick = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (e.target === e.target.getStage()) setSelectedStickerId(null);
+  };
+
+  // 선택박스는 별도 노드라 드래그 중인 실시간 위치를 직접 전달해줘야 스티커를 따라 움직임
+  const handleStickerDragMove = (e: KonvaEventObject<DragEvent>) => {
+    setDragPosition({ x: e.target.x(), y: e.target.y() });
+  };
+
+  // 드래그가 끝나면 캐시에 새 위치를 바로 반영하고 저장 요청을 보냄
+  const handleStickerDragEnd = (sticker: StickerData, e: KonvaEventObject<DragEvent>) => {
+    const posX = e.target.x();
+    const posY = e.target.y();
+    setDragPosition(null);
+
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current
+        ? {
+            ...current,
+            stickers: current.stickers.map((s) => (s.id === sticker.id ? { ...s, posX, posY } : s)),
+          }
+        : current,
+    );
+
+    saveLayout({
+      boardId,
+      input: toLayoutInput([
+        {
+          id: sticker.id,
+          posX,
+          posY,
+          rotation: sticker.rotation,
+          scale: sticker.scale,
+          zIndex: sticker.zIndex,
+          badgeOffsetX: sticker.badgeOffsetX,
+          badgeOffsetY: sticker.badgeOffsetY,
+        },
+      ]),
+    });
   };
 
   // 스티커를 이미 배치된 것과 새로 생긴 것으로 나눔
@@ -207,6 +251,9 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             <Sticker
               key={sticker.id}
               sticker={sticker}
+              draggable={selectedId === sticker.id}
+              onDragMove={handleStickerDragMove}
+              onDragEnd={(e) => handleStickerDragEnd(sticker, e)}
               onClick={() => {
                 if (isEditMode) {
                   setSelectedStickerId(sticker.id);
@@ -219,7 +266,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
         </Layer>
         {selectedSticker && (
           <Layer>
-            <SelectBox sticker={selectedSticker} />
+            <SelectBox sticker={selectedSticker} position={dragPosition ?? undefined} />
           </Layer>
         )}
       </Stage>
