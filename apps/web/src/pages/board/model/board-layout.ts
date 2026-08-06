@@ -1,6 +1,6 @@
 import type { UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
 
-import { centroid, type Point } from './geometry';
+import { centroid, distance, type Point } from './geometry';
 
 export type LayoutSlot = {
   posX: number;
@@ -26,10 +26,6 @@ const RADIUS_STEP = 15; // 한 바퀴 돌 때마다 반지름을 얼마나 늘�
 const MAX_RINGS = 300; // 최대 탐색 반지름 = RADIUS_STEP * MAX_RINGS
 const ROTATION_RANGE_DEG = 15;
 const BADGE_OFFSET = { x: 0, y: 60 };
-
-function distance(a: Point, b: Point): number {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
 
 // 새 스티커 무리가 시작될 기준점을 찾음. 첫 배치면 뷰포트 중앙, 기존 스티커가 있으면 그 오른쪽.
 function startAnchor(

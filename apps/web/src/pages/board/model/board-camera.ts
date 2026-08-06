@@ -1,4 +1,4 @@
-import { centroid, type Point } from './geometry';
+import { centroid, distance, type Point } from './geometry';
 
 export type CameraState = {
   scale: number;
@@ -53,9 +53,6 @@ export function pinchToZoomParams(
   previous: [{ x: number; y: number }, { x: number; y: number }],
   current: [{ x: number; y: number }, { x: number; y: number }],
 ): { pointer: { x: number; y: number }; deltaY: number } {
-  const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-    Math.hypot(a.x - b.x, a.y - b.y);
-
   const previousDistance = distance(previous[0], previous[1]);
   const currentDistance = distance(current[0], current[1]);
 
