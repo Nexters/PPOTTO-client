@@ -11,6 +11,7 @@ export { default as IconPlus } from './IconPlus';
 export { default as IconSettings } from './IconSettings';
 export { default as IconText } from './IconText';
 export { default as ImageMultiple } from './ImageMultiple';
+export { default as KakaoBadge } from './KakaoBadge';
 export { default as KakaoLogo } from './KakaoLogo';
 export { default as Logo } from './Logo';
 export { default as Share } from './Share';
