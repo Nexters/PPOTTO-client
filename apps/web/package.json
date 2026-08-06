@@ -22,6 +22,7 @@
     "@stackflow/react": "^2.1.2",
     "@tanstack/react-query": "^5.101.2",
     "clsx": "^2.1.1",
+    "html-to-image": "^1.11.13",
     "konva": "^10.3.0",
     "next": "16.2.10",
     "react": "19.2.0",

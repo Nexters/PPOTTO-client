@@ -3,7 +3,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Layer, Stage } from 'react-konva';
 
 import type { BoardDetail } from '@/entities/board/api/board-api';
@@ -11,15 +11,10 @@ import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutatio
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
+import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
-import {
-  type CameraState,
-  computeFocusTarget,
-  panCamera,
-  pinchToZoomParams,
-  zoomCamera,
-} from '../model/board-camera';
-import { computeInitialLayout, needsInitialLayout, toLayoutInput } from '../model/board-layout';
+import { type CameraState, panCamera, pinchToZoomParams, zoomCamera } from '../model/board-camera';
+import { toLayoutInput } from '../model/board-layout';
 
 import type { ToolbarMode } from './BoardToolbar';
 import { SelectBox } from './SelectBox';
@@ -32,12 +27,6 @@ type BoardCanvasProps = {
 
 type TouchPoint = { x: number; y: number };
 
-const CAMERA_FOCUS_ANIMATION_MS = 350;
-
-function easeOutCubic(progress: number): number {
-  return 1 - (1 - progress) ** 3;
-}
-
 export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -45,14 +34,15 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
-  const cameraFocusFrameRef = useRef<number | null>(null);
-  const { data, isLoading, isError } = useBoardQuery(boardId);
+  const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
   const queryClient = useQueryClient();
   const isEditMode = mode === 'move';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
   const selectedId = isEditMode ? selectedStickerId : null;
+
+  useRefetchOnActive(refetch, isStale);
 
   // 컨테이너 크기 관찰
   useEffect(() => {
@@ -164,52 +154,6 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     });
   };
 
-  // 스티커를 이미 배치된 것과 새로 생긴 것으로 나눔
-  const placedStickers = data?.stickers.filter((sticker) => !needsInitialLayout([sticker])) ?? [];
-  const unplacedStickers = data?.stickers.filter((sticker) => needsInitialLayout([sticker])) ?? [];
-
-  // ResizeObserver가 아직 실제 크기를 못 잰 첫 렌더 순간에는 배치를 미룸
-  const hasViewport = viewport.width > 0 && viewport.height > 0;
-  const newLayout = useMemo(() => {
-    if (!data || !hasViewport || unplacedStickers.length === 0) return [];
-    return computeInitialLayout(unplacedStickers, placedStickers, viewport);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, hasViewport]);
-  const layout = data ? [...placedStickers, ...newLayout] : null;
-
-  // 새 스티커가 배치되면 저장 요청을 보내고, 그 무리의 중심으로 카메라를 부드럽게 이동시킴
-  useEffect(() => {
-    if (newLayout.length === 0) return;
-    saveLayout({ boardId, input: toLayoutInput(newLayout) });
-
-    const startCamera = camera;
-    const targetCamera = computeFocusTarget(
-      startCamera,
-      newLayout.map((sticker) => ({ x: sticker.posX, y: sticker.posY })),
-      viewport,
-    );
-    const startTime = performance.now();
-
-    const animate = (now: number) => {
-      const progress = Math.min((now - startTime) / CAMERA_FOCUS_ANIMATION_MS, 1);
-      const eased = easeOutCubic(progress);
-      setCamera({
-        scale: startCamera.scale + (targetCamera.scale - startCamera.scale) * eased,
-        x: startCamera.x + (targetCamera.x - startCamera.x) * eased,
-        y: startCamera.y + (targetCamera.y - startCamera.y) * eased,
-      });
-      if (progress < 1) {
-        cameraFocusFrameRef.current = requestAnimationFrame(animate);
-      }
-    };
-    cameraFocusFrameRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (cameraFocusFrameRef.current !== null) cancelAnimationFrame(cameraFocusFrameRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardId, data, hasViewport]);
-
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -218,7 +162,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     );
   }
 
-  if (isError || !data || !layout) {
+  if (isError || !data) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p className="text-body-04 text-gray-400">보드를 불러오지 못했어요</p>
@@ -226,7 +170,12 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     );
   }
 
-  const stickers: StickerData[] = [...layout].sort((a, b) => a.zIndex - b.zIndex);
+  const stickers: StickerData[] = data.stickers
+    .map(({ imageUrl, ...sticker }) => ({
+      ...sticker,
+      image: imageUrl ? { url: imageUrl } : undefined,
+    }))
+    .sort((a, b) => a.zIndex - b.zIndex);
   const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
 
   return (
