@@ -7,6 +7,7 @@ import { Layer, Stage } from 'react-konva';
 
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
+import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import { type CameraState, panCamera, pinchToZoomParams, zoomCamera } from '../model/board-camera';
 
@@ -23,8 +24,10 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
-  const { data, isLoading, isError } = useBoardQuery(boardId);
+  const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { push } = useFlow();
+
+  useRefetchOnActive(refetch, isStale);
 
   // 컨테이너 크기 관찰
   useEffect(() => {
