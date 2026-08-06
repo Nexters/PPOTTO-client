@@ -18,10 +18,13 @@ import {
 } from '../model/board-camera';
 import { computeInitialLayout, needsInitialLayout, toLayoutInput } from '../model/board-layout';
 
+import type { ToolbarMode } from './BoardToolbar';
+import { SelectBox } from './SelectBox';
 import { Sticker, type StickerData } from './Sticker';
 
 type BoardCanvasProps = {
   boardId: string;
+  mode: ToolbarMode;
 };
 
 type TouchPoint = { x: number; y: number };
@@ -32,15 +35,19 @@ function easeOutCubic(progress: number): number {
   return 1 - (1 - progress) ** 3;
 }
 
-export function BoardCanvas({ boardId }: BoardCanvasProps) {
+export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
+  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
   const cameraFocusFrameRef = useRef<number | null>(null);
   const { data, isLoading, isError } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
+  const isEditMode = mode === 'move';
+  // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
+  const selectedId = isEditMode ? selectedStickerId : null;
 
   // 컨테이너 크기 관찰
   useEffect(() => {
@@ -106,6 +113,11 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
   // 터치가 끝나면 핀치 상태를 초기화
   const handleTouchEnd = () => {
     pinchTouchesRef.current = null;
+  };
+
+  // 편집 모드에서 스티커가 아닌 빈 공간을 탭하면 선택 해제
+  const handleStageClick = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (e.target === e.target.getStage()) setSelectedStickerId(null);
   };
 
   // 스티커를 이미 배치된 것과 새로 생긴 것으로 나눔
@@ -176,6 +188,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
       image: imageUrl ? { url: imageUrl } : undefined,
     }))
     .sort((a, b) => a.zIndex - b.zIndex);
+  const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
 
   return (
     <div ref={setContainer} className="h-full w-full touch-none">
@@ -191,16 +204,29 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
         onDragEnd={handleDragEnd}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onClick={handleStageClick}
+        onTap={handleStageClick}
       >
         <Layer>
           {stickers.map((sticker) => (
             <Sticker
               key={sticker.id}
               sticker={sticker}
-              onClick={() => push('Recap', { stickerId: sticker.id })}
+              onClick={() => {
+                if (isEditMode) {
+                  setSelectedStickerId(sticker.id);
+                  return;
+                }
+                push('Recap', { stickerId: sticker.id });
+              }}
             />
           ))}
         </Layer>
+        {selectedSticker && (
+          <Layer>
+            <SelectBox sticker={selectedSticker} />
+          </Layer>
+        )}
       </Stage>
     </div>
   );

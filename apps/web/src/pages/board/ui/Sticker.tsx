@@ -7,9 +7,9 @@ import { Html } from 'react-konva-utils';
 
 import { StickerBadge } from './StickerBadge';
 
+export const TEXT_BOX_WIDTH = 129.13;
+export const TEXT_BOX_HEIGHT = 93.26;
 const TEXT_BG_URL = '/board/stickers/text-bg.svg';
-const TEXT_BOX_WIDTH = 129.13;
-const TEXT_BOX_HEIGHT = 93.26;
 
 type BoardDetail = NonNullable<
   paths['/boards/{boardId}']['get']['responses']['200']['content']['application/json']['data']
@@ -39,7 +39,7 @@ export type StickerData = Omit<ApiSticker, 'badgeRotation' | 'imageUrl'> & {
   image?: StickerImage;
 };
 
-function useStickerImage(src?: string) {
+export function useStickerImage(src?: string) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {

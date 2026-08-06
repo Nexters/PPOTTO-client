@@ -23,7 +23,7 @@ export function BoardPage({ boardId }: BoardPageProps) {
     <DotBackground>
       <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
         <BoardHeader />
-        <BoardCanvas boardId={boardId} />
+        <BoardCanvas boardId={boardId} mode={toolbarMode} />
         <BoardToolbar mode={toolbarMode} onModeChange={setToolbarMode} />
       </div>
     </DotBackground>

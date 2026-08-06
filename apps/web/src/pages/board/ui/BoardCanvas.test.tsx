@@ -121,7 +121,7 @@ describe('초기 배치 저장 분기', () => {
       fakeApiSticker({ id: 'b', posX: 0, posY: 0 }),
     ]);
 
-    render(<BoardCanvas boardId="board-1" />);
+    render(<BoardCanvas boardId="board-1" mode="default" />);
 
     await waitFor(() => expect(saveLayout).toHaveBeenCalledTimes(1));
     expect(saveLayout).toHaveBeenCalledWith({
@@ -141,7 +141,7 @@ describe('초기 배치 저장 분기', () => {
       fakeApiSticker({ id: 'b', posX: 250, posY: 400 }),
     ]);
 
-    render(<BoardCanvas boardId="board-1" />);
+    render(<BoardCanvas boardId="board-1" mode="default" />);
 
     expect(saveLayout).not.toHaveBeenCalled();
   });
@@ -150,7 +150,7 @@ describe('초기 배치 저장 분기', () => {
     saveLayout.mockRejectedValue(new Error('network error'));
     mockBoardData([fakeApiSticker({ id: 'a', posX: 0, posY: 0 })]);
 
-    const { container } = render(<BoardCanvas boardId="board-1" />);
+    const { container } = render(<BoardCanvas boardId="board-1" mode="default" />);
 
     await waitFor(() => expect(saveLayout).toHaveBeenCalledTimes(1));
     expect(container).not.toBeEmptyDOMElement();
