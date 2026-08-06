@@ -7,6 +7,7 @@ import { Layer, Stage } from 'react-konva';
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
+import { bridge } from '@/shared/lib/bridge';
 
 import {
   type CameraState,
@@ -51,6 +52,12 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     observer.observe(container);
     return () => observer.disconnect();
   }, [container]);
+
+  // 보드에 있는 동안만 웹뷰 네이티브 바운스 스크롤을 꺼서 캔버스 드래그와 안 겹치게 함
+  useEffect(() => {
+    bridge.send('SET_BOARD_ACTIVE', { active: true });
+    return () => bridge.send('SET_BOARD_ACTIVE', { active: false });
+  }, []);
 
   // 데스크톱 휠/트랙패드 처리
   // 일반 휠/두 손가락 스크롤은 팬(이동), Ctrl+휠/트랙패드 핀치는 포인터 고정 줌
