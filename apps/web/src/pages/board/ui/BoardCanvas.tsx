@@ -33,6 +33,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+  const [dragScale, setDragScale] = useState<number | null>(null);
   const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
@@ -122,17 +123,20 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     setDragPosition({ x: e.target.x(), y: e.target.y() });
   };
 
-  // 드래그가 끝나면 캐시에 새 위치를 바로 반영하고 저장 요청을 보냄
-  const handleStickerDragEnd = (sticker: StickerData, e: KonvaEventObject<DragEvent>) => {
-    const posX = e.target.x();
-    const posY = e.target.y();
-    setDragPosition(null);
+  // 캐시에 변경분을 바로 반영하고 저장 요청을 보냄
+  const saveStickerLayout = (
+    sticker: StickerData,
+    overrides: Partial<Pick<StickerData, 'posX' | 'posY' | 'scale'>>,
+  ) => {
+    const updated = { ...sticker, ...overrides };
 
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
       current
         ? {
             ...current,
-            stickers: current.stickers.map((s) => (s.id === sticker.id ? { ...s, posX, posY } : s)),
+            stickers: current.stickers.map((s) =>
+              s.id === sticker.id ? { ...s, ...overrides } : s,
+            ),
           }
         : current,
     );
@@ -141,17 +145,31 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       boardId,
       input: toLayoutInput([
         {
-          id: sticker.id,
-          posX,
-          posY,
-          rotation: sticker.rotation,
-          scale: sticker.scale,
-          zIndex: sticker.zIndex,
-          badgeOffsetX: sticker.badgeOffsetX,
-          badgeOffsetY: sticker.badgeOffsetY,
+          id: updated.id,
+          posX: updated.posX,
+          posY: updated.posY,
+          rotation: updated.rotation,
+          scale: updated.scale,
+          zIndex: updated.zIndex,
+          badgeOffsetX: updated.badgeOffsetX,
+          badgeOffsetY: updated.badgeOffsetY,
         },
       ]),
     });
+  };
+
+  const handleStickerDragEnd = (sticker: StickerData, e: KonvaEventObject<DragEvent>) => {
+    setDragPosition(null);
+    saveStickerLayout(sticker, { posX: e.target.x(), posY: e.target.y() });
+  };
+
+  const handleResizeMove = (scale: number) => {
+    setDragScale(scale);
+  };
+
+  const handleResizeEnd = (sticker: StickerData, scale: number) => {
+    setDragScale(null);
+    saveStickerLayout(sticker, { scale });
   };
 
   if (isLoading) {
@@ -170,12 +188,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     );
   }
 
-  const stickers: StickerData[] = data.stickers
-    .map(({ imageUrl, ...sticker }) => ({
-      ...sticker,
-      image: imageUrl ? { url: imageUrl } : undefined,
-    }))
-    .sort((a, b) => a.zIndex - b.zIndex);
+  const stickers: StickerData[] = [...data.stickers].sort((a, b) => a.zIndex - b.zIndex);
   const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
 
   return (
@@ -201,6 +214,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
               key={sticker.id}
               sticker={sticker}
               draggable={selectedId === sticker.id}
+              scaleOverride={selectedId === sticker.id ? (dragScale ?? undefined) : undefined}
               onDragMove={handleStickerDragMove}
               onDragEnd={(e) => handleStickerDragEnd(sticker, e)}
               onClick={() => {
@@ -215,7 +229,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
         </Layer>
         {selectedSticker && (
           <Layer>
-            <SelectBox sticker={selectedSticker} position={dragPosition ?? undefined} />
+            <SelectBox
+              sticker={selectedSticker}
+              position={dragPosition ?? undefined}
+              scale={dragScale ?? undefined}
+              onResizeMove={handleResizeMove}
+              onResizeEnd={(scale) => handleResizeEnd(selectedSticker, scale)}
+            />
           </Layer>
         )}
       </Stage>

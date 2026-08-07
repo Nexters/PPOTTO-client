@@ -53,14 +53,25 @@ export function getPhotoSize(
 type StickerProps = {
   sticker: StickerData;
   draggable?: boolean;
+  scaleOverride?: number;
   onClick?: () => void;
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 };
 
-export function Sticker({ sticker, draggable, onClick, onDragMove, onDragEnd }: StickerProps) {
+export function Sticker({
+  sticker,
+  draggable,
+  scaleOverride,
+  onClick,
+  onDragMove,
+  onDragEnd,
+}: StickerProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
-  const { width: photoWidth, height: photoHeight } = getPhotoSize(photoImage, sticker.scale);
+  const { width: photoWidth, height: photoHeight } = getPhotoSize(
+    photoImage,
+    scaleOverride ?? sticker.scale,
+  );
 
   return (
     <Group
@@ -90,7 +101,10 @@ export function Sticker({ sticker, draggable, onClick, onDragMove, onDragEnd }: 
           height={photoHeight}
         />
       )}
-      <Html groupProps={{ x: sticker.badgeOffsetX, y: sticker.badgeOffsetY }}>
+      <Html
+        groupProps={{ x: sticker.badgeOffsetX, y: sticker.badgeOffsetY }}
+        divProps={{ style: { zIndex: sticker.zIndex } }}
+      >
         <div style={{ transform: `translate(-50%, -50%) rotate(${-sticker.rotation}deg)` }}>
           <StickerBadge title={sticker.title} isNew={sticker.isNew} />
         </div>
