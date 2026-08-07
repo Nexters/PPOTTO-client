@@ -11,6 +11,7 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { computeInitialLayout, needsInitialLayout, toLayoutInput } from '../model/board-layout';
 
 import { Sticker, type StickerData } from './Sticker';
+import { StickerQuickMenu } from './StickerQuickMenu';
 
 const REFERENCE_WIDTH = 360;
 const REFERENCE_HEIGHT = 740;
@@ -22,6 +23,7 @@ type BoardCanvasProps = {
 export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(REFERENCE_WIDTH);
+  const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
@@ -82,10 +84,15 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
               key={sticker.id}
               sticker={sticker}
               onClick={() => push('Recap', { stickerId: sticker.id })}
+              onLongPress={() => setQuickMenuStickerId(sticker.id)}
             />
           ))}
         </Layer>
       </Stage>
+      <StickerQuickMenu
+        isOpen={quickMenuStickerId !== null}
+        onClose={() => setQuickMenuStickerId(null)}
+      />
     </div>
   );
 }

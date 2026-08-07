@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { Group, Image as KonvaImage, Text as KonvaText } from 'react-konva';
 import { Html } from 'react-konva-utils';
 
+import { useLongPress } from '@/shared/lib/use-long-press';
+
 import { StickerBadge } from './StickerBadge';
 
 const TEXT_BG_URL = '/board/stickers/text-bg.svg';
@@ -55,11 +57,13 @@ function useStickerImage(src?: string) {
 type StickerProps = {
   sticker: StickerData;
   onClick?: () => void;
+  onLongPress?: () => void;
 };
 
-export function Sticker({ sticker, onClick }: StickerProps) {
+export function Sticker({ sticker, onClick, onLongPress }: StickerProps) {
   const photoImage = useStickerImage(sticker.type === 'IMAGE' ? sticker.image?.url : undefined);
   const textBgImage = useStickerImage(sticker.type === 'TEXT' ? TEXT_BG_URL : undefined);
+  const longPressHandlers = useLongPress(() => onLongPress?.());
 
   const photoWidth = (sticker.image?.width ?? photoImage?.naturalWidth ?? 0) * sticker.scale;
   const photoHeight = (sticker.image?.height ?? photoImage?.naturalHeight ?? 0) * sticker.scale;
@@ -81,6 +85,7 @@ export function Sticker({ sticker, onClick }: StickerProps) {
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = 'default';
       }}
+      {...longPressHandlers}
     >
       {sticker.type === 'IMAGE' && photoImage && sticker.image && (
         <Group
