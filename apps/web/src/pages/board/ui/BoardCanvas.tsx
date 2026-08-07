@@ -48,6 +48,14 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
   const selectedId = isEditMode ? selectedStickerId : null;
 
+  // 편집 모드를 벗어났다가 다시 들어와도 이전 선택이 되살아나지 않도록 상태 자체를 지움.
+  // useEffect 대신 렌더 중 비교 후 setState하는 방식(React 공식 권장 패턴)으로 처리해 커밋 사이클을 하나 아낀다
+  const [prevIsEditMode, setPrevIsEditMode] = useState(isEditMode);
+  if (isEditMode !== prevIsEditMode) {
+    setPrevIsEditMode(isEditMode);
+    if (!isEditMode) setSelectedStickerId(null);
+  }
+
   useRefetchOnActive(refetch, isStale);
 
   // 컨테이너 크기 관찰
