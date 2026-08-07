@@ -7,6 +7,12 @@ jest.mock('@/entities/auth/api/auth-api', () => ({
   authApi: {
     login: jest.fn(),
     refresh: jest.fn(),
+    logout: jest.fn(),
+  },
+}));
+jest.mock('@/entities/user/api/user-api', () => ({
+  userApi: {
+    withdraw: jest.fn(),
   },
 }));
 jest.mock('./apple-auth', () => ({ signInWithApple: jest.fn() }));
@@ -24,7 +30,9 @@ jest.mock('./kakao-auth', () => ({
  * 네트워크 오류·서버 5xx는 한 번 자동 재시도한다. 다시 실패하면 refreshToken을 보존한 채
  * 재시도 가능한 오류를 반환한다. refreshToken이 없거나 AUTH-002이면 세션 만료로 처리한다.
  *
- * 제외: 로그아웃
+ * 로그아웃·탈퇴는 서버 호출이 성공했을 때만 기기 세션을 정리한다. 실패하면 로그인 상태를 유지해
+ * 다시 시도할 수 있게 한다.
+ *
  * 제외: accessToken의 SecureStore 저장
  * 제외: 네트워크 복구 감지 후 백그라운드 자동 재시도
  */
@@ -54,7 +62,10 @@ function setupSession(storedRefreshToken: string | null = 'stored-refresh') {
     setItemAsync: jest.Mock;
   };
   const { authApi } = jest.requireMock('@/entities/auth/api/auth-api') as {
-    authApi: { login: jest.Mock; refresh: jest.Mock };
+    authApi: { login: jest.Mock; refresh: jest.Mock; logout: jest.Mock };
+  };
+  const { userApi } = jest.requireMock('@/entities/user/api/user-api') as {
+    userApi: { withdraw: jest.Mock };
   };
   const { signInWithKakao } = jest.requireMock('./kakao-auth') as {
     signInWithKakao: jest.Mock;
@@ -68,7 +79,7 @@ function setupSession(storedRefreshToken: string | null = 'stored-refresh') {
   const api = jest.requireActual<typeof import('@ppotto/api')>('@ppotto/api');
   const session = jest.requireActual<Session>('./auth-session');
 
-  return { api, authApi, secureStore, session, signInWithKakao };
+  return { api, authApi, secureStore, session, signInWithKakao, userApi };
 }
 
 async function login(
@@ -170,6 +181,39 @@ describe('인증 세션', () => {
       expect(secureStore.deleteItemAsync).not.toHaveBeenCalled();
     },
   );
+
+  it.each([
+    ['로그아웃', (session: Session) => session.logout()],
+    ['탈퇴', (session: Session) => session.withdraw()],
+  ])('%s에 성공하면 메모리 accessToken과 저장된 refreshToken을 모두 버린다', async (_, run) => {
+    const { authApi, secureStore, session, signInWithKakao, userApi } = setupSession();
+    await login(session, authApi, signInWithKakao, tokenBundle('live'));
+    authApi.logout.mockResolvedValue(undefined);
+    userApi.withdraw.mockResolvedValue(undefined);
+
+    await run(session);
+
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledTimes(1);
+    // refreshToken이 남아 있어도 갱신을 시도하지 않도록 저장소를 비운 상태로 확인한다.
+    secureStore.getItemAsync.mockResolvedValue(null);
+    await expect(session.getAccessToken()).resolves.toBeNull();
+  });
+
+  it.each([
+    ['로그아웃', (session: Session) => session.logout()],
+    ['탈퇴', (session: Session) => session.withdraw()],
+  ])('%s API가 실패하면 세션을 유지해 다시 시도할 수 있게 한다', async (_, run) => {
+    const { api, authApi, secureStore, session, signInWithKakao, userApi } = setupSession();
+    await login(session, authApi, signInWithKakao, tokenBundle('live'));
+    const failure = new api.NetworkError(new TypeError('offline'));
+    authApi.logout.mockRejectedValue(failure);
+    userApi.withdraw.mockRejectedValue(failure);
+
+    await expect(run(session)).rejects.toMatchObject({ name: failure.name });
+
+    expect(secureStore.deleteItemAsync).not.toHaveBeenCalled();
+    await expect(session.getAccessToken()).resolves.toBe('live-access');
+  });
 
   it('AUTH-002를 받으면 저장된 refreshToken을 제거하고 로그인되지 않은 상태를 반환한다', async () => {
     const { api, authApi, secureStore, session } = setupSession('expired-refresh');

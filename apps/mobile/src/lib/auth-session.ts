@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { HttpError, NetworkError } from '@ppotto/api';
 
 import { authApi } from '@/entities/auth/api/auth-api';
+import { userApi } from '@/entities/user/api/user-api';
 
 import { signInWithApple } from './apple-auth';
 import { KakaoLoginCancelledError, signInWithKakao } from './kakao-auth';
@@ -19,6 +20,13 @@ async function saveTokens(tokens: TokenBundle) {
   await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokens.refreshToken);
   accessToken = tokens.accessToken;
   accessTokenExpiresAt = Date.now() + tokens.accessTokenExpiresIn * 1000;
+}
+
+// accessToken은 서버가 회수할 수 없으므로 메모리에서 직접 지우고, refreshToken도 함께 버린다.
+async function clearSession() {
+  accessToken = null;
+  accessTokenExpiresAt = 0;
+  await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
 }
 
 function isRetryable(error: unknown) {
@@ -45,9 +53,7 @@ async function refreshAccessToken(): Promise<string | null> {
   } catch (error) {
     if (!(error instanceof HttpError) || error.code !== 'AUTH-002') throw error;
 
-    accessToken = null;
-    accessTokenExpiresAt = 0;
-    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+    await clearSession();
     return null;
   }
 }
@@ -94,4 +100,16 @@ export async function getAccessToken({
     refreshPromise = null;
   });
   return refreshPromise;
+}
+
+// 서버 세션을 먼저 끊고 기기 토큰을 지운다. API가 실패하면 세션을 유지해 다시 시도할 수 있게 한다.
+export async function logout() {
+  await authApi.logout();
+  await clearSession();
+}
+
+// 계정이 실제로 지워졌을 때만 세션을 정리한다. 실패했는데 토큰만 버리면 로그아웃과 구분되지 않는다.
+export async function withdraw() {
+  await userApi.withdraw();
+  await clearSession();
 }

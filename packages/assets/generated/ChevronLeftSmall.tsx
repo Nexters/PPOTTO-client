@@ -1,11 +1,11 @@
 import Svg, { Path } from 'react-native-svg';
 import type { SvgProps } from 'react-native-svg';
-const Share = (props: SvgProps) => (
+const ChevronLeftSmall = (props: SvgProps) => (
   <Svg
-    width={16}
-    height={17}
+    width={24}
+    height={24}
     fill="none"
-    viewBox="0 0 16 17"
+    viewBox="0 0 24 24"
     color={props.color ?? 'white'}
     {...props}
   >
@@ -14,8 +14,8 @@ const Share = (props: SvgProps) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M1 11.17v3.074c0 .466.184.912.513 1.242.328.329.773.514 1.237.514h10.5c.464 0 .91-.185 1.237-.514A1.76 1.76 0 0 0 15 14.244V11.17m-6.964-.218V1m4 3.803L8.036 1l-4 3.803"
+      d="m14.5 7-5 5 5 5"
     />
   </Svg>
 );
-export default Share;
+export default ChevronLeftSmall;
