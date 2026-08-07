@@ -63,7 +63,7 @@ type StickerProps = {
 export function Sticker({ sticker, onClick, onLongPress }: StickerProps) {
   const photoImage = useStickerImage(sticker.type === 'IMAGE' ? sticker.image?.url : undefined);
   const textBgImage = useStickerImage(sticker.type === 'TEXT' ? TEXT_BG_URL : undefined);
-  const longPressHandlers = useLongPress(() => onLongPress?.());
+  const longPressHandlers = useLongPress({ onLongPress: () => onLongPress?.(), onClick });
 
   const photoWidth = (sticker.image?.width ?? photoImage?.naturalWidth ?? 0) * sticker.scale;
   const photoHeight = (sticker.image?.height ?? photoImage?.naturalHeight ?? 0) * sticker.scale;
@@ -75,8 +75,6 @@ export function Sticker({ sticker, onClick, onLongPress }: StickerProps) {
       x={sticker.posX}
       y={sticker.posY}
       rotation={sticker.rotation}
-      onClick={onClick}
-      onTap={onClick}
       onMouseEnter={(e) => {
         const stage = e.target.getStage();
         if (stage && onClick) stage.container().style.cursor = 'pointer';

@@ -10,9 +10,15 @@ function getPointerPosition(e: KonvaEventObject<MouseEvent | TouchEvent>): Point
   return e.target.getStage()?.getPointerPosition() ?? null;
 }
 
-export function useLongPress(onLongPress: () => void) {
+type UseLongPressOptions = {
+  onLongPress: () => void;
+  onClick?: () => void;
+};
+
+export function useLongPress({ onLongPress, onClick }: UseLongPressOptions) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startPointRef = useRef<Point | null>(null);
+  const firedRef = useRef(false);
 
   const cancel = () => {
     if (timerRef.current !== null) {
@@ -25,8 +31,10 @@ export function useLongPress(onLongPress: () => void) {
   const start = (point: Point | null) => {
     if (!point) return;
     cancel();
+    firedRef.current = false;
     startPointRef.current = point;
     timerRef.current = setTimeout(() => {
+      firedRef.current = true;
       onLongPress();
       cancel();
     }, LONG_PRESS_DELAY_MS);
@@ -43,6 +51,15 @@ export function useLongPress(onLongPress: () => void) {
     if (distance > MOVE_CANCEL_THRESHOLD_PX) cancel();
   };
 
+  // Konva가 손 뗄 때 클릭도 함께 발생시켜서, 롱프레스 직후 클릭은 무시
+  const handleClick = () => {
+    if (firedRef.current) {
+      firedRef.current = false;
+      return;
+    }
+    onClick?.();
+  };
+
   return {
     onMouseDown: (e: KonvaEventObject<MouseEvent>) => start(getPointerPosition(e)),
     onMouseMove: (e: KonvaEventObject<MouseEvent>) => move(getPointerPosition(e)),
@@ -50,5 +67,7 @@ export function useLongPress(onLongPress: () => void) {
     onTouchStart: (e: KonvaEventObject<TouchEvent>) => start(getPointerPosition(e)),
     onTouchMove: (e: KonvaEventObject<TouchEvent>) => move(getPointerPosition(e)),
     onTouchEnd: cancel,
+    onClick: handleClick,
+    onTap: handleClick,
   };
 }
