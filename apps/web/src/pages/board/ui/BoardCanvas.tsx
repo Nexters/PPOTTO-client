@@ -14,7 +14,7 @@ import { bridge } from '@/shared/lib/bridge';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import { type CameraState, panCamera, pinchToZoomParams, zoomCamera } from '../model/board-camera';
-import { toLayoutInput } from '../model/board-layout';
+import { computeBringToFrontZIndex, toLayoutInput } from '../model/board-layout';
 import { scaleBadgeOffset } from '../model/board-transform';
 
 import type { ToolbarMode } from './BoardToolbar';
@@ -128,7 +128,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const saveStickerLayout = (
     sticker: StickerData,
     overrides: Partial<
-      Pick<StickerData, 'posX' | 'posY' | 'scale' | 'badgeOffsetX' | 'badgeOffsetY'>
+      Pick<StickerData, 'posX' | 'posY' | 'scale' | 'badgeOffsetX' | 'badgeOffsetY' | 'zIndex'>
     >,
   ) => {
     const updated = { ...sticker, ...overrides };
@@ -232,6 +232,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
               onClick={() => {
                 if (isEditMode) {
                   setSelectedStickerId(sticker.id);
+                  const newZIndex = computeBringToFrontZIndex(stickers, sticker.id);
+                  if (newZIndex !== null) saveStickerLayout(sticker, { zIndex: newZIndex });
                   return;
                 }
                 push('Recap', { stickerId: sticker.id });
