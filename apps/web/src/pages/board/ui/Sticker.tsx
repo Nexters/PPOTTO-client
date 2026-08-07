@@ -59,6 +59,8 @@ type StickerProps = {
   onClick?: () => void;
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
+  /** SelectBox가 같은 이미지를 다시 로드하지 않도록, 이미 로드한 이미지를 부모에 알려준다 */
+  onImageLoad?: (id: string, image: HTMLImageElement | null) => void;
 };
 
 export function Sticker({
@@ -68,12 +70,17 @@ export function Sticker({
   onClick,
   onDragMove,
   onDragEnd,
+  onImageLoad,
 }: StickerProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const { width: photoWidth, height: photoHeight } = getPhotoSize(
     photoImage,
     scaleOverride ?? sticker.scale,
   );
+
+  useEffect(() => {
+    onImageLoad?.(sticker.id, photoImage);
+  }, [sticker.id, photoImage, onImageLoad]);
 
   const badgeOffset = scaleBadgeOffset(
     { x: sticker.badgeOffsetX, y: sticker.badgeOffsetY },

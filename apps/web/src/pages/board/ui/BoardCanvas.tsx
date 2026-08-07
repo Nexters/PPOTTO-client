@@ -3,7 +3,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Layer, Stage } from 'react-konva';
 
 import type { BoardDetail } from '@/entities/board/api/board-api';
@@ -35,6 +35,10 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [dragScale, setDragScale] = useState<number | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{
+    id: string;
+    image: HTMLImageElement | null;
+  } | null>(null);
   const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
@@ -124,6 +128,11 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     setDragPosition({ x: e.target.x(), y: e.target.y() });
   };
 
+  // Sticker가 이미 로드한 이미지를 SelectBox에 그대로 넘겨서, 같은 이미지를 두 번 로드하지 않게 함
+  const handleStickerImageLoad = useCallback((id: string, image: HTMLImageElement | null) => {
+    setSelectedImage({ id, image });
+  }, []);
+
   // 캐시에 변경분을 바로 반영하고 저장 요청을 보냄
   const saveStickerLayout = (
     sticker: StickerData,
@@ -202,6 +211,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
 
   const stickers: StickerData[] = [...data.stickers].sort((a, b) => a.zIndex - b.zIndex);
   const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
+  // 선택이 바뀐 직후 신고가 아직 안 왔을 수 있어, id가 안 맞으면 이전 스티커의 이미지를 쓰지 않고 null로 둠
+  const selectedPhotoImage = selectedImage?.id === selectedId ? selectedImage.image : null;
 
   // 스티커를 선택하면 다른 스티커 위로 보이도록 zIndex를 맨 위로 올림
   const handleStickerSelect = (sticker: StickerData) => {
@@ -236,6 +247,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
               scaleOverride={selectedId === sticker.id ? (dragScale ?? undefined) : undefined}
               onDragMove={handleStickerDragMove}
               onDragEnd={(e) => handleStickerDragEnd(sticker, e)}
+              onImageLoad={selectedId === sticker.id ? handleStickerImageLoad : undefined}
               onClick={() => {
                 if (isEditMode) {
                   handleStickerSelect(sticker);
@@ -252,6 +264,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
               sticker={selectedSticker}
               position={dragPosition ?? undefined}
               scale={dragScale ?? undefined}
+              photoImage={selectedPhotoImage}
               onResizeMove={handleResizeMove}
               onResizeEnd={(scale) => handleResizeEnd(selectedSticker, scale)}
             />

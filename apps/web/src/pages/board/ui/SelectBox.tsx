@@ -8,7 +8,7 @@ import { Html } from 'react-konva-utils';
 import { computeResizeScale } from '../model/board-transform';
 import type { Point } from '../model/geometry';
 
-import { getPhotoSize, useStickerImage, type StickerData } from './Sticker';
+import { getPhotoSize, type StickerData } from './Sticker';
 
 const SELECT_BOX_COLOR = '#009fff';
 const SELECT_BOX_HANDLE_SIZE = 4;
@@ -20,12 +20,19 @@ type SelectBoxProps = {
   sticker: StickerData;
   position?: { x: number; y: number };
   scale?: number;
+  photoImage: HTMLImageElement | null;
   onResizeMove?: (scale: number) => void;
   onResizeEnd?: (scale: number) => void;
 };
 
-export function SelectBox({ sticker, position, scale, onResizeMove, onResizeEnd }: SelectBoxProps) {
-  const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
+export function SelectBox({
+  sticker,
+  position,
+  scale,
+  photoImage,
+  onResizeMove,
+  onResizeEnd,
+}: SelectBoxProps) {
   const resizeStartRef = useRef<Point | null>(null);
 
   // 눈에 보이는 테두리·모서리 점은 Html이라 Konva 드래그 추적과 충돌할 일이 없어 실시간 scale을 그대로 반영
