@@ -1,17 +1,26 @@
 import { contract } from '@ppotto/bridge';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
-import { getAccessToken, loginWithApple, loginWithKakao } from '@/lib/auth-session';
+import {
+  getAccessToken,
+  loginWithApple,
+  loginWithKakao,
+  logout,
+  withdraw,
+} from '@/lib/auth-session';
+import { useToast } from '@/shared/ui/Toast';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL;
 
 // 앱 표준 웹뷰
-export function AppWebView({ path = '' }: { path?: string }) {
+export function AppWebView({ path = '', onReady }: { path?: string; onReady?: () => void }) {
   const ref = useRef<WebView>(null);
+  const ready = useRef(false);
+  const toast = useToast();
   const [loaded, setLoaded] = useState(false);
   const [boardActive, setBoardActive] = useState(false);
 
@@ -21,6 +30,16 @@ export function AppWebView({ path = '' }: { path?: string }) {
     GET_ACCESS_TOKEN: async ({ forceRefresh }) => ({
       accessToken: await getAccessToken({ forceRefresh }),
     }),
+    LOGOUT: async () => {
+      await logout();
+      toast('로그아웃이 성공했습니다.');
+      router.replace('/');
+    },
+    WITHDRAW: async () => {
+      await withdraw();
+      toast('탈퇴가 성공했습니다.');
+      router.replace('/');
+    },
     AUTH_EXPIRED: () => router.replace('/'),
     LOG: ({ level, args }) => console.warn('[web]', level, ...args),
     OPEN_PHOTO_SELECT: () => router.push('/photo-select'),
@@ -33,8 +52,20 @@ export function AppWebView({ path = '' }: { path?: string }) {
         ref={ref}
         source={{ uri: `${WEB_URL}${path}` }}
         onMessage={(e) => pushMessage(e.nativeEvent.data)}
+        onLoad={() => {
+          if (ready.current) return;
+          ready.current = true;
+          onReady?.();
+        }}
+        onOpenWindow={({ nativeEvent: { targetUrl } }) => {
+          if (!targetUrl.startsWith('https://')) return;
+          void Linking.openURL(targetUrl).catch((error) =>
+            console.warn('외부 링크 열기 실패', error),
+          );
+        }}
         onLoadEnd={() => setLoaded(true)}
         allowsBackForwardNavigationGestures={false}
+        webviewDebuggingEnabled={__DEV__}
         bounces={!boardActive}
         overScrollMode={boardActive ? 'never' : 'always'}
       />

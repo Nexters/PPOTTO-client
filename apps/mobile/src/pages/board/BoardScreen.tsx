@@ -38,11 +38,11 @@ export function BoardScreen() {
     <View style={{ flex: 1 }}>
       {!revealed && (
         <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: loadingX }] }]}>
-          <LoadingOverlay onDone={reveal} />
+          <LoadingOverlay />
         </Animated.View>
       )}
       <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: boardX }] }]}>
-        <AppWebView path="/board" />
+        <AppWebView path="/board" onReady={reveal} />
       </Animated.View>
     </View>
   );

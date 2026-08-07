@@ -14,6 +14,7 @@ export type UpdateBoardLayoutInput =
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 export const boardApi = {
+  list: () => unwrapData(api.GET('/boards')),
   get: (boardId: string) => {
     if (USE_MOCK) return Promise.resolve(boardFixture);
     return unwrapData(api.GET('/boards/{boardId}', { params: { path: { boardId } } }));

@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * 분석 생성
-         * @description 보드를 지정하고 사진 90~100장의 업로드 URL(만료 15분)을 한 번에 발급함
+         * @description 보드를 지정하고 사진 그룹을 펼친 총 90~100장의 업로드 URL(만료 15분)을 한 번에 발급함
          */
         post: operations["create_1"];
         delete?: never;
@@ -38,7 +38,11 @@ export interface paths {
         get: operations["get_1"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 분석 취소
+         * @description 업로드 중(UPLOADING)인 분석을 취소함. 분석과 사진 상태를 FAILED로 닫고, 업로드된 원본 이미지는 커밋 후 비동기로 정리함
+         */
+        delete: operations["cancel"];
         options?: never;
         head?: never;
         patch?: never;
@@ -242,6 +246,26 @@ export interface paths {
          * @description 내 스티커의 제목을 변경함. 최대 15자이며 빨간 점 상태는 바뀌지 않음
          */
         patch: operations["updateTitle"];
+        trace?: never;
+    };
+    "/stickers/{stickerId}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 스티커 이미지 재생성
+         * @description 고정된 사진 구성은 유지한 채 스티커 이미지(피사체)만 다시 생성함. 리캡 문구(title, summary)는 바뀌지 않음
+         */
+        post: operations["regenerate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/stickers/{stickerId}/view": {
@@ -661,8 +685,8 @@ export interface components {
              * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
              */
             boardId: string;
-            /** @description 촬영 시각 오름차순으로 보내는 사진 90~100장 */
-            photos: components["schemas"]["PhotoUploadItem"][];
+            /** @description 촬영 시각 오름차순으로 보내는 사진 그룹. 그룹은 20~100개, 그룹당 사진은 1~10장이어야 한다. */
+            photos: components["schemas"]["PhotoUploadGroup"][];
         };
         /** @description 생성된 분석과 사진별 업로드 URL */
         CreateAnalysisResponse: {
@@ -931,6 +955,11 @@ export interface components {
              */
             version: string;
         };
+        /** @description 사진 그룹. 연사가 아니면 원소 1개, 연사면 여러 장(최대 10장) */
+        PhotoUploadGroup: {
+            /** @description 그룹에 속한 사진들. 촬영 시각 오름차순 */
+            items: components["schemas"]["PhotoUploadItem"][];
+        };
         /** @description 업로드할 사진 정보 */
         PhotoUploadItem: {
             /**
@@ -939,6 +968,8 @@ export interface components {
              * @enum {string}
              */
             contentType: "image/jpeg" | "image/png" | "image/heic";
+            /** @description 연사 그룹 내 대표 사진 여부 */
+            isRepresentative: boolean;
             /**
              * Format: date-time
              * @description 사진 촬영 시각
@@ -990,7 +1021,7 @@ export interface components {
         RecapDetailResponse: {
             /** @description 분석 코멘트. id(uuidv7) 오름차순 */
             comments: components["schemas"]["RecapCommentResponse"][];
-            /** @description 리캡 사진. takenAt, id 오름차순 */
+            /** @description 리캡 사진. takenAt, id 오름차순. 연사 그룹은 대표 사진 1장만 포함 */
             photos: components["schemas"]["RecapPhotoResponse"][];
             /** @description 리캡 대상 스티커 */
             sticker: components["schemas"]["StickerResponse"];
@@ -1341,7 +1372,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCreateAnalysisResponse"];
                 };
             };
-            /** @description 요청 값이 올바르지 않음 (COMMON-001, ANALYSIS-001) */
+            /** @description 요청 값이 올바르지 않음 (COMMON-001, ANALYSIS-001, ANALYSIS-009) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1420,6 +1451,65 @@ export interface operations {
             };
             /** @description 분석을 찾을 수 없음 (ANALYSIS-005) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    cancel: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1";
+            };
+            path: {
+                /**
+                 * @description 취소할 분석 ID (uuidv7)
+                 * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+                 */
+                analysisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 처리 완료. data는 항상 null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseUnit"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 분석을 찾을 수 없음 (ANALYSIS-005) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 취소할 수 없는 상태의 분석임 (ANALYSIS-004) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2135,6 +2225,74 @@ export interface operations {
             };
             /** @description 스티커를 찾을 수 없음 (STICKER-001) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    regenerate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1";
+            };
+            path: {
+                /**
+                 * @description 재생성할 스티커 ID (uuidv7)
+                 * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+                 */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 재생성 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseRecapDetailResponse"];
+                };
+            };
+            /** @description 요청 값이 올바르지 않음 (COMMON-001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 스티커를 찾을 수 없음 (STICKER-001) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 같은 스티커에 대한 재생성이 이미 진행 중임 (STICKER-002) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
