@@ -28,11 +28,13 @@ export function SelectBox({ sticker, position, scale, onResizeMove, onResizeEnd 
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const resizeStartRef = useRef<Point | null>(null);
 
+  // 눈에 보이는 테두리·모서리 점은 Html이라 Konva 드래그 추적과 충돌할 일이 없어 실시간 scale을 그대로 반영
   const { width: visualWidth, height: visualHeight } = getPhotoSize(
     photoImage,
     scale ?? sticker.scale,
   );
 
+  // 드래그 히트 영역(Konva)은 sticker.scale(직전 커밋값)에 고정 (드래그 중에 위치를 바꾸면 Konva 자체 드래그 추적과 충돌해서 버벅임)
   const { width: hitWidth, height: hitHeight } = getPhotoSize(photoImage, sticker.scale);
 
   if (visualWidth <= 0 || visualHeight <= 0 || hitWidth <= 0 || hitHeight <= 0) return null;
@@ -86,6 +88,7 @@ export function SelectBox({ sticker, position, scale, onResizeMove, onResizeEnd 
           }}
         />
       ))}
+      {/* 뱃지(Html)보다 항상 위에 보이도록 Konva 대신 Html로 그림 */}
       <Html divProps={{ style: { zIndex: SELECT_BOX_Z_INDEX, pointerEvents: 'none' } }}>
         <div
           style={{

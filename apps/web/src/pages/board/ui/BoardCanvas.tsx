@@ -203,6 +203,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const stickers: StickerData[] = [...data.stickers].sort((a, b) => a.zIndex - b.zIndex);
   const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
 
+  // 스티커를 선택하면 다른 스티커 위로 보이도록 zIndex를 맨 위로 올림
+  const handleStickerSelect = (sticker: StickerData) => {
+    setSelectedStickerId(sticker.id);
+    const newZIndex = computeBringToFrontZIndex(stickers, sticker.id);
+    if (newZIndex !== null) saveStickerLayout(sticker, { zIndex: newZIndex });
+  };
+
   return (
     <div ref={setContainer} className="h-full w-full touch-none">
       <Stage
@@ -231,9 +238,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
               onDragEnd={(e) => handleStickerDragEnd(sticker, e)}
               onClick={() => {
                 if (isEditMode) {
-                  setSelectedStickerId(sticker.id);
-                  const newZIndex = computeBringToFrontZIndex(stickers, sticker.id);
-                  if (newZIndex !== null) saveStickerLayout(sticker, { zIndex: newZIndex });
+                  handleStickerSelect(sticker);
                   return;
                 }
                 push('Recap', { stickerId: sticker.id });
