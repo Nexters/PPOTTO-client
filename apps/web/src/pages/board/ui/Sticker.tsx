@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { Group, Image as KonvaImage } from 'react-konva';
 import { Html } from 'react-konva-utils';
 
+import { scaleBadgeOffset } from '../model/board-transform';
+
 import { StickerBadge } from './StickerBadge';
 
 // 스티커 크기는 긴 변을 이 값으로 맞추고 비율을 유지한다
@@ -73,6 +75,12 @@ export function Sticker({
     scaleOverride ?? sticker.scale,
   );
 
+  const badgeOffset = scaleBadgeOffset(
+    { x: sticker.badgeOffsetX, y: sticker.badgeOffsetY },
+    scaleOverride ?? sticker.scale,
+    sticker.scale,
+  );
+
   return (
     <Group
       x={sticker.posX}
@@ -102,7 +110,7 @@ export function Sticker({
         />
       )}
       <Html
-        groupProps={{ x: sticker.badgeOffsetX, y: sticker.badgeOffsetY }}
+        groupProps={{ x: badgeOffset.x, y: badgeOffset.y }}
         divProps={{ style: { zIndex: sticker.zIndex } }}
       >
         <div style={{ transform: `translate(-50%, -50%) rotate(${-sticker.rotation}deg)` }}>

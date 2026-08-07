@@ -12,3 +12,10 @@ export function computeResizeScale(
   const currentDistance = distance(center, currentPoint);
   return startScale * (currentDistance / startDistance);
 }
+
+export function scaleBadgeOffset(offset: Point, currentScale: number, baseScale: number): Point {
+  if (baseScale === 0) return offset;
+
+  const ratio = currentScale / baseScale;
+  return { x: offset.x * ratio, y: offset.y * ratio };
+}

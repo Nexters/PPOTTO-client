@@ -6,10 +6,14 @@
  *
  * 제외: 회전 — 별도 이슈로 분리(코너 드래그가 리사이즈만 담당, 각도 추적·모드 전환 없음)
  * 제외: 최소/최대 크기 제한 — 기획 미정
+ *
+ * badgeOffset은 직전 커밋된 scale(baseScale) 기준으로 저장돼 있어서, 리사이즈 중 scale이
+ * 바뀌면 뱃지가 스티커에서 떨어져 보인다. scaleBadgeOffset은 그 비율만큼 offset도 같이
+ * 조정해서 뱃지가 스티커를 따라오게 한다.
  */
 import { describe, expect, it } from 'vitest';
 
-import { computeResizeScale } from './board-transform';
+import { computeResizeScale, scaleBadgeOffset } from './board-transform';
 
 describe('computeResizeScale', () => {
   const center = { x: 100, y: 100 };
@@ -57,5 +61,31 @@ describe('computeResizeScale', () => {
     const result = computeResizeScale(center, startPoint, currentPoint, 1.2);
 
     expect(result).toBe(1.2);
+  });
+});
+
+describe('scaleBadgeOffset', () => {
+  it('현재 scale이 baseScale과 같으면 offset이 그대로 유지된다', () => {
+    const result = scaleBadgeOffset({ x: 20, y: 10 }, 1.5, 1.5);
+
+    expect(result).toEqual({ x: 20, y: 10 });
+  });
+
+  it('현재 scale이 baseScale의 절반이면 offset도 절반이 된다', () => {
+    const result = scaleBadgeOffset({ x: 20, y: 10 }, 0.5, 1);
+
+    expect(result).toEqual({ x: 10, y: 5 });
+  });
+
+  it('현재 scale이 baseScale의 2배면 offset도 2배가 된다', () => {
+    const result = scaleBadgeOffset({ x: 20, y: 10 }, 2, 1);
+
+    expect(result).toEqual({ x: 40, y: 20 });
+  });
+
+  it('baseScale이 0이면 나눗셈 대신 offset을 그대로 반환한다', () => {
+    const result = scaleBadgeOffset({ x: 20, y: 10 }, 1, 0);
+
+    expect(result).toEqual({ x: 20, y: 10 });
   });
 });

@@ -15,6 +15,7 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import { type CameraState, panCamera, pinchToZoomParams, zoomCamera } from '../model/board-camera';
 import { toLayoutInput } from '../model/board-layout';
+import { scaleBadgeOffset } from '../model/board-transform';
 
 import type { ToolbarMode } from './BoardToolbar';
 import { SelectBox } from './SelectBox';
@@ -126,7 +127,9 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   // 캐시에 변경분을 바로 반영하고 저장 요청을 보냄
   const saveStickerLayout = (
     sticker: StickerData,
-    overrides: Partial<Pick<StickerData, 'posX' | 'posY' | 'scale'>>,
+    overrides: Partial<
+      Pick<StickerData, 'posX' | 'posY' | 'scale' | 'badgeOffsetX' | 'badgeOffsetY'>
+    >,
   ) => {
     const updated = { ...sticker, ...overrides };
 
@@ -169,7 +172,16 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
 
   const handleResizeEnd = (sticker: StickerData, scale: number) => {
     setDragScale(null);
-    saveStickerLayout(sticker, { scale });
+    const badgeOffset = scaleBadgeOffset(
+      { x: sticker.badgeOffsetX, y: sticker.badgeOffsetY },
+      scale,
+      sticker.scale,
+    );
+    saveStickerLayout(sticker, {
+      scale,
+      badgeOffsetX: badgeOffset.x,
+      badgeOffsetY: badgeOffset.y,
+    });
   };
 
   if (isLoading) {
