@@ -71,7 +71,7 @@ export function SettingsPage() {
   };
 
   return (
-    <main className={cn('flex min-h-full w-full flex-col gap-10 bg-black px-6', 'pt-[62px]')}>
+    <main className={cn('flex min-h-full w-full flex-col gap-10 px-6', 'pt-[62px]')}>
       <header className="relative w-full h-6">
         <button
           type="button"
