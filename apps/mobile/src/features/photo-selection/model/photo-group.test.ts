@@ -120,6 +120,7 @@ describe('대표 사진 선정과 승계', () => {
     const afterExclude = excludeRepresentative(selection, groups[0]!.id);
 
     expect(units(afterExclude).map((u) => u.photo.id)).toEqual(['b']);
+    expect(units(afterExclude).map((u) => u.photoCount)).toEqual([2]);
     // 승계는 분석 단위를 없애지 않으므로 개수가 유지된다
     expect(unitCount(afterExclude)).toBe(1);
   });

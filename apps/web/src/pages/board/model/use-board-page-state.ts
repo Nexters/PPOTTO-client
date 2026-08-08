@@ -38,7 +38,7 @@ export function useBoardPageState() {
     return () => clearTimeout(timer);
   }, [board, isActive, me]);
 
-  const confirmInitialUpload = () => {
+  const openPhotoSelect = () => {
     setIsInitialUploadModalOpen(false);
     bridge.send('OPEN_PHOTO_SELECT');
   };
@@ -48,6 +48,6 @@ export function useBoardPageState() {
     isBoardListLoading,
     isInitialUploadModalOpen,
     setIsInitialUploadModalOpen,
-    confirmInitialUpload,
+    openPhotoSelect,
   };
 }

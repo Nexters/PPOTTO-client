@@ -169,7 +169,7 @@ it('그룹 대표를 누르면 카운터가 유지되고 타일이 선택 상태
   expect(screen.getAllByRole('checkbox')[0]).toBeChecked();
 });
 
-it('여러 장이 묶인 그룹에만 사진 수 배지를 보여준다', async () => {
+it('그룹에서 사진을 제외하면 배지에 남은 사진 수를 보여준다', async () => {
   // 가장 최신 3장이 한 그룹, 나머지는 1장씩이라 배지는 하나만 나온다.
   const burst = [
     asset('b0', BASE_TIME),
@@ -178,9 +178,14 @@ it('여러 장이 묶인 그룹에만 사진 수 배지를 보여준다', async 
   ];
   setGallery([...burst, ...spacedAssets(99, 10)]);
 
-  await renderLoadedScreen();
+  const { user } = await renderLoadedScreen();
 
   expect(screen.getByText('3')).toBeOnTheScreen();
+
+  await user.press(screen.getAllByRole('checkbox')[0]!);
+
+  expect(screen.queryByText('3')).not.toBeOnTheScreen();
+  expect(screen.getByText('2')).toBeOnTheScreen();
 });
 
 it('89개로 내려가면 CTA가 비활성화되고 90개로 회복하면 다시 활성화된다', async () => {

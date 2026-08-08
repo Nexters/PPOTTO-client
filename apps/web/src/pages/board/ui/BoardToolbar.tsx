@@ -2,7 +2,11 @@ import { IconDraw, IconHand, IconPlus, IconText } from '@ppotto/assets';
 
 import { cn } from '@/shared/lib/cn';
 
-export function BoardToolbar() {
+type BoardToolbarProps = {
+  onAddSticker: () => void;
+};
+
+export function BoardToolbar({ onAddSticker }: BoardToolbarProps) {
   return (
     <div
       className={cn(
@@ -37,6 +41,7 @@ export function BoardToolbar() {
       <button
         type="button"
         aria-label="스티커 추가"
+        onClick={onAddSticker}
         className="flex size-12 items-center justify-center rounded-full bg-white"
       >
         <IconPlus width={18} height={18} />
