@@ -1,4 +1,4 @@
-import { clamp, distance, type Point } from './geometry';
+import { clamp, type Point } from './geometry';
 
 export const STICKER_SCALE_MIN = 0.3;
 export const STICKER_SCALE_MAX = 4;
@@ -8,19 +8,6 @@ const SNAP_TOLERANCE = 5;
 
 type StickerTransform = { x: number; y: number; rotation: number; scale: number };
 type PinchSample = { centroid: Point; distance: number; angle: number };
-
-export function computeResizeScale(
-  center: Point,
-  startPoint: Point,
-  currentPoint: Point,
-  startScale: number,
-): number {
-  const startDistance = distance(center, startPoint);
-  if (startDistance === 0) return startScale;
-
-  const currentDistance = distance(center, currentPoint);
-  return startScale * (currentDistance / startDistance);
-}
 
 export function scaleBadgeOffset(offset: Point, currentScale: number, baseScale: number): Point {
   if (baseScale === 0) return offset;

@@ -15,3 +15,11 @@ export function centroid(points: Point[]): Point {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
+
+export function rotatePoint(point: Point, degrees: number): Point {
+  const rad = (degrees * Math.PI) / 180;
+  return {
+    x: point.x * Math.cos(rad) - point.y * Math.sin(rad),
+    y: point.x * Math.sin(rad) + point.y * Math.cos(rad),
+  };
+}

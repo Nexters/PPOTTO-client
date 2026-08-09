@@ -1,14 +1,7 @@
 'use client';
 
 import type { paths } from '@ppotto/api';
-import type { KonvaEventObject } from 'konva/lib/Node';
 import { useEffect, useState } from 'react';
-import { Group, Image as KonvaImage } from 'react-konva';
-import { Html } from 'react-konva-utils';
-
-import { scaleBadgeOffset } from '../model/board-transform';
-
-import { StickerBadge } from './StickerBadge';
 
 // 스티커 크기는 긴 변을 이 값으로 맞추고 비율을 유지한다
 const STICKER_MAX_EDGE = 160;
@@ -37,6 +30,14 @@ export function useStickerImage(src?: string) {
   return image;
 }
 
+export function stickerZIndex(sticker: Pick<StickerData, 'zIndex'>): number {
+  return sticker.zIndex * 2;
+}
+
+export function badgeZIndex(sticker: Pick<StickerData, 'zIndex'>): number {
+  return sticker.zIndex * 2 + 1;
+}
+
 export function getPhotoSize(
   photoImage: HTMLImageElement | null,
   scale: number,
@@ -54,76 +55,39 @@ export function getPhotoSize(
 
 type StickerProps = {
   sticker: StickerData;
-  draggable?: boolean;
-  scaleOverride?: number;
-  onClick?: () => void;
-  onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
-  onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
-  /** SelectBox가 같은 이미지를 다시 로드하지 않도록, 이미 로드한 이미지를 부모에 알려준다 */
-  onImageLoad?: (id: string, image: HTMLImageElement | null) => void;
+  selected?: boolean;
+  positionOverride?: { x: number; y: number };
 };
 
-export function Sticker({
-  sticker,
-  draggable,
-  scaleOverride,
-  onClick,
-  onDragMove,
-  onDragEnd,
-  onImageLoad,
-}: StickerProps) {
+export function Sticker({ sticker, selected, positionOverride }: StickerProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
-  const { width: photoWidth, height: photoHeight } = getPhotoSize(
-    photoImage,
-    scaleOverride ?? sticker.scale,
-  );
+  const { width, height } = getPhotoSize(photoImage, sticker.scale);
 
-  useEffect(() => {
-    onImageLoad?.(sticker.id, photoImage);
-  }, [sticker.id, photoImage, onImageLoad]);
+  if (!photoImage || width <= 0 || height <= 0) return null;
 
-  const badgeOffset = scaleBadgeOffset(
-    { x: sticker.badgeOffsetX, y: sticker.badgeOffsetY },
-    scaleOverride ?? sticker.scale,
-    sticker.scale,
-  );
+  const x = positionOverride?.x ?? sticker.posX;
+  const y = positionOverride?.y ?? sticker.posY;
 
   return (
-    <Group
-      x={sticker.posX}
-      y={sticker.posY}
-      rotation={sticker.rotation}
-      draggable={draggable}
-      onDragMove={onDragMove}
-      onDragEnd={onDragEnd}
-      onClick={onClick}
-      onTap={onClick}
-      onMouseEnter={(e) => {
-        const stage = e.target.getStage();
-        if (stage && onClick) stage.container().style.cursor = 'pointer';
+    // eslint-disable-next-line @next/next/no-img-element -- 보드 좌표계에 직접 배치하는 스티커라 next/image 최적화 대상이 아님
+    <img
+      src={photoImage.src}
+      alt=""
+      data-sticker-id={sticker.id}
+      draggable={false}
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        width,
+        height,
+        zIndex: stickerZIndex(sticker),
+        transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`,
+        filter: selected
+          ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
+          : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
+        touchAction: 'none',
       }}
-      onMouseLeave={(e) => {
-        const stage = e.target.getStage();
-        if (stage) stage.container().style.cursor = 'default';
-      }}
-    >
-      {photoImage && (
-        <KonvaImage
-          image={photoImage}
-          x={-photoWidth / 2}
-          y={-photoHeight / 2}
-          width={photoWidth}
-          height={photoHeight}
-        />
-      )}
-      <Html
-        groupProps={{ x: badgeOffset.x, y: badgeOffset.y }}
-        divProps={{ style: { zIndex: sticker.zIndex } }}
-      >
-        <div style={{ transform: `translate(-50%, -50%) rotate(${-sticker.rotation}deg)` }}>
-          <StickerBadge title={sticker.title} isNew={sticker.isNew} />
-        </div>
-      </Html>
-    </Group>
+    />
   );
 }

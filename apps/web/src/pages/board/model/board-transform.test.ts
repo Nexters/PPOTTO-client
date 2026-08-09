@@ -1,8 +1,6 @@
 /**
  * 동작 범위 (2026-08-09 재구성 — DOM 전환 + 새 인터랙션 스펙 반영)
  *
- * computeResizeScale: 코너 드래그 리사이즈용 옛 함수. SelectBox 제거(Phase 3) 전까지만 유지.
- *
  * applySnap: 회전각을 0/90/180/270°에 ±5° 이내로 들어오면 스냅한다.
  *
  * computeStickerPinchTransform: 두 손가락 제스처로 스티커를 회전+확대+이동을 한 번에 계산한다.
@@ -16,61 +14,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-  applySnap,
-  computeResizeScale,
-  computeStickerPinchTransform,
-  scaleBadgeOffset,
-} from './board-transform';
-
-describe('computeResizeScale', () => {
-  const center = { x: 100, y: 100 };
-
-  it('중심에서 멀어지면 그 비율만큼 scale이 커진다', () => {
-    const startPoint = { x: 110, y: 100 }; // 중심에서 거리 10
-    const currentPoint = { x: 130, y: 100 }; // 중심에서 거리 30 (3배)
-
-    const result = computeResizeScale(center, startPoint, currentPoint, 1);
-
-    expect(result).toBeCloseTo(3);
-  });
-
-  it('중심에 가까워지면 그 비율만큼 scale이 작아진다', () => {
-    const startPoint = { x: 140, y: 100 }; // 거리 40
-    const currentPoint = { x: 110, y: 100 }; // 거리 10 (1/4배)
-
-    const result = computeResizeScale(center, startPoint, currentPoint, 1);
-
-    expect(result).toBeCloseTo(0.25);
-  });
-
-  it('거리가 그대로면 scale도 그대로다', () => {
-    const startPoint = { x: 110, y: 100 };
-    const currentPoint = { x: 100, y: 110 }; // 다른 방향이지만 거리는 같음(10)
-
-    const result = computeResizeScale(center, startPoint, currentPoint, 1);
-
-    expect(result).toBeCloseTo(1);
-  });
-
-  it('시작 scale에 비율을 곱해서 반환한다(1이 아닌 경우)', () => {
-    const startPoint = { x: 110, y: 100 }; // 거리 10
-    const currentPoint = { x: 120, y: 100 }; // 거리 20 (2배)
-
-    const result = computeResizeScale(center, startPoint, currentPoint, 0.8);
-
-    expect(result).toBeCloseTo(1.6);
-  });
-
-  it('시작 지점이 중심과 같으면(거리 0) 나눗셈 대신 시작 scale을 그대로 반환한다', () => {
-    const startPoint = { x: 100, y: 100 };
-    const currentPoint = { x: 150, y: 100 };
-
-    const result = computeResizeScale(center, startPoint, currentPoint, 1.2);
-
-    expect(result).toBe(1.2);
-  });
-});
+import { applySnap, computeStickerPinchTransform, scaleBadgeOffset } from './board-transform';
 
 describe('applySnap', () => {
   it('정확히 스냅 각도면 그대로 반환한다', () => {

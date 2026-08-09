@@ -1,10 +1,8 @@
 'use client';
 
-import type { KonvaEventObject } from 'konva/lib/Node';
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Layer, Stage } from 'react-konva';
+import { useEffect, useRef, useState } from 'react';
 
 import type { BoardDetail } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
@@ -13,33 +11,46 @@ import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
-import { type CameraState, panCamera, pinchToZoomParams, zoomCamera } from '../model/board-camera';
+import {
+  type CameraState,
+  computeBoardPinchZoom,
+  panCamera,
+  zoomCamera,
+} from '../model/board-camera';
 import { computeBringToFrontZIndex, toLayoutInput } from '../model/board-layout';
-import { scaleBadgeOffset } from '../model/board-transform';
+import { centroid, distance, type Point } from '../model/geometry';
 
 import type { ToolbarMode } from './BoardToolbar';
 import { SelectBox } from './SelectBox';
 import { Sticker, type StickerData } from './Sticker';
+import { StickerBadgeMark } from './StickerBadgeMark';
 
 type BoardCanvasProps = {
   boardId: string;
   mode: ToolbarMode;
 };
 
-type TouchPoint = { x: number; y: number };
+// 탭과 드래그를 구분하는 이동 허용 오차(px)
+const TAP_MOVE_THRESHOLD = 6;
+
+type Gesture =
+  | { kind: 'pan'; pointerId: number; startClient: Point; startCamera: CameraState }
+  | { kind: 'move'; pointerId: number; sticker: StickerData; startClient: Point; startPos: Point }
+  | { kind: 'pinch'; startCentroid: Point; startDistance: number; startCamera: CameraState };
+
+function hitTestStickerId(target: EventTarget | null): string | null {
+  if (!(target instanceof Element)) return null;
+  const el = target.closest('[data-sticker-id]');
+  return el instanceof HTMLElement ? (el.dataset.stickerId ?? null) : null;
+}
 
 export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
-  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
-  const [dragScale, setDragScale] = useState<number | null>(null);
-  const [selectedImage, setSelectedImage] = useState<{
-    id: string;
-    image: HTMLImageElement | null;
-  } | null>(null);
-  const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ id: string; x: number; y: number } | null>(
+    null,
+  );
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
@@ -56,89 +67,29 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     if (!isEditMode) setSelectedStickerId(null);
   }
 
+  const stickers: StickerData[] = data
+    ? [...data.stickers].sort((a, b) => a.zIndex - b.zIndex)
+    : [];
+
+  const cameraRef = useRef(camera);
+  const stickersRef = useRef(stickers);
+  const selectedIdRef = useRef(selectedId);
+  const isEditModeRef = useRef(isEditMode);
+
+  const pointersRef = useRef(new Map<number, Point>());
+  const gestureRef = useRef<Gesture | null>(null);
+  const tapCandidateRef = useRef<{
+    pointerId: number;
+    stickerId: string | null;
+    startClient: Point;
+  } | null>(null);
+
   useRefetchOnActive(refetch, isStale);
-
-  // 컨테이너 크기 관찰
-  useEffect(() => {
-    if (!container) return;
-
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
-    });
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [container]);
 
   // 보드에 있는 동안만 웹뷰 네이티브 바운스 스크롤을 꺼서 캔버스 드래그와 안 겹치게 함
   useEffect(() => {
     bridge.send('SET_BOARD_ACTIVE', { active: true });
     return () => bridge.send('SET_BOARD_ACTIVE', { active: false });
-  }, []);
-
-  // 데스크톱 휠/트랙패드 처리
-  // 일반 휠/두 손가락 스크롤은 팬(이동), Ctrl+휠/트랙패드 핀치는 포인터 고정 줌
-  const handleWheel = (e: KonvaEventObject<WheelEvent>) => {
-    e.evt.preventDefault();
-
-    if (e.evt.ctrlKey) {
-      const pointer = e.target.getStage()?.getPointerPosition();
-      if (pointer) setCamera((current) => zoomCamera(current, pointer, e.evt.deltaY));
-      return;
-    }
-
-    setCamera((current) => panCamera(current, { x: e.evt.deltaX, y: e.evt.deltaY }));
-  };
-
-  // 드래그가 끝난 뒤 결과 위치를 camera 상태에 맞춰둠 -> 다음 줌 계산이 최신 위치를 기준으로 이뤄지게 함
-  // dragend는 자식(스티커) -> 부모로 버블링되므로, Stage 자신의 드래그가 끝난 경우만 처리해야 함
-  const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
-    if (e.target !== e.target.getStage()) return;
-    setCamera((current) => ({ ...current, x: e.target.x(), y: e.target.y() }));
-  };
-
-  // 모바일 핀치 처리
-  const handleTouchMove = (e: KonvaEventObject<TouchEvent>) => {
-    const { touches } = e.evt;
-    if (touches.length !== 2) {
-      pinchTouchesRef.current = null;
-      return;
-    }
-    e.evt.preventDefault();
-
-    const stage = e.target.getStage();
-    stage?.stopDrag();
-
-    const rect = stage?.container().getBoundingClientRect();
-    const current: [TouchPoint, TouchPoint] = [
-      { x: touches[0]!.clientX - (rect?.left ?? 0), y: touches[0]!.clientY - (rect?.top ?? 0) },
-      { x: touches[1]!.clientX - (rect?.left ?? 0), y: touches[1]!.clientY - (rect?.top ?? 0) },
-    ];
-
-    if (pinchTouchesRef.current) {
-      const { pointer, deltaY } = pinchToZoomParams(pinchTouchesRef.current, current);
-      setCamera((prev) => zoomCamera(prev, pointer, deltaY));
-    }
-    pinchTouchesRef.current = current;
-  };
-
-  // 터치가 끝나면 핀치 상태를 초기화
-  const handleTouchEnd = () => {
-    pinchTouchesRef.current = null;
-  };
-
-  // 편집 모드에서 스티커가 아닌 빈 공간을 탭하면 선택 해제
-  const handleStageClick = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (e.target === e.target.getStage()) setSelectedStickerId(null);
-  };
-
-  // 선택박스는 별도 노드라 드래그 중인 실시간 위치를 직접 전달해줘야 스티커를 따라 움직임
-  const handleStickerDragMove = (e: KonvaEventObject<DragEvent>) => {
-    setDragPosition({ x: e.target.x(), y: e.target.y() });
-  };
-
-  // Sticker가 이미 로드한 이미지를 SelectBox에 그대로 넘겨서, 같은 이미지를 두 번 로드하지 않게 함
-  const handleStickerImageLoad = useCallback((id: string, image: HTMLImageElement | null) => {
-    setSelectedImage({ id, image });
   }, []);
 
   // 캐시에 변경분을 바로 반영하고 저장 요청을 보냄
@@ -178,28 +129,190 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     });
   };
 
-  const handleStickerDragEnd = (sticker: StickerData, e: KonvaEventObject<DragEvent>) => {
-    setDragPosition(null);
-    saveStickerLayout(sticker, { posX: e.target.x(), posY: e.target.y() });
+  // 스티커를 선택하면 다른 스티커 위로 보이도록 zIndex를 맨 위로 올림
+  const selectSticker = (sticker: StickerData) => {
+    setSelectedStickerId(sticker.id);
+    const newZIndex = computeBringToFrontZIndex(stickersRef.current, sticker.id);
+    if (newZIndex !== null) saveStickerLayout(sticker, { zIndex: newZIndex });
   };
 
-  const handleResizeMove = (scale: number) => {
-    setDragScale(scale);
-  };
+  const saveStickerLayoutRef = useRef(saveStickerLayout);
+  const selectStickerRef = useRef(selectSticker);
+  const pushRef = useRef(push);
 
-  const handleResizeEnd = (sticker: StickerData, scale: number) => {
-    setDragScale(null);
-    const badgeOffset = scaleBadgeOffset(
-      { x: sticker.badgeOffsetX, y: sticker.badgeOffsetY },
-      scale,
-      sticker.scale,
-    );
-    saveStickerLayout(sticker, {
-      scale,
-      badgeOffsetX: badgeOffset.x,
-      badgeOffsetY: badgeOffset.y,
-    });
-  };
+  // ref들을 매 렌더 이후 최신값으로 동기화
+  useEffect(() => {
+    cameraRef.current = camera;
+    stickersRef.current = stickers;
+    selectedIdRef.current = selectedId;
+    isEditModeRef.current = isEditMode;
+    saveStickerLayoutRef.current = saveStickerLayout;
+    selectStickerRef.current = selectSticker;
+    pushRef.current = push;
+  });
+
+  // 포인터, 휠 제스처는 Konva 없이 순수 DOM 이벤트로 직접 처리
+  // pointerdown은 컨테이너에, move/up/cancel은 window에 붙여서 손가락이 컨테이너 밖으로 나가도(빠르게 드래그할 때 흔함) 계속 추적되게 함
+  useEffect(() => {
+    if (!container) return;
+
+    const getLocalPoint = (e: PointerEvent): Point => {
+      const rect = container.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const point = getLocalPoint(e);
+      pointersRef.current.set(e.pointerId, point);
+      if (pointersRef.current.size !== 1) return;
+
+      const stickerId = hitTestStickerId(e.target);
+      tapCandidateRef.current = { pointerId: e.pointerId, stickerId, startClient: point };
+
+      if (stickerId && isEditModeRef.current) {
+        const sticker = stickersRef.current.find((s) => s.id === stickerId);
+        if (sticker) {
+          if (selectedIdRef.current !== stickerId) selectStickerRef.current(sticker);
+          gestureRef.current = {
+            kind: 'move',
+            pointerId: e.pointerId,
+            sticker,
+            startClient: point,
+            startPos: { x: sticker.posX, y: sticker.posY },
+          };
+          return;
+        }
+      }
+
+      gestureRef.current = {
+        kind: 'pan',
+        pointerId: e.pointerId,
+        startClient: point,
+        startCamera: cameraRef.current,
+      };
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!pointersRef.current.has(e.pointerId)) return;
+      const point = getLocalPoint(e);
+      pointersRef.current.set(e.pointerId, point);
+
+      if (tapCandidateRef.current?.pointerId === e.pointerId) {
+        if (distance(tapCandidateRef.current.startClient, point) > TAP_MOVE_THRESHOLD) {
+          tapCandidateRef.current = null;
+        }
+      }
+
+      const gesture = gestureRef.current;
+      if (!gesture) return;
+
+      if (pointersRef.current.size >= 2) {
+        // 배경을 팬하던 중 두 번째 손가락이 닿으면 핀치줌으로 전환(rebase)
+        if (gesture.kind === 'pan') {
+          const points = [...pointersRef.current.values()];
+          gestureRef.current = {
+            kind: 'pinch',
+            startCentroid: centroid(points),
+            startDistance: distance(points[0]!, points[1]!),
+            startCamera: cameraRef.current,
+          };
+        }
+        if (gestureRef.current?.kind === 'pinch') {
+          const points = [...pointersRef.current.values()];
+          setCamera(
+            computeBoardPinchZoom(
+              gestureRef.current.startCamera,
+              {
+                centroid: gestureRef.current.startCentroid,
+                distance: gestureRef.current.startDistance,
+              },
+              { centroid: centroid(points), distance: distance(points[0]!, points[1]!) },
+            ),
+          );
+        }
+        return;
+      }
+
+      if (gesture.kind === 'pan' && gesture.pointerId === e.pointerId) {
+        setCamera({
+          scale: gesture.startCamera.scale,
+          x: gesture.startCamera.x + (point.x - gesture.startClient.x),
+          y: gesture.startCamera.y + (point.y - gesture.startClient.y),
+        });
+        return;
+      }
+
+      if (gesture.kind === 'move' && gesture.pointerId === e.pointerId) {
+        const scale = cameraRef.current.scale;
+        setDragPosition({
+          id: gesture.sticker.id,
+          x: gesture.startPos.x + (point.x - gesture.startClient.x) / scale,
+          y: gesture.startPos.y + (point.y - gesture.startClient.y) / scale,
+        });
+      }
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (!pointersRef.current.has(e.pointerId)) return;
+      const point = getLocalPoint(e);
+      pointersRef.current.delete(e.pointerId);
+
+      const gesture = gestureRef.current;
+      if (gesture?.kind === 'move' && gesture.pointerId === e.pointerId) {
+        const scale = cameraRef.current.scale;
+        setDragPosition(null);
+        saveStickerLayoutRef.current(gesture.sticker, {
+          posX: gesture.startPos.x + (point.x - gesture.startClient.x) / scale,
+          posY: gesture.startPos.y + (point.y - gesture.startClient.y) / scale,
+        });
+      }
+      if (pointersRef.current.size === 0) gestureRef.current = null;
+
+      const tap = tapCandidateRef.current;
+      if (tap?.pointerId === e.pointerId) {
+        tapCandidateRef.current = null;
+        if (isEditModeRef.current) {
+          if (!tap.stickerId) setSelectedStickerId(null); // 빈 배경 탭 -> 선택 해제
+        } else if (tap.stickerId) {
+          pushRef.current('Recap', { stickerId: tap.stickerId });
+        }
+      }
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.ctrlKey) {
+        const rect = container.getBoundingClientRect();
+        const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        setCamera((current) => zoomCamera(current, pointer, e.deltaY));
+        return;
+      }
+      setCamera((current) => panCamera(current, { x: e.deltaX, y: e.deltaY }));
+    };
+
+    // iOS Safari 제스처(핀치로 페이지 전체가 확대되는 것)를 막음
+    const blockGesture = (e: Event) => e.preventDefault();
+
+    container.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('gesturestart', blockGesture);
+    container.addEventListener('gesturechange', blockGesture);
+    container.addEventListener('gestureend', blockGesture);
+
+    return () => {
+      container.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('gesturestart', blockGesture);
+      container.removeEventListener('gesturechange', blockGesture);
+      container.removeEventListener('gestureend', blockGesture);
+    };
+  }, [container]);
 
   if (isLoading) {
     return (
@@ -217,68 +330,38 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     );
   }
 
-  const stickers: StickerData[] = [...data.stickers].sort((a, b) => a.zIndex - b.zIndex);
   const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
-  // 선택이 바뀐 직후 신고가 아직 안 왔을 수 있어, id가 안 맞으면 이전 스티커의 이미지를 쓰지 않고 null로 둠
-  const selectedPhotoImage = selectedImage?.id === selectedId ? selectedImage.image : null;
-
-  // 스티커를 선택하면 다른 스티커 위로 보이도록 zIndex를 맨 위로 올림
-  const handleStickerSelect = (sticker: StickerData) => {
-    setSelectedStickerId(sticker.id);
-    const newZIndex = computeBringToFrontZIndex(stickers, sticker.id);
-    if (newZIndex !== null) saveStickerLayout(sticker, { zIndex: newZIndex });
-  };
 
   return (
-    <div ref={setContainer} className="h-full w-full touch-none">
-      <Stage
-        draggable
-        width={viewport.width}
-        height={viewport.height}
-        x={camera.x}
-        y={camera.y}
-        scaleX={camera.scale}
-        scaleY={camera.scale}
-        onWheel={handleWheel}
-        onDragEnd={handleDragEnd}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onClick={handleStageClick}
-        onTap={handleStageClick}
+    <div ref={setContainer} className="relative h-full w-full touch-none overflow-hidden">
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transformOrigin: '0 0',
+          transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
+        }}
       >
-        <Layer>
-          {stickers.map((sticker) => (
-            <Sticker
-              key={sticker.id}
-              sticker={sticker}
-              draggable={selectedId === sticker.id}
-              scaleOverride={selectedId === sticker.id ? (dragScale ?? undefined) : undefined}
-              onDragMove={handleStickerDragMove}
-              onDragEnd={(e) => handleStickerDragEnd(sticker, e)}
-              onImageLoad={selectedId === sticker.id ? handleStickerImageLoad : undefined}
-              onClick={() => {
-                if (isEditMode) {
-                  handleStickerSelect(sticker);
-                  return;
-                }
-                push('Recap', { stickerId: sticker.id });
-              }}
-            />
+        {stickers.map((sticker) => (
+          <Sticker
+            key={sticker.id}
+            sticker={sticker}
+            selected={selectedId === sticker.id}
+            positionOverride={dragPosition?.id === sticker.id ? dragPosition : undefined}
+          />
+        ))}
+        {stickers
+          .filter((sticker) => sticker.id !== selectedId)
+          .map((sticker) => (
+            <StickerBadgeMark key={sticker.id} sticker={sticker} />
           ))}
-        </Layer>
         {selectedSticker && (
-          <Layer>
-            <SelectBox
-              sticker={selectedSticker}
-              position={dragPosition ?? undefined}
-              scale={dragScale ?? undefined}
-              photoImage={selectedPhotoImage}
-              onResizeMove={handleResizeMove}
-              onResizeEnd={(scale) => handleResizeEnd(selectedSticker, scale)}
-            />
-          </Layer>
+          <SelectBox
+            sticker={selectedSticker}
+            positionOverride={dragPosition?.id === selectedSticker.id ? dragPosition : undefined}
+          />
         )}
-      </Stage>
+      </div>
     </div>
   );
 }
