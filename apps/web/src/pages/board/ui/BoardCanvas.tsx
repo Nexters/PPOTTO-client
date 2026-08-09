@@ -10,6 +10,7 @@ import { bridge } from '@/shared/lib/bridge';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import { type CameraState, panCamera, pinchToZoomParams, zoomCamera } from '../model/board-camera';
+import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 
 import { Sticker, type StickerData } from './Sticker';
 import { StickerPreview } from './StickerPreview';
@@ -29,6 +30,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { push } = useFlow();
+  const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
 
   useRefetchOnActive(refetch, isStale);
 
@@ -153,6 +155,10 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
       <StickerQuickMenu
         isOpen={quickMenuStickerId !== null}
         onClose={() => setQuickMenuStickerId(null)}
+        onRegenerate={() => {
+          if (quickMenuStickerId) regenerate(quickMenuStickerId, () => setQuickMenuStickerId(null));
+        }}
+        isRegenerating={isRegenerating}
       />
     </div>
   );
