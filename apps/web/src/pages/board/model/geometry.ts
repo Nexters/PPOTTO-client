@@ -11,3 +11,7 @@ export function centroid(points: Point[]): Point {
   });
   return { x: sum.x / points.length, y: sum.y / points.length };
 }
+
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}

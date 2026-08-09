@@ -1,10 +1,13 @@
-import { centroid, distance, type Point } from './geometry';
+import { centroid, clamp, distance, type Point } from './geometry';
 
 export type CameraState = {
   scale: number;
   x: number;
   y: number;
 };
+
+export const BOARD_ZOOM_MIN = 0.4;
+export const BOARD_ZOOM_MAX = 3;
 
 const ZOOM_SPEED = 1.05;
 
@@ -65,4 +68,27 @@ export function pinchToZoomParams(
   const deltaY = previousDistance - currentDistance;
 
   return { pointer, deltaY };
+}
+
+// 핀치로 보드를 확대/축소한다.
+export function computeBoardPinchZoom(
+  base: CameraState,
+  start: { centroid: Point; distance: number },
+  current: { centroid: Point; distance: number },
+): CameraState {
+  if (start.distance === 0) return base;
+
+  const scale = clamp(
+    base.scale * (current.distance / start.distance),
+    BOARD_ZOOM_MIN,
+    BOARD_ZOOM_MAX,
+  );
+  const worldX = (start.centroid.x - base.x) / base.scale;
+  const worldY = (start.centroid.y - base.y) / base.scale;
+
+  return {
+    scale,
+    x: current.centroid.x - worldX * scale,
+    y: current.centroid.y - worldY * scale,
+  };
 }
