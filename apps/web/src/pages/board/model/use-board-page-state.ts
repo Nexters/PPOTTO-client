@@ -39,8 +39,9 @@ export function useBoardPageState() {
   }, [board, isActive, me]);
 
   const openPhotoSelect = () => {
+    if (!boardId) return;
     setIsInitialUploadModalOpen(false);
-    bridge.send('OPEN_PHOTO_SELECT');
+    bridge.send('OPEN_PHOTO_SELECT', { boardId });
   };
 
   return {
