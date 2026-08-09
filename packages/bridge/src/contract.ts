@@ -26,6 +26,8 @@ export const contract = defineContract({
     payload: z.object({ forceRefresh: z.boolean().optional() }),
     response: z.object({ accessToken: z.string().nullable() }),
   }),
+  LOGOUT: request(),
+  WITHDRAW: request(),
   AUTH_EXPIRED: command(),
   LOG: command({
     payload: z.object({
@@ -34,6 +36,8 @@ export const contract = defineContract({
     }),
   }),
   OPEN_PHOTO_SELECT: command(),
+  // 보드 화면 진입/이탈 — 보드에 있는 동안만 바운스 끔
+  SET_BOARD_ACTIVE: command({ payload: z.object({ active: z.boolean() }) }),
 });
 
 export type BridgeContract = typeof contract;

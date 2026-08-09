@@ -1,57 +1,102 @@
 'use client';
 
+import type { KonvaEventObject } from 'konva/lib/Node';
 import { useFlow } from '@stackflow/react';
 import { useEffect, useRef, useState } from 'react';
 import { Layer, Stage } from 'react-konva';
 
-import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
+import { bridge } from '@/shared/lib/bridge';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
-import { computeInitialLayout, needsInitialLayout, toLayoutInput } from '../model/board-layout';
+import { type CameraState, panCamera, pinchToZoomParams, zoomCamera } from '../model/board-camera';
 
 import { Sticker, type StickerData } from './Sticker';
 import { StickerPreview } from './StickerPreview';
 import { StickerQuickMenu } from './StickerQuickMenu';
 
-const REFERENCE_WIDTH = 360;
-const REFERENCE_HEIGHT = 740;
-
 type BoardCanvasProps = {
   boardId: string;
 };
 
+type TouchPoint = { x: number; y: number };
+
 export function BoardCanvas({ boardId }: BoardCanvasProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(REFERENCE_WIDTH);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
+  const pinchTouchesRef = useRef<[TouchPoint, TouchPoint] | null>(null);
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
-  const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
 
   useRefetchOnActive(refetch, isStale);
 
+  // 컨테이너 크기 관찰
   useEffect(() => {
-    const container = containerRef.current;
     if (!container) return;
 
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) setWidth(entry.contentRect.width);
+      if (entry) setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
     });
     observer.observe(container);
     return () => observer.disconnect();
+  }, [container]);
+
+  // 보드에 있는 동안만 웹뷰 네이티브 바운스 스크롤을 꺼서 캔버스 드래그와 안 겹치게 함
+  useEffect(() => {
+    bridge.send('SET_BOARD_ACTIVE', { active: true });
+    return () => bridge.send('SET_BOARD_ACTIVE', { active: false });
   }, []);
 
-  const unlaidOut = data ? needsInitialLayout(data.stickers) : false;
-  const layout = data ? (unlaidOut ? computeInitialLayout(data.stickers) : data.stickers) : null;
+  // 데스크톱 휠/트랙패드 처리
+  // 일반 휠/두 손가락 스크롤은 팬(이동), Ctrl+휠/트랙패드 핀치는 포인터 고정 줌
+  const handleWheel = (e: KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
 
-  useEffect(() => {
-    if (!layout || !unlaidOut) return;
-    saveLayout({ boardId, input: toLayoutInput(layout) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardId, data]);
+    if (e.evt.ctrlKey) {
+      const pointer = e.target.getStage()?.getPointerPosition();
+      if (pointer) setCamera((current) => zoomCamera(current, pointer, e.evt.deltaY));
+      return;
+    }
 
-  const scale = width / REFERENCE_WIDTH;
+    setCamera((current) => panCamera(current, { x: e.evt.deltaX, y: e.evt.deltaY }));
+  };
+
+  // 드래그가 끝난 뒤 결과 위치를 camera 상태에 맞춰둠 -> 다음 줌 계산이 최신 위치를 기준으로 이뤄지게 함
+  const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
+    setCamera((current) => ({ ...current, x: e.target.x(), y: e.target.y() }));
+  };
+
+  // 모바일 핀치 처리
+  const handleTouchMove = (e: KonvaEventObject<TouchEvent>) => {
+    const { touches } = e.evt;
+    if (touches.length !== 2) {
+      pinchTouchesRef.current = null;
+      return;
+    }
+    e.evt.preventDefault();
+
+    const stage = e.target.getStage();
+    stage?.stopDrag();
+
+    const rect = stage?.container().getBoundingClientRect();
+    const current: [TouchPoint, TouchPoint] = [
+      { x: touches[0]!.clientX - (rect?.left ?? 0), y: touches[0]!.clientY - (rect?.top ?? 0) },
+      { x: touches[1]!.clientX - (rect?.left ?? 0), y: touches[1]!.clientY - (rect?.top ?? 0) },
+    ];
+
+    if (pinchTouchesRef.current) {
+      const { pointer, deltaY } = pinchToZoomParams(pinchTouchesRef.current, current);
+      setCamera((prev) => zoomCamera(prev, pointer, deltaY));
+    }
+    pinchTouchesRef.current = current;
+  };
+
+  // 터치가 끝나면 핀치 상태를 초기화
+  const handleTouchEnd = () => {
+    pinchTouchesRef.current = null;
+  };
 
   if (isLoading) {
     return (
@@ -61,7 +106,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     );
   }
 
-  if (isError || !data || !layout) {
+  if (isError || !data) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p className="text-body-04 text-gray-400">보드를 불러오지 못했어요</p>
@@ -69,7 +114,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     );
   }
 
-  const stickers: StickerData[] = layout
+  const stickers: StickerData[] = data.stickers
     .map(({ imageUrl, ...sticker }) => ({
       ...sticker,
       image: imageUrl ? { url: imageUrl } : undefined,
@@ -79,8 +124,20 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const quickMenuSticker = stickers.find((sticker) => sticker.id === quickMenuStickerId);
 
   return (
-    <div ref={containerRef} className="flex h-full w-full items-center justify-center">
-      <Stage width={width} height={REFERENCE_HEIGHT * scale} scaleX={scale} scaleY={scale}>
+    <div ref={setContainer} className="h-full w-full touch-none">
+      <Stage
+        draggable
+        width={viewport.width}
+        height={viewport.height}
+        x={camera.x}
+        y={camera.y}
+        scaleX={camera.scale}
+        scaleY={camera.scale}
+        onWheel={handleWheel}
+        onDragEnd={handleDragEnd}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <Layer>
           {stickers.map((sticker) => (
             <Sticker

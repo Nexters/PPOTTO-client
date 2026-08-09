@@ -21,16 +21,16 @@
       "description": "소셜 로그인과 서비스 토큰 관리"
     },
     {
+      "name": "분석",
+      "description": "사진 업로드와 분석 실행"
+    },
+    {
       "name": "보드",
       "description": "보드 조회와 관리"
     },
     {
       "name": "스티커",
       "description": "스티커와 리캡 관리"
-    },
-    {
-      "name": "분석",
-      "description": "사진 업로드와 분석 실행"
     },
     {
       "name": "사용자",
@@ -260,6 +260,267 @@
                       "error": {
                         "code": "STICKER-001",
                         "message": "스티커를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/stickers/{stickerId}/regenerate": {
+      "post": {
+        "tags": ["스티커"],
+        "summary": "스티커 이미지 재생성",
+        "description": "고정된 사진 구성은 유지한 채 스티커 이미지(피사체)만 다시 생성함. 리캡 문구(title, summary)는 바뀌지 않음",
+        "operationId": "regenerate",
+        "parameters": [
+          {
+            "name": "stickerId",
+            "in": "path",
+            "description": "재생성할 스티커 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "재생성 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecapDetailResponse"
+                },
+                "examples": {
+                  "이미지 스티커 리캡": {
+                    "description": "이미지 스티커 리캡",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "sticker": {
+                          "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                          "title": "동물 밈 짤줍",
+                          "isNew": false,
+                          "type": "IMAGE",
+                          "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
+                          "posX": 62.5,
+                          "posY": 318,
+                          "scale": 0.8,
+                          "rotation": -12,
+                          "zIndex": 3,
+                          "badgeOffsetX": -24,
+                          "badgeOffsetY": 96,
+                          "badgeRotation": 0
+                        },
+                        "summary": "웃기고 귀여우면 일단 주워요",
+                        "comments": [
+                          {
+                            "id": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                            "content": "야옹~",
+                            "posX": -96,
+                            "posY": -150
+                          },
+                          {
+                            "id": "01983f2d-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                            "content": "또 주웠네!",
+                            "posX": -104,
+                            "posY": 62
+                          },
+                          {
+                            "id": "01983f2d-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                            "content": "복슬복슬",
+                            "posX": 98,
+                            "posY": 18
+                          },
+                          {
+                            "id": "01983f2d-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
+                            "content": "냥집사"
+                          },
+                          {
+                            "id": "01983f2d-5e6f-7a7b-c8d9-0e1f2a3b4c5d",
+                            "content": "웃긴 동물들"
+                          },
+                          {
+                            "id": "01983f2d-6f7a-7b8c-d9e0-1f2a3b4c5d6e",
+                            "content": "당신은 밈 수집가!"
+                          },
+                          {
+                            "id": "01983f2d-7a8b-7c9d-e0f1-2a3b4c5d6e7f",
+                            "content": "복슬복슬"
+                          },
+                          {
+                            "id": "01983f2d-8b9c-7d0e-f1a2-3b4c5d6e7f8a",
+                            "content": "저장한 동물 짤 중 62%가 고양이다냥!"
+                          },
+                          {
+                            "id": "01983f2d-9c0d-7e1f-a2b3-4c5d6e7f8a9b",
+                            "content": "감도 높은 취향"
+                          },
+                          {
+                            "id": "01983f2d-a0d1-7f2a-b3c4-5d6e7f8a9b0c",
+                            "content": "밈잘알"
+                          },
+                          {
+                            "id": "01983f2d-b1e2-7a3b-c4d5-6e7f8a9b0c1d",
+                            "content": "밈 고르는 안목 보소"
+                          },
+                          {
+                            "id": "01983f2d-c2f3-7b4c-d5e6-7f8a9b0c1d2e",
+                            "content": "근데 소랑 돌고래가 같이 나는 사진은 뭐임? 🤔"
+                          }
+                        ],
+                        "photos": [
+                          {
+                            "id": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                            "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample",
+                            "takenAt": "2026-06-14T04:22:10Z"
+                          },
+                          {
+                            "id": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                            "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample",
+                            "takenAt": "2026-07-02T10:05:44Z"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청 값이 올바르지 않음 (COMMON-001)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-001": {
+                    "summary": "요청 바디 검증 실패",
+                    "description": "COMMON-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-001",
+                        "message": "잘못된 입력입니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "COMMON-001 (필드 오류)": {
+                    "summary": "필드별 검증 실패 상세가 함께 내려가는 경우",
+                    "description": "COMMON-001 (필드 오류)",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-001",
+                        "message": "잘못된 입력입니다.",
+                        "fieldErrors": [
+                          {
+                            "field": "name",
+                            "value": "열자가넘는아주긴보드이름",
+                            "reason": "크기가 1에서 10 사이여야 합니다"
+                          }
+                        ],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "스티커를 찾을 수 없음 (STICKER-001)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "STICKER-001": {
+                    "summary": "스티커 없음 또는 소유자 불일치",
+                    "description": "STICKER-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "STICKER-001",
+                        "message": "스티커를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "같은 스티커에 대한 재생성이 이미 진행 중임 (STICKER-002)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "STICKER-002": {
+                    "summary": "재생성 진행 중",
+                    "description": "STICKER-002",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "STICKER-002",
+                        "message": "이미 재생성이 진행 중입니다.",
                         "fieldErrors": [],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
@@ -895,7 +1156,7 @@
       "post": {
         "tags": ["분석"],
         "summary": "분석 생성",
-        "description": "보드를 지정하고 사진 90~100장의 업로드 URL(만료 15분)을 한 번에 발급함",
+        "description": "보드를 지정하고 사진 그룹을 펼친 총 90~100장의 업로드 URL(만료 15분)을 한 번에 발급함",
         "operationId": "create_1",
         "parameters": [
           {
@@ -918,22 +1179,42 @@
                 "$ref": "#/components/schemas/CreateAnalysisRequest"
               },
               "examples": {
-                "분석 생성 (지면상 3장, 실제 요청은 90~100장)": {
-                  "description": "분석 생성 (지면상 3장, 실제 요청은 90~100장)",
+                "분석 생성 (지면상 3그룹, 실제 요청은 20~100그룹). 두 번째 그룹은 연사 2장 예시": {
+                  "description": "분석 생성 (지면상 3그룹, 실제 요청은 20~100그룹). 두 번째 그룹은 연사 2장 예시",
                   "value": {
                     "boardId": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
                     "photos": [
                       {
-                        "takenAt": "2026-06-14T04:22:10Z",
-                        "contentType": "image/jpeg"
+                        "items": [
+                          {
+                            "takenAt": "2026-06-14T04:22:10Z",
+                            "contentType": "image/jpeg",
+                            "isRepresentative": true
+                          }
+                        ]
                       },
                       {
-                        "takenAt": "2026-06-14T04:24:02Z",
-                        "contentType": "image/heic"
+                        "items": [
+                          {
+                            "takenAt": "2026-06-14T04:24:02Z",
+                            "contentType": "image/heic",
+                            "isRepresentative": true
+                          },
+                          {
+                            "takenAt": "2026-06-14T04:24:03Z",
+                            "contentType": "image/heic",
+                            "isRepresentative": false
+                          }
+                        ]
                       },
                       {
-                        "takenAt": "2026-07-02T10:05:44Z",
-                        "contentType": "image/jpeg"
+                        "items": [
+                          {
+                            "takenAt": "2026-07-02T10:05:44Z",
+                            "contentType": "image/jpeg",
+                            "isRepresentative": true
+                          }
+                        ]
                       }
                     ]
                   }
@@ -976,7 +1257,7 @@
             }
           },
           "400": {
-            "description": "요청 값이 올바르지 않음 (COMMON-001, ANALYSIS-001)",
+            "description": "요청 값이 올바르지 않음 (COMMON-001, ANALYSIS-001, ANALYSIS-009)",
             "content": {
               "application/json": {
                 "schema": {
@@ -997,13 +1278,39 @@
                     }
                   },
                   "ANALYSIS-001": {
-                    "summary": "사진 수 정책 위반 (90~100장)",
+                    "summary": "사진 그룹 수 정책 위반 (20~100개)",
                     "description": "ANALYSIS-001",
                     "value": {
                       "success": false,
                       "error": {
                         "code": "ANALYSIS-001",
-                        "message": "사진은 90장에서 100장 사이여야 합니다.",
+                        "message": "사진 그룹은 20개에서 100개 사이여야 합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "ANALYSIS-009": {
+                    "summary": "연사 그룹 내 대표 사진이 정확히 1장이 아님",
+                    "description": "ANALYSIS-009",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "ANALYSIS-009",
+                        "message": "연사 그룹은 대표 사진을 정확히 1장 포함해야 합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "ANALYSIS-010": {
+                    "summary": "그룹당 사진이 10장을 초과함",
+                    "description": "ANALYSIS-010",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "ANALYSIS-010",
+                        "message": "그룹당 사진은 최대 10장까지 가능합니다.",
                         "fieldErrors": [],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
@@ -2821,6 +3128,135 @@
             "bearerAuth": []
           }
         ]
+      },
+      "delete": {
+        "tags": ["분석"],
+        "summary": "분석 취소",
+        "description": "업로드 중(UPLOADING)인 분석을 취소함. 분석과 사진 상태를 FAILED로 닫고, 업로드된 원본 이미지는 커밋 후 비동기로 정리함",
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "name": "analysisId",
+            "in": "path",
+            "description": "취소할 분석 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "처리 완료. data는 항상 null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUnit"
+                },
+                "examples": {
+                  "성공": {
+                    "description": "성공",
+                    "value": {
+                      "success": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "분석을 찾을 수 없음 (ANALYSIS-005)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "ANALYSIS-005": {
+                    "summary": "분석 없음 또는 소유자 불일치",
+                    "description": "ANALYSIS-005",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "ANALYSIS-005",
+                        "message": "분석을 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "취소할 수 없는 상태의 분석임 (ANALYSIS-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "ANALYSIS-004": {
+                    "summary": "UPLOADING이 아닌 분석은 취소 불가",
+                    "description": "ANALYSIS-004",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "ANALYSIS-004",
+                        "message": "분석이 시작되어 취소할 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/analysis/active": {
@@ -3025,6 +3461,222 @@
           }
         },
         "required": ["success"]
+      },
+      "ApiResponseRecapDetailResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RecapDetailResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "RecapCommentResponse": {
+        "type": "object",
+        "description": "분석 리캡 코멘트. posX, posY가 있으면 스티커 주변 말풍선, null이면 하단 키워드 칩",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "코멘트 ID (uuidv7)",
+            "example": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "content": {
+            "type": "string",
+            "description": "코멘트 문구",
+            "example": "야옹~"
+          },
+          "posX": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "스티커 기준 상대 좌표 X. null이면 하단 키워드 칩",
+            "example": 0
+          },
+          "posY": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "스티커 기준 상대 좌표 Y. posX와 항상 함께 null이거나 함께 채워진다",
+            "example": -140
+          }
+        },
+        "required": ["content", "id"]
+      },
+      "RecapDetailResponse": {
+        "type": "object",
+        "description": "스티커와 분석 리캡",
+        "properties": {
+          "sticker": {
+            "$ref": "#/components/schemas/StickerResponse",
+            "description": "리캡 대상 스티커"
+          },
+          "summary": {
+            "type": "string",
+            "description": "한 줄 요약. 스티커당 1개인 강조 문장",
+            "example": "웃기고 귀여우면 일단 주워요"
+          },
+          "comments": {
+            "type": "array",
+            "description": "분석 코멘트. id(uuidv7) 오름차순",
+            "items": {
+              "$ref": "#/components/schemas/RecapCommentResponse"
+            }
+          },
+          "photos": {
+            "type": "array",
+            "description": "리캡 사진. takenAt, id 오름차순. 연사 그룹은 대표 사진 1장만 포함",
+            "items": {
+              "$ref": "#/components/schemas/RecapPhotoResponse"
+            }
+          }
+        },
+        "required": ["comments", "photos", "sticker", "summary"]
+      },
+      "RecapPhotoResponse": {
+        "type": "object",
+        "description": "분석 리캡 사진",
+        "properties": {
+          "imageUrl": {
+            "type": "string",
+            "description": "읽기용 signed URL (만료 1시간)",
+            "example": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample"
+          },
+          "takenAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "촬영 시각",
+            "example": "2026-06-14T13:22:10+09:00"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "사진 ID (uuidv7)",
+            "example": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          }
+        },
+        "required": ["id", "imageUrl", "takenAt"]
+      },
+      "StickerResponse": {
+        "type": "object",
+        "description": "스티커 내용과 보드 배치",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "제목 뱃지 문구이자 리캡 제목",
+            "example": "동물 밈 짤줍"
+          },
+          "type": {
+            "type": "string",
+            "description": "스티커 형식",
+            "enum": ["IMAGE", "TEXT"],
+            "example": "IMAGE"
+          },
+          "imageUrl": {
+            "type": ["string", "null"],
+            "description": "IMAGE 형의 누끼 PNG 읽기용 signed URL (만료 1시간)",
+            "example": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample"
+          },
+          "textContent": {
+            "type": ["string", "null"],
+            "description": "TEXT 형 문구",
+            "example": "whats in my mac"
+          },
+          "posX": {
+            "type": "number",
+            "format": "double",
+            "description": "보드 좌표 X",
+            "example": 62.5
+          },
+          "posY": {
+            "type": "number",
+            "format": "double",
+            "description": "보드 좌표 Y",
+            "example": 318
+          },
+          "scale": {
+            "type": "number",
+            "format": "double",
+            "description": "확대 비율",
+            "example": 0.8
+          },
+          "rotation": {
+            "type": "number",
+            "format": "double",
+            "description": "회전 각도(degree)",
+            "example": -12
+          },
+          "badgeOffsetX": {
+            "type": "number",
+            "format": "double",
+            "description": "스티커 기준 뱃지 상대 좌표 X",
+            "example": -24
+          },
+          "badgeOffsetY": {
+            "type": "number",
+            "format": "double",
+            "description": "스티커 기준 뱃지 상대 좌표 Y",
+            "example": 96
+          },
+          "badgeRotation": {
+            "type": "number",
+            "format": "double",
+            "description": "뱃지 회전 각도(degree)",
+            "example": 0
+          },
+          "isNew": {
+            "type": "boolean",
+            "description": "미열람 여부. 뱃지에 빨간 점 표시",
+            "example": false
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "스티커 ID (uuidv7)",
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "zIndex": {
+            "type": "integer",
+            "format": "int32",
+            "description": "겹침 순서",
+            "example": 3
+          }
+        },
+        "required": [
+          "badgeOffsetX",
+          "badgeOffsetY",
+          "badgeRotation",
+          "id",
+          "isNew",
+          "posX",
+          "posY",
+          "rotation",
+          "scale",
+          "title",
+          "type",
+          "zIndex"
+        ]
       },
       "CreateBoardRequest": {
         "type": "object",
@@ -3313,15 +3965,29 @@
           },
           "photos": {
             "type": "array",
-            "description": "촬영 시각 오름차순으로 보내는 사진 90~100장",
+            "description": "촬영 시각 오름차순으로 보내는 사진 그룹. 그룹은 20~100개, 그룹당 사진은 1~10장이어야 한다.",
             "items": {
-              "$ref": "#/components/schemas/PhotoUploadItem"
-            },
-            "maxItems": 100,
-            "minItems": 90
+              "$ref": "#/components/schemas/PhotoUploadGroup"
+            }
           }
         },
         "required": ["boardId", "photos"]
+      },
+      "PhotoUploadGroup": {
+        "type": "object",
+        "description": "사진 그룹. 연사가 아니면 원소 1개, 연사면 여러 장(최대 10장)",
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "그룹에 속한 사진들. 촬영 시각 오름차순",
+            "items": {
+              "$ref": "#/components/schemas/PhotoUploadItem"
+            },
+            "maxItems": 2147483647,
+            "minItems": 1
+          }
+        },
+        "required": ["items"]
       },
       "PhotoUploadItem": {
         "type": "object",
@@ -3338,9 +4004,13 @@
             "description": "지원 형식. 업로드 시 Content-Type과 일치해야 함",
             "enum": ["image/jpeg", "image/png", "image/heic"],
             "example": "image/jpeg"
+          },
+          "isRepresentative": {
+            "type": "boolean",
+            "description": "연사 그룹 내 대표 사진 여부"
           }
         },
-        "required": ["contentType", "takenAt"]
+        "required": ["contentType", "isRepresentative", "takenAt"]
       },
       "ApiResponseCreateAnalysisResponse": {
         "type": "object",
@@ -3851,222 +4521,6 @@
           }
         },
         "required": ["agreed", "code", "id", "isRequired", "version"]
-      },
-      "ApiResponseRecapDetailResponse": {
-        "type": "object",
-        "description": "공통 응답 봉투",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "요청 성공 여부",
-            "example": true
-          },
-          "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/RecapDetailResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ErrorResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": ["success"]
-      },
-      "RecapCommentResponse": {
-        "type": "object",
-        "description": "분석 리캡 코멘트. posX, posY가 있으면 스티커 주변 말풍선, null이면 하단 키워드 칩",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "코멘트 ID (uuidv7)",
-            "example": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          },
-          "content": {
-            "type": "string",
-            "description": "코멘트 문구",
-            "example": "야옹~"
-          },
-          "posX": {
-            "type": ["number", "null"],
-            "format": "double",
-            "description": "스티커 기준 상대 좌표 X. null이면 하단 키워드 칩",
-            "example": 0
-          },
-          "posY": {
-            "type": ["number", "null"],
-            "format": "double",
-            "description": "스티커 기준 상대 좌표 Y. posX와 항상 함께 null이거나 함께 채워진다",
-            "example": -140
-          }
-        },
-        "required": ["content", "id"]
-      },
-      "RecapDetailResponse": {
-        "type": "object",
-        "description": "스티커와 분석 리캡",
-        "properties": {
-          "sticker": {
-            "$ref": "#/components/schemas/StickerResponse",
-            "description": "리캡 대상 스티커"
-          },
-          "summary": {
-            "type": "string",
-            "description": "한 줄 요약. 스티커당 1개인 강조 문장",
-            "example": "웃기고 귀여우면 일단 주워요"
-          },
-          "comments": {
-            "type": "array",
-            "description": "분석 코멘트. id(uuidv7) 오름차순",
-            "items": {
-              "$ref": "#/components/schemas/RecapCommentResponse"
-            }
-          },
-          "photos": {
-            "type": "array",
-            "description": "리캡 사진. takenAt, id 오름차순",
-            "items": {
-              "$ref": "#/components/schemas/RecapPhotoResponse"
-            }
-          }
-        },
-        "required": ["comments", "photos", "sticker", "summary"]
-      },
-      "RecapPhotoResponse": {
-        "type": "object",
-        "description": "분석 리캡 사진",
-        "properties": {
-          "imageUrl": {
-            "type": "string",
-            "description": "읽기용 signed URL (만료 1시간)",
-            "example": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample"
-          },
-          "takenAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "촬영 시각",
-            "example": "2026-06-14T13:22:10+09:00"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "사진 ID (uuidv7)",
-            "example": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          }
-        },
-        "required": ["id", "imageUrl", "takenAt"]
-      },
-      "StickerResponse": {
-        "type": "object",
-        "description": "스티커 내용과 보드 배치",
-        "properties": {
-          "title": {
-            "type": "string",
-            "description": "제목 뱃지 문구이자 리캡 제목",
-            "example": "동물 밈 짤줍"
-          },
-          "type": {
-            "type": "string",
-            "description": "스티커 형식",
-            "enum": ["IMAGE", "TEXT"],
-            "example": "IMAGE"
-          },
-          "imageUrl": {
-            "type": ["string", "null"],
-            "description": "IMAGE 형의 누끼 PNG 읽기용 signed URL (만료 1시간)",
-            "example": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample"
-          },
-          "textContent": {
-            "type": ["string", "null"],
-            "description": "TEXT 형 문구",
-            "example": "whats in my mac"
-          },
-          "posX": {
-            "type": "number",
-            "format": "double",
-            "description": "보드 좌표 X",
-            "example": 62.5
-          },
-          "posY": {
-            "type": "number",
-            "format": "double",
-            "description": "보드 좌표 Y",
-            "example": 318
-          },
-          "scale": {
-            "type": "number",
-            "format": "double",
-            "description": "확대 비율",
-            "example": 0.8
-          },
-          "rotation": {
-            "type": "number",
-            "format": "double",
-            "description": "회전 각도(degree)",
-            "example": -12
-          },
-          "badgeOffsetX": {
-            "type": "number",
-            "format": "double",
-            "description": "스티커 기준 뱃지 상대 좌표 X",
-            "example": -24
-          },
-          "badgeOffsetY": {
-            "type": "number",
-            "format": "double",
-            "description": "스티커 기준 뱃지 상대 좌표 Y",
-            "example": 96
-          },
-          "badgeRotation": {
-            "type": "number",
-            "format": "double",
-            "description": "뱃지 회전 각도(degree)",
-            "example": 0
-          },
-          "isNew": {
-            "type": "boolean",
-            "description": "미열람 여부. 뱃지에 빨간 점 표시",
-            "example": false
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "스티커 ID (uuidv7)",
-            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          },
-          "zIndex": {
-            "type": "integer",
-            "format": "int32",
-            "description": "겹침 순서",
-            "example": 3
-          }
-        },
-        "required": [
-          "badgeOffsetX",
-          "badgeOffsetY",
-          "badgeRotation",
-          "id",
-          "isNew",
-          "posX",
-          "posY",
-          "rotation",
-          "scale",
-          "title",
-          "type",
-          "zIndex"
-        ]
       },
       "ApiResponseListBoardResponse": {
         "type": "object",

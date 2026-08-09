@@ -10,7 +10,7 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "usesAppleSignIn": true,
-      "bundleIdentifier": "com.ppotto.mobile"
+      "bundleIdentifier": "com.ppotto"
     },
     "android": {
       "package": "com.ppotto.mobile",

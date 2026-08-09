@@ -1,9 +1,14 @@
+'use client';
+
 import { IconSettings } from '@ppotto/assets';
+import { useFlow } from '@stackflow/react';
 import Image from 'next/image';
 
 import { cn } from '@/shared/lib/cn';
 
 export function BoardHeader() {
+  const { push } = useFlow();
+
   return (
     <div
       className={cn('absolute inset-x-0 top-0 z-60 flex flex-col items-start', 'px-6 pt-16 pb-16')}
@@ -11,7 +16,7 @@ export function BoardHeader() {
     >
       <div className="flex w-full items-center justify-between">
         <Image src="/logo/Logo.svg" alt="PPOTTO" width={105} height={32} className="h-8 w-auto" />
-        <button type="button" aria-label="설정">
+        <button type="button" aria-label="설정" onClick={() => push('Settings', {})}>
           <IconSettings color="white" />
         </button>
       </div>
