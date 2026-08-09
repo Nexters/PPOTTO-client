@@ -10,6 +10,7 @@ import { bridge } from '@/shared/lib/bridge';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import { type CameraState, panCamera, pinchToZoomParams, zoomCamera } from '../model/board-camera';
+import { useDeleteSticker } from '../model/use-delete-sticker';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 
 import { Sticker, type StickerData } from './Sticker';
@@ -31,6 +32,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { push } = useFlow();
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
+  const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
 
   useRefetchOnActive(refetch, isStale);
 
@@ -153,12 +155,18 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
       </Stage>
       {quickMenuSticker && <StickerPreview sticker={quickMenuSticker} />}
       <StickerQuickMenu
+        stickerTitle={quickMenuSticker?.title ?? ''}
         isOpen={quickMenuStickerId !== null}
         onClose={() => setQuickMenuStickerId(null)}
         onRegenerate={() => {
           if (quickMenuStickerId) regenerate(quickMenuStickerId, () => setQuickMenuStickerId(null));
         }}
         isRegenerating={isRegenerating}
+        onDelete={() => {
+          if (quickMenuStickerId)
+            deleteSticker(quickMenuStickerId, () => setQuickMenuStickerId(null));
+        }}
+        isDeleting={isDeleting}
       />
     </div>
   );

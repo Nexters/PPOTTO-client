@@ -11,3 +11,8 @@ export const useRegenerateStickerMutation = () =>
   useMutation({
     mutationFn: (stickerId: string) => stickerApi.regenerate(stickerId),
   });
+
+export const useDeleteStickerMutation = () =>
+  useMutation({
+    mutationFn: (stickerId: string) => stickerApi.delete(stickerId),
+  });

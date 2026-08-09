@@ -27,4 +27,8 @@ export const stickerApi = {
       api.POST('/stickers/{stickerId}/regenerate', { params: { path: { stickerId } } }),
     );
   },
+  delete: (stickerId: string) => {
+    if (USE_MOCK) return Promise.resolve();
+    return unwrapVoid(api.DELETE('/stickers/{stickerId}', { params: { path: { stickerId } } }));
+  },
 };
