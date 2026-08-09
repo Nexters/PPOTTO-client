@@ -6,7 +6,7 @@ import { cn } from '@/shared/lib/cn';
 export function BoardHeader() {
   return (
     <div
-      className={cn('absolute inset-x-0 top-0 z-10 flex flex-col items-start', 'px-6 pt-16 pb-16')}
+      className={cn('absolute inset-x-0 top-0 z-60 flex flex-col items-start', 'px-6 pt-16 pb-16')}
       style={{ backgroundImage: 'linear-gradient(to bottom, black, transparent)' }}
     >
       <div className="flex w-full items-center justify-between">

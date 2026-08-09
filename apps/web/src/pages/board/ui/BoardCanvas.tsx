@@ -11,6 +11,7 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { computeInitialLayout, needsInitialLayout, toLayoutInput } from '../model/board-layout';
 
 import { Sticker, type StickerData } from './Sticker';
+import { StickerPreview } from './StickerPreview';
 import { StickerQuickMenu } from './StickerQuickMenu';
 
 const REFERENCE_WIDTH = 360;
@@ -75,6 +76,8 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
     }))
     .sort((a, b) => a.zIndex - b.zIndex);
 
+  const quickMenuSticker = stickers.find((sticker) => sticker.id === quickMenuStickerId);
+
   return (
     <div ref={containerRef} className="flex h-full w-full items-center justify-center">
       <Stage width={width} height={REFERENCE_HEIGHT * scale} scaleX={scale} scaleY={scale}>
@@ -89,6 +92,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
           ))}
         </Layer>
       </Stage>
+      {quickMenuSticker && <StickerPreview sticker={quickMenuSticker} />}
       <StickerQuickMenu
         isOpen={quickMenuStickerId !== null}
         onClose={() => setQuickMenuStickerId(null)}
