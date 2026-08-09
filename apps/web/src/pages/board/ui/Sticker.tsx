@@ -1,10 +1,10 @@
 'use client';
 
 import type { paths } from '@ppotto/api';
-import { useEffect, useState } from 'react';
 import { Group, Image as KonvaImage, Text as KonvaText } from 'react-konva';
 import { Html } from 'react-konva-utils';
 
+import { useImage } from '@/shared/lib/use-image';
 import { useLongPress } from '@/shared/lib/use-long-press';
 
 import { StickerBadge } from './StickerBadge';
@@ -41,19 +41,6 @@ export type StickerData = Omit<ApiSticker, 'badgeRotation' | 'imageUrl'> & {
   image?: StickerImage;
 };
 
-function useStickerImage(src?: string) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-
-  useEffect(() => {
-    if (!src) return;
-    const img = new window.Image();
-    img.src = src;
-    img.onload = () => setImage(img);
-  }, [src]);
-
-  return image;
-}
-
 type StickerProps = {
   sticker: StickerData;
   onClick?: () => void;
@@ -61,8 +48,8 @@ type StickerProps = {
 };
 
 export function Sticker({ sticker, onClick, onLongPress }: StickerProps) {
-  const photoImage = useStickerImage(sticker.type === 'IMAGE' ? sticker.image?.url : undefined);
-  const textBgImage = useStickerImage(sticker.type === 'TEXT' ? TEXT_BG_URL : undefined);
+  const photoImage = useImage(sticker.type === 'IMAGE' ? sticker.image?.url : undefined);
+  const textBgImage = useImage(sticker.type === 'TEXT' ? TEXT_BG_URL : undefined);
   const longPressHandlers = useLongPress({ onLongPress: () => onLongPress?.(), onClick });
 
   const photoWidth = (sticker.image?.width ?? photoImage?.naturalWidth ?? 0) * sticker.scale;
