@@ -15,10 +15,16 @@ import {
   type CameraState,
   computeBoardPinchZoom,
   panCamera,
+  toWorldPoint,
   zoomCamera,
 } from '../model/board-camera';
 import { computeBringToFrontZIndex, toLayoutInput } from '../model/board-layout';
-import { centroid, distance, type Point } from '../model/geometry';
+import {
+  computeStickerPinchTransform,
+  scaleBadgeOffset,
+  type StickerTransform,
+} from '../model/board-transform';
+import { angleBetween, centroid, distance, type Point } from '../model/geometry';
 
 import type { ToolbarMode } from './BoardToolbar';
 import { SelectBox } from './SelectBox';
@@ -33,10 +39,26 @@ type BoardCanvasProps = {
 // 탭과 드래그를 구분하는 이동 허용 오차(px)
 const TAP_MOVE_THRESHOLD = 6;
 
+type DragTransform = { id: string } & StickerTransform;
+
 type Gesture =
   | { kind: 'pan'; pointerId: number; startClient: Point; startCamera: CameraState }
-  | { kind: 'move'; pointerId: number; sticker: StickerData; startClient: Point; startPos: Point }
-  | { kind: 'pinch'; startCentroid: Point; startDistance: number; startCamera: CameraState };
+  | {
+      kind: 'move';
+      pointerId: number;
+      sticker: StickerData;
+      startClient: Point;
+      startTransform: StickerTransform;
+    }
+  | { kind: 'pinch'; startCentroid: Point; startDistance: number; startCamera: CameraState }
+  | {
+      kind: 'stickerPinch';
+      sticker: StickerData;
+      startCentroid: Point;
+      startDistance: number;
+      startAngle: number;
+      startTransform: StickerTransform;
+    };
 
 function hitTestStickerId(target: EventTarget | null): string | null {
   if (!(target instanceof Element)) return null;
@@ -48,9 +70,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
-  const [dragPosition, setDragPosition] = useState<{ id: string; x: number; y: number } | null>(
-    null,
-  );
+  const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
@@ -75,6 +95,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const stickersRef = useRef(stickers);
   const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
+  const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
 
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
@@ -96,7 +117,10 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const saveStickerLayout = (
     sticker: StickerData,
     overrides: Partial<
-      Pick<StickerData, 'posX' | 'posY' | 'scale' | 'badgeOffsetX' | 'badgeOffsetY' | 'zIndex'>
+      Pick<
+        StickerData,
+        'posX' | 'posY' | 'rotation' | 'scale' | 'badgeOffsetX' | 'badgeOffsetY' | 'zIndex'
+      >
     >,
   ) => {
     const updated = { ...sticker, ...overrides };
@@ -161,6 +185,11 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
 
+    const setLiveTransform = (next: DragTransform | null) => {
+      dragTransformRef.current = next;
+      setDragTransform(next);
+    };
+
     const handlePointerDown = (e: PointerEvent) => {
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
@@ -178,7 +207,12 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             pointerId: e.pointerId,
             sticker,
             startClient: point,
-            startPos: { x: sticker.posX, y: sticker.posY },
+            startTransform: {
+              x: sticker.posX,
+              y: sticker.posY,
+              rotation: sticker.rotation,
+              scale: sticker.scale,
+            },
           };
           return;
         }
@@ -207,18 +241,40 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (!gesture) return;
 
       if (pointersRef.current.size >= 2) {
-        // 배경을 팬하던 중 두 번째 손가락이 닿으면 핀치줌으로 전환(rebase)
+        // 두 손가락이 됐으면 탭일 수 없음
+        tapCandidateRef.current = null;
+
+        const points = [...pointersRef.current.values()];
+
+        // 배경을 팬하던 중이면 보드 핀치줌으로, 스티커를 이동하던 중이면 스티커 회전+확대로 전환(rebase)
         if (gesture.kind === 'pan') {
-          const points = [...pointersRef.current.values()];
           gestureRef.current = {
             kind: 'pinch',
             startCentroid: centroid(points),
             startDistance: distance(points[0]!, points[1]!),
             startCamera: cameraRef.current,
           };
+        } else if (gesture.kind === 'move') {
+          const base =
+            dragTransformRef.current?.id === gesture.sticker.id
+              ? {
+                  x: dragTransformRef.current.x,
+                  y: dragTransformRef.current.y,
+                  rotation: dragTransformRef.current.rotation,
+                  scale: dragTransformRef.current.scale,
+                }
+              : gesture.startTransform;
+          gestureRef.current = {
+            kind: 'stickerPinch',
+            sticker: gesture.sticker,
+            startCentroid: toWorldPoint(cameraRef.current, centroid(points)),
+            startDistance: distance(points[0]!, points[1]!),
+            startAngle: angleBetween(points[0]!, points[1]!),
+            startTransform: base,
+          };
         }
+
         if (gestureRef.current?.kind === 'pinch') {
-          const points = [...pointersRef.current.values()];
           setCamera(
             computeBoardPinchZoom(
               gestureRef.current.startCamera,
@@ -229,6 +285,22 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
               { centroid: centroid(points), distance: distance(points[0]!, points[1]!) },
             ),
           );
+        } else if (gestureRef.current?.kind === 'stickerPinch') {
+          const current = {
+            centroid: toWorldPoint(cameraRef.current, centroid(points)),
+            distance: distance(points[0]!, points[1]!),
+            angle: angleBetween(points[0]!, points[1]!),
+          };
+          const result = computeStickerPinchTransform(
+            gestureRef.current.startTransform,
+            {
+              centroid: gestureRef.current.startCentroid,
+              distance: gestureRef.current.startDistance,
+              angle: gestureRef.current.startAngle,
+            },
+            current,
+          );
+          setLiveTransform({ id: gestureRef.current.sticker.id, ...result });
         }
         return;
       }
@@ -244,10 +316,12 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
 
       if (gesture.kind === 'move' && gesture.pointerId === e.pointerId) {
         const scale = cameraRef.current.scale;
-        setDragPosition({
+        setLiveTransform({
           id: gesture.sticker.id,
-          x: gesture.startPos.x + (point.x - gesture.startClient.x) / scale,
-          y: gesture.startPos.y + (point.y - gesture.startClient.y) / scale,
+          x: gesture.startTransform.x + (point.x - gesture.startClient.x) / scale,
+          y: gesture.startTransform.y + (point.y - gesture.startClient.y) / scale,
+          rotation: gesture.startTransform.rotation,
+          scale: gesture.startTransform.scale,
         });
       }
     };
@@ -258,15 +332,63 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       pointersRef.current.delete(e.pointerId);
 
       const gesture = gestureRef.current;
-      if (gesture?.kind === 'move' && gesture.pointerId === e.pointerId) {
-        const scale = cameraRef.current.scale;
-        setDragPosition(null);
-        saveStickerLayoutRef.current(gesture.sticker, {
-          posX: gesture.startPos.x + (point.x - gesture.startClient.x) / scale,
-          posY: gesture.startPos.y + (point.y - gesture.startClient.y) / scale,
-        });
+
+      if (pointersRef.current.size === 0) {
+        // 마지막 손가락이 떨어짐 -> 커밋
+        if (gesture?.kind === 'move' && gesture.pointerId === e.pointerId) {
+          const scale = cameraRef.current.scale;
+          const finalTransform: StickerTransform = {
+            x: gesture.startTransform.x + (point.x - gesture.startClient.x) / scale,
+            y: gesture.startTransform.y + (point.y - gesture.startClient.y) / scale,
+            rotation: gesture.startTransform.rotation,
+            scale: gesture.startTransform.scale,
+          };
+          const badgeOffset = scaleBadgeOffset(
+            { x: gesture.sticker.badgeOffsetX, y: gesture.sticker.badgeOffsetY },
+            finalTransform.scale,
+            gesture.sticker.scale,
+          );
+          setLiveTransform(null);
+          saveStickerLayoutRef.current(gesture.sticker, {
+            posX: finalTransform.x,
+            posY: finalTransform.y,
+            rotation: finalTransform.rotation,
+            scale: finalTransform.scale,
+            badgeOffsetX: badgeOffset.x,
+            badgeOffsetY: badgeOffset.y,
+          });
+        }
+        gestureRef.current = null;
+      } else if (pointersRef.current.size === 1) {
+        // 손가락 하나가 남음 -> 아직 커밋하지 않고 남은 손가락 기준으로 이어감
+        const [remainingPointerId, remainingPoint] = [...pointersRef.current][0]!;
+
+        if (gesture?.kind === 'pinch') {
+          gestureRef.current = {
+            kind: 'pan',
+            pointerId: remainingPointerId,
+            startClient: remainingPoint,
+            startCamera: cameraRef.current,
+          };
+        } else if (gesture?.kind === 'stickerPinch') {
+          const live =
+            dragTransformRef.current?.id === gesture.sticker.id
+              ? {
+                  x: dragTransformRef.current.x,
+                  y: dragTransformRef.current.y,
+                  rotation: dragTransformRef.current.rotation,
+                  scale: dragTransformRef.current.scale,
+                }
+              : gesture.startTransform;
+          gestureRef.current = {
+            kind: 'move',
+            pointerId: remainingPointerId,
+            sticker: gesture.sticker,
+            startClient: remainingPoint,
+            startTransform: live,
+          };
+        }
       }
-      if (pointersRef.current.size === 0) gestureRef.current = null;
 
       const tap = tapCandidateRef.current;
       if (tap?.pointerId === e.pointerId) {
@@ -347,7 +469,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             key={sticker.id}
             sticker={sticker}
             selected={selectedId === sticker.id}
-            positionOverride={dragPosition?.id === sticker.id ? dragPosition : undefined}
+            transformOverride={dragTransform?.id === sticker.id ? dragTransform : undefined}
           />
         ))}
         {stickers
@@ -358,7 +480,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
         {selectedSticker && (
           <SelectBox
             sticker={selectedSticker}
-            positionOverride={dragPosition?.id === selectedSticker.id ? dragPosition : undefined}
+            transformOverride={dragTransform?.id === selectedSticker.id ? dragTransform : undefined}
           />
         )}
       </div>

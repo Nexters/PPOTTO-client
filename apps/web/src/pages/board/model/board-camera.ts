@@ -1,4 +1,4 @@
-import { centroid, clamp, distance, type Point } from './geometry';
+import { centroid, clamp, type Point } from './geometry';
 
 export type CameraState = {
   scale: number;
@@ -51,23 +51,12 @@ export function computeFocusTarget(
   };
 }
 
-// 핀치 두 터치 포인트를 zoomCamera가 쓸 수 있는 중심점·배율 변화량(deltaY 상당값)으로 변환한다.
-export function pinchToZoomParams(
-  previous: [{ x: number; y: number }, { x: number; y: number }],
-  current: [{ x: number; y: number }, { x: number; y: number }],
-): { pointer: { x: number; y: number }; deltaY: number } {
-  const previousDistance = distance(previous[0], previous[1]);
-  const currentDistance = distance(current[0], current[1]);
-
-  const pointer = {
-    x: (current[0].x + current[1].x) / 2,
-    y: (current[0].y + current[1].y) / 2,
+// 화면 좌표를 보드 world 좌표로 변환한다
+export function toWorldPoint(camera: CameraState, point: Point): Point {
+  return {
+    x: (point.x - camera.x) / camera.scale,
+    y: (point.y - camera.y) / camera.scale,
   };
-
-  // 손가락 사이가 벌어지면(확대 의도) zoomCamera 기준 음수 deltaY(확대)가 나와야 한다.
-  const deltaY = previousDistance - currentDistance;
-
-  return { pointer, deltaY };
 }
 
 // 핀치로 보드를 확대/축소한다.

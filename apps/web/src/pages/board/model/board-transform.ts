@@ -6,8 +6,8 @@ export const STICKER_SCALE_MAX = 4;
 const SNAP_STEP = 90;
 const SNAP_TOLERANCE = 5;
 
-type StickerTransform = { x: number; y: number; rotation: number; scale: number };
-type PinchSample = { centroid: Point; distance: number; angle: number };
+export type StickerTransform = { x: number; y: number; rotation: number; scale: number };
+export type PinchSample = { centroid: Point; distance: number; angle: number };
 
 export function scaleBadgeOffset(offset: Point, currentScale: number, baseScale: number): Point {
   if (baseScale === 0) return offset;

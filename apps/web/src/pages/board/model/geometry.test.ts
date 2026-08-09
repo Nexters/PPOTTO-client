@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { clamp, rotatePoint } from './geometry';
+import { angleBetween, clamp, rotatePoint } from './geometry';
 
 describe('clamp', () => {
   it('범위 안의 값은 그대로 반환한다', () => {
@@ -13,6 +13,24 @@ describe('clamp', () => {
 
   it('최댓값보다 크면 최댓값을 반환한다', () => {
     expect(clamp(15, 0, 10)).toBe(10);
+  });
+});
+
+describe('angleBetween', () => {
+  it('오른쪽을 가리키면 0도다', () => {
+    expect(angleBetween({ x: 0, y: 0 }, { x: 1, y: 0 })).toBeCloseTo(0);
+  });
+
+  it('아래를 가리키면 90도다', () => {
+    expect(angleBetween({ x: 0, y: 0 }, { x: 0, y: 1 })).toBeCloseTo(90);
+  });
+
+  it('왼쪽을 가리키면 180도다', () => {
+    expect(angleBetween({ x: 0, y: 0 }, { x: -1, y: 0 })).toBeCloseTo(180);
+  });
+
+  it('위를 가리키면 -90도다', () => {
+    expect(angleBetween({ x: 0, y: 0 }, { x: 0, y: -1 })).toBeCloseTo(-90);
   });
 });
 

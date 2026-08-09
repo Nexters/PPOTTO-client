@@ -1,5 +1,7 @@
 'use client';
 
+import type { StickerTransform } from '../model/board-transform';
+
 import { getPhotoSize, stickerZIndex, useStickerImage, type StickerData } from './Sticker';
 
 const BOX_COLOR = '#009fff';
@@ -15,17 +17,19 @@ const TICK_POSITIONS: { top?: number; bottom?: number; left?: number; right?: nu
 
 type SelectBoxProps = {
   sticker: StickerData;
-  positionOverride?: { x: number; y: number };
+  transformOverride?: StickerTransform;
 };
 
-export function SelectBox({ sticker, positionOverride }: SelectBoxProps) {
+export function SelectBox({ sticker, transformOverride }: SelectBoxProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
-  const { width, height } = getPhotoSize(photoImage, sticker.scale);
+  const scale = transformOverride?.scale ?? sticker.scale;
+  const { width, height } = getPhotoSize(photoImage, scale);
 
   if (width <= 0 || height <= 0) return null;
 
-  const x = positionOverride?.x ?? sticker.posX;
-  const y = positionOverride?.y ?? sticker.posY;
+  const x = transformOverride?.x ?? sticker.posX;
+  const y = transformOverride?.y ?? sticker.posY;
+  const rotation = transformOverride?.rotation ?? sticker.rotation;
 
   return (
     <div
@@ -35,7 +39,7 @@ export function SelectBox({ sticker, positionOverride }: SelectBoxProps) {
         top: y,
         width,
         height,
-        transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`,
+        transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
         border: `${BORDER_WIDTH}px solid ${BOX_COLOR}`,
         boxSizing: 'border-box',
         pointerEvents: 'none',

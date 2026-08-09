@@ -3,6 +3,8 @@
 import type { paths } from '@ppotto/api';
 import { useEffect, useState } from 'react';
 
+import type { StickerTransform } from '../model/board-transform';
+
 // 스티커 크기는 긴 변을 이 값으로 맞추고 비율을 유지한다
 const STICKER_MAX_EDGE = 160;
 
@@ -56,17 +58,19 @@ export function getPhotoSize(
 type StickerProps = {
   sticker: StickerData;
   selected?: boolean;
-  positionOverride?: { x: number; y: number };
+  transformOverride?: StickerTransform;
 };
 
-export function Sticker({ sticker, selected, positionOverride }: StickerProps) {
+export function Sticker({ sticker, selected, transformOverride }: StickerProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
-  const { width, height } = getPhotoSize(photoImage, sticker.scale);
+  const scale = transformOverride?.scale ?? sticker.scale;
+  const { width, height } = getPhotoSize(photoImage, scale);
 
   if (!photoImage || width <= 0 || height <= 0) return null;
 
-  const x = positionOverride?.x ?? sticker.posX;
-  const y = positionOverride?.y ?? sticker.posY;
+  const x = transformOverride?.x ?? sticker.posX;
+  const y = transformOverride?.y ?? sticker.posY;
+  const rotation = transformOverride?.rotation ?? sticker.rotation;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element -- 보드 좌표계에 직접 배치하는 스티커라 next/image 최적화 대상이 아님
@@ -82,7 +86,7 @@ export function Sticker({ sticker, selected, positionOverride }: StickerProps) {
         width,
         height,
         zIndex: stickerZIndex(sticker),
-        transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`,
+        transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
         filter: selected
           ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
           : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
