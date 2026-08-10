@@ -1,15 +1,19 @@
-import type Konva from 'konva';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const toCanvas = vi.hoisted(() => vi.fn());
+
+vi.mock('html-to-image', () => ({ toCanvas }));
 
 import { saveStickerImage } from './save-sticker-image';
 
 describe('saveStickerImage', () => {
-  it('노드를 캡처해 Blob으로 변환한다', async () => {
+  it('엘리먼트를 캡처해 Blob으로 변환한다', async () => {
     const canvas = document.createElement('canvas');
     canvas.toBlob = (callback) => callback(new Blob(['fake']));
-    const node = { toCanvas: () => canvas } as unknown as Konva.Node;
+    toCanvas.mockResolvedValue(canvas);
+    const element = document.createElement('div');
 
-    const result = await saveStickerImage(node);
+    const result = await saveStickerImage(element);
 
     expect(result).toBeInstanceOf(Blob);
   });
