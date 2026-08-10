@@ -1,3 +1,4 @@
+// 저장된 이벤트를 순서대로 적용해 현재 업로드 상태를 복구한다.
 export type UploadPhase = 'PREPARING' | 'PUTTING' | 'STARTING' | 'CANCELING';
 
 export interface UploadJobPhoto {

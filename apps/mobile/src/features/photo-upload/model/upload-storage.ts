@@ -2,6 +2,10 @@ import { logPhotoUpload, logPhotoUploadError } from '../lib/photo-upload-log';
 
 import type { UploadJobEvent, UploadJobSnapshot } from './upload-job';
 
+/*
+ * 업로드 사진과 불변 스냅샷을 저장하고 이후 상태 변경을 이벤트로 기록한다.
+ * 앱 종료 중 손상된 마지막 이벤트도 복구한다.
+ */
 export interface UploadStorageFileSystem {
   copyFile: (sourceUri: string, destinationUri: string) => Promise<void>;
   deletePathIfExists: (uri: string) => Promise<void>;

@@ -2,6 +2,7 @@ import { HttpError, NetworkError } from '@ppotto/api';
 
 import type { AnalysisStatus } from './upload-runner';
 
+// 분석이 완료되거나 실패할 때까지 서버 상태를 폴링한다.
 const POLL_INTERVAL_MS = 2000;
 
 type GetAnalysisStatus = (analysisId: string) => Promise<AnalysisStatus>;

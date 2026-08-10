@@ -3,6 +3,7 @@ import type { CreateAnalysisInput } from '@/entities/analysis/api/analysis-api';
 import type { UploadJobEvent, UploadJobSnapshot } from './upload-job';
 import type { UploadUrl } from './upload-runner';
 
+// 서버 분석을 생성하고 로컬 사진 ID와 서버 사진 ID의 매핑을 기록한다.
 interface CreateAnalysisResult {
   analysisId: string;
   uploads: UploadUrl[];

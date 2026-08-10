@@ -14,6 +14,10 @@ import {
 } from './upload-runner';
 import type { UploadJobStorage } from './upload-storage';
 
+/*
+ * 새 업로드와 재진입 복구의 진입점이다.
+ * PREPARING 단계를 처리한 뒤 생성된 분석은 upload-runner에 넘긴다.
+ */
 export interface PhotoUploadServiceDependencies
   extends UploadJobStorage, UploadRunnerDependencies, CreateUploadAnalysisDependencies {
   getActiveAnalysis: () => Promise<{ id: string; status: AnalysisStatus } | null>;

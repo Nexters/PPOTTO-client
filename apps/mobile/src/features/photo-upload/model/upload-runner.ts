@@ -4,6 +4,10 @@ import { logPhotoUpload, logPhotoUploadError } from '../lib/photo-upload-log';
 
 import type { UploadJobEvent, UploadJobPhoto, UploadJobState } from './upload-job';
 
+/*
+ * 분석 생성 이후의 사진 PUT·분석 시작·취소를 실행한다.
+ * 저장된 phase부터 재개할 수 있도록 각 단계의 결과를 영속 기록한다.
+ */
 const UPLOAD_CONCURRENCY = 5;
 
 export interface UploadUrl {
@@ -44,7 +48,7 @@ export async function resumePhotoUpload(
     case 'PUTTING':
       return resumePutting(state, dependencies, initialUploadUrls);
     case 'STARTING':
-      return resumeStarting(state, dependencies);
+      return resolveStartOutcome(analysisIdOf(state), dependencies);
     case 'CANCELING':
       return cancelAndClear(analysisIdOf(state), dependencies);
     case 'PREPARING':
@@ -78,20 +82,12 @@ async function resumePutting(
   return startAndClear(analysisId, dependencies);
 }
 
-async function resumeStarting(
-  state: UploadJobState,
-  dependencies: UploadRunnerDependencies,
-): Promise<UploadRunResult> {
-  return resolveStartOutcome(analysisIdOf(state), dependencies);
-}
-
 async function uploadPhotos(
   analysisId: string,
   photos: PendingPhoto[],
   dependencies: UploadRunnerDependencies,
 ): Promise<boolean> {
   let nextIndex = 0;
-  let completed = 0;
   let failed = false;
   let refreshedUrls: Promise<UploadUrl[]> | undefined;
   const reissueUrls = () => (refreshedUrls ??= dependencies.reissueUploadUrls(analysisId));
@@ -103,13 +99,7 @@ async function uploadPhotos(
 
       if (!(await uploadPhoto(photo, reissueUrls, dependencies))) {
         failed = true;
-        logPhotoUploadError(`GCS PUT 최종 실패 (${photo.photoId})`, new Error(analysisId));
-        continue;
-      }
-
-      completed += 1;
-      if (completed % 10 === 0 || completed === photos.length) {
-        logPhotoUpload(`GCS PUT 진행 ${completed}/${photos.length}`);
+        return;
       }
     }
   };
@@ -183,23 +173,31 @@ async function cancelAndClear(
 ): Promise<UploadRunResult> {
   try {
     await dependencies.cancelAnalysis(analysisId);
+  } catch (error) {
+    return recoverCancelFailure(error, analysisId, dependencies);
+  }
+
+  await dependencies.clearJob();
+  return 'UPLOAD_FAILED';
+}
+
+async function recoverCancelFailure(
+  error: unknown,
+  analysisId: string,
+  dependencies: UploadRunnerDependencies,
+): Promise<UploadRunResult> {
+  if (error instanceof HttpError && error.status === 404) {
     await dependencies.clearJob();
     return 'UPLOAD_FAILED';
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 404) {
-      await dependencies.clearJob();
-      return 'UPLOAD_FAILED';
-    }
-    if (error instanceof HttpError && error.status === 409) {
-      try {
-        const status = await dependencies.getAnalysisStatus(analysisId);
-        if (status === 'UPLOADING') return 'RETRY_CANCEL';
-        await dependencies.clearJob();
-        return status === 'FAILED' ? 'UPLOAD_FAILED' : 'ANALYZING';
-      } catch {
-        return 'RETRY_CANCEL';
-      }
-    }
+  }
+  if (!(error instanceof HttpError) || error.status !== 409) return 'RETRY_CANCEL';
+
+  try {
+    const status = await dependencies.getAnalysisStatus(analysisId);
+    if (status === 'UPLOADING') return 'RETRY_CANCEL';
+    await dependencies.clearJob();
+    return status === 'FAILED' ? 'UPLOAD_FAILED' : 'ANALYZING';
+  } catch {
     return 'RETRY_CANCEL';
   }
 }

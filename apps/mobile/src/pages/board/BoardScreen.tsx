@@ -11,72 +11,77 @@ import { LoadingOverlay } from './ui/LoadingOverlay';
 import { PendingUploadModal } from './ui/PendingUploadModal';
 import { UploadFailureModal } from './ui/UploadFailureModal';
 
-type UploadStatus = 'READY' | 'UPLOADING' | 'FAILED';
+type BoardScreenState =
+  | { status: 'CHECKING' }
+  | { status: 'READY' }
+  | { status: 'PENDING' }
+  | { status: 'UPLOADING'; uploadPromise: Promise<void> }
+  | { status: 'FAILED' };
 
 // 보드, 리캡 전용 웹뷰
 export function BoardScreen() {
   const navigation = useNavigation();
   const toast = useToast();
   const { boardId } = useLocalSearchParams<{ boardId?: string }>();
-  const [upload, setUpload] = useState(() => photoUploadService.getCurrent());
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>(upload ? 'UPLOADING' : 'READY');
-  const [checkingPending, setCheckingPending] = useState(!upload);
-  const [pendingVisible, setPendingVisible] = useState(false);
+  const [screenState, setScreenState] = useState<BoardScreenState>(() => {
+    const uploadPromise = photoUploadService.getCurrent();
+    return uploadPromise ? { status: 'UPLOADING', uploadPromise } : { status: 'CHECKING' };
+  });
 
-  usePreventRemove(uploadStatus === 'UPLOADING' || pendingVisible, () => undefined);
+  usePreventRemove(
+    screenState.status === 'UPLOADING' || screenState.status === 'PENDING',
+    () => undefined,
+  );
 
   useEffect(() => {
-    if (upload) return;
+    if (screenState.status !== 'CHECKING') return;
 
     let active = true;
     void photoUploadService.hasPending().then(
       (hasPending) => {
         if (!active) return;
-        setPendingVisible(hasPending);
-        setCheckingPending(false);
+        setScreenState({ status: hasPending ? 'PENDING' : 'READY' });
       },
       () => {
-        if (active) setCheckingPending(false);
+        if (active) setScreenState({ status: 'READY' });
       },
     );
 
     return () => {
       active = false;
     };
-  }, [upload]);
+  }, [screenState.status]);
 
   useEffect(() => {
-    if (!upload) return;
+    if (screenState.status !== 'UPLOADING') return;
 
     let active = true;
-    void upload.then(
+    void screenState.uploadPromise.then(
       () => {
         photoUploadService.clearCurrent();
-        if (active) setUploadStatus('READY');
+        if (active) setScreenState({ status: 'READY' });
       },
       (error) => {
         if (!active) return;
         if (photoUploadService.isStatusUnavailableError(error)) {
           photoUploadService.clearCurrent();
-          setUploadStatus('READY');
+          setScreenState({ status: 'READY' });
           toast('분석 상태를 확인하지 못했어요. 잠시 후 다시 확인해주세요.');
           return;
         }
         if (photoUploadService.isRecoverableError(error)) {
           photoUploadService.clearCurrent();
-          setUpload(null);
-          setUploadStatus('READY');
-          setPendingVisible(true);
+          setScreenState({ status: 'PENDING' });
           return;
         }
-        setUploadStatus('FAILED');
+        setScreenState({ status: 'FAILED' });
       },
     );
 
     return () => {
       active = false;
     };
-  }, [toast, upload]);
+  }, [screenState, toast]);
 
   const clearPreviousScreens = () => {
     navigation.dispatch((state) =>
@@ -86,7 +91,7 @@ export function BoardScreen() {
 
   const cancelRetry = async () => {
     if (!(await photoUploadService.discard())) return;
-    setUploadStatus('READY');
+    setScreenState({ status: 'READY' });
   };
 
   const confirmRetry = async () => {
@@ -95,25 +100,27 @@ export function BoardScreen() {
   };
 
   const confirmPending = () => {
-    const resumed = photoUploadService.resume();
-    setPendingVisible(false);
-    setUploadStatus('UPLOADING');
-    setUpload(resumed);
+    setScreenState({ status: 'UPLOADING', uploadPromise: photoUploadService.resume() });
   };
+
+  const isBoardVisible =
+    screenState.status === 'CHECKING' ||
+    screenState.status === 'READY' ||
+    screenState.status === 'PENDING';
 
   return (
     <View style={{ flex: 1 }}>
-      {uploadStatus === 'READY' ? (
+      {isBoardVisible ? (
         <AppWebView path="/board" onReady={clearPreviousScreens} />
       ) : (
         <LoadingOverlay />
       )}
-      {checkingPending && <View style={StyleSheet.absoluteFill} />}
-      <PendingUploadModal onConfirm={confirmPending} visible={pendingVisible} />
+      {screenState.status === 'CHECKING' && <View style={StyleSheet.absoluteFill} />}
+      <PendingUploadModal onConfirm={confirmPending} visible={screenState.status === 'PENDING'} />
       <UploadFailureModal
         onCancel={() => void cancelRetry()}
         onConfirm={() => void confirmRetry()}
-        visible={uploadStatus === 'FAILED'}
+        visible={screenState.status === 'FAILED'}
       />
     </View>
   );
