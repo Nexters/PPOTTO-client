@@ -4,6 +4,7 @@ import { ChevronLeft, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import { useEffect } from 'react';
 
+import { useBoardListQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
@@ -14,6 +15,8 @@ import { OnboardingIndicator } from './ui/OnboardingIndicator';
 import { ONBOARDING_SLIDES } from './ui/OnboardingSlides';
 
 export function OnboardingPage() {
+  const { data: boards } = useBoardListQuery();
+  const boardId = boards?.[0]?.id;
   const { data: me } = useMeQuery();
   const { pop } = useFlow();
   const { emblaRef, selectedIndex, isLastSlide, goNext, goPrevious } = useOnboardingCarousel(
@@ -34,7 +37,7 @@ export function OnboardingPage() {
 
   const handlePrimaryAction = () => {
     if (isLastSlide) {
-      bridge.send('OPEN_PHOTO_SELECT');
+      if (boardId) bridge.send('OPEN_PHOTO_SELECT', { boardId });
       return;
     }
     goNext();
