@@ -59,6 +59,21 @@ export function toWorldPoint(camera: CameraState, point: Point): Point {
   };
 }
 
+// pointer가 가리키는 좌표를 화면상 같은 위치에 고정한 채 정확히 targetScale로 맞춘다 (더블탭 줌 리셋 등)
+export function zoomCameraTo(
+  camera: CameraState,
+  pointer: Point,
+  targetScale: number,
+): CameraState {
+  const worldPoint = toWorldPoint(camera, pointer);
+
+  return {
+    scale: targetScale,
+    x: pointer.x - worldPoint.x * targetScale,
+    y: pointer.y - worldPoint.y * targetScale,
+  };
+}
+
 // 핀치로 보드를 확대/축소한다.
 export function computeBoardPinchZoom(
   base: CameraState,

@@ -17,6 +17,7 @@ import {
   panCamera,
   toWorldPoint,
   zoomCamera,
+  zoomCameraTo,
 } from '../model/board-camera';
 import { computeBringToFrontZIndex, toLayoutInput } from '../model/board-layout';
 import {
@@ -38,6 +39,9 @@ type BoardCanvasProps = {
 
 // 탭과 드래그를 구분하는 이동 허용 오차(px)
 const TAP_MOVE_THRESHOLD = 6;
+// 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
+const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
+const DOUBLE_TAP_MAX_DISTANCE = 24;
 
 type DragTransform = { id: string } & StickerTransform;
 
@@ -104,6 +108,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     stickerId: string | null;
     startClient: Point;
   } | null>(null);
+  // 더블탭 감지용 — 직전에 빈 배경을 탭한 시각·위치
+  const lastBackgroundTapRef = useRef<{ time: number; point: Point } | null>(null);
 
   useRefetchOnActive(refetch, isStale);
 
@@ -393,9 +399,24 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       const tap = tapCandidateRef.current;
       if (tap?.pointerId === e.pointerId) {
         tapCandidateRef.current = null;
-        if (isEditModeRef.current) {
-          if (!tap.stickerId) setSelectedStickerId(null); // 빈 배경 탭 -> 선택 해제
-        } else if (tap.stickerId) {
+
+        if (!tap.stickerId) {
+          // 빈 배경 탭 — 더블탭이면 줌을 1.0x로 복귀, 아니면 편집 모드에서 선택 해제
+          const lastTap = lastBackgroundTapRef.current;
+          const now = Date.now();
+          const isDoubleTap =
+            lastTap !== null &&
+            now - lastTap.time < DOUBLE_TAP_MAX_INTERVAL_MS &&
+            distance(lastTap.point, tap.startClient) < DOUBLE_TAP_MAX_DISTANCE;
+
+          if (isDoubleTap) {
+            lastBackgroundTapRef.current = null;
+            setCamera((current) => zoomCameraTo(current, tap.startClient, 1));
+          } else {
+            lastBackgroundTapRef.current = { time: now, point: tap.startClient };
+            if (isEditModeRef.current) setSelectedStickerId(null);
+          }
+        } else if (!isEditModeRef.current) {
           pushRef.current('Recap', { stickerId: tap.stickerId });
         }
       }

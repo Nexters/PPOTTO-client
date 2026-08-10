@@ -9,7 +9,13 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { computeBoardPinchZoom, computeFocusTarget, panCamera, zoomCamera } from './board-camera';
+import {
+  computeBoardPinchZoom,
+  computeFocusTarget,
+  panCamera,
+  zoomCamera,
+  zoomCameraTo,
+} from './board-camera';
 
 describe('panCamera', () => {
   it('delta만큼 카메라 위치를 이동시킨다', () => {
@@ -46,6 +52,30 @@ describe('zoomCamera', () => {
 
     expect(zoomedIn.scale).toBeGreaterThan(1);
     expect(zoomedOut.scale).toBeLessThan(1);
+  });
+});
+
+describe('zoomCameraTo', () => {
+  it('targetScale로 정확히 맞춘다', () => {
+    const camera = { scale: 2, x: 0, y: 0 };
+
+    const result = zoomCameraTo(camera, { x: 50, y: 50 }, 1);
+
+    expect(result.scale).toBe(1);
+  });
+
+  it('pointer가 가리키는 좌표는 배율이 바뀌어도 화면상 같은 위치에 남는다', () => {
+    const camera = { scale: 2, x: 80, y: 40 };
+    const pointer = { x: 150, y: 90 };
+
+    const worldPoint = {
+      x: (pointer.x - camera.x) / camera.scale,
+      y: (pointer.y - camera.y) / camera.scale,
+    };
+    const result = zoomCameraTo(camera, pointer, 1);
+
+    expect(worldPoint.x * result.scale + result.x).toBeCloseTo(pointer.x);
+    expect(worldPoint.y * result.scale + result.y).toBeCloseTo(pointer.y);
   });
 });
 
