@@ -3,9 +3,7 @@
 import useEmblaCarousel from 'embla-carousel-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const LAST_SLIDE_INDEX = 3;
-
-export function useOnboardingCarousel() {
+export function useOnboardingCarousel(slideCount: number) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -27,7 +25,7 @@ export function useOnboardingCarousel() {
   return {
     emblaRef,
     selectedIndex,
-    isLastSlide: selectedIndex === LAST_SLIDE_INDEX,
+    isLastSlide: selectedIndex === slideCount - 1,
     goNext,
     goPrevious,
   };

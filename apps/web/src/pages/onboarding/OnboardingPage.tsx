@@ -16,7 +16,9 @@ import { ONBOARDING_SLIDES } from './ui/OnboardingSlides';
 export function OnboardingPage() {
   const { data: me } = useMeQuery();
   const { pop } = useFlow();
-  const { emblaRef, selectedIndex, isLastSlide, goNext, goPrevious } = useOnboardingCarousel();
+  const { emblaRef, selectedIndex, isLastSlide, goNext, goPrevious } = useOnboardingCarousel(
+    ONBOARDING_SLIDES.length,
+  );
 
   useEffect(() => {
     if (me) localStorage.setItem(`ppotto:onboarding-seen:${me.id}`, '1');
