@@ -2,6 +2,7 @@ import { useActivity } from '@stackflow/react';
 import { useEffect, useRef, useState } from 'react';
 
 import { useBoardListQuery, useBoardQuery } from '@/entities/board/api/board-queries';
+import { useDeleteStickersMutation } from '@/entities/sticker/api/sticker-mutations';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge } from '@/shared/lib/bridge';
 
@@ -12,8 +13,9 @@ export function useBoardPageState() {
   const { isActive } = useActivity();
   const { data: boards, isLoading: isBoardListLoading } = useBoardListQuery();
   const boardId = boards?.[0]?.id;
-  const { data: board } = useBoardQuery(boardId);
+  const { data: board, refetch: refetchBoard } = useBoardQuery(boardId);
   const { data: me } = useMeQuery();
+  const { mutate: deleteStickers, isPending: isDeletingStickers } = useDeleteStickersMutation();
   const hasPromptedOnCurrentVisit = useRef(false);
   const [isInitialUploadModalOpen, setIsInitialUploadModalOpen] = useState(false);
 
@@ -44,8 +46,21 @@ export function useBoardPageState() {
     bridge.send('OPEN_PHOTO_SELECT', { boardId });
   };
 
+  const deleteAllStickers = () => {
+    if (!board?.stickers.length) return;
+    deleteStickers(
+      board.stickers.map((sticker) => sticker.id),
+      {
+        onSettled: () => void refetchBoard(),
+      },
+    );
+  };
+
   return {
     boardId,
+    canDeleteStickers: Boolean(board?.stickers.length),
+    deleteAllStickers,
+    isDeletingStickers,
     isBoardListLoading,
     isInitialUploadModalOpen,
     setIsInitialUploadModalOpen,
