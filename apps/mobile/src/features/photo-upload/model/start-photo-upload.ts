@@ -28,6 +28,8 @@ export interface StartedPhotoUpload {
   status: UploadRunResult;
 }
 
+export type DiscardUploadResult = 'DISCARDED' | 'ANALYZING' | 'RETRY';
+
 /** 새 작업을 영속 저장한 뒤 분석 생성부터 사진 업로드와 분석 시작까지 실행한다. */
 export async function startPhotoUpload(
   snapshot: UploadJobSnapshot,
@@ -58,16 +60,18 @@ export async function resumeSavedPhotoUpload(
   };
 }
 
-/** 실패 화면을 나갈 때 CANCELING 작업은 서버 취소가 확인된 경우에만 정리한다. */
+/** 서버 active 상태와 대조해 진행 전 작업만 취소하고 로컬 작업을 정리한다. */
 export async function discardSavedPhotoUpload(
   dependencies: PhotoUploadServiceDependencies,
-): Promise<boolean> {
-  const savedJob = await dependencies.loadJob();
-  if (!savedJob) return true;
-
-  const state = restoreUploadJob(savedJob.snapshot, savedJob.events);
-  if (state.phase === 'CANCELING') {
-    return (await resumePhotoUpload(state, dependencies)) !== 'RETRY_CANCEL';
+): Promise<DiscardUploadResult> {
+  let active: Awaited<ReturnType<PhotoUploadServiceDependencies['getActiveAnalysis']>>;
+  try {
+    active = await dependencies.getActiveAnalysis();
+    if (active?.status === 'UPLOADING') {
+      await dependencies.cancelAnalysis(active.id);
+    }
+  } catch {
+    return 'RETRY';
   }
 
   try {
@@ -75,7 +79,7 @@ export async function discardSavedPhotoUpload(
   } catch {
     // 실패 화면을 빠져나가는 동작은 남은 임시 파일 정리에 막히지 않는다.
   }
-  return true;
+  return active?.status === 'ANALYZING' ? 'ANALYZING' : 'DISCARDED';
 }
 
 async function continuePreparing(

@@ -90,12 +90,17 @@ export function BoardScreen() {
   };
 
   const cancelRetry = async () => {
-    if (!(await photoUploadService.discard())) return;
+    if ((await photoUploadService.discard()) === 'RETRY') return;
     setScreenState({ status: 'READY' });
   };
 
   const confirmRetry = async () => {
-    if (!(await photoUploadService.discard())) return;
+    const result = await photoUploadService.discard();
+    if (result === 'RETRY') return;
+    if (result === 'ANALYZING') {
+      setScreenState({ status: 'READY' });
+      return;
+    }
     if (boardId) router.replace({ pathname: '/photo-select', params: { boardId } });
   };
 

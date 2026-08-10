@@ -5,7 +5,7 @@
  * - 모든 PUT 성공 후 분석을 시작하고 로컬 작업을 정리
  * - PREPARING 작업 복구 → 새 분석을 생성하고 업로드 재개
  * - 분석 생성 응답 유실 → 서버의 기존 UPLOADING 분석을 취소하고 다시 생성
- * - 취소가 완료되지 않은 CANCELING 작업은 discard해도 보존
+ * - 작업 폐기 → 서버 UPLOADING은 취소, ANALYZING은 유지, 서버 확인 실패 시 로컬 작업 보존
  */
 import { NetworkError } from '@ppotto/api';
 
@@ -132,7 +132,36 @@ it('분석 생성 응답이 유실되면 서버의 기존 UPLOADING 분석을 �
   });
 });
 
-it('CANCELING 작업의 서버 취소가 다시 실패하면 로컬 작업을 보존한다', async () => {
+it('작업을 폐기할 때 서버가 UPLOADING이면 서버를 취소한 뒤 로컬 작업을 정리한다', async () => {
+  const snapshot = uploadJob('file:///documents/photo-upload/job-1/a.jpg');
+  const dependencies = dependenciesFor(snapshot, []);
+  const calls: string[] = [];
+  dependencies.getActiveAnalysis.mockResolvedValue({ id: 'analysis-1', status: 'UPLOADING' });
+  dependencies.cancelAnalysis.mockImplementation(async () => {
+    calls.push('cancel-analysis');
+  });
+  dependencies.clearJob.mockImplementation(async () => {
+    calls.push('clear-job');
+  });
+
+  await expect(discardSavedPhotoUpload(dependencies)).resolves.toBe('DISCARDED');
+
+  expect(dependencies.cancelAnalysis).toHaveBeenCalledWith('analysis-1');
+  expect(calls).toEqual(['cancel-analysis', 'clear-job']);
+});
+
+it('작업을 폐기할 때 서버가 ANALYZING이면 취소하지 않고 로컬 작업만 정리한다', async () => {
+  const snapshot = uploadJob('file:///documents/photo-upload/job-1/a.jpg');
+  const dependencies = dependenciesFor(snapshot, []);
+  dependencies.getActiveAnalysis.mockResolvedValue({ id: 'analysis-1', status: 'ANALYZING' });
+
+  await expect(discardSavedPhotoUpload(dependencies)).resolves.toBe('ANALYZING');
+
+  expect(dependencies.cancelAnalysis).not.toHaveBeenCalled();
+  expect(dependencies.clearJob).toHaveBeenCalledTimes(1);
+});
+
+it('서버 취소가 실패하면 로컬 작업을 보존한다', async () => {
   const snapshot = uploadJob('file:///documents/photo-upload/job-1/a.jpg');
   const events: UploadJobEvent[] = [
     {
@@ -143,9 +172,10 @@ it('CANCELING 작업의 서버 취소가 다시 실패하면 로컬 작업을 �
     { type: 'CANCEL_REQUESTED' },
   ];
   const dependencies = dependenciesFor(snapshot, events);
+  dependencies.getActiveAnalysis.mockResolvedValue({ id: 'analysis-1', status: 'UPLOADING' });
   dependencies.cancelAnalysis.mockRejectedValue(new Error('offline'));
 
-  await expect(discardSavedPhotoUpload(dependencies)).resolves.toBe(false);
+  await expect(discardSavedPhotoUpload(dependencies)).resolves.toBe('RETRY');
 
   expect(dependencies.cancelAnalysis).toHaveBeenCalledWith('analysis-1');
   expect(dependencies.clearJob).not.toHaveBeenCalled();
