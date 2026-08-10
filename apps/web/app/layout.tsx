@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import '@/app/styles/globals.css';
 
-import { ConsoleMirror } from '@/app/providers/console-mirror';
 import { QueryProvider } from '@/app/providers/query-provider';
 import { cn } from '@/shared/lib/cn';
 import { ToastProvider } from '@/shared/ui/common/Toast';
@@ -26,7 +25,6 @@ export default function RootLayout({
             'shadow-[0_0_24px_rgba(0,0,0,0.08)] dark:shadow-[0_0_24px_rgba(0,0,0,0.5)]',
           )}
         >
-          <ConsoleMirror />
           <QueryProvider>
             <ToastProvider>{children}</ToastProvider>
           </QueryProvider>
