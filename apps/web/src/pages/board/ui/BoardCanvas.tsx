@@ -160,10 +160,12 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   };
 
   // 스티커를 선택하면 다른 스티커 위로 보이도록 zIndex를 맨 위로 올림
-  const selectSticker = (sticker: StickerData) => {
+  const selectSticker = (sticker: StickerData): StickerData => {
     setSelectedStickerId(sticker.id);
     const newZIndex = computeBringToFrontZIndex(stickersRef.current, sticker.id);
-    if (newZIndex !== null) saveStickerLayout(sticker, { zIndex: newZIndex });
+    if (newZIndex === null) return sticker;
+    saveStickerLayout(sticker, { zIndex: newZIndex });
+    return { ...sticker, zIndex: newZIndex };
   };
 
   const saveStickerLayoutRef = useRef(saveStickerLayout);
@@ -205,9 +207,10 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       tapCandidateRef.current = { pointerId: e.pointerId, stickerId, startClient: point };
 
       if (stickerId && isEditModeRef.current) {
-        const sticker = stickersRef.current.find((s) => s.id === stickerId);
-        if (sticker) {
-          if (selectedIdRef.current !== stickerId) selectStickerRef.current(sticker);
+        const found = stickersRef.current.find((s) => s.id === stickerId);
+        if (found) {
+          const sticker =
+            selectedIdRef.current !== stickerId ? selectStickerRef.current(found) : found;
           gestureRef.current = {
             kind: 'move',
             pointerId: e.pointerId,
@@ -349,20 +352,30 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             rotation: gesture.startTransform.rotation,
             scale: gesture.startTransform.scale,
           };
-          const badgeOffset = scaleBadgeOffset(
-            { x: gesture.sticker.badgeOffsetX, y: gesture.sticker.badgeOffsetY },
-            finalTransform.scale,
-            gesture.sticker.scale,
-          );
           setLiveTransform(null);
-          saveStickerLayoutRef.current(gesture.sticker, {
-            posX: finalTransform.x,
-            posY: finalTransform.y,
-            rotation: finalTransform.rotation,
-            scale: finalTransform.scale,
-            badgeOffsetX: badgeOffset.x,
-            badgeOffsetY: badgeOffset.y,
-          });
+
+          // 실제로 아무것도 안 바뀌었으면(드래그 없이 탭만 한 경우) 저장 요청을 보내지 않는다
+          const unchanged =
+            finalTransform.x === gesture.sticker.posX &&
+            finalTransform.y === gesture.sticker.posY &&
+            finalTransform.rotation === gesture.sticker.rotation &&
+            finalTransform.scale === gesture.sticker.scale;
+
+          if (!unchanged) {
+            const badgeOffset = scaleBadgeOffset(
+              { x: gesture.sticker.badgeOffsetX, y: gesture.sticker.badgeOffsetY },
+              finalTransform.scale,
+              gesture.sticker.scale,
+            );
+            saveStickerLayoutRef.current(gesture.sticker, {
+              posX: finalTransform.x,
+              posY: finalTransform.y,
+              rotation: finalTransform.rotation,
+              scale: finalTransform.scale,
+              badgeOffsetX: badgeOffset.x,
+              badgeOffsetY: badgeOffset.y,
+            });
+          }
         }
         gestureRef.current = null;
       } else if (pointersRef.current.size === 1) {
