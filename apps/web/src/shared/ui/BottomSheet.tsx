@@ -1,3 +1,7 @@
+'use client';
+
+import * as Dialog from '@radix-ui/react-dialog';
+
 import { cn } from '@/shared/lib/cn';
 
 type BottomSheetProps = {
@@ -7,25 +11,22 @@ type BottomSheetProps = {
 };
 
 export function BottomSheet({ isOpen, onClose, children }: BottomSheetProps) {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <button
-        type="button"
-        aria-label="닫기"
-        className="absolute inset-0 backdrop-blur-[30px]"
-        onClick={onClose}
-      />
-      <div
+    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Overlay className="modal-overlay fixed inset-0 z-50 backdrop-blur-[30px]" />
+      <Dialog.Content
+        aria-describedby={undefined}
+        onOpenAutoFocus={(e) => e.preventDefault()}
         className={cn(
-          'relative flex flex-col gap-5 rounded-t-3xl bg-gray-900 pt-4',
+          'sheet-content fixed inset-x-0 bottom-0 z-50',
+          'flex flex-col gap-5 rounded-t-3xl bg-gray-900 pt-4',
           'pr-6 pb-10 pl-6',
         )}
       >
+        <Dialog.Title className="sr-only">스티커 퀵메뉴</Dialog.Title>
         <div className="mx-auto h-1 w-14 shrink-0 rounded-full bg-gray-700" />
         {children}
-      </div>
-    </div>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }
