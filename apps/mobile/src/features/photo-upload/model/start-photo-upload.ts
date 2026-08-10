@@ -1,3 +1,5 @@
+import { NetworkError } from '@ppotto/api';
+
 import {
   createUploadAnalysis,
   type CreateUploadAnalysisDependencies,
@@ -5,13 +7,17 @@ import {
 import { restoreUploadJob, type UploadJobSnapshot } from './upload-job';
 import {
   resumePhotoUpload,
+  type AnalysisStatus,
   type UploadRunnerDependencies,
   type UploadRunResult,
+  type UploadUrl,
 } from './upload-runner';
 import type { UploadJobStorage } from './upload-storage';
 
 export interface PhotoUploadServiceDependencies
-  extends UploadJobStorage, UploadRunnerDependencies, CreateUploadAnalysisDependencies {}
+  extends UploadJobStorage, UploadRunnerDependencies, CreateUploadAnalysisDependencies {
+  getActiveAnalysis: () => Promise<{ id: string; status: AnalysisStatus } | null>;
+}
 
 export interface StartedPhotoUpload {
   analysisId: string;
@@ -26,15 +32,7 @@ export async function startPhotoUpload(
   await dependencies.saveJob(snapshot);
 
   const savedJob = await loadRequiredJob(dependencies);
-  const { analysisId, uploads } = await createUploadAnalysis(savedJob.snapshot, dependencies);
-  const createdJob = await loadRequiredJob(dependencies);
-
-  const status = await resumePhotoUpload(
-    restoreUploadJob(createdJob.snapshot, createdJob.events),
-    dependencies,
-    uploads,
-  );
-  return { analysisId, status };
+  return continuePreparing(savedJob.snapshot, dependencies);
 }
 
 /** 앱 재진입 시 저장된 phase부터 업로드를 이어간다. */
@@ -46,13 +44,7 @@ export async function resumeSavedPhotoUpload(
 
   let state = restoreUploadJob(savedJob.snapshot, savedJob.events);
   if (state.phase === 'PREPARING') {
-    const created = await createUploadAnalysis(savedJob.snapshot, dependencies);
-    savedJob = await loadRequiredJob(dependencies);
-    state = restoreUploadJob(savedJob.snapshot, savedJob.events);
-    return {
-      analysisId: created.analysisId,
-      status: await resumePhotoUpload(state, dependencies, created.uploads),
-    };
+    return continuePreparing(savedJob.snapshot, dependencies);
   }
 
   if (!state.analysisId) throw new Error('저장된 작업에 분석 ID가 없습니다.');
@@ -62,8 +54,63 @@ export async function resumeSavedPhotoUpload(
   };
 }
 
+async function continuePreparing(
+  snapshot: UploadJobSnapshot,
+  dependencies: PhotoUploadServiceDependencies,
+): Promise<StartedPhotoUpload> {
+  const analysis = await createAnalysisOrRecover(snapshot, dependencies);
+  if (analysis.kind === 'ANALYZING') {
+    await dependencies.clearJob();
+    return { analysisId: analysis.analysisId, status: 'ANALYZING' };
+  }
+
+  const createdJob = await loadRequiredJob(dependencies);
+  const status = await resumePhotoUpload(
+    restoreUploadJob(createdJob.snapshot, createdJob.events),
+    dependencies,
+    analysis.uploads,
+  );
+  return { analysisId: analysis.analysisId, status };
+}
+
+async function createAnalysisOrRecover(
+  snapshot: UploadJobSnapshot,
+  dependencies: PhotoUploadServiceDependencies,
+): Promise<CreatedAnalysis | ActiveAnalysis> {
+  try {
+    return asCreated(await createUploadAnalysis(snapshot, dependencies));
+  } catch (error) {
+    if (!(error instanceof NetworkError)) throw error;
+  }
+
+  const active = await dependencies.getActiveAnalysis();
+  if (active?.status === 'ANALYZING') {
+    return { kind: 'ANALYZING', analysisId: active.id };
+  }
+  if (active?.status === 'UPLOADING') {
+    await dependencies.cancelAnalysis(active.id);
+  }
+
+  return asCreated(await createUploadAnalysis(snapshot, dependencies));
+}
+
+function asCreated(result: { analysisId: string; uploads: UploadUrl[] }): CreatedAnalysis {
+  return { kind: 'CREATED', ...result };
+}
+
 async function loadRequiredJob(storage: UploadJobStorage) {
   const job = await storage.loadJob();
   if (!job) throw new Error('저장된 업로드 작업이 없습니다.');
   return job;
+}
+
+interface CreatedAnalysis {
+  kind: 'CREATED';
+  analysisId: string;
+  uploads: UploadUrl[];
+}
+
+interface ActiveAnalysis {
+  kind: 'ANALYZING';
+  analysisId: string;
 }

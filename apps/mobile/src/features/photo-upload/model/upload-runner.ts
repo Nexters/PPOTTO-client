@@ -1,3 +1,5 @@
+import { NetworkError } from '@ppotto/api';
+
 import { logPhotoUpload, logPhotoUploadError } from '../lib/photo-upload-log';
 
 import type { UploadJobEvent, UploadJobPhoto, UploadJobState } from './upload-job';
@@ -80,13 +82,7 @@ async function resumeStarting(
   state: UploadJobState,
   dependencies: UploadRunnerDependencies,
 ): Promise<UploadRunResult> {
-  const analysisId = analysisIdOf(state);
-  const status = await dependencies.getAnalysisStatus(analysisId);
-
-  if (status === 'UPLOADING') return startAndClear(analysisId, dependencies);
-
-  await dependencies.clearJob();
-  return status === 'FAILED' ? 'UPLOAD_FAILED' : 'ANALYZING';
+  return resolveStartOutcome(analysisIdOf(state), dependencies);
 }
 
 async function uploadPhotos(
@@ -198,9 +194,30 @@ async function startAndClear(
   analysisId: string,
   dependencies: UploadRunnerDependencies,
 ): Promise<UploadRunResult> {
-  await dependencies.startAnalysis(analysisId);
+  try {
+    await dependencies.startAnalysis(analysisId);
+  } catch (error) {
+    if (error instanceof NetworkError) return resolveStartOutcome(analysisId, dependencies);
+    throw error;
+  }
+
   await dependencies.clearJob();
   return 'ANALYZING';
+}
+
+async function resolveStartOutcome(
+  analysisId: string,
+  dependencies: UploadRunnerDependencies,
+): Promise<UploadRunResult> {
+  const status = await dependencies.getAnalysisStatus(analysisId);
+  if (status === 'UPLOADING') {
+    await dependencies.startAnalysis(analysisId);
+    await dependencies.clearJob();
+    return 'ANALYZING';
+  }
+
+  await dependencies.clearJob();
+  return status === 'FAILED' ? 'UPLOAD_FAILED' : 'ANALYZING';
 }
 
 interface PendingPhoto {

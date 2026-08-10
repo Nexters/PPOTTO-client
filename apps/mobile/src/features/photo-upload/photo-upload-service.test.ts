@@ -4,7 +4,10 @@
  * - 최초 PUT에는 POST /analysis 응답 URL을 사용하고 reissue는 호출하지 않음
  * - 모든 PUT 성공 후 분석을 시작하고 로컬 작업을 정리
  * - PREPARING 작업 복구 → 새 분석을 생성하고 업로드 재개
+ * - 분석 생성 응답 유실 → 서버의 기존 UPLOADING 분석을 취소하고 다시 생성
  */
+import { NetworkError } from '@ppotto/api';
+
 import type { CreateAnalysisInput } from '@/entities/analysis/api/analysis-api';
 
 import {
@@ -48,6 +51,9 @@ it('작업을 저장한 뒤 최초 발급 URL로 업로드하고 분석을 시�
       calls.push('start');
     }),
     cancelAnalysis: jest.fn(async (_analysisId: string) => undefined),
+    getActiveAnalysis: jest.fn<ReturnType<PhotoUploadServiceDependencies['getActiveAnalysis']>, []>(
+      async () => null,
+    ),
     getAnalysisStatus: jest.fn(async (_analysisId: string): Promise<AnalysisStatus> => 'UPLOADING'),
   } satisfies PhotoUploadServiceDependencies;
 
@@ -84,6 +90,46 @@ it('PREPARING 작업은 다시 저장하지 않고 분석 생성부터 이어간
   });
 });
 
+it('분석 생성 응답이 유실되면 서버의 기존 UPLOADING 분석을 취소하고 다시 생성한다', async () => {
+  const snapshot = uploadJob('file:///documents/photo-upload/job-1/a.jpg');
+  const events: UploadJobEvent[] = [];
+  const calls: string[] = [];
+  const dependencies = dependenciesFor(snapshot, events);
+
+  dependencies.createAnalysis
+    .mockImplementationOnce(async () => {
+      calls.push('create-lost');
+      throw new NetworkError(new Error('response lost'));
+    })
+    .mockImplementationOnce(async () => {
+      calls.push('create-retry');
+      return {
+        analysisId: 'analysis-2',
+        uploads: [{ photoId: 'server-a-2', uploadUrl: 'https://upload/retry-a' }],
+      };
+    });
+  dependencies.getActiveAnalysis.mockImplementation(async () => {
+    calls.push('get-active');
+    return { id: 'analysis-1', status: 'UPLOADING' };
+  });
+  dependencies.cancelAnalysis.mockImplementation(async () => {
+    calls.push('cancel-active');
+  });
+
+  await expect(resumeSavedPhotoUpload(dependencies)).resolves.toEqual({
+    analysisId: 'analysis-2',
+    status: 'ANALYZING',
+  });
+
+  expect(calls).toEqual(['create-lost', 'get-active', 'cancel-active', 'create-retry']);
+  expect(dependencies.cancelAnalysis).toHaveBeenCalledWith('analysis-1');
+  expect(dependencies.putPhoto).toHaveBeenCalledWith({
+    contentType: 'image/jpeg',
+    fileUri: 'file:///documents/photo-upload/job-1/a.jpg',
+    uploadUrl: 'https://upload/retry-a',
+  });
+});
+
 function dependenciesFor(snapshot: UploadJobSnapshot, events: UploadJobEvent[]) {
   return {
     saveJob: jest.fn(async () => undefined),
@@ -100,6 +146,9 @@ function dependenciesFor(snapshot: UploadJobSnapshot, events: UploadJobEvent[]) 
     reissueUploadUrls: jest.fn(async () => []),
     startAnalysis: jest.fn(async () => undefined),
     cancelAnalysis: jest.fn(async () => undefined),
+    getActiveAnalysis: jest.fn<ReturnType<PhotoUploadServiceDependencies['getActiveAnalysis']>, []>(
+      async () => null,
+    ),
     getAnalysisStatus: jest.fn(async (): Promise<AnalysisStatus> => 'UPLOADING'),
   } satisfies PhotoUploadServiceDependencies;
 }

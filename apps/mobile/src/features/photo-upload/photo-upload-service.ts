@@ -1,3 +1,5 @@
+import { NetworkError } from '@ppotto/api';
+
 import { analysisApi } from '@/entities/analysis/api/analysis-api';
 
 import { putPhoto } from './api/put-photo';
@@ -29,6 +31,7 @@ const dependencies: PhotoUploadServiceDependencies = {
     await analysisApi.cancel(analysisId);
     logPhotoUpload(`DELETE /analysis/${analysisId} 완료`);
   },
+  getActiveAnalysis: () => analysisApi.getActive(),
   getAnalysisStatus: async (analysisId) => {
     const { status } = await analysisApi.get(analysisId);
     logPhotoUpload(`GET /analysis/${analysisId} → ${status}`);
@@ -78,6 +81,8 @@ export const photoUploadService = {
   },
 
   getCurrent: () => currentUpload,
+
+  isRecoverableError: (error: unknown) => error instanceof NetworkError,
 
   async hasPending() {
     if (await storage.loadJob()) return true;

@@ -1,4 +1,4 @@
-import { type paths, unwrapData, unwrapVoid } from '@ppotto/api';
+import { type paths, unwrapData, unwrapNullableData, unwrapVoid } from '@ppotto/api';
 
 import { api } from '@/lib/api';
 
@@ -8,7 +8,7 @@ export type CreateAnalysisInput =
 export const analysisApi = {
   create: (input: CreateAnalysisInput) => unwrapData(api.POST('/analysis', { body: input })),
 
-  getActive: () => unwrapData(api.GET('/analysis/active')),
+  getActive: () => unwrapNullableData(api.GET('/analysis/active')),
 
   get: (analysisId: string) =>
     unwrapData(api.GET('/analysis/{analysisId}', { params: { path: { analysisId } } })),

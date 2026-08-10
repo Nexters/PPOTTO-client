@@ -7,7 +7,10 @@
  * - CANCELING 재개 → 취소 실패 시 작업 유지, 성공 시 작업 정리
  * - STARTING 재개 + 서버 UPLOADING → 분석 시작 재요청
  * - STARTING 재개 + 서버 ANALYZING → 중복 시작 없이 로컬 작업 정리
+ * - 분석 시작 응답 유실 + 서버 ANALYZING → 중복 시작 없이 성공 처리
  */
+import { NetworkError } from '@ppotto/api';
+
 import type { UploadJobEvent, UploadJobState } from './upload-job';
 import {
   resumePhotoUpload,
@@ -256,5 +259,18 @@ it('STARTING을 재개하면 서버 상태를 먼저 확인하고 이미 시작�
   expect(result).toBe('ANALYZING');
   expect(dependencies.getAnalysisStatus).toHaveBeenCalledWith('analysis-1');
   expect(dependencies.startAnalysis).not.toHaveBeenCalled();
+  expect(dependencies.clearJob).toHaveBeenCalledTimes(1);
+});
+
+it('분석 시작 응답이 유실돼도 서버가 ANALYZING이면 중복 시작 없이 성공 처리한다', async () => {
+  const dependencies = setup();
+  dependencies.startAnalysis.mockRejectedValueOnce(new NetworkError(new Error('response lost')));
+  dependencies.getAnalysisStatus.mockResolvedValue('ANALYZING');
+
+  const result = await resumePhotoUpload(state('PUTTING'), dependencies);
+
+  expect(result).toBe('ANALYZING');
+  expect(dependencies.startAnalysis).toHaveBeenCalledTimes(1);
+  expect(dependencies.getAnalysisStatus).toHaveBeenCalledWith('analysis-1');
   expect(dependencies.clearJob).toHaveBeenCalledTimes(1);
 });

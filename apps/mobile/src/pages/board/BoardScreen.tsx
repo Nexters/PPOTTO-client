@@ -52,8 +52,16 @@ export function BoardScreen() {
         photoUploadService.clearCurrent();
         if (active) setUploadStatus('READY');
       },
-      () => {
-        if (active) setUploadStatus('FAILED');
+      (error) => {
+        if (!active) return;
+        if (photoUploadService.isRecoverableError(error)) {
+          photoUploadService.clearCurrent();
+          setUpload(null);
+          setUploadStatus('READY');
+          setPendingVisible(true);
+          return;
+        }
+        setUploadStatus('FAILED');
       },
     );
 
