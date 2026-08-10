@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic';
 
-import { DotBackground } from '@/shared/ui/DotBackground';
 import { Modal } from '@/shared/ui/common/Modal';
 
 import { useBoardPageState } from './model/use-board-page-state';
@@ -19,15 +18,15 @@ export function BoardPage() {
     isBoardListLoading,
     isInitialUploadModalOpen,
     setIsInitialUploadModalOpen,
-    confirmInitialUpload,
+    openPhotoSelect,
   } = useBoardPageState();
 
   return (
-    <DotBackground>
+    <>
       <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
         <BoardHeader />
         <BoardContent boardId={boardId} isLoading={isBoardListLoading} />
-        <BoardToolbar />
+        <BoardToolbar onAddSticker={openPhotoSelect} />
       </div>
       <Modal
         open={isInitialUploadModalOpen}
@@ -36,9 +35,9 @@ export function BoardPage() {
         description="아직 사진을 올린 적이 없어요. 사진을 올리러 가볼까요?"
       >
         <Modal.Cancel>취소</Modal.Cancel>
-        <Modal.Confirm onClick={confirmInitialUpload}>확인</Modal.Confirm>
+        <Modal.Confirm onClick={openPhotoSelect}>확인</Modal.Confirm>
       </Modal>
-    </DotBackground>
+    </>
   );
 }
 

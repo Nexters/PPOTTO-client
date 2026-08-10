@@ -1,7 +1,7 @@
 import { contract } from '@ppotto/bridge';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
@@ -12,6 +12,7 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
+import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL;
@@ -69,13 +70,7 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
         bounces={!boardActive}
         overScrollMode={boardActive ? 'never' : 'always'}
       />
-      {!loaded && (
-        <View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]}
-          className="bg-yellow-400"
-        />
-      )}
+      {!loaded && <AppBackground />}
     </View>
   );
 }

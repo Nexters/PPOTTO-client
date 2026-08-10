@@ -34,7 +34,7 @@ export function PhotoSelectScreen() {
     });
 
   return (
-    <View className="flex-1 bg-black">
+    <View className="flex-1">
       <SafeAreaView className="flex-1" edges={['top']}>
         <View className="gap-8 px-6 pt-4 pb-8">
           <Header />
