@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { photoUploadService } from '@/features/photo-upload';
 import { AppWebView } from '@/shared/ui/AppWebView';
+import { useToast } from '@/shared/ui/Toast';
 
 import { LoadingOverlay } from './ui/LoadingOverlay';
 import { PendingUploadModal } from './ui/PendingUploadModal';
@@ -15,6 +16,7 @@ type UploadStatus = 'READY' | 'UPLOADING' | 'FAILED';
 // 보드, 리캡 전용 웹뷰
 export function BoardScreen() {
   const navigation = useNavigation();
+  const toast = useToast();
   const { boardId } = useLocalSearchParams<{ boardId?: string }>();
   const [upload, setUpload] = useState(() => photoUploadService.getCurrent());
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>(upload ? 'UPLOADING' : 'READY');
@@ -54,6 +56,12 @@ export function BoardScreen() {
       },
       (error) => {
         if (!active) return;
+        if (photoUploadService.isStatusUnavailableError(error)) {
+          photoUploadService.clearCurrent();
+          setUploadStatus('READY');
+          toast('분석 상태를 확인하지 못했어요. 잠시 후 다시 확인해주세요.');
+          return;
+        }
         if (photoUploadService.isRecoverableError(error)) {
           photoUploadService.clearCurrent();
           setUpload(null);
@@ -68,7 +76,7 @@ export function BoardScreen() {
     return () => {
       active = false;
     };
-  }, [upload]);
+  }, [toast, upload]);
 
   const clearPreviousScreens = () => {
     navigation.dispatch((state) =>
@@ -77,12 +85,12 @@ export function BoardScreen() {
   };
 
   const cancelRetry = async () => {
-    await photoUploadService.discard();
+    if (!(await photoUploadService.discard())) return;
     setUploadStatus('READY');
   };
 
   const confirmRetry = async () => {
-    await photoUploadService.discard();
+    if (!(await photoUploadService.discard())) return;
     if (boardId) router.replace({ pathname: '/photo-select', params: { boardId } });
   };
 

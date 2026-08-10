@@ -1,4 +1,4 @@
-import { NetworkError } from '@ppotto/api';
+import { HttpError, NetworkError } from '@ppotto/api';
 
 import { logPhotoUpload, logPhotoUploadError } from '../lib/photo-upload-log';
 
@@ -185,7 +185,21 @@ async function cancelAndClear(
     await dependencies.cancelAnalysis(analysisId);
     await dependencies.clearJob();
     return 'UPLOAD_FAILED';
-  } catch {
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) {
+      await dependencies.clearJob();
+      return 'UPLOAD_FAILED';
+    }
+    if (error instanceof HttpError && error.status === 409) {
+      try {
+        const status = await dependencies.getAnalysisStatus(analysisId);
+        if (status === 'UPLOADING') return 'RETRY_CANCEL';
+        await dependencies.clearJob();
+        return status === 'FAILED' ? 'UPLOAD_FAILED' : 'ANALYZING';
+      } catch {
+        return 'RETRY_CANCEL';
+      }
+    }
     return 'RETRY_CANCEL';
   }
 }

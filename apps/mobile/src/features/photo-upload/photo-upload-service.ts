@@ -6,6 +6,7 @@ import { putPhoto } from './api/put-photo';
 import { expoUploadFileSystem, PHOTO_UPLOAD_ROOT_URI } from './lib/expo-upload-file-system';
 import { logPhotoUpload, logPhotoUploadError } from './lib/photo-upload-log';
 import {
+  discardSavedPhotoUpload,
   resumeSavedPhotoUpload,
   startPhotoUpload,
   type PhotoUploadServiceDependencies,
@@ -13,7 +14,7 @@ import {
 } from './model/start-photo-upload';
 import { restoreUploadJob, type UploadJobSnapshot } from './model/upload-job';
 import { createUploadJobStorage } from './model/upload-storage';
-import { waitForAnalysis } from './model/wait-for-analysis';
+import { AnalysisStatusUnavailableError, waitForAnalysis } from './model/wait-for-analysis';
 
 const storage = createUploadJobStorage(PHOTO_UPLOAD_ROOT_URI, expoUploadFileSystem);
 
@@ -84,6 +85,8 @@ export const photoUploadService = {
 
   isRecoverableError: (error: unknown) => error instanceof NetworkError,
 
+  isStatusUnavailableError: (error: unknown) => error instanceof AnalysisStatusUnavailableError,
+
   async hasPending() {
     if (await storage.loadJob()) return true;
     return Boolean(await analysisApi.getActive());
@@ -141,11 +144,7 @@ export const photoUploadService = {
 
   async discard() {
     currentUpload = null;
-    try {
-      await storage.clearJob();
-    } catch {
-      // 실패 화면을 빠져나가는 동작은 남은 임시 파일 정리에 막히지 않는다.
-    }
+    return discardSavedPhotoUpload(dependencies);
   },
 };
 

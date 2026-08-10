@@ -5,12 +5,14 @@
  * - 모든 PUT 성공 후 분석을 시작하고 로컬 작업을 정리
  * - PREPARING 작업 복구 → 새 분석을 생성하고 업로드 재개
  * - 분석 생성 응답 유실 → 서버의 기존 UPLOADING 분석을 취소하고 다시 생성
+ * - 취소가 완료되지 않은 CANCELING 작업은 discard해도 보존
  */
 import { NetworkError } from '@ppotto/api';
 
 import type { CreateAnalysisInput } from '@/entities/analysis/api/analysis-api';
 
 import {
+  discardSavedPhotoUpload,
   resumeSavedPhotoUpload,
   startPhotoUpload,
   type PhotoUploadServiceDependencies,
@@ -128,6 +130,25 @@ it('분석 생성 응답이 유실되면 서버의 기존 UPLOADING 분석을 �
     fileUri: 'file:///documents/photo-upload/job-1/a.jpg',
     uploadUrl: 'https://upload/retry-a',
   });
+});
+
+it('CANCELING 작업의 서버 취소가 다시 실패하면 로컬 작업을 보존한다', async () => {
+  const snapshot = uploadJob('file:///documents/photo-upload/job-1/a.jpg');
+  const events: UploadJobEvent[] = [
+    {
+      type: 'ANALYSIS_CREATED',
+      analysisId: 'analysis-1',
+      photoIds: { 'local-a': 'server-a' },
+    },
+    { type: 'CANCEL_REQUESTED' },
+  ];
+  const dependencies = dependenciesFor(snapshot, events);
+  dependencies.cancelAnalysis.mockRejectedValue(new Error('offline'));
+
+  await expect(discardSavedPhotoUpload(dependencies)).resolves.toBe(false);
+
+  expect(dependencies.cancelAnalysis).toHaveBeenCalledWith('analysis-1');
+  expect(dependencies.clearJob).not.toHaveBeenCalled();
 });
 
 function dependenciesFor(snapshot: UploadJobSnapshot, events: UploadJobEvent[]) {

@@ -54,6 +54,26 @@ export async function resumeSavedPhotoUpload(
   };
 }
 
+/** 실패 화면을 나갈 때 CANCELING 작업은 서버 취소가 확인된 경우에만 정리한다. */
+export async function discardSavedPhotoUpload(
+  dependencies: PhotoUploadServiceDependencies,
+): Promise<boolean> {
+  const savedJob = await dependencies.loadJob();
+  if (!savedJob) return true;
+
+  const state = restoreUploadJob(savedJob.snapshot, savedJob.events);
+  if (state.phase === 'CANCELING') {
+    return (await resumePhotoUpload(state, dependencies)) !== 'RETRY_CANCEL';
+  }
+
+  try {
+    await dependencies.clearJob();
+  } catch {
+    // 실패 화면을 빠져나가는 동작은 남은 임시 파일 정리에 막히지 않는다.
+  }
+  return true;
+}
+
 async function continuePreparing(
   snapshot: UploadJobSnapshot,
   dependencies: PhotoUploadServiceDependencies,
