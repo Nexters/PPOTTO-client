@@ -2,7 +2,6 @@ import { useFlow } from '@stackflow/react';
 import { useEffect } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
-import { cn } from '@/shared/lib/cn';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import { useMarkStickerViewed } from '../board/model/use-mark-sticker-viewed';
@@ -38,7 +37,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
 
   return (
     <div
-      className={cn('flex min-h-full w-full flex-col gap-10 px-5', 'pt-16 pb-5.5')}
+      className="flex min-h-full w-full flex-col gap-10 px-5"
       style={{
         backgroundColor: '#000',
         backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',

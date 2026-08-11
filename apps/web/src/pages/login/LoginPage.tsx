@@ -3,6 +3,7 @@
 import { AppleLogo, KakaoLogo, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 
+import { userApi } from '@/entities/user/api/user-api';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 
@@ -13,14 +14,21 @@ export function LoginPage() {
     try {
       const result = await bridge.request(channel);
       if (!result) return;
-      replace(result.pendingTerms.length > 0 ? 'Terms' : 'Board', {});
+      if (result.pendingTerms.length > 0) {
+        replace('Terms', {});
+        return;
+      }
+
+      const me = await userApi.getMe();
+      const hasSeenOnboarding = localStorage.getItem(`ppotto:onboarding-seen:${me.id}`) === '1';
+      replace(hasSeenOnboarding ? 'Board' : 'Onboarding', {});
     } catch (error) {
       console.error('로그인 실패', error);
     }
   };
 
   return (
-    <main className={cn('flex min-h-dvh flex-col items-center px-[30px] pt-[210px]', 'pb-[56px]')}>
+    <main className="flex min-h-dvh flex-col items-center px-[30px] pt-[210px]">
       <Logo width={261} height={80} />
 
       <div className="flex flex-col w-full gap-4 mt-auto">

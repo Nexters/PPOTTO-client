@@ -1,39 +1,60 @@
 'use client';
 
 import { CheckCircle, CheckCircleEmpty } from '@ppotto/assets';
+import { useFlow } from '@stackflow/react';
 import { useState } from 'react';
 
-import { cn } from '@/shared/lib/cn';
+import { useAgreeTermsMutation } from '@/entities/terms/api/terms-mutations';
+import { useTermsListQuery } from '@/entities/terms/api/terms-queries';
+import { userApi } from '@/entities/user/api/user-api';
 import { Button } from '@/shared/ui/common/Button';
 
 const TERMS = [
   {
-    id: 'tos',
+    code: 'TOS',
     label: '서비스 이용약관',
-    required: true,
-    url: 'https://onyx-pick-058.notion.site/3b4145d1840e80358e69c80240cc6290?source=copy_link',
   },
   {
-    id: 'privacy',
-    label: '개인정보 수집 및 이용 동의',
-    required: true,
-    url: 'https://onyx-pick-058.notion.site/3b4145d1840e805a9704cebc76c3f4d4?source=copy_link',
+    code: 'PRIVACY',
+    label: '개인정보 처리방침',
   },
-  { id: 'marketing', label: '마케팅 정보 수신 동의', required: false },
 ] as const;
 
 export function TermsPage() {
-  const [checkedIds, setCheckedIds] = useState<string[]>([]);
-  const allChecked = checkedIds.length === TERMS.length;
-  const requiredChecked = TERMS.every((term) => !term.required || checkedIds.includes(term.id));
+  const { replace } = useFlow();
+  const { data: currentTerms } = useTermsListQuery();
+  const { mutateAsync: agreeTerms, isPending } = useAgreeTermsMutation();
+  const [checkedCodes, setCheckedCodes] = useState<string[]>([]);
 
-  const toggle = (id: string) =>
-    setCheckedIds((previous) =>
-      previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id],
+  const visibleTerms = TERMS.map((term) => ({
+    ...term,
+    serverTerm: currentTerms?.find(({ code }) => code === term.code),
+  }));
+  const allChecked = visibleTerms.every(
+    ({ code, serverTerm }) => serverTerm?.agreed || checkedCodes.includes(code),
+  );
+  const canSubmit = visibleTerms.every(({ serverTerm }) => serverTerm) && allChecked;
+
+  const toggle = (code: string) =>
+    setCheckedCodes((previous) =>
+      previous.includes(code) ? previous.filter((item) => item !== code) : [...previous, code],
     );
 
+  const handleSubmit = async () => {
+    try {
+      await agreeTerms({
+        termIds: visibleTerms.flatMap(({ serverTerm }) => (serverTerm ? [serverTerm.id] : [])),
+      });
+      const me = await userApi.getMe();
+      const hasSeenOnboarding = localStorage.getItem(`ppotto:onboarding-seen:${me.id}`) === '1';
+      replace(hasSeenOnboarding ? 'Board' : 'Onboarding', {});
+    } catch (error) {
+      console.error('약관 동의 실패', error);
+    }
+  };
+
   return (
-    <main className="flex min-h-dvh flex-col px-7.5 pt-20 pb-14">
+    <main className="flex min-h-dvh flex-col px-7.5">
       <h1 className="text-subtitle-01 text-white">
         서비스 이용을 위해
         <br />
@@ -41,50 +62,46 @@ export function TermsPage() {
       </h1>
 
       <div className="mt-10 flex flex-col gap-2">
-        <button
-          type="button"
-          aria-pressed={allChecked}
-          onClick={() => setCheckedIds(allChecked ? [] : TERMS.map((term) => term.id))}
-          className={cn('flex items-center gap-3 rounded-16 bg-gray-900', 'px-4 py-4 text-left')}
-        >
-          <Check checked={allChecked} />
-          <span className="text-body-03 text-white">전체 동의</span>
-        </button>
-
         <ul>
-          {TERMS.map((term) => (
-            <li key={term.id} className="flex items-center gap-3 px-4 py-3">
-              <button
-                type="button"
-                aria-pressed={checkedIds.includes(term.id)}
-                onClick={() => toggle(term.id)}
-                className="flex flex-1 items-center gap-3 text-left"
-              >
-                <Check checked={checkedIds.includes(term.id)} />
-                <span className="text-body-06 text-gray-300">
-                  <span className={term.required ? 'text-white' : 'text-gray-500'}>
-                    [{term.required ? '필수' : '선택'}]
-                  </span>{' '}
-                  {term.label}
-                </span>
-              </button>
-
-              {'url' in term && (
-                <a
-                  href={term.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-caption-01 text-gray-500 underline"
+          {visibleTerms.map(({ code, label, serverTerm }) => {
+            const checked = Boolean(serverTerm?.agreed || checkedCodes.includes(code));
+            return (
+              <li key={code} className="flex items-center gap-3 px-4 py-3">
+                <button
+                  type="button"
+                  aria-pressed={checked}
+                  onClick={() => {
+                    if (!serverTerm?.agreed) toggle(code);
+                  }}
+                  className="flex flex-1 items-center gap-3 text-left"
                 >
-                  보기
-                </a>
-              )}
-            </li>
-          ))}
+                  <Check checked={checked} />
+                  <span className="text-body-06 text-gray-300">
+                    <span className="text-white">[필수]</span> {label}
+                  </span>
+                </button>
+
+                {serverTerm?.contentUrl && (
+                  <a
+                    href={serverTerm.contentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-caption-01 text-gray-500 underline"
+                  >
+                    보기
+                  </a>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </div>
 
-      <Button disabled={!requiredChecked} className="mt-auto">
+      <Button
+        disabled={!canSubmit || isPending}
+        onClick={() => void handleSubmit()}
+        className="mt-auto"
+      >
         동의하고 계속하기
       </Button>
     </main>
