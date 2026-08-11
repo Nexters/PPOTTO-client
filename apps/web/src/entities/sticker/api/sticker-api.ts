@@ -21,6 +21,12 @@ export const stickerApi = {
     if (USE_MOCK) return Promise.resolve();
     return unwrapVoid(api.POST('/stickers/{stickerId}/view', { params: { path: { stickerId } } }));
   },
+  regenerate: (stickerId: string) => {
+    if (USE_MOCK) return Promise.resolve(stickerFixture);
+    return unwrapData(
+      api.POST('/stickers/{stickerId}/regenerate', { params: { path: { stickerId } } }),
+    );
+  },
   delete: (stickerId: string) => {
     if (USE_MOCK) return Promise.resolve();
     return unwrapVoid(api.DELETE('/stickers/{stickerId}', { params: { path: { stickerId } } }));
