@@ -1,8 +1,5 @@
 import type { BoardDetail } from '../board-api';
 
-// "물멍" 스티커는 원본 사진(736x981)을 크롭·테두리 처리해야 보드 디자인처럼 보이는데, 그 가공이
-// 클라이언트 몫인지 백엔드가 이미 처리된 이미지를 주는지 아직 확인이 안 돼서 mock에서 뺐다.
-// 실제 imageUrl 포맷이 정해지면 다시 추가한다.
 export const boardFixture: BoardDetail = {
   id: '01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b',
   name: 'Board 7',
@@ -54,23 +51,6 @@ export const boardFixture: BoardDetail = {
       zIndex: 3,
       badgeOffsetX: 46,
       badgeOffsetY: 75,
-      badgeRotation: 0,
-    },
-    {
-      id: '01983f2b-1000-7000-8000-000000000005',
-      type: 'TEXT',
-      title: '독서기록📚',
-      isNew: true,
-      imageUrl: null,
-      textContent:
-        '흔히들 말한다. 상대가 원하는 걸 해주는 것이 사랑이라고. 하지만 그건 작은 사랑인지도 모른다. 상대가 싫어하는 걸 하지 않는 것이야말로 큰 사랑이 아닐까.',
-      posX: 263.23,
-      posY: 320.21,
-      rotation: 12.69,
-      scale: 1,
-      zIndex: 5,
-      badgeOffsetX: 11.19,
-      badgeOffsetY: -54.71,
       badgeRotation: 0,
     },
   ],

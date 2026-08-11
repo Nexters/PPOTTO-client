@@ -69,6 +69,7 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
         webviewDebuggingEnabled={__DEV__}
         bounces={!boardActive}
         overScrollMode={boardActive ? 'never' : 'always'}
+        scalesPageToFit={false}
       />
       {!loaded && <AppBackground />}
     </View>
