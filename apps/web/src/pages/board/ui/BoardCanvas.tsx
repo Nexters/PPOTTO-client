@@ -523,7 +523,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       style={{
         backgroundColor: '#000',
         backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
-        backgroundSize: '18px 18px',
+        backgroundSize: `${18 * camera.scale}px ${18 * camera.scale}px`,
+        backgroundPosition: `${camera.x}px ${camera.y}px`,
       }}
     >
       <div
