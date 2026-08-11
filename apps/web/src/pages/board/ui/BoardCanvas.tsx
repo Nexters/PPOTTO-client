@@ -100,7 +100,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   }
 
   const stickers: StickerData[] = data
-    ? [...data.stickers].sort((a, b) => a.zIndex - b.zIndex)
+    ? [...data.stickers].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
     : [];
 
   const cameraRef = useRef(camera);
@@ -163,11 +163,11 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       input: toLayoutInput([
         {
           id: updated.id,
-          posX: updated.posX,
-          posY: updated.posY,
+          posX: updated.posX ?? 0,
+          posY: updated.posY ?? 0,
           rotation: updated.rotation,
           scale: updated.scale,
-          zIndex: updated.zIndex,
+          zIndex: updated.zIndex ?? 0,
           badgeOffsetX: updated.badgeOffsetX,
           badgeOffsetY: updated.badgeOffsetY,
         },
@@ -178,7 +178,10 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   // 스티커를 선택하면 다른 스티커 위로 보이도록 zIndex를 맨 위로 올림
   const selectSticker = (sticker: StickerData): StickerData => {
     setSelectedStickerId(sticker.id);
-    const newZIndex = computeBringToFrontZIndex(stickersRef.current, sticker.id);
+    const newZIndex = computeBringToFrontZIndex(
+      stickersRef.current.map((s) => ({ id: s.id, zIndex: s.zIndex ?? 0 })),
+      sticker.id,
+    );
     if (newZIndex === null) return sticker;
     saveStickerLayout(sticker, { zIndex: newZIndex });
     return { ...sticker, zIndex: newZIndex };
@@ -240,8 +243,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             sticker,
             startClient: point,
             startTransform: {
-              x: sticker.posX,
-              y: sticker.posY,
+              x: sticker.posX ?? 0,
+              y: sticker.posY ?? 0,
               rotation: sticker.rotation,
               scale: sticker.scale,
             },
