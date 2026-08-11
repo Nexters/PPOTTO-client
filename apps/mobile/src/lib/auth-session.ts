@@ -4,7 +4,7 @@ import { HttpError, NetworkError } from '@ppotto/api';
 import { authApi } from '@/entities/auth/api/auth-api';
 import { userApi } from '@/entities/user/api/user-api';
 
-import { signInWithApple } from './apple-auth';
+import { type AppleSignInCredential, signInWithApple } from './apple-auth';
 import { KakaoLoginCancelledError, signInWithKakao } from './kakao-auth';
 
 const REFRESH_TOKEN_KEY = 'ppotto.refresh-token';
@@ -60,6 +60,12 @@ async function refreshAccessToken(): Promise<string | null> {
 
 export type LoginResult = Pick<LoginResponse, 'isNewUser' | 'pendingTerms'> | null;
 
+// 애플은 최초 인가 1회에만 fullName을 내려주며, 신규 가입은 서버가 name을 요구한다(AUTH-006).
+function formatAppleName(fullName: AppleSignInCredential['fullName']): string | undefined {
+  const name = [fullName?.familyName, fullName?.givenName].filter(Boolean).join('');
+  return name.trim() || undefined;
+}
+
 export async function loginWithApple(): Promise<LoginResult> {
   const credential = await signInWithApple();
   if (!credential) return null; // 사용자 취소
@@ -69,6 +75,7 @@ export async function loginWithApple(): Promise<LoginResult> {
     identityToken: credential.identityToken,
     authorizationCode: credential.authorizationCode,
     rawNonce: credential.rawNonce,
+    name: formatAppleName(credential.fullName),
   });
   await saveTokens(data);
   return { isNewUser: data.isNewUser, pendingTerms: data.pendingTerms };
