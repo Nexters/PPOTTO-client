@@ -27,7 +27,7 @@ export default function RootLayout() {
           <ToastProvider>
             <Stack screenOptions={{ headerShown: false, contentStyle: styles.transparent }}>
               <Stack.Screen name="(auth)/index" />
-              <Stack.Screen name="photo-select" />
+              <Stack.Screen name="photo-select" options={{ animationTypeForReplace: 'pop' }} />
               <Stack.Screen name="board" />
             </Stack>
           </ToastProvider>

@@ -1,4 +1,4 @@
-import { compressPhoto } from '../lib/compress-photo';
+import { clearCompressedPhotos, compressPhoto } from '../lib/compress-photo';
 
 import { createPhotoCompressionQueue } from './photo-compression';
 import type { PhotoGroup } from './photo-group';
@@ -20,6 +20,7 @@ export const photoCompressionQueue = {
     const startedAt = Date.now();
     log(`[photo-compression:${id}] 시작 (${photoCount}장)`);
 
+    clearCompressedPhotos();
     queue.start(groups);
     const current = queue.wait();
     void current.then(() => {

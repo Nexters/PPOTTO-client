@@ -1,7 +1,6 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import '@/app/styles/globals.css';
 
-import { ConsoleMirror } from '@/app/providers/console-mirror';
 import { QueryProvider } from '@/app/providers/query-provider';
 import { cn } from '@/shared/lib/cn';
 import { ToastProvider } from '@/shared/ui/common/Toast';
@@ -9,6 +8,13 @@ import { ToastProvider } from '@/shared/ui/common/Toast';
 export const metadata: Metadata = {
   title: 'ppotto',
   description: '방치된 갤러리 사진을 테마별 스티커로 만드는 포토 리캡',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -26,7 +32,6 @@ export default function RootLayout({
             'shadow-[0_0_24px_rgba(0,0,0,0.08)] dark:shadow-[0_0_24px_rgba(0,0,0,0.5)]',
           )}
         >
-          <ConsoleMirror />
           <QueryProvider>
             <ToastProvider>{children}</ToastProvider>
           </QueryProvider>

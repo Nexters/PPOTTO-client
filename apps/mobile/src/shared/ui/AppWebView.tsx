@@ -42,8 +42,8 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
       router.replace('/');
     },
     AUTH_EXPIRED: () => router.replace('/'),
-    LOG: ({ level, args }) => console.warn('[web]', level, ...args),
-    OPEN_PHOTO_SELECT: () => router.push('/photo-select'),
+    OPEN_PHOTO_SELECT: ({ boardId }) =>
+      router.push({ pathname: '/photo-select', params: { boardId } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
   });
 
@@ -69,6 +69,7 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
         webviewDebuggingEnabled={__DEV__}
         bounces={!boardActive}
         overScrollMode={boardActive ? 'never' : 'always'}
+        scalesPageToFit={false}
       />
       {!loaded && <AppBackground />}
     </View>
