@@ -188,7 +188,6 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const selectStickerRef = useRef(selectSticker);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
-  const boardIdRef = useRef(boardId);
 
   // ref들을 매 렌더 이후 최신값으로 동기화
   useEffect(() => {
@@ -200,7 +199,6 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     selectStickerRef.current = selectSticker;
     pushRef.current = push;
     longPressRef.current = longPress;
-    boardIdRef.current = boardId;
   });
 
   // 포인터, 휠 제스처는 Konva 없이 순수 DOM 이벤트로 직접 처리
@@ -459,7 +457,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             if (isEditModeRef.current) setSelectedStickerId(null);
           }
         } else if (!isEditModeRef.current) {
-          pushRef.current('Recap', { stickerId: tap.stickerId, boardId: boardIdRef.current });
+          pushRef.current('Recap', { stickerId: tap.stickerId, boardId });
         }
       }
     };
@@ -497,7 +495,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       container.removeEventListener('gesturechange', blockGesture);
       container.removeEventListener('gestureend', blockGesture);
     };
-  }, [container]);
+  }, [container, boardId]);
 
   if (isLoading) {
     return (
