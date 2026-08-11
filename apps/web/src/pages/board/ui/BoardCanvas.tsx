@@ -457,7 +457,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             if (isEditModeRef.current) setSelectedStickerId(null);
           }
         } else if (!isEditModeRef.current) {
-          pushRef.current('Recap', { stickerId: tap.stickerId });
+          pushRef.current('Recap', { stickerId: tap.stickerId, boardId });
         }
       }
     };
@@ -495,7 +495,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       container.removeEventListener('gesturechange', blockGesture);
       container.removeEventListener('gestureend', blockGesture);
     };
-  }, [container]);
+  }, [container, boardId]);
 
   if (isLoading) {
     return (

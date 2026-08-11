@@ -1,10 +1,11 @@
 import { useFlow } from '@stackflow/react';
 import { useEffect } from 'react';
 
-import { useMarkStickerViewedMutation } from '@/entities/sticker/api/sticker-mutations';
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { cn } from '@/shared/lib/cn';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
+
+import { useMarkStickerViewed } from '../board/model/use-mark-sticker-viewed';
 
 import { RecapHeader } from './ui/RecapHeader';
 import { RecapPhotoGrid } from './ui/RecapPhotoGrid';
@@ -14,11 +15,12 @@ import { RecapThemeTags } from './ui/RecapThemeTags';
 
 type RecapPageProps = {
   stickerId: string;
+  boardId: string;
 };
 
-export function RecapPage({ stickerId }: RecapPageProps) {
+export function RecapPage({ stickerId, boardId }: RecapPageProps) {
   const { data, refetch, isStale } = useStickerQuery(stickerId);
-  const { mutate: markViewed } = useMarkStickerViewedMutation();
+  const { markViewed } = useMarkStickerViewed(boardId);
   const { pop } = useFlow();
 
   useRefetchOnActive(refetch, isStale);
