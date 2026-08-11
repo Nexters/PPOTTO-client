@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { HttpError, MalformedResponseError, unwrapData, unwrapVoid } from './errors.ts';
+import {
+  HttpError,
+  MalformedResponseError,
+  unwrapData,
+  unwrapNullableData,
+  unwrapVoid,
+} from './errors.ts';
 
 /**
  * 동작 범위 (2026-07-28 인터뷰)
@@ -106,5 +112,13 @@ describe('unwrapVoid', () => {
       assert.equal(error.code, 'BOARD-004');
       return true;
     });
+  });
+});
+
+describe('unwrapNullableData', () => {
+  it('2xx 응답의 null payload를 정상 값으로 반환한다', async () => {
+    const result = apiResult({ status: 200, data: { success: true, data: null } });
+
+    assert.equal(await unwrapNullableData(result), null);
   });
 });

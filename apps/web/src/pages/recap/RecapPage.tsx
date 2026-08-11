@@ -35,7 +35,7 @@ export function RecapPage({ stickerId }: RecapPageProps) {
   const tags = data.comments.filter((comment) => comment.posX == null);
 
   return (
-    <div className={cn('flex min-h-full w-full flex-col gap-10 bg-black px-5', 'pt-16 pb-5.5')}>
+    <div className={cn('flex min-h-full w-full flex-col gap-10 px-5', 'pt-16 pb-5.5')}>
       <RecapHeader title={data.sticker.title} onBack={() => pop()} onShare={() => {}} />
       <div className="flex w-full flex-col gap-6">
         <div className="flex w-full flex-col">

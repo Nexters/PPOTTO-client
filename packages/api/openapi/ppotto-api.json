@@ -969,7 +969,8 @@
                     "provider": "APPLE",
                     "identityToken": "eyJhbGciOiJSUzI1NiJ9.sample-apple-identity-token.sample-signature",
                     "authorizationCode": "sample.0.srtwx.apple-authorization-code",
-                    "rawNonce": "4A7F0E2B-9C31-45D8-A6F2-8B0C3D9E1F52"
+                    "rawNonce": "4A7F0E2B-9C31-45D8-A6F2-8B0C3D9E1F52",
+                    "name": "뽀또"
                   }
                 },
                 "애플 재로그인": {
@@ -1081,6 +1082,19 @@
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
                     }
+                  },
+                  "AUTH-006": {
+                    "summary": "애플 신규 가입인데 name 미전달. 최초 인가에서 받은 이름을 함께 보내야 함",
+                    "description": "AUTH-006",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "AUTH-006",
+                        "message": "가입에 필요한 이름이 전달되지 않았습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
                   }
                 }
               }
@@ -1140,6 +1154,19 @@
                       "error": {
                         "code": "AUTH-004",
                         "message": "이메일 제공에 동의해야 가입할 수 있습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "AUTH-005": {
+                    "summary": "카카오 닉네임 동의 필요. profile_nickname 추가 동의 후 재시도",
+                    "description": "AUTH-005",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "AUTH-005",
+                        "message": "닉네임 제공에 동의해야 가입할 수 있습니다.",
                         "fieldErrors": [],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
@@ -1533,6 +1560,145 @@
                       "error": {
                         "code": "ANALYSIS-008",
                         "message": "업로드된 사진이 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/analysis/{analysisId}/reissue": {
+      "post": {
+        "tags": ["분석"],
+        "summary": "업로드 URL 재발급",
+        "description": "분석 생성 응답을 유실했거나 업로드 URL(15분)이 만료됐을 때 호출함. PENDING 사진의 URL만 재발급하며 UPLOADING 상태에서만 사용 가능",
+        "operationId": "reissue",
+        "parameters": [
+          {
+            "name": "analysisId",
+            "in": "path",
+            "description": "재발급할 분석 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "재발급된 URL 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReissueUploadUrlsResponse"
+                },
+                "examples": {
+                  "재발급된 업로드 URL": {
+                    "description": "재발급된 업로드 URL",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "uploads": [
+                          {
+                            "photoId": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                            "uploadUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Expires=900"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "분석을 찾을 수 없음 (ANALYSIS-005)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "ANALYSIS-005": {
+                    "summary": "분석 없음 또는 소유자 불일치",
+                    "description": "ANALYSIS-005",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "ANALYSIS-005",
+                        "message": "분석을 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "이미 시작되었거나 종료된 분석임 (ANALYSIS-003)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "ANALYSIS-003": {
+                    "summary": "이미 시작되었거나 종료된 분석",
+                    "description": "ANALYSIS-003",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "ANALYSIS-003",
+                        "message": "이미 시작되었거나 종료된 분석입니다.",
                         "fieldErrors": [],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
@@ -2765,6 +2931,7 @@
                         "id": "01983f2a-7c31-7b02-93d4-1f2e3d4c5b6a",
                         "provider": "KAKAO",
                         "email": "ppotto@kakao.com",
+                        "name": "뽀또",
                         "createdAt": "2026-07-01T00:12:33Z"
                       }
                     }
@@ -2777,6 +2944,7 @@
                         "id": "01983f2a-6b20-7a01-82c3-0e1d2c3b4a59",
                         "provider": "APPLE",
                         "email": "mxq7r2v9td@privaterelay.appleid.com",
+                        "name": "홍길동",
                         "createdAt": "2026-07-15T12:40:05Z"
                       }
                     }
@@ -3838,6 +4006,13 @@
             "type": ["string", "null"],
             "description": "클라이언트가 생성한 원본 nonce. 애플에는 SHA-256 해시를, 서버에는 원본을 보냄",
             "example": "4A7F0E2B-9C31-45D8-A6F2-8B0C3D9E1F52"
+          },
+          "name": {
+            "type": ["string", "null"],
+            "description": "사용자 이름. provider=APPLE 최초 인가에서 받은 fullName을 전달하며 신규 가입 시 필수, 재로그인 시 생략. provider=KAKAO는 서버가 닉네임을 직접 조회하므로 보내면 400",
+            "example": "뽀또",
+            "maxLength": 100,
+            "minLength": 0
           }
         },
         "required": ["provider"]
@@ -4142,6 +4317,52 @@
         },
         "required": ["failedCount", "failedPhotoIds", "uploadedCount"]
       },
+      "ApiResponseReissueUploadUrlsResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReissueUploadUrlsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "ReissueUploadUrlsResponse": {
+        "type": "object",
+        "description": "재발급된 사진별 업로드 URL",
+        "properties": {
+          "uploads": {
+            "type": "array",
+            "description": "재발급 대상(PENDING) 사진의 업로드 URL 목록",
+            "items": {
+              "$ref": "#/components/schemas/PhotoUploadUrlItem"
+            }
+          }
+        },
+        "required": ["uploads"]
+      },
       "UpdateStickerTitleRequest": {
         "type": "object",
         "description": "스티커 제목 변경 요청",
@@ -4440,6 +4661,11 @@
             "description": "항상 존재함. 애플 이메일 가리기 사용자는 private relay 주소",
             "example": "ppotto@kakao.com"
           },
+          "name": {
+            "type": "string",
+            "description": "사용자 이름. 카카오는 닉네임, 애플은 최초 인가에서 전달받은 이름",
+            "example": "뽀또"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -4453,7 +4679,7 @@
             "example": "01983f2a-7c31-7b02-93d4-1f2e3d4c5b6a"
           }
         },
-        "required": ["createdAt", "email", "id", "provider"]
+        "required": ["createdAt", "email", "id", "name", "provider"]
       },
       "ApiResponseListTermResponse": {
         "type": "object",

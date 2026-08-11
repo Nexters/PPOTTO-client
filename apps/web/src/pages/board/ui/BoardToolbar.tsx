@@ -2,7 +2,19 @@ import { IconDraw, IconHand, IconPlus, IconText } from '@ppotto/assets';
 
 import { cn } from '@/shared/lib/cn';
 
-export function BoardToolbar() {
+export type ToolbarMode = 'default' | 'draw' | 'text' | 'move';
+
+type BoardToolbarProps = {
+  mode: ToolbarMode;
+  onModeChange: (mode: ToolbarMode) => void;
+  onAddSticker: () => void;
+};
+
+export function BoardToolbar({ mode, onModeChange, onAddSticker }: BoardToolbarProps) {
+  const toggle = (target: ToolbarMode) => {
+    onModeChange(mode === target ? 'default' : target);
+  };
+
   return (
     <div
       className={cn(
@@ -15,28 +27,41 @@ export function BoardToolbar() {
         <button
           type="button"
           aria-label="그리기"
-          className="flex size-8 items-center justify-center rounded-full"
+          onClick={() => toggle('draw')}
+          className={cn(
+            'flex size-8 items-center justify-center rounded-full',
+            mode === 'draw' && 'bg-white',
+          )}
         >
-          <IconDraw color="white" />
+          <IconDraw color={mode === 'draw' ? 'black' : 'white'} />
         </button>
         <button
           type="button"
           aria-label="텍스트"
-          className="flex size-8 items-center justify-center rounded-full"
+          onClick={() => toggle('text')}
+          className={cn(
+            'flex size-8 items-center justify-center rounded-full',
+            mode === 'text' && 'bg-white',
+          )}
         >
-          <IconText color="white" />
+          <IconText color={mode === 'text' ? 'black' : 'white'} />
         </button>
         <button
           type="button"
           aria-label="선택"
-          className="flex size-8 items-center justify-center rounded-full"
+          onClick={() => toggle('move')}
+          className={cn(
+            'flex size-8 items-center justify-center rounded-full',
+            mode === 'move' && 'bg-white',
+          )}
         >
-          <IconHand color="white" />
+          <IconHand color={mode === 'move' ? 'black' : 'white'} />
         </button>
       </div>
       <button
         type="button"
         aria-label="스티커 추가"
+        onClick={onAddSticker}
         className="flex size-12 items-center justify-center rounded-full bg-white"
       >
         <IconPlus width={18} height={18} />

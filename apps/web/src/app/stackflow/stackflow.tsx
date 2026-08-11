@@ -84,7 +84,11 @@ export const { Stack } = stackflow({
   },
   plugins: [
     basicRendererPlugin(),
-    basicUIPlugin({ theme: 'cupertino' }),
+    basicUIPlugin({
+      theme: 'cupertino',
+      backgroundColor: 'transparent',
+      backgroundImage: 'none',
+    }),
     historySyncPlugin({ config, fallbackActivity: () => 'Login' }),
   ],
 });

@@ -119,7 +119,9 @@
 }
 
 body {
-  background: var(--background);
+  background-color: #000;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 18px 18px;
   color: var(--foreground);
   font-family: 'Pretendard', sans-serif;
 }

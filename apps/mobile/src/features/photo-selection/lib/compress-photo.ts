@@ -1,9 +1,12 @@
+import { Directory, File, Paths } from 'expo-file-system';
+import { copyAsync } from 'expo-file-system/legacy';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import type { GalleryPhoto } from '../model/gallery-photo';
 
 const DEFAULT_MAX_DIMENSION = 1280;
 const DEFAULT_QUALITY = 0.8;
+const STAGING_DIRECTORY = new Directory(Paths.document, 'photo-compression');
 
 export type CompressPhotoOptions = {
   maxDimension?: number;
@@ -39,9 +42,13 @@ export async function compressPhoto(
 
     try {
       const result = await image.saveAsync({ compress: quality, format: SaveFormat.JPEG });
+      STAGING_DIRECTORY.create({ idempotent: true, intermediates: true });
+      const source = new File(result.uri);
+      const staged = new File(STAGING_DIRECTORY, source.name);
+      await copyAsync({ from: source.uri, to: staged.uri });
       const compressed = {
         ...photo,
-        uri: result.uri,
+        uri: staged.uri,
         width: result.width,
         height: result.height,
       };
@@ -52,4 +59,9 @@ export async function compressPhoto(
   } finally {
     context.release();
   }
+}
+
+/** 새 갤러리 목록을 압축하기 전에 이전 staging 파일을 정리한다. */
+export function clearCompressedPhotos() {
+  if (STAGING_DIRECTORY.exists) STAGING_DIRECTORY.delete();
 }

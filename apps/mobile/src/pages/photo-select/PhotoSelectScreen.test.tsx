@@ -23,7 +23,7 @@ import { PhotoSelectScreen } from './PhotoSelectScreen';
  * 제외: 진입 시 갤러리 전체에 100그룹 미만 → 생성 불가 안내 화면 — 별도 작업, Unable 시안 없음
  * 제외: 권한 거부 안내·설정 이동 — 별도 시안 필요
  * 제외: 백그라운드 중 설정에서 권한 회수 후 복귀 — 드묾, 실제 문제 시 추가
- * 제외: CTA의 분석 생성 API 연동 — 이번엔 라우팅만, useCreateAnalysisMutation 연결은 다음 작업
+ * CTA는 업로드 서비스 시작과 BoardScreen 이동만 검증하고 업로드 내부 동작은 feature 테스트가 담당
  * 제외: 로딩 중 타일 표현 — 시안의 회색 타일은 샘플 필러이지 플레이스홀더가 아님
  *
  * [팀확인] 700:7641 시안의 dim 누락 — 디자이너 확인, 구현은 dim 적용
@@ -35,13 +35,21 @@ jest.mock('expo-media-library', () => ({
   SortBy: { creationTime: 'creationTime' },
 }));
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'job-1') }));
+jest.mock('expo-router', () => ({
+  router: { back: jest.fn(), replace: jest.fn() },
+  useLocalSearchParams: jest.fn(() => ({ boardId: 'board-1' })),
+}));
 jest.mock('expo-image-manipulator', () => ({
   ImageManipulator: {
     manipulate: jest.fn((uri: string) => {
       const context = {
         renderAsync: jest.fn(async () => ({
-          saveAsync: jest.fn(async () => ({ uri, width: 1280, height: 1280 })),
+          saveAsync: jest.fn(async () => ({
+            uri: uri.replace('file:///', 'file:///compressed/'),
+            width: 1280,
+            height: 1280,
+          })),
           release: jest.fn(),
         })),
         release: jest.fn(),
@@ -51,12 +59,18 @@ jest.mock('expo-image-manipulator', () => ({
   },
   SaveFormat: { JPEG: 'jpeg' },
 }));
+jest.mock('@/features/photo-upload', () => ({
+  photoUploadService: { start: jest.fn() },
+}));
 
 const { getAssetsAsync, requestPermissionsAsync } = jest.requireMock('expo-media-library') as {
   getAssetsAsync: jest.Mock;
   requestPermissionsAsync: jest.Mock;
 };
-const { router } = jest.requireMock('expo-router') as { router: { push: jest.Mock } };
+const { router } = jest.requireMock('expo-router') as { router: { replace: jest.Mock } };
+const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
+  photoUploadService: { start: jest.Mock };
+};
 
 const BASE_TIME = Date.parse('2026-07-30T10:00:00.000Z');
 
@@ -169,7 +183,7 @@ it('그룹 대표를 누르면 카운터가 유지되고 타일이 선택 상태
   expect(screen.getAllByRole('checkbox')[0]).toBeChecked();
 });
 
-it('여러 장이 묶인 그룹에만 사진 수 배지를 보여준다', async () => {
+it('그룹에서 사진을 제외하면 배지에 남은 사진 수를 보여준다', async () => {
   // 가장 최신 3장이 한 그룹, 나머지는 1장씩이라 배지는 하나만 나온다.
   const burst = [
     asset('b0', BASE_TIME),
@@ -178,9 +192,14 @@ it('여러 장이 묶인 그룹에만 사진 수 배지를 보여준다', async 
   ];
   setGallery([...burst, ...spacedAssets(99, 10)]);
 
-  await renderLoadedScreen();
+  const { user } = await renderLoadedScreen();
 
   expect(screen.getByText('3')).toBeOnTheScreen();
+
+  await user.press(screen.getAllByRole('checkbox')[0]!);
+
+  expect(screen.queryByText('3')).not.toBeOnTheScreen();
+  expect(screen.getByText('2')).toBeOnTheScreen();
 });
 
 it('89개로 내려가면 CTA가 비활성화되고 90개로 회복하면 다시 활성화된다', async () => {
@@ -200,13 +219,17 @@ it('89개로 내려가면 CTA가 비활성화되고 90개로 회복하면 다시
   expect(cta()).toBeEnabled();
 });
 
-it('CTA를 누르면 다음 화면으로 이동한다', async () => {
+it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다', async () => {
   setGallery(spacedAssets(100));
   const { user } = await renderLoadedScreen();
 
   await user.press(cta());
 
-  expect(router.push).toHaveBeenCalledTimes(1);
+  expect(photoUploadService.start).toHaveBeenCalledTimes(1);
+  expect(router.replace).toHaveBeenCalledWith({
+    pathname: '/board',
+    params: { boardId: 'board-1' },
+  });
 });
 
 it('전체 취소를 누르면 0이 되고 자동 선택을 누르면 다시 전부 선택된다', async () => {

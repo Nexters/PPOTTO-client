@@ -17,6 +17,7 @@ export { default as ImageMultiple } from './ImageMultiple';
 export { default as KakaoBadge } from './KakaoBadge';
 export { default as KakaoLogo } from './KakaoLogo';
 export { default as Logo } from './Logo';
+export { default as OnboardingArrow } from './OnboardingArrow';
 export { default as Reload } from './Reload';
 export { default as Share } from './Share';
 export { default as Trash } from './Trash';
