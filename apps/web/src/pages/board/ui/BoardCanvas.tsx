@@ -138,7 +138,7 @@ export function BoardCanvas({ boardId }: BoardCanvasProps) {
             <Sticker
               key={sticker.id}
               sticker={sticker}
-              onClick={() => push('Recap', { stickerId: sticker.id })}
+              onClick={() => push('Recap', { stickerId: sticker.id, boardId })}
             />
           ))}
         </Layer>
