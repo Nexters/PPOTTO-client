@@ -21,7 +21,7 @@ export function Bubble({ content, direction }: BubbleProps) {
           direction === 'right' && 'justify-end',
         )}
       >
-        <span className="text-body-05 text-gray-900">{content}</span>
+        <span className="text-body-06 text-gray-900">{content}</span>
       </div>
       <div
         className={cn(

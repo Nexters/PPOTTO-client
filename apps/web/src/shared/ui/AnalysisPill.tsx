@@ -12,7 +12,7 @@ export function AnalysisPill({ content }: AnalysisPillProps) {
         'bg-gray-200/15 backdrop-blur-[1.5px]',
       )}
     >
-      <span className="text-body-05 text-gray-200">{content}</span>
+      <span className="text-body-06 text-gray-200">{content}</span>
     </div>
   );
 }
