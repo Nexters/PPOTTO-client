@@ -17,7 +17,7 @@ type StickerPreviewProps = {
 };
 
 export function StickerPreview({ sticker }: StickerPreviewProps) {
-  if (!sticker.image?.url) return null;
+  if (!sticker.imageUrl) return null;
 
   return (
     <div
@@ -29,7 +29,7 @@ export function StickerPreview({ sticker }: StickerPreviewProps) {
     >
       <div className="relative" style={{ width: PREVIEW_MAX_WIDTH, height: PREVIEW_MAX_HEIGHT }}>
         <Image
-          src={sticker.image.url}
+          src={sticker.imageUrl}
           alt=""
           fill
           sizes={`${PREVIEW_MAX_WIDTH}px`}
