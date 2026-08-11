@@ -1,13 +1,16 @@
+import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PhotoGrid, usePhotoSelection } from '@/features/photo-selection';
+import { photoCompressionQueue, PhotoGrid, usePhotoSelection } from '@/features/photo-selection';
+import { photoUploadService } from '@/features/photo-upload';
 import { Button } from '@/shared/ui/Button';
 import { Header } from '@/shared/ui/Header';
 
+import { prepareUploadJob } from './lib/prepare-upload-job';
 import { AlbumDropdown } from './ui/AlbumDropdown';
 
 const MIN_SUBMIT_UNITS = 90;
@@ -23,18 +26,43 @@ const ALBUM_OPTIONS = [
 type AlbumKey = (typeof ALBUM_OPTIONS)[number]['value'];
 
 export function PhotoSelectScreen() {
+  const { boardId } = useLocalSearchParams<{ boardId: string }>();
   const [album, setAlbum] = useState<AlbumKey>('RECENT');
   const insets = useSafeAreaInsets();
 
-  const { canSubmit, everythingSelected, photoUnits, selectedCount, toggleEverything, toggleUnit } =
-    usePhotoSelection({
-      album,
-      targetUnits: TARGET_UNITS,
-      minSubmitUnits: MIN_SUBMIT_UNITS,
-    });
+  const {
+    canSubmit,
+    everythingSelected,
+    photoUnits,
+    selection,
+    selectedCount,
+    toggleEverything,
+    toggleUnit,
+  } = usePhotoSelection({
+    album,
+    targetUnits: TARGET_UNITS,
+    minSubmitUnits: MIN_SUBMIT_UNITS,
+  });
+
+  const handleSubmit = () => {
+    if (!selection || !boardId) return;
+
+    const compressedPhotos = photoCompressionQueue.wait();
+    photoUploadService.start(
+      compressedPhotos.then((photos) =>
+        prepareUploadJob({
+          jobId: Crypto.randomUUID(),
+          boardId,
+          selection,
+          compressedPhotos: photos,
+        }),
+      ),
+    );
+    router.replace({ pathname: '/board', params: { boardId } });
+  };
 
   return (
-    <View className="flex-1 bg-black">
+    <View className="flex-1">
       <SafeAreaView className="flex-1" edges={['top']}>
         <View className="gap-8 px-6 pt-4 pb-8">
           <Header />
@@ -73,7 +101,7 @@ export function PhotoSelectScreen() {
             className="absolute left-[18px] right-[18px]"
             style={{ bottom: insets.bottom + 12 }}
           >
-            <Button disabled={!canSubmit} onPress={() => router.push('/board')} size="large">
+            <Button disabled={!canSubmit || !boardId} onPress={handleSubmit} size="large">
               <Text
                 className={canSubmit ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'}
               >

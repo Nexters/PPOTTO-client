@@ -20,7 +20,6 @@ export interface PhotoUnit {
   groupId: string;
   photo: GalleryPhoto;
   excluded: boolean;
-  /** 그룹이 담은 사진 수. 1보다 크면 연속 촬영 묶음이다. */
   photoCount: number;
 }
 
@@ -102,7 +101,7 @@ export function units(selection: PhotoSelection): PhotoUnit[] {
       groupId: group.id,
       photo: excluded ? group.photos[0]! : group.photos[excludedCount]!,
       excluded,
-      photoCount: group.photos.length,
+      photoCount: group.photos.length - excludedCount,
     };
   });
 }

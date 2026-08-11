@@ -1,7 +1,7 @@
 import { contract } from '@ppotto/bridge';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
@@ -12,6 +12,7 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
+import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL;
@@ -41,8 +42,8 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
       router.replace('/');
     },
     AUTH_EXPIRED: () => router.replace('/'),
-    LOG: ({ level, args }) => console.warn('[web]', level, ...args),
-    OPEN_PHOTO_SELECT: () => router.push('/photo-select'),
+    OPEN_PHOTO_SELECT: ({ boardId }) =>
+      router.push({ pathname: '/photo-select', params: { boardId } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
   });
 
@@ -70,13 +71,7 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
         overScrollMode={boardActive ? 'never' : 'always'}
         scalesPageToFit={false}
       />
-      {!loaded && (
-        <View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]}
-          className="bg-yellow-400"
-        />
-      )}
+      {!loaded && <AppBackground />}
     </View>
   );
 }

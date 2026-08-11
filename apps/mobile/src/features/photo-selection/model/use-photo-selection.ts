@@ -74,6 +74,7 @@ export function usePhotoSelection({
     canSubmit: selectedCount >= minSubmitUnits,
     everythingSelected,
     photoUnits,
+    selection,
     selectedCount,
     toggleEverything,
     toggleUnit,

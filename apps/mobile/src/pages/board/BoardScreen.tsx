@@ -1,49 +1,132 @@
-import { CommonActions, useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
-import { Animated, Easing, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { CommonActions, useNavigation, usePreventRemove } from '@react-navigation/native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
+import { photoUploadService } from '@/features/photo-upload';
 import { AppWebView } from '@/shared/ui/AppWebView';
+import { useToast } from '@/shared/ui/Toast';
 
 import { LoadingOverlay } from './ui/LoadingOverlay';
+import { PendingUploadModal } from './ui/PendingUploadModal';
+import { UploadFailureModal } from './ui/UploadFailureModal';
+
+type BoardScreenState =
+  | { status: 'CHECKING' }
+  | { status: 'READY' }
+  | { status: 'PENDING' }
+  | { status: 'UPLOADING'; uploadPromise: Promise<void> }
+  | { status: 'FAILED' };
 
 // 보드, 리캡 전용 웹뷰
 export function BoardScreen() {
   const navigation = useNavigation();
-  const { width } = useWindowDimensions();
+  const toast = useToast();
+  const { boardId } = useLocalSearchParams<{ boardId?: string }>();
+  const [screenState, setScreenState] = useState<BoardScreenState>(() => {
+    const uploadPromise = photoUploadService.getCurrent();
+    return uploadPromise ? { status: 'UPLOADING', uploadPromise } : { status: 'CHECKING' };
+  });
 
-  const [progress] = useState(() => new Animated.Value(0));
-  const [revealed, setRevealed] = useState(false);
+  usePreventRemove(
+    screenState.status === 'UPLOADING' || screenState.status === 'PENDING',
+    () => undefined,
+  );
 
-  // 웹뷰 이동 시 실행 동작
-  const reveal = () => {
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: 300,
-      easing: Easing.bezier(0.33, 0.01, 0, 1),
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (!finished) return;
-      setRevealed(true);
-      // 이전 웹뷰 (AuthScreen) 스택에서 제거 / 언마운트
-      navigation.dispatch((state) =>
-        CommonActions.reset({ ...state, index: 0, routes: state.routes.slice(-1) }),
-      );
-    });
+  useEffect(() => {
+    if (screenState.status !== 'CHECKING') return;
+
+    let active = true;
+    void photoUploadService.hasPending().then(
+      (hasPending) => {
+        if (!active) return;
+        setScreenState({ status: hasPending ? 'PENDING' : 'READY' });
+      },
+      () => {
+        if (active) setScreenState({ status: 'READY' });
+      },
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [screenState.status]);
+
+  useEffect(() => {
+    if (screenState.status !== 'UPLOADING') return;
+
+    let active = true;
+    void screenState.uploadPromise.then(
+      () => {
+        photoUploadService.clearCurrent();
+        if (active) setScreenState({ status: 'READY' });
+      },
+      (error) => {
+        if (!active) return;
+        if (photoUploadService.isStatusUnavailableError(error)) {
+          photoUploadService.clearCurrent();
+          setScreenState({ status: 'READY' });
+          toast('분석 상태를 확인하지 못했어요. 잠시 후 다시 확인해주세요.');
+          return;
+        }
+        if (photoUploadService.isRecoverableError(error)) {
+          photoUploadService.clearCurrent();
+          setScreenState({ status: 'PENDING' });
+          return;
+        }
+        setScreenState({ status: 'FAILED' });
+      },
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [screenState, toast]);
+
+  const clearPreviousScreens = () => {
+    navigation.dispatch((state) =>
+      CommonActions.reset({ ...state, index: 0, routes: state.routes.slice(-1) }),
+    );
   };
 
-  const boardX = progress.interpolate({ inputRange: [0, 1], outputRange: [width, 0] });
-  const loadingX = progress.interpolate({ inputRange: [0, 1], outputRange: [0, -width * 0.3] });
+  const cancelRetry = async () => {
+    if ((await photoUploadService.discard()) === 'RETRY') return;
+    setScreenState({ status: 'READY' });
+  };
+
+  const confirmRetry = async () => {
+    const result = await photoUploadService.discard();
+    if (result === 'RETRY') return;
+    if (result === 'ANALYZING') {
+      setScreenState({ status: 'READY' });
+      return;
+    }
+    if (boardId) router.replace({ pathname: '/photo-select', params: { boardId } });
+  };
+
+  const confirmPending = () => {
+    setScreenState({ status: 'UPLOADING', uploadPromise: photoUploadService.resume() });
+  };
+
+  const isBoardVisible =
+    screenState.status === 'CHECKING' ||
+    screenState.status === 'READY' ||
+    screenState.status === 'PENDING';
 
   return (
     <View style={{ flex: 1 }}>
-      {!revealed && (
-        <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: loadingX }] }]}>
-          <LoadingOverlay />
-        </Animated.View>
+      {isBoardVisible ? (
+        <AppWebView path="/board" onReady={clearPreviousScreens} />
+      ) : (
+        <LoadingOverlay />
       )}
-      <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: boardX }] }]}>
-        <AppWebView path="/board" onReady={reveal} />
-      </Animated.View>
+      {screenState.status === 'CHECKING' && <View style={StyleSheet.absoluteFill} />}
+      <PendingUploadModal onConfirm={confirmPending} visible={screenState.status === 'PENDING'} />
+      <UploadFailureModal
+        onCancel={() => void cancelRetry()}
+        onConfirm={() => void confirmRetry()}
+        visible={screenState.status === 'FAILED'}
+      />
     </View>
   );
 }

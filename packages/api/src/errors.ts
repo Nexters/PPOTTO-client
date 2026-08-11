@@ -71,6 +71,18 @@ export async function unwrapData<T>(result: Promise<ApiResult<T>>): Promise<NonN
   return payload;
 }
 
+/** null이 정상 payload인 조회 엔드포인트용. data 필드 자체가 없을 때만 계약 오류로 본다. */
+export async function unwrapNullableData<T>(result: Promise<ApiResult<T>>): Promise<T> {
+  const { data, error, response } = await result;
+
+  if (!response.ok) throw new HttpError(response.status, extractCode(error), error);
+
+  const payload = data?.data;
+  if (payload === undefined) throw new MalformedResponseError(response.status, data);
+
+  return payload;
+}
+
 /** data가 없는 엔드포인트용. 성공 여부만 확인한다. */
 export async function unwrapVoid(
   result: Promise<{ error?: unknown; response: Response }>,

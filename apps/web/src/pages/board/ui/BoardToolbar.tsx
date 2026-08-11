@@ -7,9 +7,10 @@ export type ToolbarMode = 'default' | 'draw' | 'text' | 'move';
 type BoardToolbarProps = {
   mode: ToolbarMode;
   onModeChange: (mode: ToolbarMode) => void;
+  onAddSticker: () => void;
 };
 
-export function BoardToolbar({ mode, onModeChange }: BoardToolbarProps) {
+export function BoardToolbar({ mode, onModeChange, onAddSticker }: BoardToolbarProps) {
   const toggle = (target: ToolbarMode) => {
     onModeChange(mode === target ? 'default' : target);
   };
@@ -60,6 +61,7 @@ export function BoardToolbar({ mode, onModeChange }: BoardToolbarProps) {
       <button
         type="button"
         aria-label="스티커 추가"
+        onClick={onAddSticker}
         className="flex size-12 items-center justify-center rounded-full bg-white"
       >
         <IconPlus width={18} height={18} />

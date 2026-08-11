@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import '@/app/styles/globals.css';
 
-import { ConsoleMirror } from '@/app/providers/console-mirror';
 import { QueryProvider } from '@/app/providers/query-provider';
 import { cn } from '@/shared/lib/cn';
 import { ToastProvider } from '@/shared/ui/common/Toast';
@@ -25,15 +24,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="h-full antialiased">
-      <body className="flex min-h-full flex-col bg-[#f4f4f2] dark:bg-zinc-900">
+      <body className="flex min-h-full flex-col">
         <div
           className={cn(
             'relative mx-auto flex min-h-screen w-full max-w-112.5',
-            'flex-col bg-background',
+            'flex-col',
             'shadow-[0_0_24px_rgba(0,0,0,0.08)] dark:shadow-[0_0_24px_rgba(0,0,0,0.5)]',
           )}
         >
-          <ConsoleMirror />
           <QueryProvider>
             <ToastProvider>{children}</ToastProvider>
           </QueryProvider>

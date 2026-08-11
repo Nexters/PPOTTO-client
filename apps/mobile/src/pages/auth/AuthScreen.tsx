@@ -44,7 +44,7 @@ export function AuthScreen() {
 
   if (status === 'retry') {
     return (
-      <View className="items-center justify-center flex-1 gap-4 bg-black px-8">
+      <View className="items-center justify-center flex-1 gap-4 px-8">
         <Text className="text-center text-white text-body-03">연결을 확인해 주세요.</Text>
         <Pressable
           accessibilityRole="button"
@@ -58,7 +58,7 @@ export function AuthScreen() {
   }
 
   return (
-    <View className="items-center justify-center flex-1 bg-black">
+    <View className="items-center justify-center flex-1">
       <ActivityIndicator accessibilityLabel="로그인 상태 확인 중" color="white" />
     </View>
   );

@@ -48,6 +48,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analysis/{analysisId}/reissue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 업로드 URL 재발급
+         * @description 분석 생성 응답을 유실했거나 업로드 URL(15분)이 만료됐을 때 호출함. PENDING 사진의 URL만 재발급하며 UPLOADING 상태에서만 사용 가능
+         */
+        post: operations["reissue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/analysis/{analysisId}/start": {
         parameters: {
             query?: never;
@@ -506,6 +526,16 @@ export interface components {
             success: boolean;
         };
         /** @description 공통 응답 봉투 */
+        ApiResponseReissueUploadUrlsResponse: {
+            data?: components["schemas"]["ReissueUploadUrlsResponse"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
         ApiResponseStartUploadResponse: {
             data?: components["schemas"]["StartUploadResponse"] | null;
             error?: components["schemas"]["ErrorResponse"] | null;
@@ -884,6 +914,11 @@ export interface components {
              */
             identityToken?: string | null;
             /**
+             * @description 사용자 이름. provider=APPLE 최초 인가에서 받은 fullName을 전달하며 신규 가입 시 필수, 재로그인 시 생략. provider=KAKAO는 서버가 닉네임을 직접 조회하므로 보내면 400
+             * @example 뽀또
+             */
+            name?: string | null;
+            /**
              * @description 소셜 로그인 제공자
              * @example KAKAO
              * @enum {string|null}
@@ -1058,6 +1093,11 @@ export interface components {
              * @example sample-refresh-token-01983f2a7c317b02
              */
             refreshToken: string;
+        };
+        /** @description 재발급된 사진별 업로드 URL */
+        ReissueUploadUrlsResponse: {
+            /** @description 재발급 대상(PENDING) 사진의 업로드 URL 목록 */
+            uploads: components["schemas"]["PhotoUploadUrlItem"][];
         };
         /** @description 보드 이름 변경 요청 */
         RenameBoardRequest: {
@@ -1329,6 +1369,11 @@ export interface components {
              */
             id: string;
             /**
+             * @description 사용자 이름. 카카오는 닉네임, 애플은 최초 인가에서 전달받은 이름
+             * @example 뽀또
+             */
+            name: string;
+            /**
              * @description 소셜 로그인 제공자
              * @example KAKAO
              * @enum {string}
@@ -1509,6 +1554,65 @@ export interface operations {
                 };
             };
             /** @description 취소할 수 없는 상태의 분석임 (ANALYSIS-004) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    reissue: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1";
+            };
+            path: {
+                /**
+                 * @description 재발급할 분석 ID (uuidv7)
+                 * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+                 */
+                analysisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 재발급된 URL 목록 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseReissueUploadUrlsResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 분석을 찾을 수 없음 (ANALYSIS-005) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 이미 시작되었거나 종료된 분석임 (ANALYSIS-003) */
             409: {
                 headers: {
                     [name: string]: unknown;

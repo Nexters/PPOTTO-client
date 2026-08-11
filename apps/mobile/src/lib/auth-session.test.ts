@@ -70,6 +70,9 @@ function setupSession(storedRefreshToken: string | null = 'stored-refresh') {
   const { signInWithKakao } = jest.requireMock('./kakao-auth') as {
     signInWithKakao: jest.Mock;
   };
+  const { signInWithApple } = jest.requireMock('./apple-auth') as {
+    signInWithApple: jest.Mock;
+  };
 
   jest.clearAllMocks();
   secureStore.getItemAsync.mockResolvedValue(storedRefreshToken);
@@ -79,7 +82,20 @@ function setupSession(storedRefreshToken: string | null = 'stored-refresh') {
   const api = jest.requireActual<typeof import('@ppotto/api')>('@ppotto/api');
   const session = jest.requireActual<Session>('./auth-session');
 
-  return { api, authApi, secureStore, session, signInWithKakao, userApi };
+  return { api, authApi, secureStore, session, signInWithApple, signInWithKakao, userApi };
+}
+
+function appleCredential(
+  fullName: { familyName?: string | null; givenName?: string | null } | null,
+) {
+  return {
+    identityToken: 'identity-token',
+    authorizationCode: 'authorization-code',
+    user: 'apple-user',
+    email: null,
+    fullName,
+    rawNonce: 'raw-nonce',
+  };
 }
 
 async function login(
@@ -213,6 +229,42 @@ describe('인증 세션', () => {
 
     expect(secureStore.deleteItemAsync).not.toHaveBeenCalled();
     await expect(session.getAccessToken()).resolves.toBe('live-access');
+  });
+
+  it('애플 최초 로그인이면 fullName을 성+이름 순서로 조합해 name으로 보낸다', async () => {
+    const { authApi, session, signInWithApple } = setupSession(null);
+    signInWithApple.mockResolvedValue(appleCredential({ familyName: '뽀', givenName: '또' }));
+    authApi.login.mockResolvedValue({ ...tokenBundle('apple'), isNewUser: true, pendingTerms: [] });
+
+    await session.loginWithApple();
+
+    expect(authApi.login).toHaveBeenCalledWith({
+      provider: 'APPLE',
+      identityToken: 'identity-token',
+      authorizationCode: 'authorization-code',
+      rawNonce: 'raw-nonce',
+      name: '뽀또',
+    });
+  });
+
+  it('애플 재로그인처럼 fullName이 없으면 name 없이 보낸다', async () => {
+    const { authApi, session, signInWithApple } = setupSession(null);
+    signInWithApple.mockResolvedValue(appleCredential(null));
+    authApi.login.mockResolvedValue({
+      ...tokenBundle('apple'),
+      isNewUser: false,
+      pendingTerms: [],
+    });
+
+    await session.loginWithApple();
+
+    expect(authApi.login).toHaveBeenCalledWith({
+      provider: 'APPLE',
+      identityToken: 'identity-token',
+      authorizationCode: 'authorization-code',
+      rawNonce: 'raw-nonce',
+      name: undefined,
+    });
   });
 
   it('AUTH-002를 받으면 저장된 refreshToken을 제거하고 로그인되지 않은 상태를 반환한다', async () => {

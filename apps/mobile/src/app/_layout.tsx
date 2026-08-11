@@ -1,28 +1,43 @@
 import '../global.css';
 
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { AppBackground } from '@/shared/ui/AppBackground';
 import { ToastProvider } from '@/shared/ui/Toast';
 
 const queryClient = new QueryClient();
+const appTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: 'transparent',
+    card: 'transparent',
+  },
+};
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <ToastProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)/index" />
-            <Stack.Screen name="photo-select" />
-            <Stack.Screen name="board" />
-          </Stack>
-        </ToastProvider>
-      </ThemeProvider>
+      <View style={styles.root}>
+        <AppBackground />
+        <ThemeProvider value={appTheme}>
+          <ToastProvider>
+            <Stack screenOptions={{ headerShown: false, contentStyle: styles.transparent }}>
+              <Stack.Screen name="(auth)/index" />
+              <Stack.Screen name="photo-select" options={{ animationTypeForReplace: 'pop' }} />
+              <Stack.Screen name="board" />
+            </Stack>
+          </ToastProvider>
+        </ThemeProvider>
+      </View>
     </QueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#000' },
+  transparent: { backgroundColor: 'transparent' },
+});

@@ -20,12 +20,7 @@ export function LoginPage() {
   };
 
   return (
-    <main
-      className={cn(
-        'flex min-h-dvh flex-col items-center bg-black px-[30px] pt-[210px]',
-        'pb-[56px]',
-      )}
-    >
+    <main className={cn('flex min-h-dvh flex-col items-center px-[30px] pt-[210px]', 'pb-[56px]')}>
       <Logo width={261} height={80} />
 
       <div className="flex flex-col w-full gap-4 mt-auto">
