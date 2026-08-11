@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 
+import { cn } from '@/shared/lib/cn';
 import { Modal } from '@/shared/ui/common/Modal';
 
 import { useBoardPageState } from './model/use-board-page-state';
@@ -15,6 +16,9 @@ const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.B
 export function BoardPage() {
   const {
     boardId,
+    canDeleteStickers,
+    deleteAllStickers,
+    isDeletingStickers,
     isBoardListLoading,
     isInitialUploadModalOpen,
     setIsInitialUploadModalOpen,
@@ -25,6 +29,17 @@ export function BoardPage() {
     <>
       <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
         <BoardHeader />
+        <button
+          type="button"
+          disabled={!canDeleteStickers || isDeletingStickers}
+          onClick={deleteAllStickers}
+          className={cn(
+            'absolute top-28 left-6 z-20 rounded-lg',
+            'bg-red-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40',
+          )}
+        >
+          {isDeletingStickers ? '삭제 중...' : '스티커 전체 삭제 (DEBUG)'}
+        </button>
         <BoardContent boardId={boardId} isLoading={isBoardListLoading} />
         <BoardToolbar onAddSticker={openPhotoSelect} />
       </div>
