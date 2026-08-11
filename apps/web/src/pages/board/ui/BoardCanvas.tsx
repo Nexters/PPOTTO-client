@@ -517,7 +517,15 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const quickMenuSticker = stickers.find((sticker) => sticker.id === quickMenuStickerId);
 
   return (
-    <div ref={setContainer} className="relative h-full w-full touch-none overflow-hidden">
+    <div
+      ref={setContainer}
+      className="relative h-full w-full touch-none overflow-hidden"
+      style={{
+        backgroundColor: '#000',
+        backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
+        backgroundSize: '18px 18px',
+      }}
+    >
       <div
         style={{
           position: 'absolute',
