@@ -20,7 +20,8 @@
  * - 기존 스티커가 있을 땐 각도를 오른쪽 반원(-90~90도)으로 제한해, 새 무리가 기존 스티커 쪽으로
  *   다시 넘어가지 않게 한다. 시작 각도에 매번 한 스텝 폭만큼 무작위 지터를 줘서, 배치마다 항상
  *   똑같은 모양으로 나열되지 않게 한다.
- * - badgeOffsetX/Y는 스티커 타입과 무관하게 고정값 하나로 통일한다
+ * - badgeOffsetX/Y는 스티커 타입과 무관하게 위/아래 x 왼쪽/가운데/오른쪽 6방향 프리셋 중 하나를
+ *   난수로 골라 배정한다(스티커를 너무 가리지 않으면서도 위치에 변화를 줌)
  *
  * 제외: 나선형 최대 탐색 반경(4500px) 내내 빈자리를 못 찾는 극단적 케이스 — 이론상 fallback으로
  *   마지막 후보를 그대로 반환하지만, 손으로 구성하기 힘들 만큼 밀집된 상황에서만 발생해 실질적으로
@@ -255,17 +256,34 @@ describe('computeInitialLayout', () => {
     expect(result.map((sticker) => sticker.zIndex)).toEqual([8, 9]);
   });
 
-  it('badgeOffsetX/Y는 스티커 타입과 무관하게 고정값으로 배정된다', () => {
+  it('badgeOffsetX/Y는 스티커 타입과 무관하게 위/아래 x 왼쪽/가운데/오른쪽 6방향 중 하나로 배정된다', () => {
     const newStickers = [
       fakeSticker({ id: 'a', type: 'IMAGE' }),
       fakeSticker({ id: 'b', type: 'TEXT' }),
+    ];
+    const presets = [
+      { x: 0, y: 60 },
+      { x: -45, y: 55 },
+      { x: 45, y: 55 },
+      { x: 0, y: -60 },
+      { x: -45, y: -55 },
+      { x: 45, y: -55 },
     ];
 
     const result = computeInitialLayout(newStickers, [], viewport);
 
     result.forEach((sticker) => {
-      expect(sticker.badgeOffsetX).toBe(0);
-      expect(sticker.badgeOffsetY).toBe(60);
+      expect(presets).toContainEqual({ x: sticker.badgeOffsetX, y: sticker.badgeOffsetY });
     });
+  });
+
+  it('random() 값에 따라 badgeOffsetX/Y로 골라지는 방향이 달라진다', () => {
+    const newStickers = [fakeSticker({ id: 'a' })];
+
+    const first = computeInitialLayout(newStickers, [], viewport, () => 0);
+    const last = computeInitialLayout(newStickers, [], viewport, () => 5 / 6);
+
+    expect(first[0]).toMatchObject({ badgeOffsetX: 0, badgeOffsetY: 60 });
+    expect(last[0]).toMatchObject({ badgeOffsetX: 45, badgeOffsetY: -55 });
   });
 });

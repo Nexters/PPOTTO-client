@@ -33,7 +33,16 @@ const ANGLE_STEPS = 24; // 한 바퀴를 몇 칸으로 나눠 검사할지 (15�
 const RADIUS_STEP = 15; // 한 바퀴 돌 때마다 반지름을 얼마나 늘릴지
 const MAX_RINGS = 300; // 최대 탐색 반지름 = RADIUS_STEP * MAX_RINGS
 const ROTATION_RANGE_DEG = 15;
-const BADGE_OFFSET = { x: 0, y: 60 };
+
+// 뱃지가 스티커를 너무 가리지 않으면서 위치에 변화를 주도록 6방향 중 하나를 랜덤으로 고름
+const BADGE_OFFSET_PRESETS: { x: number; y: number }[] = [
+  { x: 0, y: 60 }, // 아래 가운데
+  { x: -45, y: 55 }, // 아래 왼쪽
+  { x: 45, y: 55 }, // 아래 오른쪽
+  { x: 0, y: -60 }, // 위 가운데
+  { x: -45, y: -55 }, // 위 왼쪽
+  { x: 45, y: -55 }, // 위 오른쪽
+];
 
 // 좌표/순서가 null이거나 없으면 아직 배치를 정하지 않은 스티커로 본다
 export function needsInitialLayout(sticker: UnplacedCheckSticker): boolean {
@@ -116,13 +125,15 @@ export function computeInitialLayout<T extends { id: string; type: string }>(
     placedPoints.push(point);
     newPoints.push(point);
 
+    const badgeOffset = BADGE_OFFSET_PRESETS[Math.floor(random() * BADGE_OFFSET_PRESETS.length)]!;
+
     return {
       ...sticker,
       posX: point.x,
       posY: point.y,
       rotation: (random() * 2 - 1) * ROTATION_RANGE_DEG,
-      badgeOffsetX: BADGE_OFFSET.x,
-      badgeOffsetY: BADGE_OFFSET.y,
+      badgeOffsetX: badgeOffset.x,
+      badgeOffsetY: badgeOffset.y,
       zIndex: maxExistingZIndex + index + 1,
     };
   });
