@@ -63,7 +63,12 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
         <RecapThemeTags tags={tags.map((tag) => tag.content)} />
       </div>
       <RecapPhotoGrid stickerId={stickerId} photos={data.photos} />
-      <RecapShareSheet isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} />
+      <RecapShareSheet
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        stickerId={stickerId}
+        data={data}
+      />
     </div>
   );
 }
