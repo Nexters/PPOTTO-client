@@ -5,7 +5,9 @@ import { AppWebView } from './AppWebView';
 
 let mockBridgeHandlers: Record<string, (...args: never[]) => unknown>;
 let mockOnLoad: (() => void) | undefined;
+let mockOnMessage: ((event: { nativeEvent: { data: string } }) => void) | undefined;
 let mockOnOpenWindow: ((event: { nativeEvent: { targetUrl: string } }) => void) | undefined;
+const mockPushMessage = jest.fn();
 
 jest.mock('@/lib/auth-session', () => ({
   getAccessToken: jest.fn(),
@@ -28,10 +30,12 @@ jest.mock('react-native-webview', () => {
       unknown,
       {
         onLoad?: () => void;
+        onMessage?: (event: { nativeEvent: { data: string } }) => void;
         onOpenWindow?: (event: { nativeEvent: { targetUrl: string } }) => void;
       }
-    >(function MockWebView({ onLoad, onOpenWindow }, _ref) {
+    >(function MockWebView({ onLoad, onMessage, onOpenWindow }, _ref) {
       mockOnLoad = onLoad;
+      mockOnMessage = onMessage;
       mockOnOpenWindow = onOpenWindow;
       return <View accessibilityLabel="웹뷰" />;
     }),
@@ -44,7 +48,7 @@ jest.mock('webview-bridge-kit/react-native', () => ({
     handlers: Record<string, (...args: never[]) => unknown>,
   ) => {
     mockBridgeHandlers = handlers;
-    return { pushMessage: jest.fn() };
+    return { pushMessage: mockPushMessage };
   },
 }));
 
@@ -93,5 +97,21 @@ describe('WebView 로딩', () => {
     mockOnLoad?.();
 
     expect(onReady).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('WebView QA 진단', () => {
+  it('QA 진단 메시지는 기록하고 기존 브리지에는 전달하지 않는다', () => {
+    render(<AppWebView />);
+
+    mockOnMessage?.({
+      nativeEvent: {
+        data: '__QA_DIAGNOSTIC__:{"type":"console","at":1,"level":"log","message":"web"}',
+      },
+    });
+    expect(mockPushMessage).not.toHaveBeenCalled();
+
+    mockOnMessage?.({ nativeEvent: { data: '{"v":1,"kind":"command"}' } });
+    expect(mockPushMessage).toHaveBeenCalledWith('{"v":1,"kind":"command"}');
   });
 });

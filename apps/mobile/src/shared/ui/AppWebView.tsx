@@ -12,6 +12,10 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
+import {
+  recordWebQaDiagnosticMessage,
+  WEB_QA_DIAGNOSTICS_SCRIPT,
+} from '@/shared/lib/qa-diagnostics';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
@@ -52,7 +56,11 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
       <WebView
         ref={ref}
         source={{ uri: `${WEB_URL}${path}` }}
-        onMessage={(e) => pushMessage(e.nativeEvent.data)}
+        injectedJavaScriptBeforeContentLoaded={WEB_QA_DIAGNOSTICS_SCRIPT}
+        onMessage={(e) => {
+          const data = e.nativeEvent.data;
+          if (!recordWebQaDiagnosticMessage(data)) pushMessage(data);
+        }}
         onLoad={() => {
           if (ready.current) return;
           ready.current = true;
