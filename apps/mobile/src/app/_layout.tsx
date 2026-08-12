@@ -31,7 +31,7 @@ export default function RootLayout() {
               <Stack.Screen name="photo-select" options={{ animationTypeForReplace: 'pop' }} />
               <Stack.Screen name="board" />
             </Stack>
-            <QaRecorderProbe />
+            {process.env.EXPO_PUBLIC_QA_TOOL_ENABLED === 'true' && <QaRecorderProbe />}
           </ToastProvider>
         </ThemeProvider>
       </View>
