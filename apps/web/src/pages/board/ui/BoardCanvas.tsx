@@ -9,6 +9,7 @@ import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutatio
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
+import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import {
@@ -27,11 +28,15 @@ import {
   type StickerTransform,
 } from '../model/board-transform';
 import { angleBetween, centroid, distance, type Point } from '../model/geometry';
+import { useDeleteSticker } from '../model/use-delete-sticker';
+import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 
 import type { ToolbarMode } from './BoardToolbar';
 import { SelectBox } from './SelectBox';
 import { Sticker, type StickerData } from './Sticker';
 import { StickerBadgeMark } from './StickerBadgeMark';
+import { StickerPreview } from './StickerPreview';
+import { StickerQuickMenu } from './StickerQuickMenu';
 
 type BoardCanvasProps = {
   boardId: string;
@@ -55,10 +60,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
+  const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
   const queryClient = useQueryClient();
+  const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
+  const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
   const isEditMode = mode === 'move';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
   const selectedId = isEditMode ? selectedStickerId : null;
@@ -90,6 +98,14 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   } | null>(null);
   // 더블탭 감지용 — 직전에 빈 배경을 탭한 시각·위치
   const lastBackgroundTapRef = useRef<{ time: number; point: Point } | null>(null);
+
+  const longPress = useLongPress({
+    onLongPress: (stickerId) => {
+      setQuickMenuStickerId(stickerId);
+      // 리캡 이동과 안 겹치게 탭 후보 제거
+      tapCandidateRef.current = null;
+    },
+  });
 
   useRefetchOnActive(refetch, isStale);
 
@@ -151,6 +167,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const saveStickerLayoutRef = useRef(saveStickerLayout);
   const selectStickerRef = useRef(selectSticker);
   const pushRef = useRef(push);
+  const longPressRef = useRef(longPress);
 
   // ref들을 매 렌더 이후 최신값으로 동기화
   useEffect(() => {
@@ -161,6 +178,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
     pushRef.current = push;
+    longPressRef.current = longPress;
   });
 
   // 포인터, 휠 제스처는 Konva 없이 순수 DOM 이벤트로 직접 처리
@@ -186,9 +204,17 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       const stickerId = hitTestStickerId(e.target);
       tapCandidateRef.current = { pointerId: e.pointerId, stickerId, startClient: point };
 
+      // 편집 모드에선 pointerdown이 바로 드래그로 이어지므로 롱프레스는 기본 뷰 모드에서만
+      if (stickerId && !isEditModeRef.current) {
+        longPressRef.current.start(point, stickerId);
+      }
+
       // 스티커를 처음 선택하는 순간이면 맨 위로 올리는 부수효과를 먼저 실행하고,
-      // 그 결과(갱신된 zIndex)를 반영한 스티커를 reducer에 넘긴다
-      const found = stickerId ? stickersRef.current.find((s) => s.id === stickerId) : undefined;
+      // 그 결과(갱신된 zIndex)를 반영한 스티커를 reducer에 넘긴다 (편집 모드에서만 선택/저장 부수효과 발생)
+      const found =
+        stickerId && isEditModeRef.current
+          ? stickersRef.current.find((s) => s.id === stickerId)
+          : undefined;
       const stickerHit = found
         ? selectedIdRef.current !== stickerId
           ? selectStickerRef.current(found)
@@ -216,12 +242,15 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
         }
       }
 
+      longPressRef.current.move(point);
+
       const gesture = gestureRef.current;
       if (!gesture) return;
 
       if (pointersRef.current.size >= 2) {
         // 두 손가락이 됐으면 탭일 수 없음
         tapCandidateRef.current = null;
+        longPressRef.current.cancel();
 
         const points = [...pointersRef.current.values()];
 
@@ -290,6 +319,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (!pointersRef.current.has(e.pointerId)) return;
       const point = getLocalPoint(e);
       pointersRef.current.delete(e.pointerId);
+      longPressRef.current.cancel();
 
       const gesture = gestureRef.current;
 
@@ -363,7 +393,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             if (isEditModeRef.current) setSelectedStickerId(null);
           }
         } else if (!isEditModeRef.current) {
-          pushRef.current('Recap', { stickerId: tap.stickerId });
+          pushRef.current('Recap', { stickerId: tap.stickerId, boardId });
         }
       }
     };
@@ -401,7 +431,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       container.removeEventListener('gesturechange', blockGesture);
       container.removeEventListener('gestureend', blockGesture);
     };
-  }, [container]);
+  }, [container, boardId]);
 
   if (isLoading) {
     return (
@@ -420,9 +450,19 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   }
 
   const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
+  const quickMenuSticker = stickers.find((sticker) => sticker.id === quickMenuStickerId);
 
   return (
-    <div ref={setContainer} className="relative h-full w-full touch-none overflow-hidden">
+    <div
+      ref={setContainer}
+      className="relative h-full w-full touch-none overflow-hidden"
+      style={{
+        backgroundColor: '#000',
+        backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
+        backgroundSize: `${18 * camera.scale}px ${18 * camera.scale}px`,
+        backgroundPosition: `${camera.x}px ${camera.y}px`,
+      }}
+    >
       <div
         style={{
           position: 'absolute',
@@ -451,6 +491,21 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           />
         )}
       </div>
+      {quickMenuSticker && <StickerPreview sticker={quickMenuSticker} />}
+      <StickerQuickMenu
+        stickerTitle={quickMenuSticker?.title ?? ''}
+        isOpen={quickMenuStickerId !== null}
+        onClose={() => setQuickMenuStickerId(null)}
+        onRegenerate={() => {
+          if (quickMenuStickerId) regenerate(quickMenuStickerId, () => setQuickMenuStickerId(null));
+        }}
+        isRegenerating={isRegenerating}
+        onDelete={() => {
+          if (quickMenuStickerId)
+            deleteSticker(quickMenuStickerId, () => setQuickMenuStickerId(null));
+        }}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

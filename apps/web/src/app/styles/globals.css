@@ -83,9 +83,30 @@
   animation: modal-content-out 220ms ease-in;
 }
 
+@keyframes sheet-content-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sheet-content-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.sheet-content[data-state='open'] {
+  animation: sheet-content-in 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sheet-content[data-state='closed'] {
+  animation: sheet-content-out 250ms ease-in;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .modal-overlay,
-  .modal-content {
+  .modal-content,
+  .sheet-content {
     animation-duration: 1ms;
   }
 }
