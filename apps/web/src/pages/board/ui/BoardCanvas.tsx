@@ -212,8 +212,15 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   // 같은 스티커를 다시 계산·저장하지 않게 막는다
   const handledPlacementRef = useRef(new Set<string>());
   const cameraFocusFrameRef = useRef<number | null>(null);
+  // 새로 배치된 무리를 카메라로 포커스해달라는 요청. 배치 계산과 분리된 별도 상태로 둬서,
+  // 이 상태를 구독하는 애니메이션 이펙트가 배치 이펙트의 재실행(캐시 갱신 등으로 인한)에
+  // 휘말려 애니메이션이 중간에 취소되지 않게 한다.
+  const [focusRequest, setFocusRequest] = useState<{
+    targets: Point[];
+    viewport: { width: number; height: number };
+  } | null>(null);
 
-  // 새로 생성돼 좌표가 없는 스티커를 빈 공간에 배치하고, 배치 결과로 카메라를 포커스한다
+  // 새로 생성돼 좌표가 없는 스티커를 빈 공간에 배치하고 저장한다
   useEffect(() => {
     if (!container) return;
 
@@ -241,12 +248,27 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
 
     saveLayout({ boardId, input: toLayoutInput(laidOut) });
 
-    // 배치된 무리의 중심으로 카메라를 부드럽게 이동시킴
+    setFocusRequest({
+      targets: laidOut.map((sticker) => ({ x: sticker.posX, y: sticker.posY })),
+      viewport,
+    });
+    // unplacedStickers/placedStickers는 data에서 매 렌더 새로 파생되므로 의도적으로 deps에서 제외.
+    // data 참조가 실제로 바뀔 때만(우리 자신의 setQueryData 포함) 재실행되면 되고, handledPlacementRef가
+    // 중복 처리를 막아준다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [container, data, boardId, queryClient, saveLayout]);
+
+  // 포커스 요청이 들어오면 그 무리의 중심으로 카메라를 부드럽게 이동시킨다.
+  // focusRequest는 위 배치 이펙트가 새 무리를 배치했을 때만 바뀌므로, 배치 이펙트의 잦은
+  // 재실행과 무관하게 애니메이션이 끝까지 방해받지 않고 진행된다.
+  useEffect(() => {
+    if (!focusRequest) return;
+
     const startCamera = cameraRef.current;
     const targetCamera = computeFocusTarget(
       startCamera,
-      laidOut.map((sticker) => ({ x: sticker.posX, y: sticker.posY })),
-      viewport,
+      focusRequest.targets,
+      focusRequest.viewport,
     );
     const startTime = performance.now();
 
@@ -267,7 +289,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     return () => {
       if (cameraFocusFrameRef.current !== null) cancelAnimationFrame(cameraFocusFrameRef.current);
     };
-  }, [container, unplacedStickers, placedStickers, boardId, queryClient, saveLayout]);
+  }, [focusRequest]);
 
   // 포인터, 휠 제스처는 Konva 없이 순수 DOM 이벤트로 직접 처리
   // pointerdown은 컨테이너에, move/up/cancel은 window에 붙여서 손가락이 컨테이너 밖으로 나가도(빠르게 드래그할 때 흔함) 계속 추적되게 함
