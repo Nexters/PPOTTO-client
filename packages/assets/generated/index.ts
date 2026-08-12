@@ -1,4 +1,5 @@
 export { default as AppleLogo } from './AppleLogo';
+export { default as Check } from './Check';
 export { default as CheckCircle } from './CheckCircle';
 export { default as CheckCircleEmpty } from './CheckCircleEmpty';
 export { default as ChevronDown } from './ChevronDown';
