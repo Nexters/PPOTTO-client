@@ -328,6 +328,7 @@
                           "isNew": false,
                           "type": "IMAGE",
                           "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
+                          "mainColor": "#FF6B6B",
                           "posX": 62.5,
                           "posY": 318,
                           "scale": 0.8,
@@ -398,12 +399,23 @@
                           {
                             "id": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample",
-                            "takenAt": "2026-06-14T04:22:10Z"
+                            "takenAt": "2026-06-14T04:22:10Z",
+                            "isGroup": true,
+                            "groupId": "01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b",
+                            "groupPhotos": [
+                              {
+                                "id": "01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                                "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-3c.jpg?X-Goog-Signature=smpl",
+                                "takenAt": "2026-06-14T04:22:11Z"
+                              }
+                            ]
                           },
                           {
                             "id": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
                             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample",
-                            "takenAt": "2026-07-02T10:05:44Z"
+                            "takenAt": "2026-07-02T10:05:44Z",
+                            "isGroup": false,
+                            "groupPhotos": []
                           }
                         ]
                       }
@@ -1767,6 +1779,7 @@
                           "isNew": false,
                           "type": "IMAGE",
                           "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
+                          "mainColor": "#FF6B6B",
                           "posX": 62.5,
                           "posY": 318,
                           "scale": 0.8,
@@ -1837,12 +1850,23 @@
                           {
                             "id": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample",
-                            "takenAt": "2026-06-14T04:22:10Z"
+                            "takenAt": "2026-06-14T04:22:10Z",
+                            "isGroup": true,
+                            "groupId": "01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b",
+                            "groupPhotos": [
+                              {
+                                "id": "01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                                "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-3c.jpg?X-Goog-Signature=smpl",
+                                "takenAt": "2026-06-14T04:22:11Z"
+                              }
+                            ]
                           },
                           {
                             "id": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
                             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample",
-                            "takenAt": "2026-07-02T10:05:44Z"
+                            "takenAt": "2026-07-02T10:05:44Z",
+                            "isGroup": false,
+                            "groupPhotos": []
                           }
                         ]
                       }
@@ -3722,6 +3746,30 @@
         },
         "required": ["comments", "photos", "sticker", "summary"]
       },
+      "RecapGroupPhotoResponse": {
+        "type": "object",
+        "description": "연사 그룹 내 나머지 사진",
+        "properties": {
+          "imageUrl": {
+            "type": "string",
+            "description": "읽기용 signed URL (만료 1시간)",
+            "example": "https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample"
+          },
+          "takenAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "촬영 시각",
+            "example": "2026-06-14T13:22:11+09:00"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "사진 ID (uuidv7)",
+            "example": "01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          }
+        },
+        "required": ["id", "imageUrl", "takenAt"]
+      },
       "RecapPhotoResponse": {
         "type": "object",
         "description": "분석 리캡 사진",
@@ -3737,6 +3785,22 @@
             "description": "촬영 시각",
             "example": "2026-06-14T13:22:10+09:00"
           },
+          "groupId": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "연사 그룹 ID. 그룹이 아니면 null",
+            "example": "01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b"
+          },
+          "groupPhotos": {
+            "type": "array",
+            "description": "연사 그룹 내 나머지(비대표) 사진들. takenAt, id 오름차순. 그룹이 아니면 빈 배열",
+            "items": {
+              "$ref": "#/components/schemas/RecapGroupPhotoResponse"
+            }
+          },
+          "group": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -3744,7 +3808,7 @@
             "example": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
         },
-        "required": ["id", "imageUrl", "takenAt"]
+        "required": ["groupPhotos", "id", "imageUrl", "takenAt"]
       },
       "StickerResponse": {
         "type": "object",
@@ -3771,22 +3835,27 @@
             "description": "TEXT 형 문구",
             "example": "whats in my mac"
           },
+          "mainColor": {
+            "type": "string",
+            "description": "스티커 대상의 대표 색상(hex). 리캡 상세 화면 배경색으로 사용",
+            "example": "#FF6B6B"
+          },
           "posX": {
-            "type": "number",
+            "type": ["number", "null"],
             "format": "double",
-            "description": "보드 좌표 X",
+            "description": "보드 좌표 X. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 62.5
           },
           "posY": {
-            "type": "number",
+            "type": ["number", "null"],
             "format": "double",
-            "description": "보드 좌표 Y",
+            "description": "보드 좌표 Y. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 318
           },
           "scale": {
             "type": "number",
             "format": "double",
-            "description": "확대 비율",
+            "description": "확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용",
             "example": 0.8
           },
           "rotation": {
@@ -3825,9 +3894,9 @@
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           },
           "zIndex": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "format": "int32",
-            "description": "겹침 순서",
+            "description": "겹침 순서. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 3
           }
         },
@@ -3837,13 +3906,11 @@
           "badgeRotation",
           "id",
           "isNew",
-          "posX",
-          "posY",
+          "mainColor",
           "rotation",
           "scale",
           "title",
-          "type",
-          "zIndex"
+          "type"
         ]
       },
       "CreateBoardRequest": {
@@ -4562,7 +4629,7 @@
           "scale": {
             "type": "number",
             "format": "double",
-            "description": "확대 비율",
+            "description": "확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용",
             "example": 1.1
           },
           "rotation": {
@@ -4867,21 +4934,21 @@
             "example": "whats in my mac"
           },
           "posX": {
-            "type": "number",
+            "type": ["number", "null"],
             "format": "double",
-            "description": "보드 좌표 X",
+            "description": "보드 좌표 X. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 62.5
           },
           "posY": {
-            "type": "number",
+            "type": ["number", "null"],
             "format": "double",
-            "description": "보드 좌표 Y",
+            "description": "보드 좌표 Y. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 318
           },
           "scale": {
             "type": "number",
             "format": "double",
-            "description": "확대 비율",
+            "description": "확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용",
             "example": 0.8
           },
           "rotation": {
@@ -4920,9 +4987,9 @@
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           },
           "zIndex": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "format": "int32",
-            "description": "겹침 순서",
+            "description": "겹침 순서. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 3
           }
         },
@@ -4932,13 +4999,10 @@
           "badgeRotation",
           "id",
           "isNew",
-          "posX",
-          "posY",
           "rotation",
           "scale",
           "title",
-          "type",
-          "zIndex"
+          "type"
         ]
       },
       "DrawingResponse": {
