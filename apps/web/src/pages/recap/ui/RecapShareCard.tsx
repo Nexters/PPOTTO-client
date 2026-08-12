@@ -25,12 +25,13 @@ export function RecapShareCard({ stickerId, data, options }: RecapShareCardProps
         backgroundSize: '18px 18px',
       }}
     >
+      <span className="text-body-01 text-center text-gray-50">{data.sticker.title}</span>
       {options.image && (
         <RecapStickerVisual imageUrl={data.sticker.imageUrl ?? ''} floatComments={floatComments} />
       )}
       {options.summary && <RecapSummary content={data.summary} />}
       {options.themeAnalysis && <RecapThemeTags tags={tags.map((tag) => tag.content)} />}
-      {options.themePhotos && <RecapPhotoGrid stickerId={stickerId} photos={data.photos} />}
+      {options.themePhotos && <RecapPhotoGrid stickerId={stickerId} photos={data.photos} eager />}
     </div>
   );
 }

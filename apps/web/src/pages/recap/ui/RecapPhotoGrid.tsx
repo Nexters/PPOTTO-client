@@ -6,9 +6,10 @@ import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 type RecapPhotoGridProps = {
   stickerId: string;
   photos: StickerPhoto[];
+  eager?: boolean;
 };
 
-export function RecapPhotoGrid({ stickerId, photos }: RecapPhotoGridProps) {
+export function RecapPhotoGrid({ stickerId, photos, eager = false }: RecapPhotoGridProps) {
   const { push } = useFlow();
 
   return (
@@ -32,6 +33,7 @@ export function RecapPhotoGrid({ stickerId, photos }: RecapPhotoGridProps) {
               fill
               sizes="33vw"
               className="object-cover"
+              loading={eager ? 'eager' : 'lazy'}
             />
           </button>
         ))}

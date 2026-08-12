@@ -1,5 +1,5 @@
 import { Download, Filter, Instagram, Kakaotalk, X } from '@ppotto/assets';
-import type { RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 
 import { saveRecapImage } from '@/features/save-recap-image';
 import { bridge } from '@/shared/lib/bridge';
@@ -14,9 +14,11 @@ type RecapShareListProps = {
 
 export function RecapShareList({ cardRef, onOptionsClick, onSaved }: RecapShareListProps) {
   const toast = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSaveImage = async () => {
     if (!cardRef.current) return;
+    setIsSaving(true);
     try {
       const blob = await saveRecapImage(cardRef.current);
       const base64 = await blobToBase64(blob);
@@ -30,6 +32,8 @@ export function RecapShareList({ cardRef, onOptionsClick, onSaved }: RecapShareL
     } catch (error) {
       console.error('이미지 저장 실패', error);
       toast('이미지 저장에 실패했습니다');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -61,11 +65,14 @@ export function RecapShareList({ cardRef, onOptionsClick, onSaved }: RecapShareL
         ))}
         <button
           type="button"
-          className="flex items-center gap-2 text-white"
+          disabled={isSaving}
+          className="flex items-center gap-2 text-white disabled:opacity-50"
           onClick={handleSaveImage}
         >
           <Download />
-          <span className="text-body-04 font-medium">이미지 저장하기</span>
+          <span className="text-body-04 font-medium">
+            {isSaving ? '저장 중...' : '이미지 저장하기'}
+          </span>
         </button>
       </div>
     </>
