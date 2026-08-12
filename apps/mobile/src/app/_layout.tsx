@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { QaRecorderProbe } from '@/features/qa-report';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { ToastProvider } from '@/shared/ui/Toast';
 
@@ -30,6 +31,7 @@ export default function RootLayout() {
               <Stack.Screen name="photo-select" options={{ animationTypeForReplace: 'pop' }} />
               <Stack.Screen name="board" />
             </Stack>
+            <QaRecorderProbe />
           </ToastProvider>
         </ThemeProvider>
       </View>
