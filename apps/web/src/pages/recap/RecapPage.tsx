@@ -1,5 +1,5 @@
 import { useFlow } from '@stackflow/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { cn } from '@/shared/lib/cn';
@@ -9,6 +9,7 @@ import { useMarkStickerViewed } from '../board/model/use-mark-sticker-viewed';
 
 import { RecapHeader } from './ui/RecapHeader';
 import { RecapPhotoGrid } from './ui/RecapPhotoGrid';
+import { RecapShareSheet } from './ui/RecapShareSheet';
 import { RecapStickerVisual } from './ui/RecapStickerVisual';
 import { RecapSummary } from './ui/RecapSummary';
 import { RecapThemeTags } from './ui/RecapThemeTags';
@@ -22,6 +23,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
   const { data, refetch, isStale } = useStickerQuery(stickerId);
   const { markViewed } = useMarkStickerViewed(boardId);
   const { pop } = useFlow();
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   useRefetchOnActive(refetch, isStale);
 
@@ -45,7 +47,11 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
         backgroundSize: '18px 18px',
       }}
     >
-      <RecapHeader title={data.sticker.title} onBack={() => pop()} onShare={() => {}} />
+      <RecapHeader
+        title={data.sticker.title}
+        onBack={() => pop()}
+        onShare={() => setIsShareOpen(true)}
+      />
       <div className="flex w-full flex-col gap-6">
         <div className="flex w-full flex-col">
           <RecapStickerVisual
@@ -57,6 +63,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
         <RecapThemeTags tags={tags.map((tag) => tag.content)} />
       </div>
       <RecapPhotoGrid stickerId={stickerId} photos={data.photos} />
+      <RecapShareSheet isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} />
     </div>
   );
 }
