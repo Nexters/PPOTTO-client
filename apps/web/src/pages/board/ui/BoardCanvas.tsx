@@ -248,10 +248,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
 
     saveLayout({ boardId, input: toLayoutInput(laidOut) });
 
-    setFocusRequest({
-      targets: laidOut.map((sticker) => ({ x: sticker.posX, y: sticker.posY })),
-      viewport,
-    });
+    const targets = laidOut.map((sticker) => ({ x: sticker.posX, y: sticker.posY }));
+    if (placedStickers.length === 0) {
+      // 최초 배치에는 카메라 애니메이션 없이 바로 포커스 위치로 세팅한다
+      setCamera((current) => computeFocusTarget(current, targets, viewport));
+    } else {
+      setFocusRequest({ targets, viewport });
+    }
     // unplacedStickers/placedStickers는 data에서 매 렌더 새로 파생되므로 의도적으로 deps에서 제외.
     // data 참조가 실제로 바뀔 때만(우리 자신의 setQueryData 포함) 재실행되면 되고, handledPlacementRef가
     // 중복 처리를 막아준다.
