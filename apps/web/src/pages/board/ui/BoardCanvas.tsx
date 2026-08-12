@@ -20,6 +20,7 @@ import {
   zoomCamera,
   zoomCameraTo,
 } from '../model/board-camera';
+import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
 import { computeBringToFrontZIndex, toLayoutInput } from '../model/board-layout';
 import {
   computeStickerPinchTransform,
@@ -47,27 +48,6 @@ const TAP_MOVE_THRESHOLD = 6;
 // 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
 const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
 const DOUBLE_TAP_MAX_DISTANCE = 24;
-
-type DragTransform = { id: string } & StickerTransform;
-
-type Gesture =
-  | { kind: 'pan'; pointerId: number; startClient: Point; startCamera: CameraState }
-  | {
-      kind: 'move';
-      pointerId: number;
-      sticker: StickerData;
-      startClient: Point;
-      startTransform: StickerTransform;
-    }
-  | { kind: 'pinch'; startCentroid: Point; startDistance: number; startCamera: CameraState }
-  | {
-      kind: 'stickerPinch';
-      sticker: StickerData;
-      startCentroid: Point;
-      startDistance: number;
-      startAngle: number;
-      startTransform: StickerTransform;
-    };
 
 function hitTestStickerId(target: EventTarget | null): string | null {
   if (!(target instanceof Element)) return null;
@@ -229,33 +209,26 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
         longPressRef.current.start(point, stickerId);
       }
 
-      if (stickerId && isEditModeRef.current) {
-        const found = stickersRef.current.find((s) => s.id === stickerId);
-        if (found) {
-          const sticker =
-            selectedIdRef.current !== stickerId ? selectStickerRef.current(found) : found;
-          gestureRef.current = {
-            kind: 'move',
-            pointerId: e.pointerId,
-            sticker,
-            startClient: point,
-            startTransform: {
-              x: sticker.posX,
-              y: sticker.posY,
-              rotation: sticker.rotation,
-              scale: sticker.scale,
-            },
-          };
-          return;
-        }
-      }
+      // 스티커를 처음 선택하는 순간이면 맨 위로 올리는 부수효과를 먼저 실행하고,
+      // 그 결과(갱신된 zIndex)를 반영한 스티커를 reducer에 넘긴다 (편집 모드에서만 선택/저장 부수효과 발생)
+      const found =
+        stickerId && isEditModeRef.current
+          ? stickersRef.current.find((s) => s.id === stickerId)
+          : undefined;
+      const stickerHit = found
+        ? selectedIdRef.current !== stickerId
+          ? selectStickerRef.current(found)
+          : found
+        : null;
 
-      gestureRef.current = {
-        kind: 'pan',
+      gestureRef.current = gestureReducer(gestureRef.current, {
+        type: 'POINTER_DOWN',
         pointerId: e.pointerId,
-        startClient: point,
-        startCamera: cameraRef.current,
-      };
+        point,
+        camera: cameraRef.current,
+        stickerHit,
+        isEditMode: isEditModeRef.current,
+      });
     };
 
     const handlePointerMove = (e: PointerEvent) => {
@@ -281,33 +254,14 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
 
         const points = [...pointersRef.current.values()];
 
-        // 배경을 팬하던 중이면 보드 핀치줌으로, 스티커를 이동하던 중이면 스티커 회전+확대로 전환(rebase)
-        if (gesture.kind === 'pan') {
-          gestureRef.current = {
-            kind: 'pinch',
-            startCentroid: centroid(points),
-            startDistance: distance(points[0]!, points[1]!),
-            startCamera: cameraRef.current,
-          };
-        } else if (gesture.kind === 'move') {
-          const base =
-            dragTransformRef.current?.id === gesture.sticker.id
-              ? {
-                  x: dragTransformRef.current.x,
-                  y: dragTransformRef.current.y,
-                  rotation: dragTransformRef.current.rotation,
-                  scale: dragTransformRef.current.scale,
-                }
-              : gesture.startTransform;
-          gestureRef.current = {
-            kind: 'stickerPinch',
-            sticker: gesture.sticker,
-            startCentroid: toWorldPoint(cameraRef.current, centroid(points)),
-            startDistance: distance(points[0]!, points[1]!),
-            startAngle: angleBetween(points[0]!, points[1]!),
-            startTransform: base,
-          };
-        }
+        // 배경을 팬하던 중이면 보드 핀치줌으로, 스티커를 이동하던 중이면 스티커 회전+확대로 전환(rebase).
+        // 이미 pinch/stickerPinch면 reducer가 상태를 그대로 반환한다
+        gestureRef.current = gestureReducer(gestureRef.current, {
+          type: 'MULTI_TOUCH',
+          points: [points[0]!, points[1]!],
+          camera: cameraRef.current,
+          liveTransform: dragTransformRef.current,
+        });
 
         if (gestureRef.current?.kind === 'pinch') {
           setCamera(
@@ -404,36 +358,18 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             });
           }
         }
-        gestureRef.current = null;
+        gestureRef.current = gestureReducer(gestureRef.current, { type: 'POINTER_UP_TO_ZERO' });
       } else if (pointersRef.current.size === 1) {
         // 손가락 하나가 남음 -> 아직 커밋하지 않고 남은 손가락 기준으로 이어감
         const [remainingPointerId, remainingPoint] = [...pointersRef.current][0]!;
 
-        if (gesture?.kind === 'pinch') {
-          gestureRef.current = {
-            kind: 'pan',
-            pointerId: remainingPointerId,
-            startClient: remainingPoint,
-            startCamera: cameraRef.current,
-          };
-        } else if (gesture?.kind === 'stickerPinch') {
-          const live =
-            dragTransformRef.current?.id === gesture.sticker.id
-              ? {
-                  x: dragTransformRef.current.x,
-                  y: dragTransformRef.current.y,
-                  rotation: dragTransformRef.current.rotation,
-                  scale: dragTransformRef.current.scale,
-                }
-              : gesture.startTransform;
-          gestureRef.current = {
-            kind: 'move',
-            pointerId: remainingPointerId,
-            sticker: gesture.sticker,
-            startClient: remainingPoint,
-            startTransform: live,
-          };
-        }
+        gestureRef.current = gestureReducer(gestureRef.current, {
+          type: 'POINTER_UP_TO_ONE',
+          remainingPointerId,
+          remainingPoint,
+          camera: cameraRef.current,
+          liveTransform: dragTransformRef.current,
+        });
       }
 
       const tap = tapCandidateRef.current;
