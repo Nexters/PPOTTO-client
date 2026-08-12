@@ -15,13 +15,20 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import {
   type CameraState,
   computeBoardPinchZoom,
+  computeFocusTarget,
   panCamera,
   toWorldPoint,
   zoomCamera,
   zoomCameraTo,
 } from '../model/board-camera';
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
-import { computeBringToFrontZIndex, toLayoutInput } from '../model/board-layout';
+import {
+  computeBringToFrontZIndex,
+  computeInitialLayout,
+  type ExistingSticker,
+  needsInitialLayout,
+  toLayoutInput,
+} from '../model/board-layout';
 import {
   computeStickerPinchTransform,
   scaleBadgeOffset,
@@ -48,6 +55,12 @@ const TAP_MOVE_THRESHOLD = 6;
 // 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
 const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
 const DOUBLE_TAP_MAX_DISTANCE = 24;
+// 새 스티커 배치 후 카메라가 포커스로 이동하는 시간(ms)
+const CAMERA_FOCUS_ANIMATION_MS = 350;
+
+function easeOutCubic(progress: number): number {
+  return 1 - (1 - progress) ** 3;
+}
 
 function hitTestStickerId(target: EventTarget | null): string | null {
   if (!(target instanceof Element)) return null;
@@ -79,9 +92,23 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     if (!isEditMode) setSelectedStickerId(null);
   }
 
-  const stickers: StickerData[] = data
-    ? [...data.stickers].sort((a, b) => a.zIndex - b.zIndex)
-    : [];
+  const rawStickers = data?.stickers ?? [];
+  // 새로 생성됐지만 좌표를 아직 안 정한 스티커(posX/posY/zIndex가 null) — 빈 공간 배치 대상
+  const unplacedStickers = rawStickers.filter(needsInitialLayout);
+  const placedStickers: ExistingSticker[] = rawStickers
+    .filter((sticker) => !needsInitialLayout(sticker))
+    .map((sticker) => ({ posX: sticker.posX!, posY: sticker.posY!, zIndex: sticker.zIndex! }));
+
+  // 렌더링/제스처 쪽에는 항상 실제 좌표만 넘어가게, 아직 배치 전인 스티커는 배치 계산이
+  // 끝나기 전까지만 임시로 0/1로 채워서 보여준다(배치 이펙트가 곧바로 실제 값으로 덮어씀)
+  const stickers: StickerData[] = [...rawStickers]
+    .map((sticker) => ({
+      ...sticker,
+      posX: sticker.posX ?? 0,
+      posY: sticker.posY ?? 0,
+      zIndex: sticker.zIndex ?? 0,
+    }))
+    .sort((a, b) => a.zIndex - b.zIndex);
 
   const cameraRef = useRef(camera);
   const stickersRef = useRef(stickers);
@@ -180,6 +207,67 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     pushRef.current = push;
     longPressRef.current = longPress;
   });
+
+  // 배치 처리 시작한 스티커 id를 기억해서, 저장 응답이 캐시에 반영되기 전에 리렌더가 껴도
+  // 같은 스티커를 다시 계산·저장하지 않게 막는다
+  const handledPlacementRef = useRef(new Set<string>());
+  const cameraFocusFrameRef = useRef<number | null>(null);
+
+  // 새로 생성돼 좌표가 없는 스티커를 빈 공간에 배치하고, 배치 결과로 카메라를 포커스한다
+  useEffect(() => {
+    if (!container) return;
+
+    const pending = unplacedStickers.filter(
+      (sticker) => !handledPlacementRef.current.has(sticker.id),
+    );
+    if (pending.length === 0) return;
+    pending.forEach((sticker) => handledPlacementRef.current.add(sticker.id));
+
+    const rect = container.getBoundingClientRect();
+    const viewport = { width: rect.width, height: rect.height };
+    const laidOut = computeInitialLayout(pending, placedStickers, viewport);
+
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current
+        ? {
+            ...current,
+            stickers: current.stickers.map((sticker) => {
+              const placement = laidOut.find((laid) => laid.id === sticker.id);
+              return placement ? { ...sticker, ...placement } : sticker;
+            }),
+          }
+        : current,
+    );
+
+    saveLayout({ boardId, input: toLayoutInput(laidOut) });
+
+    // 배치된 무리의 중심으로 카메라를 부드럽게 이동시킴
+    const startCamera = cameraRef.current;
+    const targetCamera = computeFocusTarget(
+      startCamera,
+      laidOut.map((sticker) => ({ x: sticker.posX, y: sticker.posY })),
+      viewport,
+    );
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const progress = Math.min((now - startTime) / CAMERA_FOCUS_ANIMATION_MS, 1);
+      const eased = easeOutCubic(progress);
+      setCamera({
+        scale: startCamera.scale + (targetCamera.scale - startCamera.scale) * eased,
+        x: startCamera.x + (targetCamera.x - startCamera.x) * eased,
+        y: startCamera.y + (targetCamera.y - startCamera.y) * eased,
+      });
+      if (progress < 1) {
+        cameraFocusFrameRef.current = requestAnimationFrame(animate);
+      }
+    };
+    cameraFocusFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (cameraFocusFrameRef.current !== null) cancelAnimationFrame(cameraFocusFrameRef.current);
+    };
+  }, [container, unplacedStickers, placedStickers, boardId, queryClient, saveLayout]);
 
   // 포인터, 휠 제스처는 Konva 없이 순수 DOM 이벤트로 직접 처리
   // pointerdown은 컨테이너에, move/up/cancel은 window에 붙여서 손가락이 컨테이너 밖으로 나가도(빠르게 드래그할 때 흔함) 계속 추적되게 함
