@@ -7,6 +7,7 @@ export { default as ChevronLeftSmall } from './ChevronLeftSmall';
 export { default as ChevronUp } from './ChevronUp';
 export { default as Download } from './Download';
 export { default as Edit } from './Edit';
+export { default as Filter } from './Filter';
 export { default as FingerTest } from './FingerTest';
 export { default as IconDraw } from './IconDraw';
 export { default as IconHand } from './IconHand';
