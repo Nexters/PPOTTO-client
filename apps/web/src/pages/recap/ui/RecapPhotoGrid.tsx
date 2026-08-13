@@ -34,7 +34,7 @@ export function RecapPhotoGrid({ stickerId, photos }: RecapPhotoGridProps) {
               sizes="33vw"
               className="object-cover"
             />
-            {photo.group && (
+            {photo.groupPhotos.length > 0 && (
               <ImageMultiple
                 width={20}
                 height={20}

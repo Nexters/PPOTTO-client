@@ -6,6 +6,13 @@ import { useState } from 'react';
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 
+import {
+  buildDisplayList,
+  findFlatIndex,
+  getAdjacentSelection,
+  resolveFilmstripSelection,
+  type PhotoSelection,
+} from './model/photo-selection';
 import { useSwipeNavigation } from './model/use-swipe-navigation';
 import { PhotoFilmstrip } from './ui/PhotoFilmstrip';
 import { PhotoViewerHeader } from './ui/PhotoViewerHeader';
@@ -17,14 +24,27 @@ type PhotoViewerPageProps = {
 
 export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProps) {
   const { data } = useStickerQuery(stickerId);
-  const [selectedIndex, setSelectedIndex] = useState(Number(initialIndex));
-  const swipeHandlers = useSwipeNavigation(data?.photos.length ?? 0, setSelectedIndex);
+  const [selection, setSelection] = useState<PhotoSelection>({
+    topIndex: Number(initialIndex),
+    subIndex: 0,
+  });
   const { pop } = useFlow();
 
-  if (!data) return null;
+  const displayList = data ? buildDisplayList(data.photos, selection.topIndex) : [];
+  const flatIndex = findFlatIndex(displayList, selection);
+  const selectedPhoto = displayList[flatIndex];
 
-  const photos = data.photos;
-  const selectedPhoto = photos[selectedIndex];
+  const handleFilmstripSelect = (newFlatIndex: number) => {
+    if (!data) return;
+    setSelection((prev) => resolveFilmstripSelection(data.photos, prev, newFlatIndex));
+  };
+
+  const swipeHandlers = useSwipeNavigation((direction) => {
+    if (!data) return;
+    setSelection((prev) => getAdjacentSelection(data.photos, prev, direction));
+  });
+
+  if (!data) return null;
 
   return (
     <div className="flex min-h-full w-full flex-col pt-16 pb-16">
@@ -43,9 +63,9 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
         </div>
         <PhotoFilmstrip
           stickerId={stickerId}
-          photos={photos}
-          selectedIndex={selectedIndex}
-          onSelect={setSelectedIndex}
+          photos={displayList}
+          selectedIndex={flatIndex}
+          onSelect={handleFilmstripSelect}
         />
       </div>
     </div>
