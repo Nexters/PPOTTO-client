@@ -22,6 +22,9 @@
  *   똑같은 모양으로 나열되지 않게 한다.
  * - badgeOffsetX/Y는 스티커 타입과 무관하게 위/아래 x 왼쪽/가운데/오른쪽 6방향 프리셋 중 하나를
  *   난수로 골라 배정한다(스티커를 너무 가리지 않으면서도 위치에 변화를 줌)
+ * - 나선형 탐색의 세로 반지름에 뷰포트 세로/가로 비율을 (완화해서) 곱해서, 뷰포트가 세로로 길수록
+ *   무리도 세로로 더 퍼지게 한다(안 그러면 원형으로만 퍼져서 가로 폭에 막혀 위아래가 여백으로 남음).
+ *   비율을 그대로 다 반영하면 반대로 거의 세로 한 줄처럼 늘어서길래 절반만 반영한다
  *
  * 제외: 나선형 최대 탐색 반경(4500px) 내내 빈자리를 못 찾는 극단적 케이스 — 이론상 fallback으로
  *   마지막 후보를 그대로 반환하지만, 손으로 구성하기 힘들 만큼 밀집된 상황에서만 발생해 실질적으로
@@ -285,5 +288,15 @@ describe('computeInitialLayout', () => {
 
     expect(first[0]).toMatchObject({ badgeOffsetX: 0, badgeOffsetY: 60 });
     expect(last[0]).toMatchObject({ badgeOffsetX: 45, badgeOffsetY: -55 });
+  });
+
+  it('뷰포트가 세로로 길수록 세로 방향 간격이 (완화된 비율만큼) 더 벌어진다', () => {
+    const tallViewport = { width: 500, height: 1000 };
+    const random = () => 0.25;
+    const newStickers = [fakeSticker({ id: 'a' })];
+
+    const result = computeInitialLayout(newStickers, [], tallViewport, random);
+
+    expect(result[0]).toMatchObject({ posX: 250, posY: 522.5 });
   });
 });

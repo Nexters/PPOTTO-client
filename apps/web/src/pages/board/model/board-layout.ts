@@ -33,6 +33,8 @@ const ANGLE_STEPS = 24; // 한 바퀴를 몇 칸으로 나눠 검사할지 (15�
 const RADIUS_STEP = 15; // 한 바퀴 돌 때마다 반지름을 얼마나 늘릴지
 const MAX_RINGS = 300; // 최대 탐색 반지름 = RADIUS_STEP * MAX_RINGS
 const ROTATION_RANGE_DEG = 15;
+// 뷰포트 세로/가로 비율을 세로 방향 퍼짐에 얼마나 반영할지 (1=비율 그대로, 0=반영 안 함/원형)
+const VERTICAL_STRETCH_DAMPING = 0.5;
 
 // 뱃지가 스티커를 너무 가리지 않으면서 위치에 변화를 주도록 6방향 중 하나를 랜덤으로 고름
 const BADGE_OFFSET_PRESETS: { x: number; y: number }[] = [
@@ -65,11 +67,13 @@ function startAnchor(
 
 // 기준점에서 나선형으로 훑어서 안 겹치는 첫 자리를 찾음
 // 기존 스티커가 있을때는 오른쪽으로만 훑어서 겹치지 않게 함
+// verticalStretch로 세로 방향 반지름을 늘려서, 뷰포트가 세로로 길수록 무리도 세로로 더 퍼지게 한다
 function findNonOverlappingPoint(
   anchor: Point,
   placedPoints: Point[],
   restrictToRightward: boolean,
   random: () => number,
+  verticalStretch: number,
 ): Point {
   const angleRange = restrictToRightward ? Math.PI : Math.PI * 2;
   const angleStart = (restrictToRightward ? -Math.PI / 2 : 0) + random() * angleRange;
@@ -83,7 +87,7 @@ function findNonOverlappingPoint(
       const angle = angleStart + (step / ANGLE_STEPS) * angleRange;
       candidate = {
         x: anchor.x + Math.cos(angle) * radius,
-        y: anchor.y + Math.sin(angle) * radius,
+        y: anchor.y + Math.sin(angle) * radius * verticalStretch,
       };
 
       const overlaps = placedPoints.some(
@@ -107,6 +111,8 @@ export function computeInitialLayout<T extends { id: string; type: string }>(
   const anchor = startAnchor(existingStickers, viewport);
   // 기존 스티커가 있으면, 이후 모든 탐색을 오른쪽 반원으로만 제한
   const restrictToRightward = existingStickers.length > 0;
+  // 뷰포트가 세로로 길수록(세로/가로 비율이 클수록) 세로 방향으로 더 퍼지게 함
+  const verticalStretch = 1 + (viewport.height / viewport.width - 1) * VERTICAL_STRETCH_DAMPING;
   // 충돌 검사 대상 목록 (이전에 놓은 스티커들)
   const placedPoints = existingStickers.map((sticker) => ({ x: sticker.posX, y: sticker.posY }));
   // 지금까지 놓은 새 스티커 좌표들 모음 (기준점을 다시 잡을 때 중심점 계산용)
@@ -120,7 +126,13 @@ export function computeInitialLayout<T extends { id: string; type: string }>(
     // 중심점 계산
     const currentAnchor = newPoints.length === 0 ? anchor : centroid(newPoints);
     // 중심점 기준으로 나선형으로 자리 찾음
-    const point = findNonOverlappingPoint(currentAnchor, placedPoints, restrictToRightward, random);
+    const point = findNonOverlappingPoint(
+      currentAnchor,
+      placedPoints,
+      restrictToRightward,
+      random,
+      verticalStretch,
+    );
 
     placedPoints.push(point);
     newPoints.push(point);
