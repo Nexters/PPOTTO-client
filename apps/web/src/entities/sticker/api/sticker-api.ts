@@ -31,4 +31,10 @@ export const stickerApi = {
     if (USE_MOCK) return Promise.resolve();
     return unwrapVoid(api.DELETE('/stickers/{stickerId}', { params: { path: { stickerId } } }));
   },
+  updateTitle: (stickerId: string, title: string) => {
+    if (USE_MOCK) return Promise.resolve({ id: stickerId, title });
+    return unwrapData(
+      api.PATCH('/stickers/{stickerId}', { params: { path: { stickerId } }, body: { title } }),
+    );
+  },
 };
