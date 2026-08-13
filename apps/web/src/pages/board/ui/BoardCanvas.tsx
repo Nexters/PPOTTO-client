@@ -32,6 +32,11 @@ import { useDeleteSticker } from '../model/use-delete-sticker';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 
 import type { ToolbarMode } from './BoardToolbar';
+import {
+  EmptyBoardSticker,
+  EMPTY_BOARD_STICKER_DEFAULT_TITLE,
+} from './empty-state/EmptyBoardSticker';
+import { EmptyBoardStickerQuickMenu } from './empty-state/EmptyBoardStickerQuickMenu';
 import { SelectBox } from './SelectBox';
 import { Sticker, type StickerData } from './Sticker';
 import { StickerBadgeMark } from './StickerBadgeMark';
@@ -61,6 +66,10 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
+  const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
+  const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
+    EMPTY_BOARD_STICKER_DEFAULT_TITLE,
+  );
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
@@ -463,6 +472,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
         backgroundPosition: `${camera.x}px ${camera.y}px`,
       }}
     >
+      {stickers.length === 0 && (
+        <EmptyBoardSticker
+          title={emptyBoardStickerTitle}
+          isQuickMenuOpen={isEmptyBoardQuickMenuOpen}
+          onLongPress={() => setIsEmptyBoardQuickMenuOpen(true)}
+        />
+      )}
       <div
         style={{
           position: 'absolute',
@@ -505,6 +521,12 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             deleteSticker(quickMenuStickerId, () => setQuickMenuStickerId(null));
         }}
         isDeleting={isDeleting}
+      />
+      <EmptyBoardStickerQuickMenu
+        title={emptyBoardStickerTitle}
+        isOpen={isEmptyBoardQuickMenuOpen}
+        onClose={() => setIsEmptyBoardQuickMenuOpen(false)}
+        onRename={setEmptyBoardStickerTitle}
       />
     </div>
   );

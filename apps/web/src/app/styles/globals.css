@@ -119,9 +119,20 @@
 }
 
 body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   background-color: #000;
   background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
   background-size: 18px 18px;
   color: var(--foreground);
   font-family: 'Pretendard', sans-serif;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
 }

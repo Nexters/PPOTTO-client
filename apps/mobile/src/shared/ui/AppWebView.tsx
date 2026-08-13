@@ -1,7 +1,8 @@
 import { contract } from '@ppotto/bridge';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Linking, View } from 'react-native';
+import { Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
@@ -48,7 +49,7 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
   });
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#000' }}>
       <WebView
         ref={ref}
         source={{ uri: `${WEB_URL}${path}` }}
@@ -72,6 +73,6 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
         scalesPageToFit={false}
       />
       {!loaded && <AppBackground />}
-    </View>
+    </SafeAreaView>
   );
 }
