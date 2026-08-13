@@ -33,11 +33,11 @@ export function useStickerImage(src?: string) {
 }
 
 export function stickerZIndex(sticker: Pick<StickerData, 'zIndex'>): number {
-  return sticker.zIndex * 2;
+  return (sticker.zIndex ?? 0) * 2;
 }
 
 export function badgeZIndex(sticker: Pick<StickerData, 'zIndex'>): number {
-  return sticker.zIndex * 2 + 1;
+  return (sticker.zIndex ?? 0) * 2 + 1;
 }
 
 export function getPhotoSize(
@@ -68,8 +68,8 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
 
   if (!photoImage || width <= 0 || height <= 0) return null;
 
-  const x = transformOverride?.x ?? sticker.posX;
-  const y = transformOverride?.y ?? sticker.posY;
+  const x = transformOverride?.x ?? sticker.posX ?? 0;
+  const y = transformOverride?.y ?? sticker.posY ?? 0;
   const rotation = transformOverride?.rotation ?? sticker.rotation;
 
   return (
