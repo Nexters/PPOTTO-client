@@ -111,6 +111,12 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
   const drawingPointerIdRef = useRef<number | null>(null); // 그리기 중인 포인터 id (그리는 중이 아니면 null)
   const drawingPointsRef = useRef<Point[] | null>(null); // 그리는 도중인 선의 점들
+  // draw 모드에서 두 손가락 핀치줌 시작 시점의 카메라/중심점/거리 (핀치 중이 아니면 null)
+  const drawPinchRef = useRef<{
+    startCamera: CameraState;
+    startCentroid: Point;
+    startDistance: number;
+  } | null>(null);
 
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
@@ -236,17 +242,45 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       setDrawingPoints(next);
     };
 
+    // 그리던 선을 끝낸다. shouldSave=true(손 떼서 끝난 경우)면 저장하고,
+    // false(두 번째 손가락이 끼어들어 핀치줌으로 전환된 경우)면 버린다 — 줌하려던 건데 점이 찍히면 안 되니까
+    const finalizeDrawing = (shouldSave: boolean) => {
+      const finalPoints = drawingPointsRef.current;
+      drawingPointerIdRef.current = null;
+      setStrokePoints(null);
+
+      if (shouldSave && finalPoints && finalPoints.length > 0) {
+        saveDrawingRef.current(
+          toDrawingCreateInput(finalPoints, {
+            color: TEMP_DRAWING_COLOR,
+            strokeWidth: TEMP_DRAWING_STROKE_WIDTH,
+          }),
+        );
+      }
+    };
+
     const handlePointerDown = (e: PointerEvent) => {
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
-      if (pointersRef.current.size !== 1) return;
 
-      // draw 모드에서는 기존 스티커 히트테스트·제스처를 전부 건너뛰고 그리기만 시작한다
       if (isDrawModeRef.current) {
-        drawingPointerIdRef.current = e.pointerId;
-        setStrokePoints([toWorldPoint(cameraRef.current, point)]);
+        if (pointersRef.current.size === 1) {
+          drawingPointerIdRef.current = e.pointerId;
+          setStrokePoints([toWorldPoint(cameraRef.current, point)]);
+        } else if (pointersRef.current.size === 2) {
+          // 두 번째 손가락 -> 그리던 중이었으면 버리고 핀치줌으로 전환
+          finalizeDrawing(false);
+          const points = [...pointersRef.current.values()];
+          drawPinchRef.current = {
+            startCamera: cameraRef.current,
+            startCentroid: centroid(points),
+            startDistance: distance(points[0]!, points[1]!),
+          };
+        }
         return;
       }
+
+      if (pointersRef.current.size !== 1) return;
 
       const stickerId = hitTestStickerId(e.target);
       tapCandidateRef.current = { pointerId: e.pointerId, stickerId, startClient: point };
@@ -284,6 +318,20 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       pointersRef.current.set(e.pointerId, point);
 
       if (isDrawModeRef.current) {
+        if (pointersRef.current.size >= 2) {
+          const pinch = drawPinchRef.current;
+          if (!pinch) return;
+          const points = [...pointersRef.current.values()];
+          setCamera(
+            computeBoardPinchZoom(
+              pinch.startCamera,
+              { centroid: pinch.startCentroid, distance: pinch.startDistance },
+              { centroid: centroid(points), distance: distance(points[0]!, points[1]!) },
+            ),
+          );
+          return;
+        }
+
         if (drawingPointerIdRef.current !== e.pointerId) return;
         const current = drawingPointsRef.current;
         if (!current) return;
@@ -379,20 +427,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       pointersRef.current.delete(e.pointerId);
 
       if (isDrawModeRef.current) {
+        // 드래그 없이 탭만 해도 점 하나(찍은 점)로 저장한다
         if (drawingPointerIdRef.current === e.pointerId) {
-          drawingPointerIdRef.current = null;
-          const finalPoints = drawingPointsRef.current;
-          setStrokePoints(null);
-
-          // 드래그 없이 탭만 해도 점 하나(찍은 점)로 저장한다
-          if (finalPoints && finalPoints.length > 0) {
-            saveDrawingRef.current(
-              toDrawingCreateInput(finalPoints, {
-                color: TEMP_DRAWING_COLOR,
-                strokeWidth: TEMP_DRAWING_STROKE_WIDTH,
-              }),
-            );
-          }
+          finalizeDrawing(true);
+        }
+        // 손가락이 하나 이하로 남으면 핀치줌 종료 (남은 손가락으로 이어서 그리진 않음)
+        if (pointersRef.current.size < 2) {
+          drawPinchRef.current = null;
         }
         return;
       }
