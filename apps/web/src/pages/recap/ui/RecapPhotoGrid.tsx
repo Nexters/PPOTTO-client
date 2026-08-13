@@ -14,8 +14,8 @@ export function RecapPhotoGrid({ stickerId, photos }: RecapPhotoGridProps) {
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="flex w-full justify-between">
-        <span className="text-body-01 font-semibold text-gray-50">테마 속 사진</span>
-        <span className="text-body-01 text-gray-500">{photos.length}</span>
+        <span className="text-body-01 text-center text-gray-50">테마 속 사진</span>
+        <span className="text-body-01 text-center font-medium text-gray-500">{photos.length}</span>
       </div>
       <div className="grid grid-cols-3 gap-3">
         {photos.map((photo, index) => (
