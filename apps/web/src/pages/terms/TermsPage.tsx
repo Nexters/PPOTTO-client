@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useAgreeTermsMutation } from '@/entities/terms/api/terms-mutations';
 import { useTermsListQuery } from '@/entities/terms/api/terms-queries';
 import { userApi } from '@/entities/user/api/user-api';
+import { hasSeenOnboarding } from '@/features/onboarding';
 import { Button } from '@/shared/ui/common/Button';
 
 const TERMS = [
@@ -46,8 +47,7 @@ export function TermsPage() {
         termIds: visibleTerms.flatMap(({ serverTerm }) => (serverTerm ? [serverTerm.id] : [])),
       });
       const me = await userApi.getMe();
-      const hasSeenOnboarding = localStorage.getItem(`ppotto:onboarding-seen:${me.id}`) === '1';
-      replace(hasSeenOnboarding ? 'Board' : 'Onboarding', {});
+      replace(hasSeenOnboarding(me.id) ? 'Board' : 'Onboarding', {});
     } catch (error) {
       console.error('약관 동의 실패', error);
     }

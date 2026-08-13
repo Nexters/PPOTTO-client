@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 
 import { useBoardListQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
+import { markOnboardingAsSeen } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/common/Button';
@@ -22,7 +23,7 @@ export function OnboardingPage() {
   );
 
   useEffect(() => {
-    if (me) localStorage.setItem(`ppotto:onboarding-seen:${me.id}`, '1');
+    if (me) markOnboardingAsSeen(me.id);
   }, [me]);
 
   const handlePrimaryAction = () => {
