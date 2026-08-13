@@ -16,8 +16,16 @@ type ApiSticker = BoardDetail['stickers'][number];
 /**
  * badgeRotation은 명세에 있지만, 뱃지는 항상 스티커 회전의 반대로 고정돼야 한다는 디자인 결정에 따라
  * 무시하고 -rotation을 직접 계산해서 쓴다.
+ *
+ * posX/posY/zIndex는 API 스펙상 null 가능하지만, 그 null 처리는
+ * BoardCanvas.tsx가 배치 계산 후 한 곳에서만 하고 나면 렌더링에 관여하는 이 타입 아래로는 항상
+ * 실제 값이 있다고 다뤄도 되게 만든다 — 그래야 여기서부터 매번 방어 코드를 반복하지 않아도 된다.
  */
-export type StickerData = Omit<ApiSticker, 'badgeRotation'>;
+export type StickerData = Omit<ApiSticker, 'badgeRotation' | 'posX' | 'posY' | 'zIndex'> & {
+  posX: number;
+  posY: number;
+  zIndex: number;
+};
 
 export function useStickerImage(src?: string) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
