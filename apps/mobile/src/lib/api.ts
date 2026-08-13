@@ -1,6 +1,8 @@
 import { createApiClient } from '@ppotto/api';
 import { router } from 'expo-router';
 
+import { qaFetch } from '@/shared/lib/qa-diagnostics';
+
 const baseUrl = process.env.EXPO_PUBLIC_API_URL;
 
 if (!baseUrl) {
@@ -14,6 +16,7 @@ async function getAccessToken(forceRefresh = false) {
 
 export const api = createApiClient({
   baseUrl,
+  fetch: qaFetch,
   getToken: () => getAccessToken(),
   refreshAccessToken: () => getAccessToken(true),
   onAuthExpired: () => router.replace('/'),

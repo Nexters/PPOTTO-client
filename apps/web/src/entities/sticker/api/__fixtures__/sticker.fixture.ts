@@ -8,6 +8,7 @@ export const stickerFixture: StickerRecap = {
     isNew: true,
     type: 'IMAGE',
     imageUrl: '/mock/sticker-cat.png',
+    mainColor: '#D4B9A4',
     textContent: null,
     mainColor: '#D4B9A4',
     posX: 62.5,

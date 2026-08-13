@@ -47,7 +47,7 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
   if (!data) return null;
 
   return (
-    <div className="flex min-h-full w-full flex-col pt-16 pb-16">
+    <div className="flex min-h-full w-full flex-col">
       <PhotoViewerHeader onBack={() => pop()} />
       <div className="mt-4 flex flex-1 flex-col gap-11">
         <div className="relative w-full flex-1" {...swipeHandlers}>

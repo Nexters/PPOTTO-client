@@ -32,7 +32,7 @@ const ThemeRecap = (
     alt=""
     width={1440}
     height={1304}
-    className="absolute inset-0 m-auto h-auto w-full"
+    className="absolute inset-0 w-full h-auto m-auto"
   />
 );
 
@@ -62,7 +62,7 @@ const DecorateBoard = (
     alt=""
     width={1440}
     height={1304}
-    className="absolute inset-0 m-auto h-auto w-full"
+    className="absolute inset-0 w-full h-auto m-auto"
   />
 );
 

@@ -18,7 +18,7 @@ describe('saveRecapImage', () => {
     expect(result).toBeInstanceOf(Blob);
   });
 
-  it('toCanvas를 includeQueryParams: true 옵션으로 호출한다', async () => {
+  it('toCanvas를 includeQueryParams: true, skipFonts: true, pixelRatio: 1 옵션으로 호출한다', async () => {
     const canvas = document.createElement('canvas');
     canvas.toBlob = (callback) => callback(new Blob(['fake']));
     toCanvas.mockResolvedValue(canvas);
@@ -26,6 +26,10 @@ describe('saveRecapImage', () => {
 
     await saveRecapImage(element);
 
-    expect(toCanvas).toHaveBeenCalledWith(element, { includeQueryParams: true });
+    expect(toCanvas).toHaveBeenCalledWith(element, {
+      includeQueryParams: true,
+      skipFonts: true,
+      pixelRatio: 1,
+    });
   });
 });
