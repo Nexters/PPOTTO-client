@@ -73,8 +73,8 @@ export function gestureReducer(state: Gesture | null, event: GestureEvent): Gest
           sticker,
           startClient: event.point,
           startTransform: {
-            x: sticker.posX,
-            y: sticker.posY,
+            x: sticker.posX ?? 0,
+            y: sticker.posY ?? 0,
             rotation: sticker.rotation,
             scale: sticker.scale,
           },

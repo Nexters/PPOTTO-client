@@ -1,7 +1,8 @@
 import { contract } from '@ppotto/bridge';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Linking, View } from 'react-native';
+import { Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
@@ -12,6 +13,11 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
+import {
+  recordWebQaDiagnosticMessage,
+  WEB_QA_DIAGNOSTICS_SCRIPT,
+} from '@/shared/lib/qa-diagnostics';
+import { isQaToolEnabled } from '@/shared/lib/qa-tool';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
@@ -19,6 +25,7 @@ const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL;
 
 // 앱 표준 웹뷰
 export function AppWebView({ path = '', onReady }: { path?: string; onReady?: () => void }) {
+  const qaToolEnabled = isQaToolEnabled();
   const ref = useRef<WebView>(null);
   const ready = useRef(false);
   const toast = useToast();
@@ -48,11 +55,17 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
   });
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#000' }}>
       <WebView
         ref={ref}
         source={{ uri: `${WEB_URL}${path}` }}
-        onMessage={(e) => pushMessage(e.nativeEvent.data)}
+        injectedJavaScriptBeforeContentLoaded={
+          qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : undefined
+        }
+        onMessage={(e) => {
+          const data = e.nativeEvent.data;
+          if (!recordWebQaDiagnosticMessage(data)) pushMessage(data);
+        }}
         onLoad={() => {
           if (ready.current) return;
           ready.current = true;
@@ -66,12 +79,12 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
         }}
         onLoadEnd={() => setLoaded(true)}
         allowsBackForwardNavigationGestures={false}
-        webviewDebuggingEnabled={__DEV__}
+        webviewDebuggingEnabled={qaToolEnabled}
         bounces={!boardActive}
         overScrollMode={boardActive ? 'never' : 'always'}
         scalesPageToFit={false}
       />
       {!loaded && <AppBackground />}
-    </View>
+    </SafeAreaView>
   );
 }
