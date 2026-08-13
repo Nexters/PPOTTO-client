@@ -20,6 +20,7 @@ import {
   zoomCamera,
   zoomCameraTo,
 } from '../model/board-camera';
+import { shouldSampleStrokePoint, toPathData } from '../model/board-drawing';
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
 import { computeBringToFrontZIndex, toLayoutInput } from '../model/board-layout';
 import {
@@ -48,6 +49,9 @@ const TAP_MOVE_THRESHOLD = 6;
 // 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
 const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
 const DOUBLE_TAP_MAX_DISTANCE = 24;
+// 색상 팔레트/펜 크기 UI가 아직 없어서 임시로 고정한 값 (디자인 확정되면 팔레트/슬라이더로 교체)
+const TEMP_DRAWING_COLOR = '#FFFFFF';
+const TEMP_DRAWING_STROKE_WIDTH = 4;
 
 function hitTestStickerId(target: EventTarget | null): string | null {
   if (!(target instanceof Element)) return null;
@@ -61,6 +65,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
+  // 그리는 도중인 선의 점들(보드 월드 좌표). 그리는 중이 아니면 null
+  const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
@@ -68,6 +74,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
   const isEditMode = mode === 'move';
+  const isDrawMode = mode === 'draw';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
   const selectedId = isEditMode ? selectedStickerId : null;
 
@@ -87,7 +94,9 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const stickersRef = useRef(stickers);
   const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
+  const isDrawModeRef = useRef(isDrawMode);
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
+  const drawingPointerIdRef = useRef<number | null>(null); // 그리기 중인 포인터 id (그리는 중이 아니면 null)
 
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
@@ -175,6 +184,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     stickersRef.current = stickers;
     selectedIdRef.current = selectedId;
     isEditModeRef.current = isEditMode;
+    isDrawModeRef.current = isDrawMode;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
     pushRef.current = push;
@@ -200,6 +210,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
       if (pointersRef.current.size !== 1) return;
+
+      // draw 모드에서는 기존 스티커 히트테스트·제스처를 전부 건너뛰고 그리기만 시작한다
+      if (isDrawModeRef.current) {
+        drawingPointerIdRef.current = e.pointerId;
+        setDrawingPoints([toWorldPoint(cameraRef.current, point)]);
+        return;
+      }
 
       const stickerId = hitTestStickerId(e.target);
       tapCandidateRef.current = { pointerId: e.pointerId, stickerId, startClient: point };
@@ -235,6 +252,16 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (!pointersRef.current.has(e.pointerId)) return;
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
+
+      if (isDrawModeRef.current) {
+        if (drawingPointerIdRef.current !== e.pointerId) return;
+        const worldPoint = toWorldPoint(cameraRef.current, point);
+        setDrawingPoints((current) => {
+          if (!current || !shouldSampleStrokePoint(current, worldPoint)) return current;
+          return [...current, worldPoint];
+        });
+        return;
+      }
 
       if (tapCandidateRef.current?.pointerId === e.pointerId) {
         if (distance(tapCandidateRef.current.startClient, point) > TAP_MOVE_THRESHOLD) {
@@ -319,6 +346,16 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (!pointersRef.current.has(e.pointerId)) return;
       const point = getLocalPoint(e);
       pointersRef.current.delete(e.pointerId);
+
+      if (isDrawModeRef.current) {
+        if (drawingPointerIdRef.current === e.pointerId) {
+          drawingPointerIdRef.current = null;
+          // 지금은 그리기 종료만 처리한다 — 저장/영구 렌더링은 다음 작업에서 연결
+          setDrawingPoints(null);
+        }
+        return;
+      }
+
       longPressRef.current.cancel();
 
       const gesture = gestureRef.current;
@@ -471,6 +508,19 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
         }}
       >
+        {/* 그리는 도중인 선의 실시간 미리보기. 저장된 그림 렌더링은 다음 작업에서 연결 */}
+        <svg style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>
+          {drawingPoints && (
+            <path
+              d={toPathData(drawingPoints)}
+              fill="none"
+              stroke={TEMP_DRAWING_COLOR}
+              strokeWidth={TEMP_DRAWING_STROKE_WIDTH}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+        </svg>
         {stickers.map((sticker) => (
           <Sticker
             key={sticker.id}
