@@ -27,6 +27,7 @@ export function PhotoFilmstrip({
         'px-[calc(50%-24px)] py-3',
       )}
     >
+      {/* TODO: 그룹 접힘/펼침 전환 애니메이션 */}
       {photos.map((photo, index) => {
         const isSelected = index === selectedIndex;
         const isGroupMember =
