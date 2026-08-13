@@ -35,6 +35,7 @@ export function PhotoSelectScreen() {
     mode?: string;
   }>();
   const mode = modeParam === 'additional' ? 'additional' : 'initial';
+  const minSubmitUnits = mode === 'additional' ? 20 : 90;
   const [album, setAlbum] = useState<AlbumKey>('RECENT');
   const insets = useSafeAreaInsets();
   const { data: me } = useMeQuery();
@@ -51,7 +52,7 @@ export function PhotoSelectScreen() {
   } = usePhotoSelection({
     album,
     targetUnits: TARGET_UNITS,
-    minSubmitUnits: mode === 'additional' ? 1 : 90,
+    minSubmitUnits,
     mode,
   });
 
@@ -127,7 +128,7 @@ export function PhotoSelectScreen() {
               <Text
                 className={canSubmit ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'}
               >
-                이 사진으로 보드 만들기{' '}
+                {canSubmit ? '이 사진으로 보드 만들기' : `최소 ${minSubmitUnits}장을 선택해 주세요`}{' '}
                 <Text className={canSubmit ? 'text-blue-500' : 'text-red-300'}>
                   {selectedCount} / {TARGET_UNITS}
                 </Text>

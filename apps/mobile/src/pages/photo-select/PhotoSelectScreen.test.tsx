@@ -138,7 +138,7 @@ async function renderLoadedScreen() {
 }
 
 const counter = (text: string) => screen.getByText(text);
-const cta = () => screen.getByRole('button', { name: /보드 만들기/ });
+const cta = () => screen.getByRole('button', { name: /보드 만들기|선택해 주세요/ });
 
 beforeEach(() => {
   mockSearchParams = { boardId: 'board-1' };
@@ -292,7 +292,7 @@ describe('추가 업로드', () => {
     mockSearchParams = { boardId: 'board-1', mode: 'additional' };
   });
 
-  it('사진을 개별 표시하고 한 장부터 제출할 수 있다', async () => {
+  it('사진을 개별 표시하고 20장부터 제출할 수 있다', async () => {
     setGallery(spacedAssets(150));
     const { user } = await renderLoadedScreen();
 
@@ -302,6 +302,14 @@ describe('추가 업로드', () => {
     await user.press(screen.getAllByRole('checkbox')[0]!);
 
     expect(counter('1 / 100')).toBeOnTheScreen();
+    expect(screen.getByText(/최소 20장을 선택해 주세요/)).toBeOnTheScreen();
+    expect(cta()).toBeDisabled();
+
+    for (let index = 1; index < 20; index += 1) {
+      await user.press(screen.getAllByRole('checkbox')[index]!);
+    }
+
+    expect(counter('20 / 100')).toBeOnTheScreen();
     expect(cta()).toBeEnabled();
   });
 
