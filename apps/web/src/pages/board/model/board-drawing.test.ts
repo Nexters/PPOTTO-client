@@ -4,7 +4,7 @@
  * board-drawing.ts는 draw 모드에서 캡처한 점들을 다루는 순수 함수를 담당한다.
  *
  * shouldSampleStrokePoint: pointermove로 들어오는 후보 점을 stroke에 채택할지 판단한다.
- * 직전 채택 점에서 일정 거리(보드 좌표 3단위 — 화면 픽셀 아님, 줌 배율에 따라 화면상 간격이
+ * 직전 채택 점에서 일정 거리(보드 좌표 2단위 — 화면 픽셀 아님, 줌 배율에 따라 화면상 간격이
  * 달라짐) 이상 떨어졌을 때만 채택해, 손을 거의 안 움직여도 점이 불필요하게 쌓이는 것을 막는다.
  *
  * toDrawingCreateInput: 캡처된 점 + 색상/굵기를 저장 API 요청 형태로 직렬화한다. scope는 항상
@@ -40,7 +40,7 @@ describe('shouldSampleStrokePoint', () => {
   it('직전 채택 점에서 임계 거리 이상 떨어지면 채택한다', () => {
     const points = [{ x: 0, y: 0 }];
 
-    expect(shouldSampleStrokePoint(points, { x: 3, y: 0 })).toBe(true);
+    expect(shouldSampleStrokePoint(points, { x: 2, y: 0 })).toBe(true);
   });
 
   it('여러 점 중 마지막으로 채택된 점 기준으로 판단한다', () => {

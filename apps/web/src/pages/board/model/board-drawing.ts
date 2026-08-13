@@ -11,7 +11,7 @@ export type DrawingItem = BoardDetail['drawings'][number];
 // 달라짐) 이상 떨어졌을 때만 새 점으로 채택한다.
 // pointermove는 손가락을 거의 안 움직여도 자주 발생해서, 그대로 다 담으면 점이 불필요하게 쌓인다.
 // 첫 시도값이라 렌더링 붙이고 실제로 보면서 조정 필요할 수 있음
-const STROKE_SAMPLE_MIN_DISTANCE = 3;
+const STROKE_SAMPLE_MIN_DISTANCE = 2;
 
 export function shouldSampleStrokePoint(points: Point[], candidate: Point): boolean {
   const last = points[points.length - 1];
