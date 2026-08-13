@@ -13,14 +13,12 @@ interface QaScreenRecorderNativeModule {
   stopBuffering(): Promise<void>;
 }
 
-const recorder =
-  Platform.OS === 'ios'
-    ? requireNativeModule<QaScreenRecorderNativeModule>('QaScreenRecorder')
-    : null;
+let recorder: QaScreenRecorderNativeModule | undefined;
 let recorderQueue: Promise<unknown> = Promise.resolve();
 
 function requireRecorder() {
-  if (!recorder) throw new Error('QA screen recording is only available on iOS');
+  if (Platform.OS !== 'ios') throw new Error('QA screen recording is only available on iOS');
+  recorder ??= requireNativeModule<QaScreenRecorderNativeModule>('QaScreenRecorder');
   return recorder;
 }
 

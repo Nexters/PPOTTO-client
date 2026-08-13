@@ -16,6 +16,7 @@ import {
   recordWebQaDiagnosticMessage,
   WEB_QA_DIAGNOSTICS_SCRIPT,
 } from '@/shared/lib/qa-diagnostics';
+import { isQaToolEnabled } from '@/shared/lib/qa-tool';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
@@ -23,6 +24,7 @@ const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL;
 
 // 앱 표준 웹뷰
 export function AppWebView({ path = '', onReady }: { path?: string; onReady?: () => void }) {
+  const qaToolEnabled = isQaToolEnabled();
   const ref = useRef<WebView>(null);
   const ready = useRef(false);
   const toast = useToast();
@@ -56,7 +58,9 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
       <WebView
         ref={ref}
         source={{ uri: `${WEB_URL}${path}` }}
-        injectedJavaScriptBeforeContentLoaded={WEB_QA_DIAGNOSTICS_SCRIPT}
+        injectedJavaScriptBeforeContentLoaded={
+          qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : undefined
+        }
         onMessage={(e) => {
           const data = e.nativeEvent.data;
           if (!recordWebQaDiagnosticMessage(data)) pushMessage(data);
@@ -74,7 +78,7 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
         }}
         onLoadEnd={() => setLoaded(true)}
         allowsBackForwardNavigationGestures={false}
-        webviewDebuggingEnabled={__DEV__}
+        webviewDebuggingEnabled={qaToolEnabled}
         bounces={!boardActive}
         overScrollMode={boardActive ? 'never' : 'always'}
         scalesPageToFit={false}

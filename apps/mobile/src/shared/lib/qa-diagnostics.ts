@@ -1,3 +1,5 @@
+import { isQaToolEnabled } from './qa-tool';
+
 const WINDOW_MS = 15_000;
 const MAX_EVENTS = 150;
 const TEXT_LIMIT = 2_000;
@@ -158,6 +160,8 @@ export async function captureQaFetch<ResponseType extends Response>(
   input: unknown,
   init?: unknown,
 ) {
+  if (!isQaToolEnabled()) return call();
+
   const at = Date.now();
   const meta = requestMeta(input, init);
   const event: QaNetworkDiagnostic = {
@@ -191,6 +195,8 @@ export const qaFetch: typeof globalThis.fetch = (input, init) =>
   captureQaFetch(() => nativeFetch(input, init), input, init);
 
 export function installRnConsoleDiagnostics() {
+  if (!isQaToolEnabled()) return () => undefined;
+
   const runtimeConsole = globalThis.console;
   const levels: QaConsoleLevel[] = ['log', 'info', 'warn', 'error', 'debug'];
   const originals = new Map<QaConsoleLevel, (...args: unknown[]) => void>();
@@ -226,6 +232,7 @@ function isConsoleLevel(value: unknown): value is QaConsoleLevel {
 }
 
 export function recordWebQaDiagnosticMessage(data: string) {
+  if (!isQaToolEnabled()) return false;
   if (!data.startsWith(WEB_MESSAGE_PREFIX)) return false;
 
   try {
