@@ -11,11 +11,11 @@ export function BoardHeader() {
 
   return (
     <div
-      className={cn('absolute inset-x-0 top-0 z-60 flex flex-col items-start', 'px-6 pt-16 pb-16')}
+      className={cn('absolute inset-x-0 top-0 z-60 flex flex-col items-start', 'px-6 pb-10')}
       style={{ backgroundImage: 'linear-gradient(to bottom, black 46%, transparent)' }}
     >
-      <div className="flex w-full items-center justify-between">
-        <Image src="/logo/Logo.svg" alt="PPOTTO" width={105} height={32} className="h-8 w-auto" />
+      <div className="flex items-center justify-between w-full">
+        <Image src="/logo/Logo.svg" alt="PPOTTO" width={105} height={32} className="w-auto h-8" />
         <button type="button" aria-label="설정" onClick={() => push('Settings', {})}>
           <IconSettings color="white" />
         </button>

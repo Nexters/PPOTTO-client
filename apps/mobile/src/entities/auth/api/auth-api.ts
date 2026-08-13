@@ -1,6 +1,7 @@
 import { createApiClient, type paths, unwrapData, unwrapVoid } from '@ppotto/api';
 
 import { api } from '@/lib/api';
+import { qaFetch } from '@/shared/lib/qa-diagnostics';
 
 export type LoginInput = paths['/auth/login']['post']['requestBody']['content']['application/json'];
 export type RefreshInput =
@@ -13,7 +14,7 @@ if (!baseUrl) {
 }
 
 // getToken이 붙은 공용 클라이언트를 쓰면 refresh가 getAccessToken을 다시 호출한다.
-const authClient = createApiClient({ baseUrl });
+const authClient = createApiClient({ baseUrl, fetch: qaFetch });
 
 export const authApi = {
   login: (input: LoginInput) => unwrapData(authClient.POST('/auth/login', { body: input })),

@@ -19,8 +19,8 @@ export function StickerBadgeMark({ sticker }: StickerBadgeMarkProps) {
     <div
       style={{
         position: 'absolute',
-        left: sticker.posX + offset.x,
-        top: sticker.posY + offset.y,
+        left: (sticker.posX ?? 0) + offset.x,
+        top: (sticker.posY ?? 0) + offset.y,
         zIndex: badgeZIndex(sticker),
         transform: 'translate(-50%, -50%)',
         pointerEvents: 'none',

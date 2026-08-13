@@ -12,22 +12,22 @@ describe('useLongPress', () => {
     vi.useRealTimers();
   });
 
-  it('누르고 500ms 이상 유지하면 대상 id와 함께 콜백이 실행된다', () => {
+  it('누르고 3000ms 이상 유지하면 대상 id와 함께 콜백이 실행된다', () => {
     const onLongPress = vi.fn();
     const { result } = renderHook(() => useLongPress({ onLongPress }));
 
     result.current.start({ x: 0, y: 0 }, 'sticker-1');
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(3000);
 
     expect(onLongPress).toHaveBeenCalledWith('sticker-1');
   });
 
-  it('500ms 전에 취소하면 콜백이 실행되지 않는다', () => {
+  it('3000ms 전에 취소하면 콜백이 실행되지 않는다', () => {
     const onLongPress = vi.fn();
     const { result } = renderHook(() => useLongPress({ onLongPress }));
 
     result.current.start({ x: 0, y: 0 }, 'sticker-1');
-    vi.advanceTimersByTime(400);
+    vi.advanceTimersByTime(2900);
     result.current.cancel();
     vi.advanceTimersByTime(200);
 
@@ -40,7 +40,7 @@ describe('useLongPress', () => {
 
     result.current.start({ x: 0, y: 0 }, 'sticker-1');
     result.current.move({ x: 20, y: 0 });
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(3000);
 
     expect(onLongPress).not.toHaveBeenCalled();
   });
@@ -51,7 +51,7 @@ describe('useLongPress', () => {
 
     result.current.start({ x: 0, y: 0 }, 'sticker-1');
     result.current.move({ x: 3, y: 0 });
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(3000);
 
     expect(onLongPress).toHaveBeenCalledTimes(1);
   });
@@ -61,9 +61,9 @@ describe('useLongPress', () => {
     const { result } = renderHook(() => useLongPress({ onLongPress }));
 
     result.current.start({ x: 0, y: 0 }, 'sticker-1');
-    vi.advanceTimersByTime(300);
+    vi.advanceTimersByTime(1500);
     result.current.start({ x: 100, y: 100 }, 'sticker-2');
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(3000);
 
     expect(onLongPress).toHaveBeenCalledTimes(1);
     expect(onLongPress).toHaveBeenCalledWith('sticker-2');
