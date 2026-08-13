@@ -5,7 +5,7 @@ import '@stackflow/plugin-basic-ui/index.css';
 import { AppScreen, basicUIPlugin } from '@stackflow/plugin-basic-ui';
 import { historySyncPlugin } from '@stackflow/plugin-history-sync';
 import { basicRendererPlugin } from '@stackflow/plugin-renderer-basic';
-import { stackflow, useFlow, type ActivityComponentType } from '@stackflow/react';
+import { stackflow, type ActivityComponentType } from '@stackflow/react';
 
 import { BoardPage } from '@/pages/board';
 import { LoginPage } from '@/pages/login';
@@ -17,18 +17,10 @@ import { TermsPage } from '@/pages/terms';
 
 import { config } from './config';
 
-const tempButton = 'rounded-12 bg-gray-900 px-4 py-2 text-body-04 text-gray-50';
-
 const LoginActivity: ActivityComponentType<'Login'> = () => {
-  const { push } = useFlow();
   return (
     <AppScreen>
       <LoginPage />
-      <div className="fixed inset-x-0 bottom-8 flex justify-center">
-        <button className={tempButton} onClick={() => push('Board', {})}>
-          보드로
-        </button>
-      </div>
     </AppScreen>
   );
 };

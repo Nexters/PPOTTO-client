@@ -1,4 +1,6 @@
 export { default as AppleLogo } from './AppleLogo';
+export { default as BigLogo } from './BigLogo';
+export { default as BigTitle } from './BigTitle';
 export { default as CheckCircle } from './CheckCircle';
 export { default as CheckCircleEmpty } from './CheckCircleEmpty';
 export { default as ChevronDown } from './ChevronDown';

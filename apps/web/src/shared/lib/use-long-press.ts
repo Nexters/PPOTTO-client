@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 
-const LONG_PRESS_DELAY_MS = 500;
+const LONG_PRESS_DELAY_MS = 3000;
 const MOVE_CANCEL_THRESHOLD_PX = 10;
 
 type Point = { x: number; y: number };
 
 type UseLongPressOptions = {
-  onLongPress: (stickerId: string) => void;
+  onLongPress: (targetId: string) => void;
 };
 
 export function useLongPress({ onLongPress }: UseLongPressOptions) {
@@ -23,11 +23,11 @@ export function useLongPress({ onLongPress }: UseLongPressOptions) {
 
   useEffect(() => cancel, []);
 
-  const start = (point: Point, stickerId: string) => {
+  const start = (point: Point, targetId: string) => {
     cancel();
     startPointRef.current = point;
     timerRef.current = setTimeout(() => {
-      onLongPress(stickerId);
+      onLongPress(targetId);
       cancel();
     }, LONG_PRESS_DELAY_MS);
   };

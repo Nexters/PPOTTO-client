@@ -1,0 +1,14 @@
+{
+  "name": "qa-screen-recorder",
+  "version": "0.1.0",
+  "description": "Local iOS rolling screen recorder for QA reports",
+  "main": "index.ts",
+  "private": true,
+  "license": "MIT",
+  "author": "Gallery100",
+  "homepage": "https://github.com/Nexters/Gallery100-client",
+  "repository": "https://github.com/Nexters/Gallery100-client.git",
+  "peerDependencies": {
+    "expo": "*"
+  }
+}

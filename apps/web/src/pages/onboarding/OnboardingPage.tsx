@@ -1,11 +1,11 @@
 'use client';
 
-import { ChevronLeft, Logo } from '@ppotto/assets';
-import { useFlow } from '@stackflow/react';
+import { Logo } from '@ppotto/assets';
 import { useEffect } from 'react';
 
 import { useBoardListQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
+import { markOnboardingAsSeen } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/common/Button';
@@ -18,22 +18,13 @@ export function OnboardingPage() {
   const { data: boards } = useBoardListQuery();
   const boardId = boards?.[0]?.id;
   const { data: me } = useMeQuery();
-  const { pop } = useFlow();
-  const { emblaRef, selectedIndex, isLastSlide, goNext, goPrevious } = useOnboardingCarousel(
+  const { emblaRef, selectedIndex, isLastSlide, goNext } = useOnboardingCarousel(
     ONBOARDING_SLIDES.length,
   );
 
   useEffect(() => {
-    if (me) localStorage.setItem(`ppotto:onboarding-seen:${me.id}`, '1');
+    if (me) markOnboardingAsSeen(me.id);
   }, [me]);
-
-  const handleBack = () => {
-    if (selectedIndex === 0) {
-      pop();
-      return;
-    }
-    goPrevious();
-  };
 
   const handlePrimaryAction = () => {
     if (isLastSlide) {
@@ -47,17 +38,20 @@ export function OnboardingPage() {
     <main
       className={cn('mx-auto flex h-dvh w-full max-w-107.5 flex-col', 'overflow-hidden text-white')}
     >
-      <header className="flex items-center justify-between px-6 h-18 shrink-0">
-        <button
-          type="button"
-          aria-label="이전으로"
-          onClick={handleBack}
-          className="flex items-center justify-center size-6"
-        >
-          <ChevronLeft width={24} height={24} />
-        </button>
-        <Logo width={105} height={32} />
-        <span className="size-6" aria-hidden />
+      <header
+        className={cn('relative z-10 flex items-center justify-center', 'h-18 shrink-0 px-6')}
+      >
+        <div
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-x-0 top-0 -bottom-10',
+            'bg-linear-to-b from-black to-transparent',
+          )}
+        />
+        <div className="relative z-10">
+          <Logo width={105} height={32} />
+        </div>
+        <span className="relative z-10 size-6" aria-hidden />
       </header>
 
       <div className="flex flex-col justify-center flex-1 min-h-0">
@@ -81,7 +75,7 @@ export function OnboardingPage() {
         <OnboardingIndicator currentIndex={selectedIndex} className="pt-6 mx-auto shrink-0" />
       </div>
 
-      <footer className="px-6 pt-10 text-black shrink-0 pb-11">
+      <footer className="px-6 pt-10 text-black shrink-0">
         <Button onClick={handlePrimaryAction}>
           {isLastSlide ? '사진 업로드 하러가기' : '다음'}
         </Button>

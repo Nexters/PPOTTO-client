@@ -1,6 +1,8 @@
 import { fetch } from 'expo/fetch';
 import { File } from 'expo-file-system';
 
+import { captureQaFetch } from '@/shared/lib/qa-diagnostics';
+
 import { logPhotoUpload, logPhotoUploadError } from '../lib/photo-upload-log';
 import type { PutPhotoInput, PutPhotoResult } from '../model/upload-runner';
 
@@ -11,14 +13,15 @@ export async function putPhoto({
   uploadUrl,
 }: PutPhotoInput): Promise<PutPhotoResult> {
   try {
-    const response = await fetch(uploadUrl, {
+    const init = {
       method: 'PUT',
       headers: {
         'Content-Type': contentType,
         'x-goog-content-length-range': '0,15728640',
       },
       body: new File(fileUri),
-    });
+    };
+    const response = await captureQaFetch(() => fetch(uploadUrl, init), uploadUrl, init);
 
     if (response.ok) return { ok: true };
     logPhotoUpload(`GCS 응답 실패 (HTTP ${response.status})`);
