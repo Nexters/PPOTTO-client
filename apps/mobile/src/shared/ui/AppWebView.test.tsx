@@ -68,7 +68,7 @@ jest.mock('webview-bridge-kit/react-native', () => ({
 }));
 
 const { router } = jest.requireMock('expo-router') as {
-  router: { replace: jest.Mock };
+  router: { push: jest.Mock; replace: jest.Mock };
 };
 const originalQaToolEnabled = process.env.EXPO_PUBLIC_QA_TOOL_ENABLED;
 
@@ -119,6 +119,23 @@ describe('WebView 로딩', () => {
     mockOnLoad?.();
 
     expect(onReady).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('사진 선택 화면 이동', () => {
+  it('웹이 전달한 업로드 모드를 사진 선택 화면에 넘긴다', async () => {
+    await render(<AppWebView />);
+
+    const openPhotoSelect = mockBridgeHandlers.OPEN_PHOTO_SELECT as (payload: {
+      boardId: string;
+      mode: 'initial' | 'additional';
+    }) => void;
+    openPhotoSelect({ boardId: 'board-1', mode: 'additional' });
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/photo-select',
+      params: { boardId: 'board-1', mode: 'additional' },
+    });
   });
 });
 

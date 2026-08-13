@@ -29,7 +29,9 @@ export const contract = defineContract({
   LOGOUT: request(),
   WITHDRAW: request(),
   AUTH_EXPIRED: command(),
-  OPEN_PHOTO_SELECT: command({ payload: z.object({ boardId: z.string() }) }),
+  OPEN_PHOTO_SELECT: command({
+    payload: z.object({ boardId: z.string(), mode: z.enum(['initial', 'additional']) }),
+  }),
   // 보드 화면 진입/이탈 — 보드에 있는 동안만 바운스 끔
   SET_BOARD_ACTIVE: command({ payload: z.object({ active: z.boolean() }) }),
 });

@@ -1,7 +1,19 @@
-import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  userEvent,
+  waitFor,
+} from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { usePhotoSelection } from '@/features/photo-selection';
+
 import { PhotoSelectScreen } from './PhotoSelectScreen';
+
+let mockSearchParams: { boardId: string; mode?: string } = { boardId: 'board-1' };
 
 /**
  * 동작 범위 (2026-07-30 인터뷰, 2026-07-30 축소)
@@ -38,7 +50,7 @@ jest.mock('expo-media-library', () => ({
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'job-1') }));
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), replace: jest.fn() },
-  useLocalSearchParams: jest.fn(() => ({ boardId: 'board-1' })),
+  useLocalSearchParams: jest.fn(() => mockSearchParams),
 }));
 jest.mock('expo-image-manipulator', () => ({
   ImageManipulator: {
@@ -61,6 +73,9 @@ jest.mock('expo-image-manipulator', () => ({
 }));
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: { start: jest.fn() },
+}));
+jest.mock('@/entities/user/api/user-queries', () => ({
+  useMeQuery: () => ({ data: { name: '뽀또' } }),
 }));
 
 const { getAssetsAsync, requestPermissionsAsync } = jest.requireMock('expo-media-library') as {
@@ -126,6 +141,7 @@ const counter = (text: string) => screen.getByText(text);
 const cta = () => screen.getByRole('button', { name: /보드 만들기/ });
 
 beforeEach(() => {
+  mockSearchParams = { boardId: 'board-1' };
   jest.clearAllMocks();
 });
 
@@ -134,6 +150,7 @@ it('진입 시 불러온 그룹을 전체 선택 상태로 표시하고 카운�
 
   await renderLoadedScreen();
 
+  expect(screen.getByText('뽀또님의 최근 사진 100장을 골랐어요')).toBeOnTheScreen();
   expect(counter('100 / 100')).toBeOnTheScreen();
   expect(screen.getAllByRole('checkbox')[0]).toBeChecked();
 });
@@ -268,4 +285,74 @@ it('앨범에 100개가 안 되면 CTA가 비활성화된다', async () => {
 
   expect(counter('50 / 100')).toBeOnTheScreen();
   expect(cta()).toBeDisabled();
+});
+
+describe('추가 업로드', () => {
+  beforeEach(() => {
+    mockSearchParams = { boardId: 'board-1', mode: 'additional' };
+  });
+
+  it('사진을 개별 표시하고 한 장부터 제출할 수 있다', async () => {
+    setGallery(spacedAssets(150));
+    const { user } = await renderLoadedScreen();
+
+    expect(counter('0 / 100')).toBeOnTheScreen();
+    expect(cta()).toBeDisabled();
+
+    await user.press(screen.getAllByRole('checkbox')[0]!);
+
+    expect(counter('1 / 100')).toBeOnTheScreen();
+    expect(cta()).toBeEnabled();
+  });
+
+  it('자동 선택은 최신 사진 100장을 선택한다', async () => {
+    setGallery(spacedAssets(150));
+    const { user } = await renderLoadedScreen();
+
+    await user.press(screen.getByRole('button', { name: '자동 선택' }));
+
+    expect(counter('100 / 100')).toBeOnTheScreen();
+    expect(cta()).toBeEnabled();
+  });
+
+  it('스크롤 끝에 도달하면 다음 사진 페이지를 불러온다', async () => {
+    setGallery(spacedAssets(250));
+    await renderLoadedScreen();
+
+    await act(async () => {
+      fireEvent(screen.getByTestId('photo-grid'), 'onEndReached');
+    });
+
+    await waitFor(() =>
+      expect(getAssetsAsync).toHaveBeenCalledWith({
+        first: 100,
+        after: '100',
+        sortBy: 'creationTime',
+      }),
+    );
+  });
+
+  it('100장이 선택된 상태에서는 사진을 더 선택하지 않는다', async () => {
+    setGallery(spacedAssets(150));
+    const { result } = await renderHook(() =>
+      usePhotoSelection({
+        album: 'RECENT',
+        minSubmitUnits: 1,
+        mode: 'additional',
+        targetUnits: 100,
+      }),
+    );
+    await waitFor(() => expect(result.current.photoUnits).toHaveLength(100));
+
+    await act(() => result.current.toggleEverything());
+    await act(async () => {
+      await result.current.loadMore();
+    });
+    await waitFor(() => expect(result.current.photoUnits).toHaveLength(150));
+
+    await act(() => result.current.toggleUnit(result.current.photoUnits[100]!));
+
+    expect(result.current.selectedCount).toBe(100);
+    expect(result.current.photoUnits[100]).toMatchObject({ excluded: true });
+  });
 });

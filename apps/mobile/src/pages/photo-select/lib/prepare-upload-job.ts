@@ -1,6 +1,10 @@
 import * as MediaLibrary from 'expo-media-library';
 
-import type { GalleryPhoto, PhotoSelection } from '@/features/photo-selection';
+import {
+  type GalleryPhoto,
+  type PhotoSelection,
+  selectedPhotoGroups,
+} from '@/features/photo-selection';
 
 import { createUploadJob } from './create-upload-job';
 
@@ -18,9 +22,7 @@ export async function prepareUploadJob({
   selection,
   compressedPhotos,
 }: PrepareUploadJobOptions) {
-  const selectedPhotos = selection.groups.flatMap((group) =>
-    group.photos.slice(selection.excludedCounts[group.id] ?? 0),
-  );
+  const selectedPhotos = selectedPhotoGroups(selection).flatMap((group) => group.photos);
   const preparedPhotos = new Map(
     await Promise.all(
       selectedPhotos.map(async (source) => {
