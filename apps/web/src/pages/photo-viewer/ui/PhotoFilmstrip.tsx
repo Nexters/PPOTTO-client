@@ -53,7 +53,7 @@ export function PhotoFilmstrip({
                 'relative h-12 w-12 shrink-0 snap-center overflow-hidden',
                 rounded,
                 isTightGap ? 'mr-px' : 'mr-2',
-                'border',
+                'border transition-colors duration-200',
                 isSelected ? 'border-white' : 'border-transparent',
               )}
             >
@@ -77,7 +77,7 @@ export function PhotoFilmstrip({
             onClick={() => onSelect(index)}
             className={cn(
               'relative mr-2 shrink-0 snap-center',
-              'overflow-hidden rounded-sm',
+              'overflow-hidden rounded-sm transition-[height,width] duration-200',
               isSelected ? 'z-10 h-12.5 w-12.5' : 'h-10 w-10',
             )}
           >
