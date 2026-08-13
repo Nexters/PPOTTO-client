@@ -70,6 +70,9 @@ const DOUBLE_TAP_MAX_DISTANCE = 24;
 // 색상 팔레트/펜 크기 UI가 아직 없어서 임시로 고정한 값 (디자인 확정되면 팔레트/슬라이더로 교체)
 const TEMP_DRAWING_COLOR = '#FFFFFF';
 const TEMP_DRAWING_STROKE_WIDTH = 4;
+// 두 번째 손가락이 닿았을 때(핀치줌 전환), 그리던 선의 시작점~마지막점 거리(보드 좌표 단위)가
+// 이 값 이상이면 핀치줌 시작 의도가 아니라 실제로 그리던 중이었다고 보고 저장한다
+const DRAW_PINCH_INTERRUPT_KEEP_DISTANCE = 2;
 // 새 스티커 배치 후 카메라가 포커스로 이동하는 시간(ms)
 const CAMERA_FOCUS_ANIMATION_MS = 350;
 // 카메라 포커스 범위(AABB) 계산용 스티커 절반 크기 근사치. 실제 이미지 크기를 몰라서(로드해봐야
@@ -376,8 +379,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       setDrawingPoints(next);
     };
 
-    // 그리던 선을 끝낸다. shouldSave=true(손 떼서 끝난 경우)면 저장하고,
-    // false(두 번째 손가락이 끼어들어 핀치줌으로 전환된 경우)면 버린다 — 줌하려던 건데 점이 찍히면 안 되니까
+    // 그리던 선을 끝낸다. shouldSave=false면 버린다
+    // (핀치줌 시작 의도로 두 손가락이 거의 동시에 닿아 점 하나만 찍힌 경우)
     const finalizeDrawing = (shouldSave: boolean) => {
       const finalPoints = drawingPointsRef.current;
       drawingPointerIdRef.current = null;
@@ -402,8 +405,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           drawingPointerIdRef.current = e.pointerId;
           setStrokePoints([toWorldPoint(cameraRef.current, point)]);
         } else if (pointersRef.current.size === 2) {
-          // 두 번째 손가락 -> 그리던 중이었으면 버리고 핀치줌으로 전환
-          finalizeDrawing(false);
+          const drawnPoints = drawingPointsRef.current;
+          const drewBeyondPoint =
+            drawnPoints !== null &&
+            drawnPoints.length > 0 &&
+            distance(drawnPoints[0]!, drawnPoints[drawnPoints.length - 1]!) >=
+              DRAW_PINCH_INTERRUPT_KEEP_DISTANCE;
+          finalizeDrawing(drewBeyondPoint);
           const points = [...pointersRef.current.values()];
           drawPinchRef.current = {
             startCamera: cameraRef.current,
