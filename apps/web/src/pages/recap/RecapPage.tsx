@@ -1,5 +1,5 @@
 import { useFlow } from '@stackflow/react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { cn } from '@/shared/lib/cn';
@@ -32,10 +32,15 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
     }
   }, [data?.sticker.isNew, markViewed, stickerId]);
 
+  const tagContents = useMemo(
+    () =>
+      (data?.comments.filter((comment) => comment.posX == null) ?? []).map((tag) => tag.content),
+    [data?.comments],
+  );
+
   if (!data) return null;
 
   const floatComments = data.comments.filter((comment) => comment.posX != null);
-  const tags = data.comments.filter((comment) => comment.posX == null);
 
   return (
     <div
@@ -63,7 +68,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
               />
               <RecapSummary content={data.summary} />
             </div>
-            <RecapThemeTags tags={tags.map((tag) => tag.content)} />
+            <RecapThemeTags tags={tagContents} />
           </div>
         </div>
       </div>
