@@ -34,7 +34,7 @@ export function RecapThemeTags({ tags }: RecapThemeTagsProps) {
 
   return (
     <div className="flex w-full flex-col items-center gap-2">
-      <span className="text-caption-01 text-center text-gray-400">테마 분석</span>
+      <span className="text-caption-01 text-center text-gray-400 whitespace-nowrap">테마 분석</span>
 
       <div ref={containerRef} className="flex w-full flex-col items-center gap-2">
         {rows.map((row, rowIndex) => (

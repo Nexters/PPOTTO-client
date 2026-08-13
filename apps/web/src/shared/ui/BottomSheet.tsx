@@ -8,12 +8,18 @@ type BottomSheetProps = {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  overlayClassName?: string;
 };
 
-export function BottomSheet({ isOpen, onClose, children }: BottomSheetProps) {
+export function BottomSheet({
+  isOpen,
+  onClose,
+  children,
+  overlayClassName = 'backdrop-blur-[30px]',
+}: BottomSheetProps) {
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <Dialog.Overlay className="modal-overlay fixed inset-0 z-50 backdrop-blur-[30px]" />
+      <Dialog.Overlay className={cn('modal-overlay fixed inset-0 z-50', overlayClassName)} />
       <Dialog.Content
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => e.preventDefault()}
