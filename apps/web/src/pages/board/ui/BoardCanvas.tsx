@@ -20,7 +20,12 @@ import {
   zoomCamera,
   zoomCameraTo,
 } from '../model/board-camera';
-import { shouldSampleStrokePoint, toPathData } from '../model/board-drawing';
+import {
+  type DrawingCreateInput,
+  parseStrokePoints,
+  shouldSampleStrokePoint,
+  toDrawingCreateInput,
+} from '../model/board-drawing';
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
 import { computeBringToFrontZIndex, toLayoutInput } from '../model/board-layout';
 import {
@@ -33,6 +38,7 @@ import { useDeleteSticker } from '../model/use-delete-sticker';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 
 import type { ToolbarMode } from './BoardToolbar';
+import { DrawingStroke } from './DrawingStroke';
 import { SelectBox } from './SelectBox';
 import { Sticker, type StickerData } from './Sticker';
 import { StickerBadgeMark } from './StickerBadgeMark';
@@ -89,6 +95,13 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const stickers: StickerData[] = data
     ? [...data.stickers].sort((a, b) => a.zIndex - b.zIndex)
     : [];
+  // 저장된 그림(전부 scope=BOARD, 스티커 귀속은 별도 이슈) — 렌더용으로 stroke에서 점 배열을 복원
+  const drawings = (data?.drawings ?? []).map((drawing) => ({
+    id: drawing.id,
+    points: parseStrokePoints(drawing.stroke),
+    color: drawing.color,
+    strokeWidth: drawing.strokeWidth,
+  }));
 
   const cameraRef = useRef(camera);
   const stickersRef = useRef(stickers);
@@ -97,6 +110,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const isDrawModeRef = useRef(isDrawMode);
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
   const drawingPointerIdRef = useRef<number | null>(null); // 그리기 중인 포인터 id (그리는 중이 아니면 null)
+  const drawingPointsRef = useRef<Point[] | null>(null); // 그리는 도중인 선의 점들
 
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
@@ -173,8 +187,18 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     return { ...sticker, zIndex: newZIndex };
   };
 
+  // 새 그림을 캐시에 낙관적으로 반영하고 저장 요청을 보냄
+  const saveDrawing = (input: DrawingCreateInput) => {
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current ? { ...current, drawings: [...current.drawings, input] } : current,
+    );
+
+    saveLayout({ boardId, input: { drawings: { created: [input] } } });
+  };
+
   const saveStickerLayoutRef = useRef(saveStickerLayout);
   const selectStickerRef = useRef(selectSticker);
+  const saveDrawingRef = useRef(saveDrawing);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
 
@@ -187,6 +211,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     isDrawModeRef.current = isDrawMode;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
+    saveDrawingRef.current = saveDrawing;
     pushRef.current = push;
     longPressRef.current = longPress;
   });
@@ -206,6 +231,11 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       setDragTransform(next);
     };
 
+    const setStrokePoints = (next: Point[] | null) => {
+      drawingPointsRef.current = next;
+      setDrawingPoints(next);
+    };
+
     const handlePointerDown = (e: PointerEvent) => {
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
@@ -214,7 +244,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       // draw 모드에서는 기존 스티커 히트테스트·제스처를 전부 건너뛰고 그리기만 시작한다
       if (isDrawModeRef.current) {
         drawingPointerIdRef.current = e.pointerId;
-        setDrawingPoints([toWorldPoint(cameraRef.current, point)]);
+        setStrokePoints([toWorldPoint(cameraRef.current, point)]);
         return;
       }
 
@@ -255,11 +285,12 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
 
       if (isDrawModeRef.current) {
         if (drawingPointerIdRef.current !== e.pointerId) return;
+        const current = drawingPointsRef.current;
+        if (!current) return;
         const worldPoint = toWorldPoint(cameraRef.current, point);
-        setDrawingPoints((current) => {
-          if (!current || !shouldSampleStrokePoint(current, worldPoint)) return current;
-          return [...current, worldPoint];
-        });
+        if (shouldSampleStrokePoint(current, worldPoint)) {
+          setStrokePoints([...current, worldPoint]);
+        }
         return;
       }
 
@@ -350,8 +381,18 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (isDrawModeRef.current) {
         if (drawingPointerIdRef.current === e.pointerId) {
           drawingPointerIdRef.current = null;
-          // 지금은 그리기 종료만 처리한다 — 저장/영구 렌더링은 다음 작업에서 연결
-          setDrawingPoints(null);
+          const finalPoints = drawingPointsRef.current;
+          setStrokePoints(null);
+
+          // 드래그 없이 탭만 해도 점 하나(찍은 점)로 저장한다
+          if (finalPoints && finalPoints.length > 0) {
+            saveDrawingRef.current(
+              toDrawingCreateInput(finalPoints, {
+                color: TEMP_DRAWING_COLOR,
+                strokeWidth: TEMP_DRAWING_STROKE_WIDTH,
+              }),
+            );
+          }
         }
         return;
       }
@@ -508,16 +549,21 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
         }}
       >
-        {/* 그리는 도중인 선의 실시간 미리보기. 저장된 그림 렌더링은 다음 작업에서 연결 */}
+        {/* 저장된 그림 + 그리는 도중인 선의 실시간 미리보기 */}
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>
+          {drawings.map((drawing) => (
+            <DrawingStroke
+              key={drawing.id}
+              points={drawing.points}
+              color={drawing.color}
+              strokeWidth={drawing.strokeWidth}
+            />
+          ))}
           {drawingPoints && (
-            <path
-              d={toPathData(drawingPoints)}
-              fill="none"
-              stroke={TEMP_DRAWING_COLOR}
+            <DrawingStroke
+              points={drawingPoints}
+              color={TEMP_DRAWING_COLOR}
               strokeWidth={TEMP_DRAWING_STROKE_WIDTH}
-              strokeLinecap="round"
-              strokeLinejoin="round"
             />
           )}
         </svg>

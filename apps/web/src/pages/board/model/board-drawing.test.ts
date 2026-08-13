@@ -12,10 +12,19 @@
  * 범위에서 제외했다(별도 이슈에서 다룸).
  *
  * toPathData: 점들을 SVG path의 d 속성 문자열로 변환한다.
+ *
+ * parseStrokePoints: 저장된 그림의 stroke(자유 형식 JSON)에서 점 배열을 복원한다. toDrawingCreateInput이
+ * 쓴 형식({ points: [x, y][] })만 인식하고, 그 외(다른 클라이언트가 다른 형식으로 저장했거나 손상된 데이터)는
+ * 빈 배열로 취급해 렌더링이 깨지지 않게 한다.
  */
 import { describe, expect, it } from 'vitest';
 
-import { shouldSampleStrokePoint, toDrawingCreateInput, toPathData } from './board-drawing';
+import {
+  parseStrokePoints,
+  shouldSampleStrokePoint,
+  toDrawingCreateInput,
+  toPathData,
+} from './board-drawing';
 
 describe('shouldSampleStrokePoint', () => {
   it('아직 채택된 점이 없으면 항상 채택한다', () => {
@@ -99,5 +108,45 @@ describe('toPathData', () => {
     ];
 
     expect(toPathData(points)).toBe('M0,0 L10,5 L20,15');
+  });
+});
+
+describe('parseStrokePoints', () => {
+  it('toDrawingCreateInput이 만든 형식을 점 배열로 복원한다', () => {
+    const stroke = {
+      points: [
+        [10.5, 22],
+        [14.2, 25.1],
+      ],
+    };
+
+    expect(parseStrokePoints(stroke)).toEqual([
+      { x: 10.5, y: 22 },
+      { x: 14.2, y: 25.1 },
+    ]);
+  });
+
+  it('points 필드가 없으면 빈 배열을 반환한다', () => {
+    expect(parseStrokePoints({})).toEqual([]);
+  });
+
+  it('stroke가 null/undefined면 빈 배열을 반환한다', () => {
+    expect(parseStrokePoints(null)).toEqual([]);
+    expect(parseStrokePoints(undefined)).toEqual([]);
+  });
+
+  it('points가 배열이 아니면 빈 배열을 반환한다', () => {
+    expect(parseStrokePoints({ points: 'invalid' })).toEqual([]);
+  });
+
+  it('[x, y] 쌍이 아닌 항목은 걸러내고 나머지만 복원한다', () => {
+    const stroke = {
+      points: [[1, 2], 'invalid', [3], [4, 5]],
+    };
+
+    expect(parseStrokePoints(stroke)).toEqual([
+      { x: 1, y: 2 },
+      { x: 4, y: 5 },
+    ]);
   });
 });
