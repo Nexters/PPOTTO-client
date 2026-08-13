@@ -1,13 +1,17 @@
 import Constants from 'expo-constants';
 import { useEffect, useReducer, useState } from 'react';
-import { Animated, PanResponder, Platform, Pressable, Text, View } from 'react-native';
+import { Animated, AppState, PanResponder, Platform, Pressable, Text, View } from 'react-native';
 import { FullWindowOverlay } from 'react-native-screens';
 
 import { cn } from '@/shared/lib/cn';
 import { getQaDiagnostics, installRnConsoleDiagnostics } from '@/shared/lib/qa-diagnostics';
 import { useToast } from '@/shared/ui/Toast';
 
-import { exportLastClip, startBuffering } from '../../../../modules/qa-screen-recorder';
+import {
+  exportLastClip,
+  restartBuffering,
+  stopBuffering,
+} from '../../../../modules/qa-screen-recorder';
 import { submitQaReport } from '../api/submit-qa-report';
 import type { QaReport } from '../model/qa-report';
 import { initialQaRecorderState, qaRecorderReducer } from '../model/qa-recorder-state';
@@ -42,21 +46,38 @@ export function QaRecorderProbe() {
     if (Platform.OS !== 'ios') return;
 
     let active = true;
-    void startBuffering().then(
-      () => {
-        if (active) send({ type: 'RECORDING_STARTED' });
-      },
-      (error) => {
+    const startFreshBuffer = async () => {
+      try {
+        await restartBuffering();
+        if (active && AppState.currentState === 'active') {
+          send({ type: 'RECORDING_STARTED' });
+        }
+      } catch (error) {
         console.error('[qa-recorder] buffering failed', error);
-        if (active) {
+        if (active && AppState.currentState === 'active') {
           send({ type: 'RECORDING_FAILED' });
           toast('화면 기록을 시작하지 못했어요.');
         }
-      },
-    );
+      }
+    };
+
+    const handleAppState = (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        void startFreshBuffer();
+        return;
+      }
+
+      send({ type: 'RECORDING_INTERRUPTED' });
+      void stopBuffering().catch(() => undefined);
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppState);
+    handleAppState(AppState.currentState);
 
     return () => {
       active = false;
+      subscription.remove();
+      void stopBuffering().catch(() => undefined);
     };
   }, [toast]);
 

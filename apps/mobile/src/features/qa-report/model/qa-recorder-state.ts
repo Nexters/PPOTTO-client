@@ -9,6 +9,7 @@ export type QaRecorderState =
   | { status: 'unavailable' };
 
 export type QaRecorderEvent =
+  | { type: 'RECORDING_INTERRUPTED' }
   | { type: 'RECORDING_STARTED' }
   | { type: 'RECORDING_FAILED' }
   | { type: 'EXPORT_STARTED' }
@@ -23,6 +24,12 @@ export const initialQaRecorderState: QaRecorderState = { status: 'starting' };
 
 export function qaRecorderReducer(state: QaRecorderState, event: QaRecorderEvent): QaRecorderState {
   switch (event.type) {
+    case 'RECORDING_INTERRUPTED':
+      return state.status === 'ready' ||
+        state.status === 'exporting' ||
+        state.status === 'unavailable'
+        ? { status: 'starting' }
+        : state;
     case 'RECORDING_STARTED':
       return state.status === 'starting' ? { status: 'ready' } : state;
     case 'RECORDING_FAILED':
