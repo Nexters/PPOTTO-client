@@ -16,6 +16,6 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.framework = 'ReplayKit'
+  s.frameworks = ['AVFoundation', 'ReplayKit']
   s.source_files = '**/*.{h,m,mm,swift}'
 end

@@ -36,7 +36,6 @@
     },
     "plugins": [
       "expo-router",
-      "react-native-compressor",
       "expo-apple-authentication",
       [
         "expo-media-library",

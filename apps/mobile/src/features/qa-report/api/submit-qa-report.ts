@@ -1,9 +1,9 @@
 import { fetch } from 'expo/fetch';
 import { File } from 'expo-file-system';
-import { Video } from 'react-native-compressor';
 
 import { captureQaFetch, formatQaDiagnostics } from '@/shared/lib/qa-diagnostics';
 
+import { compressVideo } from '../../../../modules/qa-screen-recorder';
 import type { QaReport } from '../model/qa-report';
 
 const MAX_VIDEO_BYTES = 4_000_000;
@@ -11,15 +11,11 @@ const MAX_VIDEO_BYTES = 4_000_000;
 async function videoForUpload(report: QaReport) {
   if (report.video.size <= MAX_VIDEO_BYTES) return new File(report.video.uri);
 
-  const uri = await Video.compress(report.video.uri, {
-    compressionMethod: 'manual',
-    bitrate: 1_000_000,
-    maxSize: 480,
-    stripAudio: true,
-  });
-  const video = new File(uri);
-  if (video.size > MAX_VIDEO_BYTES) throw new Error('QA video is too large after compression');
-  return video;
+  const compressed = await compressVideo(report.video.uri, MAX_VIDEO_BYTES);
+  if (compressed.size > MAX_VIDEO_BYTES) {
+    throw new Error('QA video is too large after compression');
+  }
+  return new File(compressed.uri);
 }
 
 export async function submitQaReport(report: QaReport) {

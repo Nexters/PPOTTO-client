@@ -9,6 +9,7 @@ export interface QaScreenRecordingClip {
 interface QaScreenRecorderNativeModule {
   startBuffering(): Promise<void>;
   exportLastClip(): Promise<QaScreenRecordingClip>;
+  compressVideo(uri: string, maxBytes: number): Promise<QaScreenRecordingClip>;
   stopBuffering(): Promise<void>;
 }
 
@@ -16,12 +17,34 @@ const recorder =
   Platform.OS === 'ios'
     ? requireNativeModule<QaScreenRecorderNativeModule>('QaScreenRecorder')
     : null;
+let recorderQueue: Promise<unknown> = Promise.resolve();
 
 function requireRecorder() {
   if (!recorder) throw new Error('QA screen recording is only available on iOS');
   return recorder;
 }
 
-export const startBuffering = () => requireRecorder().startBuffering();
-export const exportLastClip = () => requireRecorder().exportLastClip();
-export const stopBuffering = () => requireRecorder().stopBuffering();
+function enqueueRecorderOperation<T>(operation: () => Promise<T>) {
+  const result = recorderQueue.then(operation, operation);
+  recorderQueue = result.catch(() => undefined);
+  return result;
+}
+
+export const startBuffering = () =>
+  enqueueRecorderOperation(() => requireRecorder().startBuffering());
+export const restartBuffering = () =>
+  enqueueRecorderOperation(async () => {
+    const nativeRecorder = requireRecorder();
+    try {
+      await nativeRecorder.stopBuffering();
+    } catch {
+      // ReplayKit may already have discarded the session in the background.
+    }
+    await nativeRecorder.startBuffering();
+  });
+export const exportLastClip = () =>
+  enqueueRecorderOperation(() => requireRecorder().exportLastClip());
+export const compressVideo = (uri: string, maxBytes: number) =>
+  requireRecorder().compressVideo(uri, maxBytes);
+export const stopBuffering = () =>
+  enqueueRecorderOperation(() => requireRecorder().stopBuffering());
