@@ -2,7 +2,7 @@
 
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import type { BoardDetail } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
@@ -72,6 +72,11 @@ type BoardCanvasProps = {
   onCanUndoChange?: (canUndo: boolean) => void;
 };
 
+export type BoardCanvasHandle = {
+  // 가장 최근에 그린 선을 삭제한다
+  undoLastStroke: () => void;
+};
+
 // 탭과 드래그를 구분하는 이동 허용 오차(px)
 const TAP_MOVE_THRESHOLD = 6;
 // 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
@@ -94,14 +99,10 @@ function hitTestStickerId(target: EventTarget | null): string | null {
   return el instanceof HTMLElement ? (el.dataset.stickerId ?? null) : null;
 }
 
-export function BoardCanvas({
-  boardId,
-  mode,
-  drawColor,
-  drawStrokeWidth,
-  onDrawingActiveChange,
-  onCanUndoChange,
-}: BoardCanvasProps) {
+export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(function BoardCanvas(
+  { boardId, mode, drawColor, drawStrokeWidth, onDrawingActiveChange, onCanUndoChange },
+  ref,
+) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
@@ -255,9 +256,20 @@ export function BoardCanvas({
     saveLayout({ boardId, input: { drawings: { created: [input] } } });
   };
 
+  // 그림을 캐시에서 낙관적으로 제거하고 삭제 요청을 보냄
+  const deleteDrawing = (id: string) => {
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current ? { ...current, drawings: current.drawings.filter((d) => d.id !== id) } : current,
+    );
+
+    saveLayout({ boardId, input: { drawings: { deletedIds: [id] } } });
+  };
+
   const saveStickerLayoutRef = useRef(saveStickerLayout);
   const selectStickerRef = useRef(selectSticker);
   const saveDrawingRef = useRef(saveDrawing);
+  const deleteDrawingRef = useRef(deleteDrawing);
+  const drawingsRef = useRef(drawings);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
   const onDrawingActiveChangeRef = useRef(onDrawingActiveChange);
@@ -276,6 +288,8 @@ export function BoardCanvas({
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
     saveDrawingRef.current = saveDrawing;
+    deleteDrawingRef.current = deleteDrawing;
+    drawingsRef.current = drawings;
     pushRef.current = push;
     longPressRef.current = longPress;
     onDrawingActiveChangeRef.current = onDrawingActiveChange;
@@ -285,6 +299,18 @@ export function BoardCanvas({
   useEffect(() => {
     onCanUndoChange?.(drawings.length > 0);
   }, [drawings.length, onCanUndoChange]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      undoLastStroke: () => {
+        const list = drawingsRef.current;
+        if (list.length === 0) return;
+        deleteDrawingRef.current(list[list.length - 1]!.id);
+      },
+    }),
+    [],
+  );
 
   // 배치 처리 시작한 스티커 id를 기억해서, 저장 응답이 캐시에 반영되기 전에 리렌더가 껴도
   // 같은 스티커를 다시 계산·저장하지 않게 막는다
@@ -816,4 +842,4 @@ export function BoardCanvas({
       />
     </div>
   );
-}
+});

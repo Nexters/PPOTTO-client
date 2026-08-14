@@ -1,12 +1,13 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { Modal } from '@/shared/ui/common/Modal';
 
 import { useBoardPageState } from './model/use-board-page-state';
+import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { DrawingColorPalette } from './ui/DrawingColorPalette';
@@ -34,6 +35,7 @@ export function BoardPage() {
   const [isDrawingActive, setIsDrawingActive] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const isDrawingUiHidden = toolbarMode === 'draw' && isDrawingActive;
+  const canvasRef = useRef<BoardCanvasHandle>(null);
 
   return (
     <>
@@ -42,7 +44,7 @@ export function BoardPage() {
           (toolbarMode === 'draw' ? (
             <DrawingHeader
               canUndo={canUndo}
-              onUndo={() => {}}
+              onUndo={() => canvasRef.current?.undoLastStroke()}
               onConfirm={() => setToolbarMode('default')}
             />
           ) : (
@@ -67,6 +69,7 @@ export function BoardPage() {
           drawStrokeWidth={drawStrokeWidth}
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
+          canvasRef={canvasRef}
         />
         {toolbarMode === 'draw' && !isDrawingUiHidden && (
           <DrawingSizeSlider
@@ -108,6 +111,7 @@ function BoardContent({
   drawStrokeWidth,
   onDrawingActiveChange,
   onCanUndoChange,
+  canvasRef,
 }: {
   boardId?: string;
   isLoading: boolean;
@@ -116,10 +120,12 @@ function BoardContent({
   drawStrokeWidth: number;
   onDrawingActiveChange: (active: boolean) => void;
   onCanUndoChange: (canUndo: boolean) => void;
+  canvasRef: RefObject<BoardCanvasHandle | null>;
 }) {
   if (boardId) {
     return (
       <BoardCanvas
+        ref={canvasRef}
         boardId={boardId}
         mode={mode}
         drawColor={drawColor}
