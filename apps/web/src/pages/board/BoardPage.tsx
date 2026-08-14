@@ -10,6 +10,7 @@ import { useBoardPageState } from './model/use-board-page-state';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { DrawingColorPalette } from './ui/DrawingColorPalette';
+import { DrawingHeader } from './ui/DrawingHeader';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
@@ -32,7 +33,15 @@ export function BoardPage() {
   return (
     <>
       <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
-        <BoardHeader />
+        {toolbarMode === 'draw' ? (
+          <DrawingHeader
+            canUndo={false}
+            onUndo={() => {}}
+            onConfirm={() => setToolbarMode('default')}
+          />
+        ) : (
+          <BoardHeader />
+        )}
         <button
           type="button"
           disabled={!canDeleteStickers || isDeletingStickers}
