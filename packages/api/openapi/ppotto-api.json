@@ -328,6 +328,7 @@
                           "isNew": false,
                           "type": "IMAGE",
                           "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
+                          "mainColor": "#FF6B6B",
                           "posX": 62.5,
                           "posY": 318,
                           "scale": 0.8,
@@ -1767,6 +1768,7 @@
                           "isNew": false,
                           "type": "IMAGE",
                           "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
+                          "mainColor": "#FF6B6B",
                           "posX": 62.5,
                           "posY": 318,
                           "scale": 0.8,
@@ -3771,22 +3773,27 @@
             "description": "TEXT 형 문구",
             "example": "whats in my mac"
           },
+          "mainColor": {
+            "type": "string",
+            "description": "스티커 대상의 대표 색상(hex). 리캡 상세 화면 배경색으로 사용",
+            "example": "#FF6B6B"
+          },
           "posX": {
-            "type": "number",
+            "type": ["number", "null"],
             "format": "double",
-            "description": "보드 좌표 X",
+            "description": "보드 좌표 X. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 62.5
           },
           "posY": {
-            "type": "number",
+            "type": ["number", "null"],
             "format": "double",
-            "description": "보드 좌표 Y",
+            "description": "보드 좌표 Y. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 318
           },
           "scale": {
             "type": "number",
             "format": "double",
-            "description": "확대 비율",
+            "description": "확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용",
             "example": 0.8
           },
           "rotation": {
@@ -3825,9 +3832,9 @@
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           },
           "zIndex": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "format": "int32",
-            "description": "겹침 순서",
+            "description": "겹침 순서. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 3
           }
         },
@@ -3837,13 +3844,11 @@
           "badgeRotation",
           "id",
           "isNew",
-          "posX",
-          "posY",
+          "mainColor",
           "rotation",
           "scale",
           "title",
-          "type",
-          "zIndex"
+          "type"
         ]
       },
       "CreateBoardRequest": {
@@ -4562,7 +4567,7 @@
           "scale": {
             "type": "number",
             "format": "double",
-            "description": "확대 비율",
+            "description": "확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용",
             "example": 1.1
           },
           "rotation": {
@@ -4867,21 +4872,21 @@
             "example": "whats in my mac"
           },
           "posX": {
-            "type": "number",
+            "type": ["number", "null"],
             "format": "double",
-            "description": "보드 좌표 X",
+            "description": "보드 좌표 X. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 62.5
           },
           "posY": {
-            "type": "number",
+            "type": ["number", "null"],
             "format": "double",
-            "description": "보드 좌표 Y",
+            "description": "보드 좌표 Y. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 318
           },
           "scale": {
             "type": "number",
             "format": "double",
-            "description": "확대 비율",
+            "description": "확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용",
             "example": 0.8
           },
           "rotation": {
@@ -4920,9 +4925,9 @@
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           },
           "zIndex": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "format": "int32",
-            "description": "겹침 순서",
+            "description": "겹침 순서. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함",
             "example": 3
           }
         },
@@ -4932,13 +4937,10 @@
           "badgeRotation",
           "id",
           "isNew",
-          "posX",
-          "posY",
           "rotation",
           "scale",
           "title",
-          "type",
-          "zIndex"
+          "type"
         ]
       },
       "DrawingResponse": {

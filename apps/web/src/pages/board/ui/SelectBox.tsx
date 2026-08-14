@@ -27,8 +27,8 @@ export function SelectBox({ sticker, transformOverride }: SelectBoxProps) {
 
   if (width <= 0 || height <= 0) return null;
 
-  const x = transformOverride?.x ?? sticker.posX;
-  const y = transformOverride?.y ?? sticker.posY;
+  const x = transformOverride?.x ?? sticker.posX ?? 0;
+  const y = transformOverride?.y ?? sticker.posY ?? 0;
   const rotation = transformOverride?.rotation ?? sticker.rotation;
 
   return (

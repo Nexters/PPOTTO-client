@@ -137,12 +137,12 @@ describe('computeBoardPinchZoom', () => {
 });
 
 describe('computeFocusTarget', () => {
-  it('대상 지점들의 중심이 뷰포트 중앙에 오도록 카메라 위치를 계산한다', () => {
+  it('대상 지점들을 감싸는 사각형(AABB)의 중심이 뷰포트 중앙에 오도록 카메라 위치를 계산한다', () => {
     const camera = { scale: 1, x: 999, y: 999 }; // 기존 위치와 무관하게 새로 계산됨을 보여주려고 임의값을 둠
     const targets = [
       { x: 100, y: 50 },
       { x: 300, y: 150 },
-    ]; // 중심 (200, 100)
+    ]; // AABB 중심 (200, 100), 뷰포트보다 훨씬 작아 줌 변화는 없음
     const viewport = { width: 800, height: 600 };
 
     const result = computeFocusTarget(camera, targets, viewport);
@@ -151,7 +151,7 @@ describe('computeFocusTarget', () => {
     expect(result.y).toBe(200); // 300 - 100 * 1
   });
 
-  it('현재 배율은 그대로 유지한다', () => {
+  it('대상이 뷰포트보다 작으면 확대하지 않고 현재 배율을 그대로 유지한다', () => {
     const camera = { scale: 2, x: 0, y: 0 };
     const targets = [{ x: 50, y: 50 }];
     const viewport = { width: 800, height: 600 };
@@ -159,5 +159,34 @@ describe('computeFocusTarget', () => {
     const result = computeFocusTarget(camera, targets, viewport);
 
     expect(result.scale).toBe(2);
+  });
+
+  it('대상의 AABB가 현재 배율로는 뷰포트에 안 들어오면 배율을 줄여서(줌아웃) 다 담는다', () => {
+    const camera = { scale: 1, x: 0, y: 0 };
+    const targets = [
+      { x: 0, y: 400 },
+      { x: 800, y: 500 },
+    ]; // AABB: 가로 800 x 세로 100, 중심 (400, 450)
+    const viewport = { width: 600, height: 800 };
+
+    const result = computeFocusTarget(camera, targets, viewport);
+
+    // 가로가 기준: min(600/800, 800/100) * 0.85(여백 배율) = 0.75 * 0.85 = 0.6375
+    expect(result.scale).toBeCloseTo(0.6375);
+    expect(result.x).toBeCloseTo(300 - 400 * 0.6375);
+    expect(result.y).toBeCloseTo(400 - 450 * 0.6375);
+  });
+
+  it('AABB로 계산한 배율이 현재 배율보다 커도(더 확대해도 다 담김) 확대하지는 않는다', () => {
+    const camera = { scale: 1, x: 0, y: 0 };
+    const targets = [
+      { x: 0, y: 0 },
+      { x: 10, y: 10 },
+    ]; // 아주 작은 무리라 확대해도 다 들어오지만, 기본 줌보다 더 확대하지는 않음
+    const viewport = { width: 800, height: 600 };
+
+    const result = computeFocusTarget(camera, targets, viewport);
+
+    expect(result.scale).toBe(1);
   });
 });

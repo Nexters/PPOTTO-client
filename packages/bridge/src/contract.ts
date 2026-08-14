@@ -32,6 +32,10 @@ export const contract = defineContract({
   OPEN_PHOTO_SELECT: command({
     payload: z.object({ boardId: z.string(), mode: z.enum(['initial', 'additional']) }),
   }),
+  SAVE_IMAGE: request({
+    payload: z.object({ base64: z.string() }),
+    response: z.object({ success: z.boolean() }),
+  }),
   // 보드 화면 진입/이탈 — 보드에 있는 동안만 바운스 끔
   SET_BOARD_ACTIVE: command({ payload: z.object({ active: z.boolean() }) }),
 });
