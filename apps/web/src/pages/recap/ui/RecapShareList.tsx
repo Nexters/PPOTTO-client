@@ -1,8 +1,8 @@
 import { Download, Filter, Instagram, Kakaotalk, X } from '@ppotto/assets';
 import { useState, type RefObject } from 'react';
 
+import { saveImageToDevice } from '@/features/save-image-to-device';
 import { captureElementAsBlob } from '@/shared/lib/capture-element-as-blob';
-import { saveImageToDevice } from '@/shared/lib/save-image-to-device';
 import { useToast } from '@/shared/ui/common/Toast';
 
 type RecapShareListProps = {

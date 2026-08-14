@@ -1,12 +1,16 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const request = vi.hoisted(() => vi.fn());
 
-vi.mock('./bridge', () => ({ bridge: { request } }));
+vi.mock('@/shared/lib/bridge', () => ({ bridge: { request } }));
 
 import { saveImageToDevice } from './save-image-to-device';
 
 describe('saveImageToDevice', () => {
+  afterEach(() => {
+    request.mockClear();
+  });
+
   it('blob을 base64로 바꿔 SAVE_IMAGE를 요청하고 성공 여부를 반환한다', async () => {
     request.mockResolvedValue({ success: true });
     const blob = new Blob(['fake'], { type: 'image/png' });
