@@ -15,12 +15,14 @@ const PALETTE_COLORS = [
 type DrawingColorPaletteProps = {
   color: string;
   onColorChange: (color: string) => void;
+  eyedropperColor: string;
   onEyedropperStart: () => void;
 };
 
 export function DrawingColorPalette({
   color,
   onColorChange,
+  eyedropperColor,
   onEyedropperStart,
 }: DrawingColorPaletteProps) {
   return (
@@ -47,9 +49,10 @@ export function DrawingColorPalette({
         type="button"
         aria-label="스포이드"
         onClick={onEyedropperStart}
+        style={{ backgroundColor: eyedropperColor }}
         className={cn(
           'flex size-7 shrink-0 items-center justify-center rounded-8',
-          'border-2 border-white bg-white',
+          'border-2 border-white',
         )}
       >
         <IconEyedropper color="#181818" width={20} height={20} />

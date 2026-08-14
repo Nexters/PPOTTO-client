@@ -1,11 +1,13 @@
 'use client';
 
+import { toCanvas } from 'html-to-image';
 import dynamic from 'next/dynamic';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { Modal } from '@/shared/ui/common/Modal';
 
+import { sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
@@ -37,19 +39,61 @@ export function BoardPage() {
   const [canUndo, setCanUndo] = useState(false);
   const isDrawingUiHidden = toolbarMode === 'draw' && isDrawingActive;
   const canvasRef = useRef<BoardCanvasHandle>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const captureRef = useRef<HTMLCanvasElement | null>(null);
+  const previewColorRef = useRef<string | null>(null);
 
   const [isPickingColor, setIsPickingColor] = useState(false);
   const [pickerPosition, setPickerPosition] = useState<{ x: number; y: number } | null>(null);
+  const [previewColor, setPreviewColor] = useState<string | null>(null);
+  const [eyedropperColor, setEyedropperColor] = useState('#ffffff');
 
-  // TODO: 지금은 마커가 실제 픽셀을 안 읽고 위치만 따라다닌다 — 다음 커밋에서 보드 캡처 붙여서
-  // 실제 색을 미리보기 하도록 연결 예정
+  const startPicking = async () => {
+    if (!pageRef.current) return;
+    // html-to-image로 그 시점의 보드 화면을 한 번 캡처한다
+    try {
+      captureRef.current = await toCanvas(pageRef.current, {
+        includeQueryParams: true,
+        skipFonts: true,
+        pixelRatio: 1,
+        onImageErrorHandler: (target) => {
+          console.warn('[eyedropper] 이미지 임베드 실패, 건너뜀', target);
+        },
+      });
+      setIsPickingColor(true);
+    } catch (error) {
+      console.error('[eyedropper] 보드 캡처 실패', error);
+    }
+  };
+
   useEffect(() => {
     if (!isPickingColor) return;
 
-    const updatePosition = (e: PointerEvent) => setPickerPosition({ x: e.clientX, y: e.clientY });
+    const updatePosition = (e: PointerEvent) => {
+      setPickerPosition({ x: e.clientX, y: e.clientY });
+
+      const canvas = captureRef.current;
+      const rect = pageRef.current?.getBoundingClientRect();
+      if (!canvas || !rect) return;
+      const color = sampleColorAt(canvas, e.clientX - rect.left, e.clientY - rect.top);
+      if (color) {
+        previewColorRef.current = color;
+        setPreviewColor(color);
+      }
+    };
+
     const stopPicking = () => {
       setIsPickingColor(false);
       setPickerPosition(null);
+      setPreviewColor(null);
+      captureRef.current = null;
+
+      const color = previewColorRef.current;
+      previewColorRef.current = null;
+      if (color) {
+        setDrawColor(color);
+        setEyedropperColor(color);
+      }
     };
 
     window.addEventListener('pointermove', updatePosition);
@@ -62,7 +106,7 @@ export function BoardPage() {
 
   return (
     <>
-      <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
+      <div ref={pageRef} className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
         {!isDrawingUiHidden &&
           (toolbarMode === 'draw' ? (
             <DrawingHeader
@@ -110,7 +154,8 @@ export function BoardPage() {
                 <DrawingColorPalette
                   color={drawColor}
                   onColorChange={setDrawColor}
-                  onEyedropperStart={() => setIsPickingColor(true)}
+                  eyedropperColor={eyedropperColor}
+                  onEyedropperStart={() => void startPicking()}
                 />
               ) : undefined
             }
@@ -121,7 +166,7 @@ export function BoardPage() {
             className="pointer-events-none fixed z-70 -translate-x-1/2 -translate-y-full"
             style={{ left: pickerPosition.x, top: pickerPosition.y }}
           >
-            <EyedropperMarker color={drawColor} />
+            <EyedropperMarker color={previewColor ?? drawColor} />
           </div>
         )}
       </div>
