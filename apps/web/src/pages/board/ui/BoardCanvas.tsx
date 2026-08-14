@@ -48,6 +48,7 @@ import { EmptyBoardStickerQuickMenu } from './empty-state/EmptyBoardStickerQuick
 import { SelectBox } from './SelectBox';
 import { Sticker, type StickerData } from './Sticker';
 import { StickerBadgeMark } from './StickerBadgeMark';
+import { StickerPreview } from './StickerPreview';
 import { StickerQuickMenu } from './StickerQuickMenu';
 
 type BoardCanvasProps = {
@@ -84,6 +85,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
   const [isRenamingTitle, setIsRenamingTitle] = useState(false);
+  const [directEditStickerId, setDirectEditStickerId] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
@@ -131,6 +133,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
   const quickMenuStickerIdRef = useRef(quickMenuStickerId);
+  const directEditStickerIdRef = useRef(directEditStickerId);
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
 
   const pointersRef = useRef(new Map<number, Point>());
@@ -223,6 +226,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     selectedIdRef.current = selectedId;
     isEditModeRef.current = isEditMode;
     quickMenuStickerIdRef.current = quickMenuStickerId;
+    directEditStickerIdRef.current = directEditStickerId;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
     pushRef.current = push;
@@ -335,8 +339,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     };
 
     const handlePointerDown = (e: PointerEvent) => {
-      // 퀵메뉴 열려있는 동안 캔버스 제스처 비활성화
-      if (quickMenuStickerIdRef.current !== null) return;
+      // 퀵메뉴/이름 직접 편집 중엔 캔버스 제스처 비활성화
+      if (quickMenuStickerIdRef.current !== null || directEditStickerIdRef.current !== null) return;
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
       if (pointersRef.current.size !== 1) return;
@@ -591,6 +595,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
 
   const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
   const quickMenuSticker = stickers.find((sticker) => sticker.id === quickMenuStickerId);
+  const directEditSticker = stickers.find((sticker) => sticker.id === directEditStickerId);
 
   return (
     <div
@@ -629,7 +634,11 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
         {stickers
           .filter((sticker) => sticker.id !== selectedId)
           .map((sticker) => (
-            <StickerBadgeMark key={sticker.id} sticker={sticker} />
+            <StickerBadgeMark
+              key={sticker.id}
+              sticker={sticker}
+              onNameClick={() => setDirectEditStickerId(sticker.id)}
+            />
           ))}
         {selectedSticker && (
           <SelectBox
@@ -638,6 +647,28 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           />
         )}
       </div>
+      {directEditSticker && (
+        <>
+          <div
+            aria-hidden
+            className="modal-overlay fixed inset-0 z-50 backdrop-blur-[30px]"
+            onClick={() => setDirectEditStickerId(null)}
+          />
+          <StickerPreview
+            sticker={directEditSticker}
+            titleInputRef={(node) => {
+              titleInputRef.current = node;
+              // 클릭으로 새로 마운트되는 input이라 콜백 ref에서 마운트 즉시 focus
+              node?.focus();
+            }}
+            isEditingTitle
+            onSubmitTitle={(title) => {
+              rename(directEditSticker.id, title, () => setDirectEditStickerId(null));
+            }}
+            onCancelEditTitle={() => setDirectEditStickerId(null)}
+          />
+        </>
+      )}
       <StickerQuickMenu
         sticker={quickMenuSticker}
         isOpen={quickMenuStickerId !== null}
