@@ -7,6 +7,7 @@ import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge } from '@/shared/lib/bridge';
 
 const INITIAL_UPLOAD_PROMPT_DELAY_MS = 1000;
+const getFirstUploadCompletedKey = (userId: string) => `ppotto:first-upload-completed:${userId}`;
 
 /* 첫 업로드 여부 판단 훅 */
 export function useBoardPageState() {
@@ -26,7 +27,7 @@ export function useBoardPageState() {
     }
     if (!board || !me || hasPromptedOnCurrentVisit.current) return;
 
-    const uploadCompletedKey = `ppotto:first-upload-completed:${me.id}`;
+    const uploadCompletedKey = getFirstUploadCompletedKey(me.id);
     if (board.stickers.length > 0) {
       localStorage.setItem(uploadCompletedKey, '1');
       return;
@@ -43,7 +44,13 @@ export function useBoardPageState() {
   const openPhotoSelect = () => {
     if (!boardId) return;
     setIsInitialUploadModalOpen(false);
-    bridge.send('OPEN_PHOTO_SELECT', { boardId });
+    const uploadCompleted = me
+      ? localStorage.getItem(getFirstUploadCompletedKey(me.id)) === '1'
+      : false;
+    bridge.send('OPEN_PHOTO_SELECT', {
+      boardId,
+      mode: uploadCompleted ? 'additional' : 'initial',
+    });
   };
 
   const deleteAllStickers = () => {

@@ -28,7 +28,7 @@ export function OnboardingPage() {
 
   const handlePrimaryAction = () => {
     if (isLastSlide) {
-      if (boardId) bridge.send('OPEN_PHOTO_SELECT', { boardId });
+      if (boardId) bridge.send('OPEN_PHOTO_SELECT', { boardId, mode: 'initial' });
       return;
     }
     goNext();

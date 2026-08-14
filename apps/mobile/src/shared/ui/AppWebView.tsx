@@ -51,8 +51,8 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
       router.replace('/');
     },
     AUTH_EXPIRED: () => router.replace('/'),
-    OPEN_PHOTO_SELECT: ({ boardId }) =>
-      router.push({ pathname: '/photo-select', params: { boardId } }),
+    OPEN_PHOTO_SELECT: ({ boardId, mode }) =>
+      router.push({ pathname: '/photo-select', params: { boardId, mode } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
     SAVE_IMAGE: async ({ base64 }) => {
       try {
