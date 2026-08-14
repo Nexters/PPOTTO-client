@@ -109,3 +109,12 @@ export function units(selection: PhotoSelection): PhotoUnit[] {
 export function unitCount(selection: PhotoSelection): number {
   return units(selection).filter((unit) => !unit.excluded).length;
 }
+
+export function selectedPhotoGroups(selection: PhotoSelection): PhotoGroup[] {
+  return selection.groups
+    .map((group) => ({
+      ...group,
+      photos: group.photos.slice(selection.excludedCounts[group.id] ?? 0),
+    }))
+    .filter((group) => group.photos.length > 0);
+}

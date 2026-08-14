@@ -29,7 +29,9 @@ export const contract = defineContract({
   LOGOUT: request(),
   WITHDRAW: request(),
   AUTH_EXPIRED: command(),
-  OPEN_PHOTO_SELECT: command({ payload: z.object({ boardId: z.string() }) }),
+  OPEN_PHOTO_SELECT: command({
+    payload: z.object({ boardId: z.string(), mode: z.enum(['initial', 'additional']) }),
+  }),
   SAVE_IMAGE: request({
     payload: z.object({ base64: z.string() }),
     response: z.object({ success: z.boolean() }),

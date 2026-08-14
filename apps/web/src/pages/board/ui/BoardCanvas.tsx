@@ -21,6 +21,16 @@ import {
   zoomCamera,
   zoomCameraTo,
 } from '../model/board-camera';
+import {
+  type DrawGesture,
+  type DrawGestureResult,
+  drawGestureReducer,
+} from '../model/board-draw-gesture';
+import {
+  type DrawingCreateInput,
+  parseStrokePoints,
+  toDrawingCreateInput,
+} from '../model/board-drawing';
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
 import {
   computeBringToFrontZIndex,
@@ -40,6 +50,7 @@ import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 import { useRenameSticker } from '../model/use-rename-sticker';
 
 import type { ToolbarMode } from './BoardToolbar';
+import { DrawingStroke } from './DrawingStroke';
 import {
   EmptyBoardSticker,
   EMPTY_BOARD_STICKER_DEFAULT_TITLE,
@@ -61,6 +72,9 @@ const TAP_MOVE_THRESHOLD = 6;
 // 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
 const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
 const DOUBLE_TAP_MAX_DISTANCE = 24;
+// 색상 팔레트/펜 크기 UI가 아직 없어서 임시로 고정한 값 (디자인 확정되면 팔레트/슬라이더로 교체)
+const TEMP_DRAWING_COLOR = '#FFFFFF';
+const TEMP_DRAWING_STROKE_WIDTH = 4;
 // 새 스티커 배치 후 카메라가 포커스로 이동하는 시간(ms)
 const CAMERA_FOCUS_ANIMATION_MS = 350;
 // 카메라 포커스 범위(AABB) 계산용 스티커 절반 크기 근사치. 실제 이미지 크기를 몰라서(로드해봐야
@@ -87,6 +101,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [isRenamingTitle, setIsRenamingTitle] = useState(false);
   const [directEditStickerId, setDirectEditStickerId] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  // 그리는 도중인 선의 점들(보드 월드 좌표). 그리는 중이 아니면 null
+  const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
@@ -99,6 +115,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
   const { rename } = useRenameSticker(boardId);
   const isEditMode = mode === 'move';
+  const isDrawMode = mode === 'draw';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
   const selectedId = isEditMode ? selectedStickerId : null;
 
@@ -128,13 +145,23 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     }))
     .sort((a, b) => a.zIndex - b.zIndex);
 
+  // 저장된 그림(전부 scope=BOARD, 스티커 귀속은 별도 이슈) — 렌더용으로 stroke에서 점 배열을 복원
+  const drawings = (data?.drawings ?? []).map((drawing) => ({
+    id: drawing.id,
+    points: parseStrokePoints(drawing.stroke),
+    color: drawing.color,
+    strokeWidth: drawing.strokeWidth,
+  }));
+
   const cameraRef = useRef(camera);
   const stickersRef = useRef(stickers);
   const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
   const quickMenuStickerIdRef = useRef(quickMenuStickerId);
   const directEditStickerIdRef = useRef(directEditStickerId);
+  const isDrawModeRef = useRef(isDrawMode);
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
+  const drawGestureRef = useRef<DrawGesture | null>(null); // draw 모드의 그리기/핀치줌 상태
 
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
@@ -214,8 +241,18 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     return { ...sticker, zIndex: newZIndex };
   };
 
+  // 새 그림을 캐시에 낙관적으로 반영하고 저장 요청을 보냄
+  const saveDrawing = (input: DrawingCreateInput) => {
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current ? { ...current, drawings: [...current.drawings, input] } : current,
+    );
+
+    saveLayout({ boardId, input: { drawings: { created: [input] } } });
+  };
+
   const saveStickerLayoutRef = useRef(saveStickerLayout);
   const selectStickerRef = useRef(selectSticker);
+  const saveDrawingRef = useRef(saveDrawing);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
 
@@ -227,8 +264,10 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     isEditModeRef.current = isEditMode;
     quickMenuStickerIdRef.current = quickMenuStickerId;
     directEditStickerIdRef.current = directEditStickerId;
+    isDrawModeRef.current = isDrawMode;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
+    saveDrawingRef.current = saveDrawing;
     pushRef.current = push;
     longPressRef.current = longPress;
   });
@@ -338,11 +377,49 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       setDragTransform(next);
     };
 
+    // drawGestureReducer 결과를 실제 상태(refs/state)에 반영하고, 완성된 선이 있으면 저장한다
+    const applyDrawGestureResult = (result: DrawGestureResult) => {
+      drawGestureRef.current = result.state;
+      setDrawingPoints(result.state?.kind === 'drawing' ? result.state.points : null);
+
+      if (result.finalizedStroke && result.finalizedStroke.length > 0) {
+        saveDrawingRef.current(
+          toDrawingCreateInput(result.finalizedStroke, {
+            color: TEMP_DRAWING_COLOR,
+            strokeWidth: TEMP_DRAWING_STROKE_WIDTH,
+          }),
+        );
+      }
+    };
+
     const handlePointerDown = (e: PointerEvent) => {
       // 퀵메뉴/이름 직접 편집 중엔 캔버스 제스처 비활성화
       if (quickMenuStickerIdRef.current !== null || directEditStickerIdRef.current !== null) return;
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
+
+      if (isDrawModeRef.current) {
+        if (pointersRef.current.size === 1) {
+          applyDrawGestureResult(
+            drawGestureReducer(drawGestureRef.current, {
+              type: 'POINTER_DOWN',
+              pointerId: e.pointerId,
+              point: toWorldPoint(cameraRef.current, point),
+            }),
+          );
+        } else if (pointersRef.current.size === 2) {
+          const points = [...pointersRef.current.values()];
+          applyDrawGestureResult(
+            drawGestureReducer(drawGestureRef.current, {
+              type: 'MULTI_TOUCH',
+              points: [points[0]!, points[1]!],
+              camera: cameraRef.current,
+            }),
+          );
+        }
+        return;
+      }
+
       if (pointersRef.current.size !== 1) return;
 
       const stickerId = hitTestStickerId(e.target);
@@ -379,6 +456,31 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (!pointersRef.current.has(e.pointerId)) return;
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
+
+      if (isDrawModeRef.current) {
+        if (pointersRef.current.size >= 2) {
+          const gesture = drawGestureRef.current;
+          if (gesture?.kind !== 'pinching') return;
+          const points = [...pointersRef.current.values()];
+          setCamera(
+            computeBoardPinchZoom(
+              gesture.startCamera,
+              { centroid: gesture.startCentroid, distance: gesture.startDistance },
+              { centroid: centroid(points), distance: distance(points[0]!, points[1]!) },
+            ),
+          );
+          return;
+        }
+
+        applyDrawGestureResult(
+          drawGestureReducer(drawGestureRef.current, {
+            type: 'POINTER_MOVE',
+            pointerId: e.pointerId,
+            point: toWorldPoint(cameraRef.current, point),
+          }),
+        );
+        return;
+      }
 
       if (tapCandidateRef.current?.pointerId === e.pointerId) {
         if (distance(tapCandidateRef.current.startClient, point) > TAP_MOVE_THRESHOLD) {
@@ -463,6 +565,22 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (!pointersRef.current.has(e.pointerId)) return;
       const point = getLocalPoint(e);
       pointersRef.current.delete(e.pointerId);
+
+      if (isDrawModeRef.current) {
+        if (pointersRef.current.size === 0) {
+          // 드래그 없이 탭만 해도 점 하나(찍은 점)로 저장한다
+          applyDrawGestureResult(
+            drawGestureReducer(drawGestureRef.current, { type: 'POINTER_UP_TO_ZERO' }),
+          );
+        } else if (pointersRef.current.size === 1) {
+          // 핀치줌 중 손가락 하나가 떨어짐 -> 종료 (남은 손가락으로 이어서 그리진 않음)
+          applyDrawGestureResult(
+            drawGestureReducer(drawGestureRef.current, { type: 'POINTER_UP_TO_ONE' }),
+          );
+        }
+        return;
+      }
+
       longPressRef.current.cancel();
 
       const gesture = gestureRef.current;
@@ -623,6 +741,24 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
         }}
       >
+        {/* 저장된 그림 + 그리는 도중인 선의 실시간 미리보기 */}
+        <svg style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>
+          {drawings.map((drawing) => (
+            <DrawingStroke
+              key={drawing.id}
+              points={drawing.points}
+              color={drawing.color}
+              strokeWidth={drawing.strokeWidth}
+            />
+          ))}
+          {drawingPoints && (
+            <DrawingStroke
+              points={drawingPoints}
+              color={TEMP_DRAWING_COLOR}
+              strokeWidth={TEMP_DRAWING_STROKE_WIDTH}
+            />
+          )}
+        </svg>
         {stickers.map((sticker) => (
           <Sticker
             key={sticker.id}
