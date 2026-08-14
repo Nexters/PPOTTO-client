@@ -131,6 +131,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const stickersRef = useRef(stickers);
   const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
+  const quickMenuStickerIdRef = useRef(quickMenuStickerId);
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
 
   const pointersRef = useRef(new Map<number, Point>());
@@ -222,6 +223,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     stickersRef.current = stickers;
     selectedIdRef.current = selectedId;
     isEditModeRef.current = isEditMode;
+    quickMenuStickerIdRef.current = quickMenuStickerId;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
     pushRef.current = push;
@@ -334,6 +336,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     };
 
     const handlePointerDown = (e: PointerEvent) => {
+      // 퀵메뉴 열려있는 동안 캔버스 제스처 비활성화
+      if (quickMenuStickerIdRef.current !== null) return;
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
       if (pointersRef.current.size !== 1) return;
