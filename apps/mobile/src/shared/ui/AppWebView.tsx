@@ -36,10 +36,16 @@ interface AppWebViewProps {
   path?: string;
   onReady?: () => void;
   bridgeHandlers?: PageBridgeHandlers;
+  waitForAnalysisReady?: boolean;
 }
 
 // 앱 표준 웹뷰
-export function AppWebView({ path = '', onReady, bridgeHandlers }: AppWebViewProps) {
+export function AppWebView({
+  path = '',
+  onReady,
+  bridgeHandlers,
+  waitForAnalysisReady = false,
+}: AppWebViewProps) {
   const qaToolEnabled = isQaToolEnabled();
   const ref = useRef<WebView>(null);
   const ready = useRef(false);
@@ -67,6 +73,7 @@ export function AppWebView({ path = '', onReady, bridgeHandlers }: AppWebViewPro
     OPEN_PHOTO_SELECT: ({ boardId }) =>
       router.push({ pathname: '/photo-select', params: { boardId } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
+    ANALYSIS_LOADING_READY: () => setLoaded(true),
     GET_ANALYSIS_LOADING_STATE: () => {
       const handler = bridgeHandlers?.GET_ANALYSIS_LOADING_STATE;
       if (!handler) throw new Error('analysis loading bridge handler is not configured');
@@ -105,7 +112,9 @@ export function AppWebView({ path = '', onReady, bridgeHandlers }: AppWebViewPro
             console.warn('외부 링크 열기 실패', error),
           );
         }}
-        onLoadEnd={() => setLoaded(true)}
+        onLoadEnd={() => {
+          if (!waitForAnalysisReady) setLoaded(true);
+        }}
         allowsBackForwardNavigationGestures={false}
         webviewDebuggingEnabled={qaToolEnabled}
         bounces={!boardActive}

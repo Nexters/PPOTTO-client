@@ -53,6 +53,7 @@ export const contract = defineContract({
   // 보드 화면 진입/이탈 — 보드에 있는 동안만 바운스 끔
   SET_BOARD_ACTIVE: command({ payload: z.object({ active: z.boolean() }) }),
   GET_ANALYSIS_LOADING_STATE: request({ response: analysisLoadingState }),
+  ANALYSIS_LOADING_READY: command(),
   ANALYSIS_LOADING_PHASE_STARTED: command({
     payload: z.object({ phase: analysisLoadingPhase }),
   }),

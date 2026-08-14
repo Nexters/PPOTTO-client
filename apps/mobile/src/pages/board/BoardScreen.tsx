@@ -71,6 +71,13 @@ export function BoardScreen() {
     };
   }, [boardId, screenState.status]);
 
+  useEffect(() => {
+    if (screenState.status !== 'PENDING') return;
+
+    photoUploadService.resume();
+    void photoUploadService.getMotionPhotosForWeb().catch(() => undefined);
+  }, [screenState.status]);
+
   const clearPreviousScreens = () => {
     navigation.dispatch((state) =>
       CommonActions.reset({ ...state, index: 0, routes: state.routes.slice(-1) }),
@@ -80,8 +87,11 @@ export function BoardScreen() {
   const openLoadingScreen = () => {
     logPendingUpload('확인 처리 시작', { boardId, screenStatus: screenState.status });
     allowPendingNavigation.current = true;
-    photoUploadService.resume();
-    logPendingUpload('resume 호출 완료', photoUploadService.getViewState());
+    if (screenState.status !== 'PENDING') {
+      photoUploadService.resume();
+      void photoUploadService.getMotionPhotosForWeb().catch(() => undefined);
+    }
+    logPendingUpload('사전 resume 상태', photoUploadService.getViewState());
     router.replace({ pathname: '/analysis-loading', params: boardId ? { boardId } : undefined });
     logPendingUpload('router.replace 요청 완료', { pathname: '/analysis-loading', boardId });
   };

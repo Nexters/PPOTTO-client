@@ -1,10 +1,11 @@
-import { render } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 
 import { AppWebView } from './AppWebView';
 
 let mockBridgeHandlers: Record<string, (payload?: unknown) => unknown>;
 let mockOnLoad: (() => void) | undefined;
+let mockOnLoadEnd: (() => void) | undefined;
 let mockOnMessage: ((event: { nativeEvent: { data: string } }) => void) | undefined;
 let mockOnOpenWindow: ((event: { nativeEvent: { targetUrl: string } }) => void) | undefined;
 let mockInjectedJavaScript: string | undefined;
@@ -23,6 +24,10 @@ jest.mock('expo-router', () => ({
   },
 }));
 jest.mock('@/shared/ui/Toast', () => ({ useToast: () => jest.fn() }));
+jest.mock('@/shared/ui/AppBackground', () => {
+  const { Text } = jest.requireActual('react-native') as typeof import('react-native');
+  return { AppBackground: () => <Text>앱 로딩 배경</Text> };
+});
 jest.mock('react-native-webview', () => {
   const React = jest.requireActual('react') as typeof import('react');
   const { View } = jest.requireActual('react-native') as typeof import('react-native');
@@ -32,6 +37,7 @@ jest.mock('react-native-webview', () => {
       unknown,
       {
         onLoad?: () => void;
+        onLoadEnd?: () => void;
         onMessage?: (event: { nativeEvent: { data: string } }) => void;
         onOpenWindow?: (event: { nativeEvent: { targetUrl: string } }) => void;
         injectedJavaScriptBeforeContentLoaded?: string;
@@ -41,6 +47,7 @@ jest.mock('react-native-webview', () => {
       {
         injectedJavaScriptBeforeContentLoaded,
         onLoad,
+        onLoadEnd,
         onMessage,
         onOpenWindow,
         webviewDebuggingEnabled,
@@ -48,6 +55,7 @@ jest.mock('react-native-webview', () => {
       _ref,
     ) {
       mockOnLoad = onLoad;
+      mockOnLoadEnd = onLoadEnd;
       mockOnMessage = onMessage;
       mockOnOpenWindow = onOpenWindow;
       mockInjectedJavaScript = injectedJavaScriptBeforeContentLoaded;
@@ -75,6 +83,12 @@ const originalQaToolEnabled = process.env.EXPO_PUBLIC_QA_TOOL_ENABLED;
 beforeEach(() => {
   process.env.EXPO_PUBLIC_QA_TOOL_ENABLED = 'false';
   jest.clearAllMocks();
+  mockOnLoad = undefined;
+  mockOnLoadEnd = undefined;
+  mockOnMessage = undefined;
+  mockOnOpenWindow = undefined;
+  mockInjectedJavaScript = undefined;
+  mockWebviewDebuggingEnabled = undefined;
 });
 
 afterAll(() => {
@@ -98,9 +112,9 @@ describe('WebView 인증 만료', () => {
 });
 
 describe('WebView 외부 링크', () => {
-  it('HTTPS 새 창만 기본 브라우저로 연다', () => {
+  it('HTTPS 새 창만 기본 브라우저로 연다', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
-    render(<AppWebView />);
+    await render(<AppWebView />);
 
     mockOnOpenWindow?.({ nativeEvent: { targetUrl: 'https://example.com' } });
     mockOnOpenWindow?.({ nativeEvent: { targetUrl: 'javascript:alert(1)' } });
@@ -119,6 +133,16 @@ describe('WebView 로딩', () => {
     mockOnLoad?.();
 
     expect(onReady).toHaveBeenCalledTimes(1);
+  });
+
+  it('분석 로딩 화면은 웹 모션이 준비될 때까지 네이티브 배경을 유지한다', async () => {
+    await render(<AppWebView path="/analysis-loading" waitForAnalysisReady />);
+
+    await act(async () => mockOnLoadEnd?.());
+    expect(screen.queryByText('앱 로딩 배경')).toBeOnTheScreen();
+
+    await act(async () => void mockBridgeHandlers.ANALYSIS_LOADING_READY!());
+    expect(screen.queryByText('앱 로딩 배경')).not.toBeOnTheScreen();
   });
 });
 

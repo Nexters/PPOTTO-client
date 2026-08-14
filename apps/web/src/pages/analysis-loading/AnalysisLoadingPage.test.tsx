@@ -58,6 +58,7 @@ describe('AnalysisLoadingPage', () => {
       ratio: 0.75,
       capturedAt: null,
     });
+    expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_READY');
 
     options.onPhaseStarted('SCAN');
     await expect(options.onPhaseFinished('SCAN')).resolves.toEqual(mocks.nextState);

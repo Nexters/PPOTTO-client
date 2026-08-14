@@ -139,7 +139,7 @@ export function AnalysisLoadingScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <AppWebView bridgeHandlers={bridgeHandlers} path="/analysis-loading" />
+      <AppWebView bridgeHandlers={bridgeHandlers} path="/analysis-loading" waitForAnalysisReady />
 
       <View
         className="absolute right-[18px] bottom-0 left-[18px]"

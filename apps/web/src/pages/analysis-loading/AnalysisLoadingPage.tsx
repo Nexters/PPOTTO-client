@@ -35,6 +35,7 @@ export function AnalysisLoadingPage() {
           onRevealFinished: () => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED'),
         });
         motion.start();
+        bridge.send('ANALYSIS_LOADING_READY');
       })
       .catch((error) => console.error('[analysis-loading] 화면 시작 실패', error));
 

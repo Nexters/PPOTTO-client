@@ -27,6 +27,7 @@ jest.mock('@/features/photo-upload', () => ({
   photoUploadService: {
     discard: jest.fn(),
     getCurrent: jest.fn(),
+    getMotionPhotosForWeb: jest.fn(),
     getViewState: jest.fn(),
     hasPending: jest.fn(),
     resume: jest.fn(),
@@ -40,6 +41,7 @@ const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
   photoUploadService: {
     discard: jest.Mock;
     getCurrent: jest.Mock;
+    getMotionPhotosForWeb: jest.Mock;
     getViewState: jest.Mock;
     hasPending: jest.Mock;
     resume: jest.Mock;
@@ -51,18 +53,20 @@ beforeEach(() => {
   mockPreventRemoveCallback = undefined;
   mockSearchParams = { boardId: 'board-1' };
   photoUploadService.getCurrent.mockReturnValue(null);
+  photoUploadService.getMotionPhotosForWeb.mockResolvedValue([]);
   photoUploadService.getViewState.mockReturnValue({ progress: 0, status: 'UPLOADING' });
   photoUploadService.hasPending.mockResolvedValue(false);
 });
 
-it('저장된 작업은 확인하기 전까지 재개하거나 로딩 화면으로 이동하지 않는다', async () => {
+it('저장된 작업은 미리 준비하고 확인하기 전까지 로딩 화면으로 이동하지 않는다', async () => {
   const user = userEvent.setup();
   photoUploadService.hasPending.mockResolvedValue(true);
 
   await render(<BoardScreen />);
 
   expect(await screen.findByText(/분석 중인 사진들이 있어요/)).toBeOnTheScreen();
-  expect(photoUploadService.resume).not.toHaveBeenCalled();
+  expect(photoUploadService.resume).toHaveBeenCalledTimes(1);
+  expect(photoUploadService.getMotionPhotosForWeb).toHaveBeenCalledTimes(1);
   expect(router.replace).not.toHaveBeenCalled();
 
   const replaceAction = { type: 'REPLACE' };
@@ -92,14 +96,15 @@ it('실패한 작업에는 재개 확인 모달 대신 업로드 실패 모달�
   expect(photoUploadService.hasPending).not.toHaveBeenCalled();
 });
 
-it('pending 확인 파라미터가 있으면 저장소를 다시 조회하지 않고 재개 여부부터 묻는다', async () => {
+it('pending 확인 파라미터가 있으면 저장소를 다시 조회하지 않고 재개 준비부터 한다', async () => {
   mockSearchParams = { boardId: 'board-1', confirmResume: '1' };
 
   await render(<BoardScreen />);
 
   await waitFor(() => expect(screen.getByText(/분석 중인 사진들이 있어요/)).toBeOnTheScreen());
   expect(photoUploadService.hasPending).not.toHaveBeenCalled();
-  expect(photoUploadService.resume).not.toHaveBeenCalled();
+  expect(photoUploadService.resume).toHaveBeenCalledTimes(1);
+  expect(photoUploadService.getMotionPhotosForWeb).toHaveBeenCalledTimes(1);
 });
 
 it('실패 후 서버 분석이 이미 시작됐다면 로컬 작업을 보존하고 로딩 화면으로 돌아간다', async () => {
