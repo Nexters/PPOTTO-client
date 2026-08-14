@@ -58,6 +58,20 @@ export function BoardPage() {
   const captureBoard = (element: HTMLElement) =>
     toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
 
+  // 화면 좌표 위치의 마커를 그리고, 그 지점의 캡처된 픽셀 색을 미리보기로 반영한다
+  const sampleAtClientPoint = (clientX: number, clientY: number) => {
+    setPickerPosition({ x: clientX, y: clientY });
+
+    const canvas = captureRef.current;
+    const rect = pageRef.current?.getBoundingClientRect();
+    if (!canvas || !rect) return;
+    const color = sampleColorAt(canvas, clientX - rect.left, clientY - rect.top);
+    if (color) {
+      previewColorRef.current = color;
+      setPreviewColor(color);
+    }
+  };
+
   const startPicking = async () => {
     if (!pageRef.current) return;
     try {
@@ -65,6 +79,9 @@ export function BoardPage() {
       await captureBoard(pageRef.current);
       captureRef.current = await captureBoard(pageRef.current);
       setIsPickingColor(true);
+      // 아직 드래그하지 않아도 화면 중앙의 색을 먼저 미리보기로 보여준다
+      const rect = pageRef.current.getBoundingClientRect();
+      sampleAtClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
     } catch (error) {
       console.error('[eyedropper] 보드 캡처 실패', error);
     }
@@ -73,18 +90,7 @@ export function BoardPage() {
   useEffect(() => {
     if (!isPickingColor) return;
 
-    const updatePosition = (e: PointerEvent) => {
-      setPickerPosition({ x: e.clientX, y: e.clientY });
-
-      const canvas = captureRef.current;
-      const rect = pageRef.current?.getBoundingClientRect();
-      if (!canvas || !rect) return;
-      const color = sampleColorAt(canvas, e.clientX - rect.left, e.clientY - rect.top);
-      if (color) {
-        previewColorRef.current = color;
-        setPreviewColor(color);
-      }
-    };
+    const updatePosition = (e: PointerEvent) => sampleAtClientPoint(e.clientX, e.clientY);
 
     const stopPicking = () => {
       setIsPickingColor(false);
