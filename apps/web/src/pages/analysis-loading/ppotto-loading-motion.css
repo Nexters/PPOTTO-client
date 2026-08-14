@@ -1,0 +1,165 @@
+/* 뽀또즈 · 생성 대기 로딩 모션 v1.7
+   모든 규칙은 .ppotto-motion 안으로 스코프된다. 앱 스타일과 충돌하지 않는다. */
+
+/* 마운트 대상은 position:relative + overflow:hidden 이어야 한다 */
+.ppotto-motion {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 360px;
+  height: 740px; /* 설계 좌표계 — 크기는 JS가 scale로 맞춘다 */
+  transform-origin: 50% 50%;
+  background: #000;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+}
+
+.ppotto-motion .pm-reveal.flat .pm-tile {
+  border-radius: 0;
+  box-shadow: none;
+}
+.ppotto-motion .pm-reveal .pm-tile {
+  border-radius: 7px;
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.13);
+  transition:
+    border-radius 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.55s ease;
+}
+.ppotto-motion .pm-deck .pm-tile {
+  border-radius: 7px;
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.13);
+}
+.ppotto-motion .pm-tint {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  transition: none;
+  z-index: 0;
+}
+.ppotto-motion .pm-layer.hidden {
+  display: none;
+}
+.ppotto-motion .pm-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+}
+.ppotto-motion .pm-tile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+  backface-visibility: hidden;
+}
+.ppotto-motion .pm-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+.ppotto-motion .pm-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: opacity;
+}
+.ppotto-motion .pm-fact b {
+  color: #fff;
+  font-weight: 700;
+}
+.ppotto-motion .pm-fact {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 86px;
+  z-index: 46;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.2px;
+  color: rgba(255, 255, 255, 0.66);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+.ppotto-motion .pm-progress-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 2px;
+  will-change: transform;
+}
+.ppotto-motion .pm-progress {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 50px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+  z-index: 45;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.ppotto-motion .pm-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: radial-gradient(120% 75% at 50% 45%, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.55) 100%);
+}
+.ppotto-motion .pm-scrim-top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 96px;
+  z-index: 42;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.34) 46%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+.ppotto-motion .pm-scrim-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 160px;
+  z-index: 52;
+  pointer-events: none;
+  background: linear-gradient(0deg, #000 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 트윈 시간은 JS가 0.45배로 줄인다. 여기서는 CSS 트랜지션만 끈다 */
+  .ppotto-motion .pm-reveal .pm-tile,
+  .ppotto-motion .pm-deck .pm-tile {
+    transition: none;
+  }
+}

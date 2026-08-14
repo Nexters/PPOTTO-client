@@ -121,4 +121,11 @@ describe('unwrapNullableData', () => {
 
     assert.equal(await unwrapNullableData(result), null);
   });
+
+  it('2xx 응답에 data 키가 아예 없어도 null로 반환한다', async () => {
+    // 서버가 null 필드를 생략해 {"success":true}만 오는 경우 (GET /analysis/active)
+    const result = apiResult({ status: 200, data: { success: true } });
+
+    assert.equal(await unwrapNullableData(result), null);
+  });
 });

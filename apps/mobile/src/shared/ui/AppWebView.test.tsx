@@ -3,7 +3,7 @@ import { Linking } from 'react-native';
 
 import { AppWebView } from './AppWebView';
 
-let mockBridgeHandlers: Record<string, (...args: never[]) => unknown>;
+let mockBridgeHandlers: Record<string, (payload?: unknown) => unknown>;
 let mockOnLoad: (() => void) | undefined;
 let mockOnMessage: ((event: { nativeEvent: { data: string } }) => void) | undefined;
 let mockOnOpenWindow: ((event: { nativeEvent: { targetUrl: string } }) => void) | undefined;
@@ -60,7 +60,7 @@ jest.mock('webview-bridge-kit/react-native', () => ({
   useNativeBridge: (
     _ref: unknown,
     _contract: unknown,
-    handlers: Record<string, (...args: never[]) => unknown>,
+    handlers: Record<string, (payload?: unknown) => unknown>,
   ) => {
     mockBridgeHandlers = handlers;
     return { pushMessage: mockPushMessage };
@@ -119,6 +119,36 @@ describe('WebView 로딩', () => {
     mockOnLoad?.();
 
     expect(onReady).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('분석 로딩 브리지', () => {
+  it('페이지 전용 로딩 메시지를 부모가 제공한 handler에 위임한다', async () => {
+    const state = {
+      photoCount: 20,
+      photos: [{ id: 'photo-1', uri: 'data:image/jpeg;base64,image', width: 300, height: 400 }],
+      visiblePhase: 'SCAN' as const,
+      visualProgress: 25,
+    };
+    const nextState = { visiblePhase: 'GROUP' as const, visualProgress: 50 };
+    const bridgeHandlers = {
+      GET_ANALYSIS_LOADING_STATE: jest.fn(() => state),
+      ANALYSIS_LOADING_PHASE_STARTED: jest.fn(),
+      ANALYSIS_LOADING_PHASE_FINISHED: jest.fn(() => nextState),
+      ANALYSIS_LOADING_REVEAL_FINISHED: jest.fn(),
+    };
+    await render(<AppWebView bridgeHandlers={bridgeHandlers} path="/analysis-loading" />);
+
+    expect(await mockBridgeHandlers.GET_ANALYSIS_LOADING_STATE!()).toEqual(state);
+    await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED!({ phase: 'SCAN' });
+    expect(await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED!({ phase: 'SCAN' })).toEqual(
+      nextState,
+    );
+    await mockBridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED!();
+
+    expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED).toHaveBeenCalledWith({ phase: 'SCAN' });
+    expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED).toHaveBeenCalledWith({ phase: 'SCAN' });
+    expect(bridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED).toHaveBeenCalledTimes(1);
   });
 });
 

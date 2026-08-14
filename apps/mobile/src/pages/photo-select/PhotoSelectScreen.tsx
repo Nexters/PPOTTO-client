@@ -47,6 +47,10 @@ export function PhotoSelectScreen() {
   const handleSubmit = () => {
     if (!selection || !boardId) return;
 
+    const motionPhotos = selection.groups.flatMap((group) => {
+      const representative = group.photos[selection.excludedCounts[group.id] ?? 0];
+      return representative ? [representative] : [];
+    });
     const compressedPhotos = photoCompressionQueue.wait();
     photoUploadService.start(
       compressedPhotos.then((photos) =>
@@ -57,8 +61,9 @@ export function PhotoSelectScreen() {
           compressedPhotos: photos,
         }),
       ),
+      motionPhotos,
     );
-    router.replace({ pathname: '/board', params: { boardId } });
+    router.replace({ pathname: '/analysis-loading', params: { boardId } });
   };
 
   return (

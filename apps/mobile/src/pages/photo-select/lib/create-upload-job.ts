@@ -46,6 +46,8 @@ function toUploadJobPhoto(
     clientPhotoId: photo.id,
     fileUri: prepared.fileUri,
     contentType: prepared.contentType,
+    width: photo.width,
+    height: photo.height,
     takenAt: new Date(photo.creationTime).toISOString(),
     isRepresentative: index === 0,
   };

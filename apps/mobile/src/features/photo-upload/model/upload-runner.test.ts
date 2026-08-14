@@ -104,7 +104,7 @@ it('PUTTING을 재개하면 URL을 재발급하고 성공 기록이 없는 사�
   });
   expect(dependencies.appendEvent).toHaveBeenCalledWith({ type: 'START_REQUESTED' });
   expect(dependencies.startAnalysis).toHaveBeenCalledWith('analysis-1');
-  expect(completionCalls).toEqual(['start-requested', 'start-analysis', 'clear-job']);
+  expect(completionCalls).toEqual(['start-requested', 'start-analysis']);
 });
 
 const retryScenarios = [
@@ -247,7 +247,7 @@ it('STARTING을 재개했는데 서버가 UPLOADING이면 분석 시작을 다�
   const result = await resumePhotoUpload(state('STARTING'), dependencies);
 
   expect(result).toBe('ANALYZING');
-  expect(calls).toEqual(['get-status', 'start-analysis', 'clear-job']);
+  expect(calls).toEqual(['get-status', 'start-analysis']);
 });
 
 it('STARTING을 재개하면 서버 상태를 먼저 확인하고 이미 시작된 분석을 다시 시작하지 않는다', async () => {
@@ -259,7 +259,7 @@ it('STARTING을 재개하면 서버 상태를 먼저 확인하고 이미 시작�
   expect(result).toBe('ANALYZING');
   expect(dependencies.getAnalysisStatus).toHaveBeenCalledWith('analysis-1');
   expect(dependencies.startAnalysis).not.toHaveBeenCalled();
-  expect(dependencies.clearJob).toHaveBeenCalledTimes(1);
+  expect(dependencies.clearJob).not.toHaveBeenCalled();
 });
 
 it('분석 시작 응답이 유실돼도 서버가 ANALYZING이면 중복 시작 없이 성공 처리한다', async () => {
@@ -272,5 +272,5 @@ it('분석 시작 응답이 유실돼도 서버가 ANALYZING이면 중복 시작
   expect(result).toBe('ANALYZING');
   expect(dependencies.startAnalysis).toHaveBeenCalledTimes(1);
   expect(dependencies.getAnalysisStatus).toHaveBeenCalledWith('analysis-1');
-  expect(dependencies.clearJob).toHaveBeenCalledTimes(1);
+  expect(dependencies.clearJob).not.toHaveBeenCalled();
 });
