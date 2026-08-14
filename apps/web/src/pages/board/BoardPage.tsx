@@ -55,7 +55,13 @@ export function BoardPage() {
         >
           {isDeletingStickers ? '삭제 중...' : '스티커 전체 삭제 (DEBUG)'}
         </button>
-        <BoardContent boardId={boardId} isLoading={isBoardListLoading} mode={toolbarMode} />
+        <BoardContent
+          boardId={boardId}
+          isLoading={isBoardListLoading}
+          mode={toolbarMode}
+          drawColor={drawColor}
+          drawStrokeWidth={drawStrokeWidth}
+        />
         {toolbarMode === 'draw' && (
           <DrawingSizeSlider
             strokeWidth={drawStrokeWidth}
@@ -90,12 +96,25 @@ function BoardContent({
   boardId,
   isLoading,
   mode,
+  drawColor,
+  drawStrokeWidth,
 }: {
   boardId?: string;
   isLoading: boolean;
   mode: ToolbarMode;
+  drawColor: string;
+  drawStrokeWidth: number;
 }) {
-  if (boardId) return <BoardCanvas boardId={boardId} mode={mode} />;
+  if (boardId) {
+    return (
+      <BoardCanvas
+        boardId={boardId}
+        mode={mode}
+        drawColor={drawColor}
+        drawStrokeWidth={drawStrokeWidth}
+      />
+    );
+  }
 
   return (
     <BoardStatus>{isLoading ? '보드를 불러오는 중이에요' : '보드를 불러오지 못했어요'}</BoardStatus>

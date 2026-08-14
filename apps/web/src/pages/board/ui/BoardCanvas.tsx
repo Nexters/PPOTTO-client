@@ -64,6 +64,8 @@ import { StickerQuickMenu } from './StickerQuickMenu';
 type BoardCanvasProps = {
   boardId: string;
   mode: ToolbarMode;
+  drawColor: string;
+  drawStrokeWidth: number;
 };
 
 // 탭과 드래그를 구분하는 이동 허용 오차(px)
@@ -71,9 +73,6 @@ const TAP_MOVE_THRESHOLD = 6;
 // 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
 const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
 const DOUBLE_TAP_MAX_DISTANCE = 24;
-// 색상 팔레트/펜 크기 UI가 아직 없어서 임시로 고정한 값 (디자인 확정되면 팔레트/슬라이더로 교체)
-const TEMP_DRAWING_COLOR = '#FFFFFF';
-const TEMP_DRAWING_STROKE_WIDTH = 4;
 // 새 스티커 배치 후 카메라가 포커스로 이동하는 시간(ms)
 const CAMERA_FOCUS_ANIMATION_MS = 350;
 // 카메라 포커스 범위(AABB) 계산용 스티커 절반 크기 근사치. 실제 이미지 크기를 몰라서(로드해봐야
@@ -91,7 +90,7 @@ function hitTestStickerId(target: EventTarget | null): string | null {
   return el instanceof HTMLElement ? (el.dataset.stickerId ?? null) : null;
 }
 
-export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
+export function BoardCanvas({ boardId, mode, drawColor, drawStrokeWidth }: BoardCanvasProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
@@ -153,6 +152,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
+  const drawColorRef = useRef(drawColor);
+  const drawStrokeWidthRef = useRef(drawStrokeWidth);
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
   const drawGestureRef = useRef<DrawGesture | null>(null); // draw 모드의 그리기/핀치줌 상태
 
@@ -256,6 +257,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     selectedIdRef.current = selectedId;
     isEditModeRef.current = isEditMode;
     isDrawModeRef.current = isDrawMode;
+    drawColorRef.current = drawColor;
+    drawStrokeWidthRef.current = drawStrokeWidth;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
     saveDrawingRef.current = saveDrawing;
@@ -376,8 +379,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (result.finalizedStroke && result.finalizedStroke.length > 0) {
         saveDrawingRef.current(
           toDrawingCreateInput(result.finalizedStroke, {
-            color: TEMP_DRAWING_COLOR,
-            strokeWidth: TEMP_DRAWING_STROKE_WIDTH,
+            color: drawColorRef.current,
+            strokeWidth: drawStrokeWidthRef.current,
           }),
         );
       }
@@ -740,11 +743,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             />
           ))}
           {drawingPoints && (
-            <DrawingStroke
-              points={drawingPoints}
-              color={TEMP_DRAWING_COLOR}
-              strokeWidth={TEMP_DRAWING_STROKE_WIDTH}
-            />
+            <DrawingStroke points={drawingPoints} color={drawColor} strokeWidth={drawStrokeWidth} />
           )}
         </svg>
         {stickers.map((sticker) => (
