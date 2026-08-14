@@ -25,14 +25,19 @@ export function BoardToolbar({
   return (
     <div
       className={cn(
-        'absolute inset-x-0 bottom-0 z-10 flex items-end justify-between',
-        'px-6 pt-16 pb-3.5',
+        'pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end',
+        'justify-between px-6 pt-16 pb-3.5',
       )}
       style={{ backgroundImage: 'linear-gradient(to top, black, transparent)' }}
     >
       <div className="flex flex-col items-start justify-center gap-4">
         {aboveModeSwitcher}
-        <div className="flex items-center justify-center gap-2 rounded-full bg-gray-800 p-2">
+        <div
+          className={cn(
+            'pointer-events-auto flex items-center justify-center gap-2',
+            'rounded-full bg-gray-800 p-2',
+          )}
+        >
           <button
             type="button"
             aria-label="그리기"
@@ -72,7 +77,7 @@ export function BoardToolbar({
         type="button"
         aria-label="스티커 추가"
         onClick={onAddSticker}
-        className="flex size-12 items-center justify-center rounded-full bg-white"
+        className="pointer-events-auto flex size-12 items-center justify-center rounded-full bg-white"
       >
         <IconPlus width={18} height={18} />
       </button>

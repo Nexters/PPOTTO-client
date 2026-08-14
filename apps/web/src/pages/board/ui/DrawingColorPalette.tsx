@@ -19,7 +19,7 @@ type DrawingColorPaletteProps = {
 
 export function DrawingColorPalette({ color, onColorChange }: DrawingColorPaletteProps) {
   return (
-    <div className="flex items-center gap-2 px-2 drop-shadow-[0px_6px_10px_rgba(0,0,0,0.12)]">
+    <div className="pointer-events-auto flex items-center gap-2 px-2 drop-shadow-[0px_6px_10px_rgba(0,0,0,0.12)]">
       {PALETTE_COLORS.map((swatch) => (
         <button
           key={swatch.value}
