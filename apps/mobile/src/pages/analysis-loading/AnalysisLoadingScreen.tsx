@@ -30,6 +30,7 @@ export function AnalysisLoadingScreen() {
   const [sequence, setSequence] = useState(() =>
     createLoadingSequence({ serverProgress: upload.progress }),
   );
+  const [showingBoard, setShowingBoard] = useState(false);
   const sequenceRef = useRef(sequence);
 
   const commitSequence = useCallback((next: LoadingSequenceState) => {
@@ -134,27 +135,34 @@ export function AnalysisLoadingScreen() {
 
   const showBoard = async () => {
     await photoUploadService.finish();
-    router.replace({ pathname: '/board', params: boardId ? { boardId } : undefined });
+    setShowingBoard(true);
   };
 
   return (
     <View className="flex-1 bg-black">
-      <AppWebView bridgeHandlers={bridgeHandlers} path="/analysis-loading" waitForAnalysisReady />
+      <AppWebView
+        bridgeHandlers={bridgeHandlers}
+        path="/analysis-loading"
+        showBoard={showingBoard}
+        waitForAnalysisReady
+      />
 
-      <View
-        className="absolute right-[18px] bottom-0 left-[18px]"
-        style={{ paddingBottom: Math.max(insets.bottom, 12) }}
-      >
-        <Button disabled={!sequence.revealFinished} onPress={showBoard} size="large">
-          <Text
-            className={
-              sequence.revealFinished ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'
-            }
-          >
-            결과 확인하기
-          </Text>
-        </Button>
-      </View>
+      {!showingBoard && (
+        <View
+          className="absolute right-[18px] bottom-0 left-[18px]"
+          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+        >
+          <Button disabled={!sequence.revealFinished} onPress={showBoard} size="large">
+            <Text
+              className={
+                sequence.revealFinished ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'
+              }
+            >
+              결과 확인하기
+            </Text>
+          </Button>
+        </View>
+      )}
     </View>
   );
 }

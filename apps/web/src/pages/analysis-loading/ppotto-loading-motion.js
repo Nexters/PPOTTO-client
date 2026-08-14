@@ -49,16 +49,34 @@ export function createLoadingMotion(opts) {
   const elTiles = mk('pm-layer pm-tiles');
   const elDeck = mk('pm-layer pm-deck');
   const elReveal = mk('pm-layer pm-reveal');
-  const elCover = mk('pm-cover');
-  const elCoverImg = document.createElement('img');
-  elCoverImg.className = 'pm-cover-img';
-  elCoverImg.alt = '';
-  elCoverImg.src = opts.coverSrc || 'assets/wrapped-cover.png';
-  // 파일을 못 찾으면 깨진 이미지 아이콘이 뜨므로 숨긴다
-  elCoverImg.addEventListener('error', (e) => {
+  const elBoard = mk('pm-board');
+  const hideBroken = (e) => {
     e.target.style.display = 'none';
+  };
+  const elBoardBg = document.createElement('img');
+  elBoardBg.className = 'pm-board-bg';
+  elBoardBg.alt = '';
+  elBoardBg.src = opts.boardBgSrc || 'assets/board-bg.png';
+  elBoardBg.addEventListener('error', hideBroken);
+  elBoard.appendChild(elBoardBg);
+
+  const STICKER_COUNT = 9;
+  const stickerSrcs =
+    opts.stickerSrcs?.length === STICKER_COUNT
+      ? opts.stickerSrcs
+      : Array.from(
+          { length: STICKER_COUNT },
+          (_, index) => `assets/stickers/sticker${index + 1}.png`,
+        );
+  const elStickers = stickerSrcs.map((src) => {
+    const image = document.createElement('img');
+    image.className = 'pm-stk';
+    image.alt = '';
+    image.src = src;
+    image.addEventListener('error', hideBroken);
+    elBoard.appendChild(image);
+    return image;
   });
-  elCover.appendChild(elCoverImg);
   const elFact = mk('pm-fact');
   const elProgress = mk('pm-progress');
   const elProgressFill = mk('pm-progress-fill', elProgress);
@@ -1239,12 +1257,48 @@ export function createLoadingMotion(opts) {
     const MOSAIC_END = 0.38; // 덱 → 화면 가득 펼침                    0.91s
     const TILE_OUT_IN = 0.4; // 다 펼쳐진 뒤에 사라지기 시작            —
     const TILE_OUT_END = 0.6; // 완전히 사라지는 지점                    0.48s
-    const COVER_IN = 0.6; // 사진이 사라진 다음부터 표지가 뜬다      —
-    const COVER_END = 0.92; // 다 떠오르는 지점                        0.77s
+    const BOARD_IN = 0.6; // 사진이 다 사라진 다음에 보드가 깔린다   —
+    const BOARD_END = 0.72; // 도트 배경이 다 깔리는 지점 = 첫 장 출발  0.29s
     const CTA_AT = 0.78;
+
+    const STICKERS = [
+      { x: 0, y: 32, w: 196.2, h: 190.8 },
+      { x: 224, y: 54, w: 101.8, h: 101.8 },
+      { x: 143.2, y: 182.5, w: 69, h: 69 },
+      { x: 172, y: 214, w: 157.8, h: 120.5 },
+      { x: 0, y: 254, w: 349.5, h: 191.5 },
+      { x: 258, y: 392, w: 79.2, h: 79.2 },
+      { x: 42, y: 430, w: 148.2, h: 117 },
+      { x: 168, y: 524, w: 150, h: 150.2 },
+      { x: 87.5, y: 568, w: 65.5, h: 61.2 },
+    ];
+    const ORDER = [2, 9, 7, 3, 4, 8, 1, 5, 6].map((number) => number - 1);
+    const FADE_MS = 80;
+    const STAGGER = 200;
+    const HOLD_MS = 1400;
+    const GAP_MS = 2000;
+    const LAND_END = STAGGER * (STICKERS.length - 1) + FADE_MS;
+    const HOLD_END = LAND_END + HOLD_MS;
+    const LOOP_MS = HOLD_END + GAP_MS;
 
     let cards = [];
     let ctaOn = false;
+    let boardT = 0;
+
+    function paintBoard(time, loopDuration) {
+      const loop = time % loopDuration;
+      const cleared = loop >= HOLD_END;
+      for (let index = 0; index < STICKERS.length; index++) {
+        const sticker = STICKERS[index];
+        const element = elStickers[index];
+        if (!element) continue;
+        const start = ORDER.indexOf(index) * STAGGER;
+        element.style.opacity = cleared ? '0' : clamp((loop - start) / FADE_MS, 0, 1).toFixed(3);
+        element.style.width = sticker.w + 'px';
+        element.style.height = sticker.h + 'px';
+        element.style.transform = `translate3d(${sticker.x}px,${sticker.y}px,0)`;
+      }
+    }
 
     function buildCells() {
       const out = [];
@@ -1308,8 +1362,10 @@ export function createLoadingMotion(opts) {
       // 다음 프레임에 .flat을 붙여 CSS가 모서리·그림자를 펴게 한다
       requestAnimationFrame(() => elReveal.classList.add('flat'));
 
-      elCover.style.opacity = '0';
+      elBoard.style.opacity = '0';
       for (const c of cards) c.el.style.opacity = '1';
+      for (const sticker of elStickers) sticker.style.opacity = '0';
+      boardT = 0;
       ctaOn = false;
     }
 
@@ -1317,7 +1373,18 @@ export function createLoadingMotion(opts) {
       return TIMING.reveal.min;
     }
 
-    function update(t) {
+    function idle(dt) {
+      if (state.reduced) {
+        if (boardT >= LAND_END) return;
+        boardT = Math.min(boardT + dt, LAND_END);
+        paintBoard(boardT, Number.POSITIVE_INFINITY);
+        return;
+      }
+      boardT += dt;
+      paintBoard(boardT, LOOP_MS);
+    }
+
+    function update(t, dt) {
       const p = clamp(t / dur(), 0, 1);
       // 다 펼쳐진 뒤에 한꺼번에 사라진다 — 펼치면서 같이 흐려지면 다 펼친 모습을 못 본다
       const tileAlpha = (1 - clamp((p - TILE_OUT_IN) / (TILE_OUT_END - TILE_OUT_IN), 0, 1)).toFixed(
@@ -1342,10 +1409,11 @@ export function createLoadingMotion(opts) {
         c.el.style.opacity = tileAlpha;
       }
 
-      // 표지는 사진이 다 사라진 다음에 천천히 떠오른다
-      const lk = clamp((p - COVER_IN) / (COVER_END - COVER_IN), 0, 1);
-      elCover.style.opacity = (state.reduced ? lk : easeOutCubic(lk)).toFixed(3);
-      // PNG는 파일 그대로 — 불투명도만 조절한다
+      const boardProgress = clamp((p - BOARD_IN) / (BOARD_END - BOARD_IN), 0, 1);
+      elBoard.style.opacity = (state.reduced ? boardProgress : easeOutCubic(boardProgress)).toFixed(
+        3,
+      );
+      if (p >= BOARD_END) idle(dt || 0);
 
       if (p > 0.44) progressFading = true;
       if (p > CTA_AT && !ctaOn) {
@@ -1357,11 +1425,13 @@ export function createLoadingMotion(opts) {
     function exit() {
       elReveal.classList.add('hidden');
       elReveal.innerHTML = '';
-      elCover.style.opacity = '0';
+      elBoard.style.opacity = '0';
+      for (const sticker of elStickers) sticker.style.opacity = '0';
+      boardT = 0;
       cards = [];
     }
 
-    return { id: 'reveal', enter, update, exit, dur };
+    return { id: 'reveal', enter, update, exit, dur, idle };
   })();
 
   acts.push(scan, group, assemble, deck, reveal);
@@ -1476,9 +1546,12 @@ export function createLoadingMotion(opts) {
     let dtReal = now - tl.lastFrame;
     tl.lastFrame = now;
     if (dtReal > 100) dtReal = 100; // 백그라운드 복귀 시 프레임 점프 방지
-    if (tl.finished) return;
-
     const dt = dtReal * tl.speed;
+    if (tl.finished) {
+      reveal.idle(dt);
+      return;
+    }
+
     const act = acts[tl.actIndex];
 
     if (tl.actIndex === ACT.SCAN) {
@@ -1518,7 +1591,7 @@ export function createLoadingMotion(opts) {
   function start() {
     if (destroyed) return;
     setCta(false);
-    elCover.style.opacity = '0';
+    elBoard.style.opacity = '0';
     elReveal.classList.remove('flat');
     elTint.style.background = '#000';
     elProgress.style.opacity = '0';

@@ -83,6 +83,24 @@ describe('ppotto loading motion', () => {
     expect(repeatedAssemble).toBe(true);
     expect(onRevealFinished).toHaveBeenCalledTimes(1);
 
+    for (let count = 0; count < 25; count += 1) {
+      now += 100;
+      const currentFrames = frames;
+      frames = [];
+      currentFrames.forEach((frame) => frame(now));
+    }
+    const stickers = [...mount.querySelectorAll<HTMLElement>('.pm-stk')];
+    expect(stickers).toHaveLength(9);
+    expect(stickers.every((sticker) => Number(sticker.style.opacity) === 1)).toBe(true);
+
+    for (let count = 0; count < 42; count += 1) {
+      now += 100;
+      const currentFrames = frames;
+      frames = [];
+      currentFrames.forEach((frame) => frame(now));
+    }
+    expect(stickers.every((sticker) => sticker.style.opacity === '0')).toBe(true);
+
     motion.destroy();
     mount.remove();
   });

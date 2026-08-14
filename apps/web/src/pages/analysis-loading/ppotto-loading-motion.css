@@ -62,24 +62,31 @@
   will-change: transform, opacity, filter;
   backface-visibility: hidden;
 }
-.ppotto-motion .pm-cover-img {
+.ppotto-motion .pm-board-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
 }
-.ppotto-motion .pm-cover {
+.ppotto-motion .pm-stk {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.ppotto-motion .pm-board {
   position: absolute;
   inset: 0;
   z-index: 50;
   opacity: 0;
   pointer-events: none;
   background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   will-change: opacity;
 }
 .ppotto-motion .pm-fact b {

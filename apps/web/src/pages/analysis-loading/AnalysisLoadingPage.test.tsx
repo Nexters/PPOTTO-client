@@ -4,10 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AnalysisLoadingPage } from './AnalysisLoadingPage';
 
 interface MotionOptions {
+  boardBgSrc: string;
   photoCount: number;
   speed: number;
   phase: string;
   photos: Array<{ src: string; ratio: number; capturedAt: null }>;
+  stickerSrcs: string[];
   onPhaseStarted: (phase: 'SCAN') => void;
   onPhaseFinished: (phase: 'SCAN') => Promise<unknown>;
   onRevealFinished: () => void;
@@ -30,28 +32,76 @@ const mocks = vi.hoisted(() => {
     Promise.resolve(message === 'GET_ANALYSIS_LOADING_STATE' ? state : nextState),
   );
   const send = vi.fn();
+  const decode = vi.fn(() => Promise.resolve());
   const start = vi.fn();
   const destroy = vi.fn();
   const createLoadingMotion = vi.fn((_options: MotionOptions) => ({ start, destroy }));
+  const replace = vi.fn();
+  const boardList = vi.fn(() => Promise.resolve([{ id: 'board-1', name: '보드' }]));
+  const boardGet = vi.fn(() => Promise.resolve({ id: 'board-1' }));
+  const fetchQuery = vi.fn(({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn());
+  const eventHandlers = new Map<string, () => void>();
+  const on = vi.fn((message: string, handler: () => void) => {
+    eventHandlers.set(message, handler);
+    return () => eventHandlers.delete(message);
+  });
 
-  return { createLoadingMotion, destroy, nextState, request, send, start, state };
+  return {
+    boardGet,
+    boardList,
+    createLoadingMotion,
+    decode,
+    destroy,
+    eventHandlers,
+    fetchQuery,
+    nextState,
+    on,
+    replace,
+    request,
+    send,
+    start,
+    state,
+  };
 });
 
-vi.mock('@/shared/lib/bridge', () => ({ bridge: { request: mocks.request, send: mocks.send } }));
+vi.mock('@stackflow/react', () => ({ useFlow: () => ({ replace: mocks.replace }) }));
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ fetchQuery: mocks.fetchQuery }),
+}));
+vi.mock('@/entities/board/api/board-api', () => ({
+  boardApi: { get: mocks.boardGet, list: mocks.boardList },
+}));
+vi.mock('@/shared/lib/bridge', () => ({
+  bridge: { on: mocks.on, request: mocks.request, send: mocks.send },
+}));
 vi.mock('./ppotto-loading-motion', () => ({ createLoadingMotion: mocks.createLoadingMotion }));
 
 afterEach(() => vi.clearAllMocks());
 
+Object.defineProperty(HTMLImageElement.prototype, 'decode', {
+  configurable: true,
+  value: mocks.decode,
+});
+
 describe('AnalysisLoadingPage', () => {
   it('RN 상태로 모션을 시작하고 막 경계와 종료를 브리지로 알린다', async () => {
+    let finishFirstDecode: (() => void) | undefined;
+    mocks.decode.mockImplementationOnce(
+      () => new Promise<void>((resolve) => (finishFirstDecode = resolve)),
+    );
     const { unmount } = render(<AnalysisLoadingPage />);
 
+    await waitFor(() => expect(mocks.decode).toHaveBeenCalledTimes(30));
+    expect(mocks.start).not.toHaveBeenCalled();
+    finishFirstDecode?.();
     await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
     const options = mocks.createLoadingMotion.mock.calls[0]![0];
 
     expect(options.speed).toBe(0.6);
     expect(options.phase).toBe('SCAN');
     expect(options.photoCount).toBe(20);
+    expect(options.boardBgSrc).toBe('/analysis-loading/board-bg.png');
+    expect(options.stickerSrcs).toHaveLength(9);
     expect(options.photos).toHaveLength(20);
     expect(options.photos[0]).toMatchObject({
       src: mocks.state.photos[0]!.uri,
@@ -63,12 +113,20 @@ describe('AnalysisLoadingPage', () => {
     options.onPhaseStarted('SCAN');
     await expect(options.onPhaseFinished('SCAN')).resolves.toEqual(mocks.nextState);
     options.onRevealFinished();
+    await waitFor(() =>
+      expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_REVEAL_FINISHED'),
+    );
 
     expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_PHASE_STARTED', { phase: 'SCAN' });
     expect(mocks.request).toHaveBeenCalledWith('ANALYSIS_LOADING_PHASE_FINISHED', {
       phase: 'SCAN',
     });
     expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_REVEAL_FINISHED');
+    expect(mocks.boardList).toHaveBeenCalledTimes(1);
+    expect(mocks.boardGet).toHaveBeenCalledWith('board-1');
+
+    mocks.eventHandlers.get('SHOW_BOARD')?.();
+    expect(mocks.replace).toHaveBeenCalledWith('Board', {});
 
     unmount();
     expect(mocks.destroy).toHaveBeenCalledTimes(1);

@@ -16,6 +16,7 @@ type LoadingBridgeHandlers = {
 };
 
 let loadingBridgeHandlers: LoadingBridgeHandlers | undefined;
+let showingBoard = false;
 
 jest.mock('expo-router', () => ({
   router: { replace: jest.fn() },
@@ -25,8 +26,15 @@ jest.mock('@/shared/ui/Toast', () => ({ useToast: () => jest.fn() }));
 jest.mock('@/shared/ui/AppWebView', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');
   return {
-    AppWebView: ({ bridgeHandlers }: { bridgeHandlers: LoadingBridgeHandlers }) => {
+    AppWebView: ({
+      bridgeHandlers,
+      showBoard,
+    }: {
+      bridgeHandlers: LoadingBridgeHandlers;
+      showBoard?: boolean;
+    }) => {
       loadingBridgeHandlers = bridgeHandlers;
+      showingBoard = showBoard ?? false;
       return <Text>분석 로딩 웹뷰</Text>;
     },
   };
@@ -58,6 +66,7 @@ const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
     setLastSeenLoadingPhase: jest.Mock;
   };
 };
+const { router } = jest.requireMock('expo-router') as { router: { replace: jest.Mock } };
 
 const SAFE_AREA_METRICS = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -67,6 +76,7 @@ const SAFE_AREA_METRICS = {
 beforeEach(() => {
   jest.clearAllMocks();
   loadingBridgeHandlers = undefined;
+  showingBoard = false;
   photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));
   photoUploadService.getLastSeenLoadingPhase.mockResolvedValue(undefined);
   photoUploadService.getMotionPhotoCount.mockReturnValue(100);
@@ -119,6 +129,9 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
 
   await user.press(resultButton);
   expect(photoUploadService.finish).toHaveBeenCalledTimes(1);
+  expect(showingBoard).toBe(true);
+  expect(router.replace).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: '결과 확인하기' })).not.toBeOnTheScreen();
 });
 
 it('재접속하면 저장된 마지막 막부터 다시 시작한다', async () => {

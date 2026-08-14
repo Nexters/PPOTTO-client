@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { photoUploadService } from '@/features/photo-upload';
+import { AppBackground } from '@/shared/ui/AppBackground';
 import { AppWebView } from '@/shared/ui/AppWebView';
 
 import { PendingUploadModal } from './ui/PendingUploadModal';
@@ -120,7 +121,11 @@ export function BoardScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <AppWebView path="/board" onReady={clearPreviousScreens} />
+      {screenState.status === 'CHECKING' || screenState.status === 'READY' ? (
+        <AppWebView path="/board" onReady={clearPreviousScreens} waitForBoardReady />
+      ) : (
+        <AppBackground />
+      )}
       <PendingUploadModal onConfirm={confirmPending} visible={screenState.status === 'PENDING'} />
       <UploadFailureModal
         onCancel={() => void cancelRetry()}

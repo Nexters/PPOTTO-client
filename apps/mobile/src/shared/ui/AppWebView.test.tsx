@@ -11,6 +11,7 @@ let mockOnOpenWindow: ((event: { nativeEvent: { targetUrl: string } }) => void) 
 let mockInjectedJavaScript: string | undefined;
 let mockWebviewDebuggingEnabled: boolean | undefined;
 const mockPushMessage = jest.fn();
+const mockEmit = jest.fn();
 
 jest.mock('@/lib/auth-session', () => ({
   getAccessToken: jest.fn(),
@@ -71,7 +72,7 @@ jest.mock('webview-bridge-kit/react-native', () => ({
     handlers: Record<string, (payload?: unknown) => unknown>,
   ) => {
     mockBridgeHandlers = handlers;
-    return { pushMessage: mockPushMessage };
+    return { bridge: { emit: mockEmit }, pushMessage: mockPushMessage };
   },
 }));
 
@@ -144,6 +145,16 @@ describe('WebView 로딩', () => {
     await act(async () => void mockBridgeHandlers.ANALYSIS_LOADING_READY!());
     expect(screen.queryByText('앱 로딩 배경')).not.toBeOnTheScreen();
   });
+
+  it('보드 화면은 웹 렌더가 끝날 때까지 네이티브 배경을 유지한다', async () => {
+    await render(<AppWebView path="/board" waitForBoardReady />);
+
+    await act(async () => mockOnLoadEnd?.());
+    expect(screen.queryByText('앱 로딩 배경')).toBeOnTheScreen();
+
+    await act(async () => void mockBridgeHandlers.BOARD_READY!());
+    expect(screen.queryByText('앱 로딩 배경')).not.toBeOnTheScreen();
+  });
 });
 
 describe('분석 로딩 브리지', () => {
@@ -173,6 +184,15 @@ describe('분석 로딩 브리지', () => {
     expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED).toHaveBeenCalledWith({ phase: 'SCAN' });
     expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED).toHaveBeenCalledWith({ phase: 'SCAN' });
     expect(bridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED).toHaveBeenCalledTimes(1);
+  });
+
+  it('현재 웹뷰에 보드 전환 이벤트를 보낸다', async () => {
+    const { rerender } = await render(<AppWebView path="/analysis-loading" />);
+
+    expect(mockEmit).not.toHaveBeenCalled();
+    await act(async () => rerender(<AppWebView path="/analysis-loading" showBoard />));
+
+    expect(mockEmit).toHaveBeenCalledWith('SHOW_BOARD');
   });
 });
 

@@ -1,4 +1,4 @@
-import { command, defineContract, request } from 'webview-bridge-kit';
+import { command, defineContract, event, request } from 'webview-bridge-kit';
 import { z } from 'zod';
 
 // POST /auth/login 응답 중 웹 라우팅에 필요한 부분. null = 사용자가 로그인 취소
@@ -52,6 +52,7 @@ export const contract = defineContract({
   OPEN_PHOTO_SELECT: command({ payload: z.object({ boardId: z.string() }) }),
   // 보드 화면 진입/이탈 — 보드에 있는 동안만 바운스 끔
   SET_BOARD_ACTIVE: command({ payload: z.object({ active: z.boolean() }) }),
+  BOARD_READY: command(),
   GET_ANALYSIS_LOADING_STATE: request({ response: analysisLoadingState }),
   ANALYSIS_LOADING_READY: command(),
   ANALYSIS_LOADING_PHASE_STARTED: command({
@@ -62,6 +63,7 @@ export const contract = defineContract({
     response: analysisLoadingPhaseState,
   }),
   ANALYSIS_LOADING_REVEAL_FINISHED: command(),
+  SHOW_BOARD: event(),
 });
 
 export type BridgeContract = typeof contract;

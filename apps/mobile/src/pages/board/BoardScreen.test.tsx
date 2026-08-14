@@ -23,6 +23,10 @@ jest.mock('@/shared/ui/AppWebView', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');
   return { AppWebView: () => <Text>보드 웹뷰</Text> };
 });
+jest.mock('@/shared/ui/AppBackground', () => {
+  const { Text } = jest.requireActual('react-native') as typeof import('react-native');
+  return { AppBackground: () => <Text>도트 배경</Text> };
+});
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: {
     discard: jest.fn(),
@@ -68,6 +72,8 @@ it('저장된 작업은 미리 준비하고 확인하기 전까지 로딩 화면
   expect(photoUploadService.resume).toHaveBeenCalledTimes(1);
   expect(photoUploadService.getMotionPhotosForWeb).toHaveBeenCalledTimes(1);
   expect(router.replace).not.toHaveBeenCalled();
+  expect(screen.getByText('도트 배경')).toBeOnTheScreen();
+  expect(screen.queryByText('보드 웹뷰')).not.toBeOnTheScreen();
 
   const replaceAction = { type: 'REPLACE' };
   mockPreventRemoveCallback!({ data: { action: replaceAction } });

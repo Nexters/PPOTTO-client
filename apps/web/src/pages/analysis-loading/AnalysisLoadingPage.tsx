@@ -1,15 +1,43 @@
 'use client';
 
 import type { AnalysisLoadingBridgeState } from '@ppotto/bridge';
-import { useEffect, useRef } from 'react';
+import { useFlow } from '@stackflow/react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef } from 'react';
 
+import { boardApi } from '@/entities/board/api/board-api';
+import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { bridge } from '@/shared/lib/bridge';
 
 import { createLoadingMotion } from './ppotto-loading-motion';
 import './ppotto-loading-motion.css';
 
+const BOARD_BG_SRC = '/analysis-loading/board-bg.png';
+const STICKER_SRCS = Array.from(
+  { length: 9 },
+  (_, index) => `/analysis-loading/sticker${index + 1}.png`,
+);
+
 export function AnalysisLoadingPage() {
   const mountRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const { replace } = useFlow();
+
+  const prepareBoard = useCallback(async () => {
+    const boards = await queryClient.fetchQuery({
+      queryKey: boardQueryKeys.list(),
+      queryFn: boardApi.list,
+    });
+    const boardId = boards[0]?.id;
+    if (!boardId) return;
+
+    await queryClient.fetchQuery({
+      queryKey: boardQueryKeys.detail(boardId),
+      queryFn: () => boardApi.get(boardId),
+    });
+  }, [queryClient]);
+
+  useEffect(() => bridge.on('SHOW_BOARD', () => replace('Board', {})), [replace]);
 
   useEffect(() => {
     let disposed = false;
@@ -17,22 +45,31 @@ export function AnalysisLoadingPage() {
 
     void bridge
       .request('GET_ANALYSIS_LOADING_STATE')
-      .then((state) => {
+      .then(async (state) => {
+        if (disposed || !mountRef.current) return;
+
+        const photos = prepareMotionPhotos(state);
+        await preloadImages([...photos.map(({ src }) => src), BOARD_BG_SRC, ...STICKER_SRCS]);
         if (disposed || !mountRef.current) return;
 
         motion = createLoadingMotion({
           mount: mountRef.current,
           photoCount: state.photoCount,
-          photos: prepareMotionPhotos(state),
+          photos,
           phase: state.visiblePhase,
           visualProgress: state.visualProgress,
           speed: 0.6,
-          coverSrc: '/analysis-loading/wrapped-cover.png',
+          boardBgSrc: BOARD_BG_SRC,
+          stickerSrcs: STICKER_SRCS,
           onPhaseStarted: (phase: AnalysisLoadingBridgeState['visiblePhase']) =>
             bridge.send('ANALYSIS_LOADING_PHASE_STARTED', { phase }),
           onPhaseFinished: (phase: AnalysisLoadingBridgeState['visiblePhase']) =>
             bridge.request('ANALYSIS_LOADING_PHASE_FINISHED', { phase }),
-          onRevealFinished: () => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED'),
+          onRevealFinished: () => {
+            void prepareBoard()
+              .catch((error) => console.warn('[analysis-loading] 보드 미리 불러오기 실패', error))
+              .finally(() => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED'));
+          },
         });
         motion.start();
         bridge.send('ANALYSIS_LOADING_READY');
@@ -43,9 +80,19 @@ export function AnalysisLoadingPage() {
       disposed = true;
       motion?.destroy();
     };
-  }, []);
+  }, [prepareBoard]);
 
   return <main ref={mountRef} className="relative h-dvh w-full overflow-hidden bg-black" />;
+}
+
+async function preloadImages(sources: string[]) {
+  await Promise.allSettled(
+    sources.map((src) => {
+      const image = new Image();
+      image.src = src;
+      return image.decode();
+    }),
+  );
 }
 
 function prepareMotionPhotos(state: AnalysisLoadingBridgeState) {

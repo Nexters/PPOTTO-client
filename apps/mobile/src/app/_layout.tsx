@@ -38,7 +38,7 @@ export default function RootLayout() {
                   gestureEnabled: false,
                 }}
               />
-              <Stack.Screen name="board" />
+              <Stack.Screen name="board" options={{ animation: 'none' }} />
             </Stack>
             {isQaToolEnabled() && <QaRecorderProbe />}
           </ToastProvider>

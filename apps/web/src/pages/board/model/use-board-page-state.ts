@@ -13,7 +13,7 @@ export function useBoardPageState() {
   const { isActive } = useActivity();
   const { data: boards, isLoading: isBoardListLoading } = useBoardListQuery();
   const boardId = boards?.[0]?.id;
-  const { data: board, refetch: refetchBoard } = useBoardQuery(boardId);
+  const { data: board, isLoading: isBoardLoading, refetch: refetchBoard } = useBoardQuery(boardId);
   const { data: me } = useMeQuery();
   const { mutate: deleteStickers, isPending: isDeletingStickers } = useDeleteStickersMutation();
   const hasPromptedOnCurrentVisit = useRef(false);
@@ -62,6 +62,7 @@ export function useBoardPageState() {
     deleteAllStickers,
     isDeletingStickers,
     isBoardListLoading,
+    isBoardLoading,
     isInitialUploadModalOpen,
     setIsInitialUploadModalOpen,
     openPhotoSelect,

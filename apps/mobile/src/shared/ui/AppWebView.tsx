@@ -1,6 +1,6 @@
 import { contract, type BridgeContract } from '@ppotto/bridge';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -37,6 +37,8 @@ interface AppWebViewProps {
   onReady?: () => void;
   bridgeHandlers?: PageBridgeHandlers;
   waitForAnalysisReady?: boolean;
+  waitForBoardReady?: boolean;
+  showBoard?: boolean;
 }
 
 // 앱 표준 웹뷰
@@ -45,6 +47,8 @@ export function AppWebView({
   onReady,
   bridgeHandlers,
   waitForAnalysisReady = false,
+  waitForBoardReady = false,
+  showBoard = false,
 }: AppWebViewProps) {
   const qaToolEnabled = isQaToolEnabled();
   const ref = useRef<WebView>(null);
@@ -53,7 +57,7 @@ export function AppWebView({
   const [loaded, setLoaded] = useState(false);
   const [boardActive, setBoardActive] = useState(false);
 
-  const { pushMessage } = useNativeBridge(ref, contract, {
+  const { bridge, pushMessage } = useNativeBridge(ref, contract, {
     APPLE_LOGIN: () => loginWithApple(),
     KAKAO_LOGIN: () => loginWithKakao(),
     GET_ACCESS_TOKEN: async ({ forceRefresh }) => ({
@@ -73,6 +77,7 @@ export function AppWebView({
     OPEN_PHOTO_SELECT: ({ boardId }) =>
       router.push({ pathname: '/photo-select', params: { boardId } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
+    BOARD_READY: () => setLoaded(true),
     ANALYSIS_LOADING_READY: () => setLoaded(true),
     GET_ANALYSIS_LOADING_STATE: () => {
       const handler = bridgeHandlers?.GET_ANALYSIS_LOADING_STATE;
@@ -89,10 +94,15 @@ export function AppWebView({
     ANALYSIS_LOADING_REVEAL_FINISHED: () => bridgeHandlers?.ANALYSIS_LOADING_REVEAL_FINISHED?.(),
   });
 
+  useEffect(() => {
+    if (showBoard) bridge.emit('SHOW_BOARD');
+  }, [bridge, showBoard]);
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#000' }}>
       <WebView
         ref={ref}
+        style={{ backgroundColor: '#000' }}
         source={{ uri: `${WEB_URL}${path}` }}
         injectedJavaScriptBeforeContentLoaded={
           qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : undefined
@@ -113,7 +123,7 @@ export function AppWebView({
           );
         }}
         onLoadEnd={() => {
-          if (!waitForAnalysisReady) setLoaded(true);
+          if (!waitForAnalysisReady && !waitForBoardReady) setLoaded(true);
         }}
         allowsBackForwardNavigationGestures={false}
         webviewDebuggingEnabled={qaToolEnabled}
