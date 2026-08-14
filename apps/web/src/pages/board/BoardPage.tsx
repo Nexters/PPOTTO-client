@@ -115,6 +115,25 @@ export function BoardPage() {
     };
   }, [isPickingColor]);
 
+  // 드로잉 모드를 나가면 스포이드 선택 상태를 초기화한다
+  const [prevToolbarMode, setPrevToolbarMode] = useState(toolbarMode);
+  if (toolbarMode !== prevToolbarMode) {
+    setPrevToolbarMode(toolbarMode);
+    if (toolbarMode !== 'draw') {
+      setColorSource('palette');
+      setEyedropperColor(DEFAULT_EYEDROPPER_COLOR);
+      setIsPickingColor(false);
+      setPickerPosition(null);
+      setPreviewColor(null);
+    }
+  }
+
+  useEffect(() => {
+    if (toolbarMode === 'draw') return;
+    captureRef.current = null;
+    previewColorRef.current = null;
+  }, [toolbarMode]);
+
   return (
     <>
       <div ref={pageRef} className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
