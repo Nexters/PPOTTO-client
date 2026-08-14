@@ -293,7 +293,8 @@ describe('추가 업로드', () => {
   });
 
   it('사진을 개별 표시하고 20장부터 제출할 수 있다', async () => {
-    setGallery(spacedAssets(150));
+    // 20번의 순차 press가 있는 테스트라 타일 수가 곧 실행 시간 — 계약(최소 20장)에 필요한 만큼만 깐다
+    setGallery(spacedAssets(30));
     const { user } = await renderLoadedScreen();
 
     expect(counter('0 / 100')).toBeOnTheScreen();
@@ -311,7 +312,8 @@ describe('추가 업로드', () => {
 
     expect(counter('20 / 100')).toBeOnTheScreen();
     expect(cta()).toBeEnabled();
-  });
+    // userEvent.press는 press당 ~130ms를 소모해 20번 누르면 기본 5초를 넘길 수 있다
+  }, 15_000);
 
   it('자동 선택은 최신 사진 100장을 선택한다', async () => {
     setGallery(spacedAssets(150));
