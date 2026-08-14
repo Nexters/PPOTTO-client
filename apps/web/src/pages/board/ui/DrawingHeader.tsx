@@ -13,8 +13,8 @@ type DrawingHeaderProps = {
 export function DrawingHeader({ canUndo, onUndo, onConfirm }: DrawingHeaderProps) {
   return (
     <div
-      className={cn('absolute inset-x-0 top-0 z-60 flex flex-col items-start', 'px-6 pb-10')}
-      style={{ backgroundImage: 'linear-gradient(to bottom, black 46%, transparent)' }}
+      className={cn('absolute inset-x-0 top-0 z-60 flex flex-col items-start', 'px-6 pt-5 pb-16')}
+      style={{ backgroundImage: 'linear-gradient(to bottom, black 29px, transparent)' }}
     >
       <div className="flex items-center justify-between w-full">
         <button
