@@ -9,6 +9,7 @@ import { Modal } from '@/shared/ui/common/Modal';
 import { useBoardPageState } from './model/use-board-page-state';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
+import { DrawingColorPalette } from './ui/DrawingColorPalette';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
@@ -26,6 +27,7 @@ export function BoardPage() {
     openPhotoSelect,
   } = useBoardPageState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
+  const [drawColor, setDrawColor] = useState('#ffffff');
 
   return (
     <>
@@ -47,6 +49,11 @@ export function BoardPage() {
           mode={toolbarMode}
           onModeChange={setToolbarMode}
           onAddSticker={openPhotoSelect}
+          aboveModeSwitcher={
+            toolbarMode === 'draw' ? (
+              <DrawingColorPalette color={drawColor} onColorChange={setDrawColor} />
+            ) : undefined
+          }
         />
       </div>
       <Modal
