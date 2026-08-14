@@ -66,6 +66,9 @@ type BoardCanvasProps = {
   mode: ToolbarMode;
   drawColor: string;
   drawStrokeWidth: number;
+  // true인 동안은 포인터 입력을 무시한다 — 스포이드로 색을 고르는 동안 같은 드래그가
+  // 캔버스에 그림으로도 그려지는 걸 막기 위함
+  isPointerInputSuspended?: boolean;
   // 그리는 도중(pointerdown~up 사이) 여부가 바뀔 때마다 호출
   onDrawingActiveChange?: (active: boolean) => void;
   // 실행취소할 그림이 있는지 여부가 바뀔 때마다 호출
@@ -100,7 +103,15 @@ function hitTestStickerId(target: EventTarget | null): string | null {
 }
 
 export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(function BoardCanvas(
-  { boardId, mode, drawColor, drawStrokeWidth, onDrawingActiveChange, onCanUndoChange },
+  {
+    boardId,
+    mode,
+    drawColor,
+    drawStrokeWidth,
+    isPointerInputSuspended = false,
+    onDrawingActiveChange,
+    onCanUndoChange,
+  },
   ref,
 ) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
@@ -164,6 +175,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
+  const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
   const drawColorRef = useRef(drawColor);
   const drawStrokeWidthRef = useRef(drawStrokeWidth);
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
@@ -283,6 +295,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     selectedIdRef.current = selectedId;
     isEditModeRef.current = isEditMode;
     isDrawModeRef.current = isDrawMode;
+    isPointerInputSuspendedRef.current = isPointerInputSuspended;
     drawColorRef.current = drawColor;
     drawStrokeWidthRef.current = drawStrokeWidth;
     saveStickerLayoutRef.current = saveStickerLayout;
@@ -440,6 +453,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     };
 
     const handlePointerDown = (e: PointerEvent) => {
+      if (isPointerInputSuspendedRef.current) return;
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
 
