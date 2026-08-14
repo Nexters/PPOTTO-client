@@ -48,7 +48,6 @@ import { EmptyBoardStickerQuickMenu } from './empty-state/EmptyBoardStickerQuick
 import { SelectBox } from './SelectBox';
 import { Sticker, type StickerData } from './Sticker';
 import { StickerBadgeMark } from './StickerBadgeMark';
-import { StickerPreview } from './StickerPreview';
 import { StickerQuickMenu } from './StickerQuickMenu';
 
 type BoardCanvasProps = {
@@ -639,20 +638,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           />
         )}
       </div>
-      {quickMenuSticker && (
-        <StickerPreview
-          sticker={quickMenuSticker}
-          titleInputRef={titleInputRef}
-          isEditingTitle={isRenamingTitle}
-          onSubmitTitle={(title) => {
-            if (quickMenuStickerId)
-              rename(quickMenuStickerId, title, () => setIsRenamingTitle(false));
-          }}
-          onCancelEditTitle={() => setIsRenamingTitle(false)}
-        />
-      )}
       <StickerQuickMenu
-        stickerTitle={quickMenuSticker?.title ?? ''}
+        sticker={quickMenuSticker}
         isOpen={quickMenuStickerId !== null}
         onClose={() => {
           setQuickMenuStickerId(null);
@@ -662,8 +649,17 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           setIsRenamingTitle(true);
           // 클릭 핸들러 안에서 동기적으로 focus를 걸어야 iOS 웹뷰가 키보드를 띄움
           titleInputRef.current?.focus();
-          titleInputRef.current?.select();
         }}
+        isEditingTitle={isRenamingTitle}
+        onSubmitTitle={(title) => {
+          if (quickMenuStickerId)
+            rename(quickMenuStickerId, title, () => {
+              setQuickMenuStickerId(null);
+              setIsRenamingTitle(false);
+            });
+        }}
+        onCancelEditTitle={() => setIsRenamingTitle(false)}
+        titleInputRef={titleInputRef}
         onRegenerate={() => {
           if (quickMenuStickerId) regenerate(quickMenuStickerId, () => setQuickMenuStickerId(null));
         }}

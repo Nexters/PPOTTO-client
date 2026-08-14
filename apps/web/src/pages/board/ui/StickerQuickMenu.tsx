@@ -1,14 +1,21 @@
 import { Download, Edit, Reload, Trash } from '@ppotto/assets';
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 import { Modal } from '@/shared/ui/common/Modal';
 
+import type { StickerData } from './Sticker';
+import { StickerPreview } from './StickerPreview';
+
 type StickerQuickMenuProps = {
-  stickerTitle: string;
+  sticker: StickerData | undefined;
   isOpen: boolean;
   onClose: () => void;
   onRename: () => void;
+  isEditingTitle: boolean;
+  onSubmitTitle: (title: string) => void;
+  onCancelEditTitle: () => void;
+  titleInputRef: Ref<HTMLInputElement>;
   onRegenerate: () => void;
   isRegenerating: boolean;
   onDelete: () => void;
@@ -16,10 +23,14 @@ type StickerQuickMenuProps = {
 };
 
 export function StickerQuickMenu({
-  stickerTitle,
+  sticker,
   isOpen,
   onClose,
   onRename,
+  isEditingTitle,
+  onSubmitTitle,
+  onCancelEditTitle,
+  titleInputRef,
   onRegenerate,
   isRegenerating,
   onDelete,
@@ -46,7 +57,17 @@ export function StickerQuickMenu({
 
   return (
     <>
-      <BottomSheet isOpen={isOpen} onClose={onClose} modal={false}>
+      <BottomSheet isOpen={isOpen} onClose={onClose}>
+        {/* BottomSheet 안에 렌더링해야 편집 중 클릭해도 시트가 안 닫힘 */}
+        {sticker && (
+          <StickerPreview
+            sticker={sticker}
+            titleInputRef={titleInputRef}
+            isEditingTitle={isEditingTitle}
+            onSubmitTitle={onSubmitTitle}
+            onCancelEditTitle={onCancelEditTitle}
+          />
+        )}
         {menuItems.map(({ label, Icon, onClick, disabled }) => (
           <button
             key={label}
@@ -63,7 +84,7 @@ export function StickerQuickMenu({
       <Modal
         open={isDeleteConfirmOpen}
         onOpenChange={setIsDeleteConfirmOpen}
-        title={`${stickerTitle} 스티커를 삭제하시겠습니까?`}
+        title={`${sticker?.title ?? ''} 스티커를 삭제하시겠습니까?`}
         description="삭제한 스티커는 복구할 수 없습니다."
       >
         <Modal.Cancel>취소</Modal.Cancel>

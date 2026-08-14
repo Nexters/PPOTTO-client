@@ -36,8 +36,9 @@ export function StickerPreview({
   return (
     <div
       className={cn(
-        'pointer-events-none fixed inset-x-0 z-55 flex flex-col items-center',
+        'fixed inset-x-0 z-55 flex flex-col items-center',
         'justify-center gap-2',
+        isEditingTitle ? 'pointer-events-auto' : 'pointer-events-none',
       )}
       style={{ top: HEADER_HEIGHT, bottom: BOTTOM_RESERVE_HEIGHT }}
     >
@@ -57,16 +58,14 @@ export function StickerPreview({
           style={{ objectFit: 'contain' }}
         />
       </div>
-      <div className="pointer-events-auto">
-        <StickerBadge
-          ref={titleInputRef}
-          title={sticker.title}
-          isNew={sticker.isNew}
-          isEditing={isEditingTitle}
-          onSubmit={onSubmitTitle}
-          onCancel={onCancelEditTitle}
-        />
-      </div>
+      <StickerBadge
+        ref={titleInputRef}
+        title={sticker.title}
+        isNew={sticker.isNew}
+        isEditing={isEditingTitle}
+        onSubmit={onSubmitTitle}
+        onCancel={onCancelEditTitle}
+      />
     </div>
   );
 }
