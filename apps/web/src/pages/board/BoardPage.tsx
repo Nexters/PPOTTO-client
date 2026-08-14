@@ -31,19 +31,23 @@ export function BoardPage() {
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_MIN);
+  const [isDrawingActive, setIsDrawingActive] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const isDrawingUiHidden = toolbarMode === 'draw' && isDrawingActive;
 
   return (
     <>
       <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
-        {toolbarMode === 'draw' ? (
-          <DrawingHeader
-            canUndo={false}
-            onUndo={() => {}}
-            onConfirm={() => setToolbarMode('default')}
-          />
-        ) : (
-          <BoardHeader />
-        )}
+        {!isDrawingUiHidden &&
+          (toolbarMode === 'draw' ? (
+            <DrawingHeader
+              canUndo={canUndo}
+              onUndo={() => {}}
+              onConfirm={() => setToolbarMode('default')}
+            />
+          ) : (
+            <BoardHeader />
+          ))}
         <button
           type="button"
           disabled={!canDeleteStickers || isDeletingStickers}
@@ -61,23 +65,27 @@ export function BoardPage() {
           mode={toolbarMode}
           drawColor={drawColor}
           drawStrokeWidth={drawStrokeWidth}
+          onDrawingActiveChange={setIsDrawingActive}
+          onCanUndoChange={setCanUndo}
         />
-        {toolbarMode === 'draw' && (
+        {toolbarMode === 'draw' && !isDrawingUiHidden && (
           <DrawingSizeSlider
             strokeWidth={drawStrokeWidth}
             onStrokeWidthChange={setDrawStrokeWidth}
           />
         )}
-        <BoardToolbar
-          mode={toolbarMode}
-          onModeChange={setToolbarMode}
-          onAddSticker={openPhotoSelect}
-          aboveModeSwitcher={
-            toolbarMode === 'draw' ? (
-              <DrawingColorPalette color={drawColor} onColorChange={setDrawColor} />
-            ) : undefined
-          }
-        />
+        {!isDrawingUiHidden && (
+          <BoardToolbar
+            mode={toolbarMode}
+            onModeChange={setToolbarMode}
+            onAddSticker={openPhotoSelect}
+            aboveModeSwitcher={
+              toolbarMode === 'draw' ? (
+                <DrawingColorPalette color={drawColor} onColorChange={setDrawColor} />
+              ) : undefined
+            }
+          />
+        )}
       </div>
       <Modal
         open={isInitialUploadModalOpen}
@@ -98,12 +106,16 @@ function BoardContent({
   mode,
   drawColor,
   drawStrokeWidth,
+  onDrawingActiveChange,
+  onCanUndoChange,
 }: {
   boardId?: string;
   isLoading: boolean;
   mode: ToolbarMode;
   drawColor: string;
   drawStrokeWidth: number;
+  onDrawingActiveChange: (active: boolean) => void;
+  onCanUndoChange: (canUndo: boolean) => void;
 }) {
   if (boardId) {
     return (
@@ -112,6 +124,8 @@ function BoardContent({
         mode={mode}
         drawColor={drawColor}
         drawStrokeWidth={drawStrokeWidth}
+        onDrawingActiveChange={onDrawingActiveChange}
+        onCanUndoChange={onCanUndoChange}
       />
     );
   }

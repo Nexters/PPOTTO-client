@@ -66,6 +66,10 @@ type BoardCanvasProps = {
   mode: ToolbarMode;
   drawColor: string;
   drawStrokeWidth: number;
+  // 그리는 도중(pointerdown~up 사이) 여부가 바뀔 때마다 호출
+  onDrawingActiveChange?: (active: boolean) => void;
+  // 실행취소할 그림이 있는지 여부가 바뀔 때마다 호출
+  onCanUndoChange?: (canUndo: boolean) => void;
 };
 
 // 탭과 드래그를 구분하는 이동 허용 오차(px)
@@ -90,7 +94,14 @@ function hitTestStickerId(target: EventTarget | null): string | null {
   return el instanceof HTMLElement ? (el.dataset.stickerId ?? null) : null;
 }
 
-export function BoardCanvas({ boardId, mode, drawColor, drawStrokeWidth }: BoardCanvasProps) {
+export function BoardCanvas({
+  boardId,
+  mode,
+  drawColor,
+  drawStrokeWidth,
+  onDrawingActiveChange,
+  onCanUndoChange,
+}: BoardCanvasProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
@@ -249,6 +260,9 @@ export function BoardCanvas({ boardId, mode, drawColor, drawStrokeWidth }: Board
   const saveDrawingRef = useRef(saveDrawing);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
+  const onDrawingActiveChangeRef = useRef(onDrawingActiveChange);
+  // 직전에 알려준 "그리는 중" 여부
+  const isDrawingActiveRef = useRef(false);
 
   // ref들을 매 렌더 이후 최신값으로 동기화
   useEffect(() => {
@@ -264,7 +278,13 @@ export function BoardCanvas({ boardId, mode, drawColor, drawStrokeWidth }: Board
     saveDrawingRef.current = saveDrawing;
     pushRef.current = push;
     longPressRef.current = longPress;
+    onDrawingActiveChangeRef.current = onDrawingActiveChange;
   });
+
+  // 실행취소할 그림이 있는지 여부를 부모에 알림
+  useEffect(() => {
+    onCanUndoChange?.(drawings.length > 0);
+  }, [drawings.length, onCanUndoChange]);
 
   // 배치 처리 시작한 스티커 id를 기억해서, 저장 응답이 캐시에 반영되기 전에 리렌더가 껴도
   // 같은 스티커를 다시 계산·저장하지 않게 막는다
@@ -375,6 +395,13 @@ export function BoardCanvas({ boardId, mode, drawColor, drawStrokeWidth }: Board
     const applyDrawGestureResult = (result: DrawGestureResult) => {
       drawGestureRef.current = result.state;
       setDrawingPoints(result.state?.kind === 'drawing' ? result.state.points : null);
+
+      // 그리는 중(drawing/pinching) 여부가 실제로 바뀔 때만 부모에 알림
+      const isActive = result.state !== null;
+      if (isActive !== isDrawingActiveRef.current) {
+        isDrawingActiveRef.current = isActive;
+        onDrawingActiveChangeRef.current?.(isActive);
+      }
 
       if (result.finalizedStroke && result.finalizedStroke.length > 0) {
         saveDrawingRef.current(
