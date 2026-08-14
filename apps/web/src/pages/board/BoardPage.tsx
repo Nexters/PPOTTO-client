@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { type RefObject, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { Modal } from '@/shared/ui/common/Modal';
@@ -13,6 +13,7 @@ import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { DrawingColorPalette } from './ui/DrawingColorPalette';
 import { DrawingHeader } from './ui/DrawingHeader';
 import { DRAW_STROKE_WIDTH_MIN, DrawingSizeSlider } from './ui/DrawingSizeSlider';
+import { EyedropperMarker } from './ui/EyedropperMarker';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
@@ -36,6 +37,28 @@ export function BoardPage() {
   const [canUndo, setCanUndo] = useState(false);
   const isDrawingUiHidden = toolbarMode === 'draw' && isDrawingActive;
   const canvasRef = useRef<BoardCanvasHandle>(null);
+
+  const [isPickingColor, setIsPickingColor] = useState(false);
+  const [pickerPosition, setPickerPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // TODO: 지금은 마커가 실제 픽셀을 안 읽고 위치만 따라다닌다 — 다음 커밋에서 보드 캡처 붙여서
+  // 실제 색을 미리보기 하도록 연결 예정
+  useEffect(() => {
+    if (!isPickingColor) return;
+
+    const updatePosition = (e: PointerEvent) => setPickerPosition({ x: e.clientX, y: e.clientY });
+    const stopPicking = () => {
+      setIsPickingColor(false);
+      setPickerPosition(null);
+    };
+
+    window.addEventListener('pointermove', updatePosition);
+    window.addEventListener('pointerup', stopPicking);
+    return () => {
+      window.removeEventListener('pointermove', updatePosition);
+      window.removeEventListener('pointerup', stopPicking);
+    };
+  }, [isPickingColor]);
 
   return (
     <>
@@ -84,10 +107,22 @@ export function BoardPage() {
             onAddSticker={openPhotoSelect}
             aboveModeSwitcher={
               toolbarMode === 'draw' ? (
-                <DrawingColorPalette color={drawColor} onColorChange={setDrawColor} />
+                <DrawingColorPalette
+                  color={drawColor}
+                  onColorChange={setDrawColor}
+                  onEyedropperStart={() => setIsPickingColor(true)}
+                />
               ) : undefined
             }
           />
+        )}
+        {pickerPosition && (
+          <div
+            className="pointer-events-none fixed z-70 -translate-x-1/2 -translate-y-full"
+            style={{ left: pickerPosition.x, top: pickerPosition.y }}
+          >
+            <EyedropperMarker color={drawColor} />
+          </div>
         )}
       </div>
       <Modal
