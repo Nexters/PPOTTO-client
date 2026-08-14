@@ -52,11 +52,12 @@ export function StickerBadge({
         value={isEditing ? value : title}
         maxLength={TITLE_MAX_LENGTH}
         className={cn(
-          'text-caption-01 text-nowrap w-auto bg-transparent text-gray-900 outline-none',
+          'text-caption-01 text-nowrap field-sizing-content bg-transparent',
+          'text-gray-900 outline-none',
           !isEditing && 'pointer-events-none',
         )}
-        style={{ width: `${(isEditing ? value : title).length + 1}ch` }}
-        onChange={(event) => setValue(event.target.value)}
+        // IME 조합 중엔 브라우저가 maxLength를 강제하지 않아 직접 자름
+        onChange={(event) => setValue(event.target.value.slice(0, TITLE_MAX_LENGTH))}
         onBlur={submit}
         onKeyDown={(event) => {
           if (event.key === 'Enter') submit();
