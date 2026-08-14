@@ -16,6 +16,8 @@ type DrawingColorPaletteProps = {
   color: string;
   onColorChange: (color: string) => void;
   eyedropperColor: string;
+  isEyedropperActive: boolean;
+  isEyedropperColorApplied: boolean;
   onEyedropperStart: () => void;
 };
 
@@ -23,6 +25,8 @@ export function DrawingColorPalette({
   color,
   onColorChange,
   eyedropperColor,
+  isEyedropperActive,
+  isEyedropperColorApplied,
   onEyedropperStart,
 }: DrawingColorPaletteProps) {
   return (
@@ -38,7 +42,7 @@ export function DrawingColorPalette({
             swatch.className,
           )}
         >
-          {color === swatch.value && (
+          {!isEyedropperActive && color === swatch.value && (
             <span className="absolute top-0.5 left-0.5">
               <Check color="#181818" width={16} height={16} />
             </span>
@@ -55,7 +59,11 @@ export function DrawingColorPalette({
           'border-2 border-white',
         )}
       >
-        <IconEyedropper color="#181818" width={20} height={20} />
+        <IconEyedropper
+          color={isEyedropperColorApplied ? '#ffffff' : '#181818'}
+          width={20}
+          height={20}
+        />
       </button>
     </div>
   );

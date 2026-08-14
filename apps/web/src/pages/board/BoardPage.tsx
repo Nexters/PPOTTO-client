@@ -21,6 +21,9 @@ const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.B
   ssr: false,
 });
 
+// 스포이드로 아직 색을 고른 적 없거나, 팔레트 색을 다시 선택해 스포이드 선택이 풀렸을 때의 기본값
+const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
+
 export function BoardPage() {
   const {
     boardId,
@@ -46,7 +49,11 @@ export function BoardPage() {
   const [isPickingColor, setIsPickingColor] = useState(false);
   const [pickerPosition, setPickerPosition] = useState<{ x: number; y: number } | null>(null);
   const [previewColor, setPreviewColor] = useState<string | null>(null);
-  const [eyedropperColor, setEyedropperColor] = useState('#ffffff');
+  const [eyedropperColor, setEyedropperColor] = useState(DEFAULT_EYEDROPPER_COLOR);
+  const [colorSource, setColorSource] = useState<'palette' | 'eyedropper'>('palette');
+
+  const isEyedropperActive = isPickingColor || colorSource === 'eyedropper';
+  const isEyedropperColorApplied = colorSource === 'eyedropper';
 
   const startPicking = async () => {
     if (!pageRef.current) return;
@@ -93,6 +100,7 @@ export function BoardPage() {
       if (color) {
         setDrawColor(color);
         setEyedropperColor(color);
+        setColorSource('eyedropper');
       }
     };
 
@@ -153,8 +161,14 @@ export function BoardPage() {
               toolbarMode === 'draw' ? (
                 <DrawingColorPalette
                   color={drawColor}
-                  onColorChange={setDrawColor}
+                  onColorChange={(next) => {
+                    setDrawColor(next);
+                    setColorSource('palette');
+                    setEyedropperColor(DEFAULT_EYEDROPPER_COLOR);
+                  }}
                   eyedropperColor={eyedropperColor}
+                  isEyedropperActive={isEyedropperActive}
+                  isEyedropperColorApplied={isEyedropperColorApplied}
                   onEyedropperStart={() => void startPicking()}
                 />
               ) : undefined
