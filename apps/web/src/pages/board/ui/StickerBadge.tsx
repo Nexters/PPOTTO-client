@@ -34,7 +34,7 @@ export function StickerBadge({
 
   const submit = () => {
     const nextTitle = value.trim();
-    if (nextTitle) onSubmit?.(nextTitle);
+    if (nextTitle && nextTitle !== title) onSubmit?.(nextTitle);
     else onCancel?.();
   };
 
