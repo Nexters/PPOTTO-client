@@ -8,6 +8,7 @@ type StickerQuickMenuProps = {
   stickerTitle: string;
   isOpen: boolean;
   onClose: () => void;
+  onRename: () => void;
   onRegenerate: () => void;
   isRegenerating: boolean;
   onDelete: () => void;
@@ -18,6 +19,7 @@ export function StickerQuickMenu({
   stickerTitle,
   isOpen,
   onClose,
+  onRename,
   onRegenerate,
   isRegenerating,
   onDelete,
@@ -26,7 +28,7 @@ export function StickerQuickMenu({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const menuItems = [
-    { label: '이름 변경하기', Icon: Edit, onClick: onClose, disabled: false },
+    { label: '이름 변경하기', Icon: Edit, onClick: onRename, disabled: false },
     { label: '스티커 저장하기', Icon: Download, onClick: onClose, disabled: false },
     {
       label: isRegenerating ? '스티커 다시 만드는 중...' : '스티커 다시 만들기',
@@ -44,7 +46,7 @@ export function StickerQuickMenu({
 
   return (
     <>
-      <BottomSheet isOpen={isOpen} onClose={onClose}>
+      <BottomSheet isOpen={isOpen} onClose={onClose} modal={false}>
         {menuItems.map(({ label, Icon, onClick, disabled }) => (
           <button
             key={label}

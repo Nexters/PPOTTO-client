@@ -9,6 +9,8 @@ type BottomSheetProps = {
   onClose: () => void;
   children: React.ReactNode;
   overlayClassName?: string;
+  // 시트 바깥 요소로 포커스를 보내야 할 때 false로 트랩 해제
+  modal?: boolean;
 };
 
 export function BottomSheet({
@@ -16,13 +18,23 @@ export function BottomSheet({
   onClose,
   children,
   overlayClassName = 'backdrop-blur-[30px]',
+  modal = true,
 }: BottomSheetProps) {
   return (
-    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <Dialog.Overlay className={cn('modal-overlay fixed inset-0 z-50', overlayClassName)} />
+    <Dialog.Root modal={modal} open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      {/* non-modal이면 Dialog.Overlay가 렌더링을 안 해서 직접 그림 */}
+      {modal ? (
+        <Dialog.Overlay className={cn('modal-overlay fixed inset-0 z-50', overlayClassName)} />
+      ) : (
+        isOpen && (
+          <div aria-hidden className={cn('modal-overlay fixed inset-0 z-50', overlayClassName)} />
+        )
+      )}
       <Dialog.Content
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => e.preventDefault()}
+        // non-modal일 때 포커스 아웃으로 자동 닫히는 것 방지
+        onFocusOutside={(e) => !modal && e.preventDefault()}
         className={cn(
           'sheet-content fixed inset-x-0 bottom-0 z-50',
           'flex flex-col gap-5 rounded-t-3xl bg-gray-900 pt-4',

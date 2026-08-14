@@ -37,6 +37,7 @@ import {
 import { angleBetween, centroid, distance, type Point } from '../model/geometry';
 import { useDeleteSticker } from '../model/use-delete-sticker';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
+import { useRenameSticker } from '../model/use-rename-sticker';
 
 import type { ToolbarMode } from './BoardToolbar';
 import {
@@ -83,6 +84,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
+  const [isRenamingTitle, setIsRenamingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
@@ -93,6 +96,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const queryClient = useQueryClient();
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
+  const { rename } = useRenameSticker(boardId);
   const isEditMode = mode === 'move';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
   const selectedId = isEditMode ? selectedStickerId : null;
@@ -631,11 +635,31 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           />
         )}
       </div>
-      {quickMenuSticker && <StickerPreview sticker={quickMenuSticker} />}
+      {quickMenuSticker && (
+        <StickerPreview
+          sticker={quickMenuSticker}
+          titleInputRef={titleInputRef}
+          isEditingTitle={isRenamingTitle}
+          onSubmitTitle={(title) => {
+            if (quickMenuStickerId)
+              rename(quickMenuStickerId, title, () => setIsRenamingTitle(false));
+          }}
+          onCancelEditTitle={() => setIsRenamingTitle(false)}
+        />
+      )}
       <StickerQuickMenu
         stickerTitle={quickMenuSticker?.title ?? ''}
         isOpen={quickMenuStickerId !== null}
-        onClose={() => setQuickMenuStickerId(null)}
+        onClose={() => {
+          setQuickMenuStickerId(null);
+          setIsRenamingTitle(false);
+        }}
+        onRename={() => {
+          setIsRenamingTitle(true);
+          // 클릭 핸들러 안에서 동기적으로 focus를 걸어야 iOS 웹뷰가 키보드를 띄움
+          titleInputRef.current?.focus();
+          titleInputRef.current?.select();
+        }}
         onRegenerate={() => {
           if (quickMenuStickerId) regenerate(quickMenuStickerId, () => setQuickMenuStickerId(null));
         }}
