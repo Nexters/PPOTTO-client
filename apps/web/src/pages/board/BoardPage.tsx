@@ -11,6 +11,7 @@ import { BoardHeader } from './ui/BoardHeader';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { DrawingColorPalette } from './ui/DrawingColorPalette';
 import { DrawingHeader } from './ui/DrawingHeader';
+import { DRAW_STROKE_WIDTH_MIN, DrawingSizeSlider } from './ui/DrawingSizeSlider';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
@@ -29,6 +30,7 @@ export function BoardPage() {
   } = useBoardPageState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
+  const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_MIN);
 
   return (
     <>
@@ -54,6 +56,12 @@ export function BoardPage() {
           {isDeletingStickers ? '삭제 중...' : '스티커 전체 삭제 (DEBUG)'}
         </button>
         <BoardContent boardId={boardId} isLoading={isBoardListLoading} mode={toolbarMode} />
+        {toolbarMode === 'draw' && (
+          <DrawingSizeSlider
+            strokeWidth={drawStrokeWidth}
+            onStrokeWidthChange={setDrawStrokeWidth}
+          />
+        )}
         <BoardToolbar
           mode={toolbarMode}
           onModeChange={setToolbarMode}
