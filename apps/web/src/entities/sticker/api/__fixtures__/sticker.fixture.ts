@@ -98,16 +98,46 @@ export const stickerFixture: StickerRecap = {
       id: '01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f',
       imageUrl: '/mock/photo-1.png',
       takenAt: '2026-06-14T13:22:10+09:00',
+      group: false,
+      groupId: null,
+      groupPhotos: [],
     },
     {
       id: '01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a',
       imageUrl: '/mock/photo-2.png',
       takenAt: '2026-07-02T19:05:44+09:00',
+      group: true,
+      groupId: '01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b',
+      groupPhotos: [
+        {
+          id: '01983f2e-4d5e-7f6a-b7c8-9d0e1f2a3b4c',
+          imageUrl: '/mock/photo-2.png',
+          takenAt: '2026-07-02T19:06:04+09:00',
+        },
+        {
+          id: '01983f2e-5e6f-7a7b-c8d9-0e1f2a3b4c5d',
+          imageUrl: '/mock/photo-2.png',
+          takenAt: '2026-07-02T19:06:24+09:00',
+        },
+        {
+          id: '01983f2e-6f7a-7b8c-d9e0-1f2a3b4c5d6e',
+          imageUrl: '/mock/photo-2.png',
+          takenAt: '2026-07-02T19:06:44+09:00',
+        },
+        {
+          id: '01983f2e-7a8b-7c9d-e0f1-2a3b4c5d6e7f',
+          imageUrl: '/mock/photo-2.png',
+          takenAt: '2026-07-02T19:07:04+09:00',
+        },
+      ],
     },
     {
       id: '01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b',
       imageUrl: '/mock/photo-3.png',
       takenAt: '2026-07-10T09:15:00+09:00',
+      group: false,
+      groupId: null,
+      groupPhotos: [],
     },
   ],
 };

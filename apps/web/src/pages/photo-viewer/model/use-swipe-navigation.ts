@@ -2,11 +2,7 @@ import { useRef } from 'react';
 
 const SWIPE_THRESHOLD = 50;
 
-// 좌우 스와이프로 selectedIndex를 이동
-export function useSwipeNavigation(
-  photoCount: number,
-  setSelectedIndex: (updater: (prev: number) => number) => void,
-) {
+export function useSwipeNavigation(onSwipe: (direction: 1 | -1) => void) {
   const touchStartX = useRef<number | null>(null);
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -20,9 +16,9 @@ export function useSwipeNavigation(
     touchStartX.current = null;
 
     if (deltaX > SWIPE_THRESHOLD) {
-      setSelectedIndex((prev) => Math.max(prev - 1, 0));
+      onSwipe(-1);
     } else if (deltaX < -SWIPE_THRESHOLD) {
-      setSelectedIndex((prev) => Math.min(prev + 1, photoCount - 1));
+      onSwipe(1);
     }
   };
 

@@ -26,6 +26,9 @@ function fakePhoto(overrides: Partial<StickerPhoto> = {}): StickerPhoto {
     id: 'photo-1',
     imageUrl: 'https://storage.googleapis.com/ppotto-photos/photo-1.jpg',
     takenAt: '2026-01-01T00:00:00Z',
+    group: false,
+    groupId: null,
+    groupPhotos: [],
     ...overrides,
   };
 }
