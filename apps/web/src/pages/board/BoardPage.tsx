@@ -55,18 +55,15 @@ export function BoardPage() {
   const isEyedropperActive = isPickingColor || colorSource === 'eyedropper';
   const isEyedropperColorApplied = colorSource === 'eyedropper';
 
+  const captureBoard = (element: HTMLElement) =>
+    toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
+
   const startPicking = async () => {
     if (!pageRef.current) return;
-    // html-to-image로 그 시점의 보드 화면을 한 번 캡처한다
     try {
-      captureRef.current = await toCanvas(pageRef.current, {
-        includeQueryParams: true,
-        skipFonts: true,
-        pixelRatio: 1,
-        onImageErrorHandler: (target) => {
-          console.warn('[eyedropper] 이미지 임베드 실패, 건너뜀', target);
-        },
-      });
+      // 첫 캡처는 워밍업으로 버리고 두 번째 결과를 쓴다
+      await captureBoard(pageRef.current);
+      captureRef.current = await captureBoard(pageRef.current);
       setIsPickingColor(true);
     } catch (error) {
       console.error('[eyedropper] 보드 캡처 실패', error);
@@ -142,6 +139,7 @@ export function BoardPage() {
           mode={toolbarMode}
           drawColor={drawColor}
           drawStrokeWidth={drawStrokeWidth}
+          isPointerInputSuspended={isPickingColor}
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
           canvasRef={canvasRef}
@@ -203,6 +201,7 @@ function BoardContent({
   mode,
   drawColor,
   drawStrokeWidth,
+  isPointerInputSuspended,
   onDrawingActiveChange,
   onCanUndoChange,
   canvasRef,
@@ -212,6 +211,7 @@ function BoardContent({
   mode: ToolbarMode;
   drawColor: string;
   drawStrokeWidth: number;
+  isPointerInputSuspended: boolean;
   onDrawingActiveChange: (active: boolean) => void;
   onCanUndoChange: (canUndo: boolean) => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
@@ -224,6 +224,7 @@ function BoardContent({
         mode={mode}
         drawColor={drawColor}
         drawStrokeWidth={drawStrokeWidth}
+        isPointerInputSuspended={isPointerInputSuspended}
         onDrawingActiveChange={onDrawingActiveChange}
         onCanUndoChange={onCanUndoChange}
       />
