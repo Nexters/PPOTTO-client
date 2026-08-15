@@ -34,6 +34,9 @@ import {
   drawGestureReducer,
 } from '../model/board-draw-gesture';
 import {
+  computeDrawingBoxPinchTransform,
+  computeDrawingPinchTransform,
+  type DrawingBoxTransform,
   type DrawingCreateInput,
   getDrawingBounds,
   hitTestDrawingId,
@@ -52,6 +55,7 @@ import {
 } from '../model/board-layout';
 import {
   computeStickerPinchTransform,
+  type PinchSample,
   scaleBadgeOffset,
   type StickerTransform,
 } from '../model/board-transform';
@@ -148,6 +152,23 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [drawingDragOffset, setDrawingDragOffset] = useState<Point | null>(null);
   // 선택된 그림을 드래그하는 동안, 현재 휴지통 버튼 위에 있는지 — 놓기 전 시각 피드백(확대)에 사용
   const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
+  // 선택된 그림을 두 손가락으로 회전+확대하는 동안의 실시간 미리보기(점/굵기). 아니면 null
+  const [drawingPinchPreview, setDrawingPinchPreview] = useState<{
+    points: Point[];
+    strokeWidth: number;
+  } | null>(null);
+  // 선택 박스의 원래 크기(선택 시점 기준, 회전과 무관하게 고정) — 선택 해제 후 다시 선택하면 새로 계산
+  const [selectedDrawingBaseSize, setSelectedDrawingBaseSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  // 선택 박스의 현재 중심/회전/배율(직전 제스처까지 반영된, 확정된 값)
+  const [selectedDrawingBoxTransform, setSelectedDrawingBoxTransform] =
+    useState<DrawingBoxTransform | null>(null);
+  // 두 손가락으로 회전+확대하는 동안의 선택 박스 실시간 미리보기. 아니면 null
+  const [drawingBoxPinchPreview, setDrawingBoxPinchPreview] = useState<DrawingBoxTransform | null>(
+    null,
+  );
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
@@ -182,6 +203,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       setSelectedDrawingId(null);
       setDrawingDragOffset(null);
       setIsDrawingOverTrash(false);
+      setDrawingPinchPreview(null);
+      setSelectedDrawingBaseSize(null);
+      setSelectedDrawingBoxTransform(null);
+      setDrawingBoxPinchPreview(null);
     }
   }
 
@@ -225,6 +250,20 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const drawingDragStartRef = useRef<{ pointerId: number; startWorldPoint: Point } | null>(null);
   // handlePointerUp에서 최종 이동량을 읽어야 해서 state와 별도로 ref에도 최신값을 들고 있는다
   const drawingDragOffsetRef = useRef<Point | null>(null);
+  // 선택된 그림을 두 손가락으로 회전+확대하는 동안의 시작 상태(원본 점/굵기 + 시작 시점 손가락 샘플)
+  const drawingPinchStartRef = useRef<{
+    points: Point[];
+    strokeWidth: number;
+    sample: PinchSample;
+  } | null>(null);
+  // handlePointerUp에서 최종 결과를 읽어야 해서 state와 별도로 ref에도 최신값을 들고 있는다
+  const drawingPinchPreviewRef = useRef<{ points: Point[]; strokeWidth: number } | null>(null);
+  // 선택 박스의 확정된 중심/회전/배율 — pointerdown에서 제스처 시작 기준값으로 읽어야 해서 ref로도 들고 있는다
+  const selectedDrawingBoxTransformRef = useRef<DrawingBoxTransform | null>(null);
+  // 두 손가락 제스처 시작 시점의 선택 박스 상태(기준값)
+  const drawingBoxPinchStartRef = useRef<DrawingBoxTransform | null>(null);
+  // handlePointerUp에서 최종 결과를 읽어야 해서 state와 별도로 ref에도 최신값을 들고 있는다
+  const drawingBoxPinchPreviewRef = useRef<DrawingBoxTransform | null>(null);
 
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
@@ -247,7 +286,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   // draw 모드에서 기존 그림을 롱프레스하면 선택(삭제 대상)한다. 스티커 롱프레스와는
   // 완전히 별개 인스턴스 — draw 모드에서는 스티커 롱프레스 코드 경로 자체를 안 탄다
   const drawingLongPress = useLongPress({
-    onLongPress: (drawingId) => setSelectedDrawingId(drawingId),
+    onLongPress: (drawingId) => {
+      setSelectedDrawingId(drawingId);
+      const drawing = drawingsRef.current.find((d) => d.id === drawingId);
+      const bounds = drawing && getDrawingBounds(drawing.points, drawing.strokeWidth);
+      if (bounds) {
+        setSelectedDrawingBaseSize({ width: bounds.width, height: bounds.height });
+        setSelectedDrawingBoxTransform({ x: bounds.x, y: bounds.y, rotation: 0, scale: 1 });
+      }
+    },
   });
 
   useRefetchOnActive(refetch, isStale);
@@ -357,6 +404,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     stickersRef.current = stickers;
     selectedIdRef.current = selectedId;
     selectedDrawingIdRef.current = activeSelectedDrawingId;
+    selectedDrawingBoxTransformRef.current = selectedDrawingBoxTransform;
     isEditModeRef.current = isEditMode;
     isDrawModeRef.current = isDrawMode;
     isPointerInputSuspendedRef.current = isPointerInputSuspended;
@@ -392,11 +440,16 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onDrawingDragOverTrashChange?.(isDrawingOverTrash);
   }, [isDrawingOverTrash, onDrawingDragOverTrashChange]);
 
-  // draw 모드를 벗어나면 드래그 관련 ref도 정리 — 렌더 중엔 ref를 못 건드려 별도 effect로 분리
+  // draw 모드를 벗어나면 드래그/핀치 관련 ref도 정리 — 렌더 중엔 ref를 못 건드려 별도 effect로 분리
   useEffect(() => {
     if (isDrawMode) return;
     drawingDragStartRef.current = null;
     drawingDragOffsetRef.current = null;
+    drawingPinchStartRef.current = null;
+    drawingPinchPreviewRef.current = null;
+    selectedDrawingBoxTransformRef.current = null;
+    drawingBoxPinchStartRef.current = null;
+    drawingBoxPinchPreviewRef.current = null;
   }, [isDrawMode]);
 
   useImperativeHandle(
@@ -532,6 +585,16 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       setDrawingDragOffset(next);
     };
 
+    const setLiveDrawingPinchPreview = (next: { points: Point[]; strokeWidth: number } | null) => {
+      drawingPinchPreviewRef.current = next;
+      setDrawingPinchPreview(next);
+    };
+
+    const setLiveDrawingBoxPinchPreview = (next: DrawingBoxTransform | null) => {
+      drawingBoxPinchPreviewRef.current = next;
+      setDrawingBoxPinchPreview(next);
+    };
+
     // drawGestureReducer 결과를 실제 상태(refs/state)에 반영하고, 완성된 선이 있으면 저장한다
     const applyDrawGestureResult = (result: DrawGestureResult) => {
       drawGestureRef.current = result.state;
@@ -576,6 +639,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               setLiveDrawingDragOffset({ x: 0, y: 0 });
             } else {
               setSelectedDrawingId(null);
+              setSelectedDrawingBaseSize(null);
+              setSelectedDrawingBoxTransform(null);
             }
             return;
           }
@@ -597,6 +662,30 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         } else if (pointersRef.current.size === 2) {
           drawingLongPressRef.current.cancel();
           const points = [...pointersRef.current.values()];
+
+          if (selectedDrawingIdRef.current) {
+            drawingDragStartRef.current = null;
+            setLiveDrawingDragOffset(null);
+            setIsDrawingOverTrash(false);
+
+            const selected = drawingsRef.current.find(
+              (drawing) => drawing.id === selectedDrawingIdRef.current,
+            );
+            if (selected) {
+              drawingPinchStartRef.current = {
+                points: selected.points,
+                strokeWidth: selected.strokeWidth,
+                sample: {
+                  centroid: toWorldPoint(cameraRef.current, centroid(points)),
+                  distance: distance(points[0]!, points[1]!),
+                  angle: angleBetween(points[0]!, points[1]!),
+                },
+              };
+              drawingBoxPinchStartRef.current = selectedDrawingBoxTransformRef.current;
+            }
+            return;
+          }
+
           applyDrawGestureResult(
             drawGestureReducer(drawGestureRef.current, {
               type: 'MULTI_TOUCH',
@@ -654,9 +743,33 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             setLiveDrawingDragOffset(null);
             setIsDrawingOverTrash(false);
           }
+
+          const points = [...pointersRef.current.values()];
+
+          if (drawingPinchStartRef.current) {
+            const {
+              points: basePoints,
+              strokeWidth: baseStrokeWidth,
+              sample: start,
+            } = drawingPinchStartRef.current;
+            const current: PinchSample = {
+              centroid: toWorldPoint(cameraRef.current, centroid(points)),
+              distance: distance(points[0]!, points[1]!),
+              angle: angleBetween(points[0]!, points[1]!),
+            };
+            setLiveDrawingPinchPreview(
+              computeDrawingPinchTransform(basePoints, baseStrokeWidth, start, current),
+            );
+            if (drawingBoxPinchStartRef.current) {
+              setLiveDrawingBoxPinchPreview(
+                computeDrawingBoxPinchTransform(drawingBoxPinchStartRef.current, start, current),
+              );
+            }
+            return;
+          }
+
           const gesture = drawGestureRef.current;
           if (gesture?.kind !== 'pinching') return;
-          const points = [...pointersRef.current.values()];
           setCamera(
             computeBoardPinchZoom(
               gesture.startCamera,
@@ -784,13 +897,39 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         if (selectedDrawingIdRef.current) {
           const dragStart = drawingDragStartRef.current;
           const offset = drawingDragOffsetRef.current;
+          const pinchStart = drawingPinchStartRef.current;
+          const pinchPreview = drawingPinchPreviewRef.current;
+          const boxPinchPreview = drawingBoxPinchPreviewRef.current;
           drawingDragStartRef.current = null;
           setLiveDrawingDragOffset(null);
           setIsDrawingOverTrash(false);
+          drawingPinchStartRef.current = null;
+          setLiveDrawingPinchPreview(null);
+          drawingBoxPinchStartRef.current = null;
+          setLiveDrawingBoxPinchPreview(null);
 
-          if (dragStart && dragStart.pointerId === e.pointerId && isOverTrash(e)) {
+          if (pinchStart) {
+            // 두 손가락 중 하나라도 떨어지면 리사이즈+회전을 끝내고 결과를 저장한다(선택은 유지).
+            // 실제로 손가락이 안 움직여 미리보기가 없었으면(=변화 없음) 저장하지 않는다
+            const drawing = drawingsRef.current.find((d) => d.id === selectedDrawingIdRef.current);
+            if (drawing && pinchPreview) {
+              moveDrawingRef.current(
+                toDrawingMoveInput(drawing.id, pinchPreview.points, {
+                  color: drawing.color,
+                  strokeWidth: pinchPreview.strokeWidth,
+                }),
+              );
+            }
+            // 선택 박스의 회전/배율/중심도 같이 확정해서, 다음 제스처가 이 값을 기준으로 이어지게 한다
+            if (boxPinchPreview) {
+              selectedDrawingBoxTransformRef.current = boxPinchPreview;
+              setSelectedDrawingBoxTransform(boxPinchPreview);
+            }
+          } else if (dragStart && dragStart.pointerId === e.pointerId && isOverTrash(e)) {
             deleteDrawingRef.current(selectedDrawingIdRef.current);
             setSelectedDrawingId(null);
+            setSelectedDrawingBaseSize(null);
+            setSelectedDrawingBoxTransform(null);
           } else if (dragStart && dragStart.pointerId === e.pointerId && offset) {
             const isMoved = offset.x !== 0 || offset.y !== 0;
             const drawing = drawingsRef.current.find((d) => d.id === selectedDrawingIdRef.current);
@@ -959,10 +1098,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const directEditSticker = stickers.find(
     (sticker) => sticker.id === quickMenu.directEditStickerId,
   );
-  const selectedDrawing = drawings.find((drawing) => drawing.id === activeSelectedDrawingId);
-  const selectedDrawingBounds = selectedDrawing
-    ? getDrawingBounds(selectedDrawing.points, selectedDrawing.strokeWidth)
-    : null;
+  const activeDrawingBoxTransform = drawingBoxPinchPreview ?? selectedDrawingBoxTransform;
 
   return (
     <div
@@ -993,7 +1129,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         {/* 저장된 그림 + 그리는 도중인 선의 실시간 미리보기 */}
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>
           {drawings.map((drawing) => {
-            const isDragging = drawing.id === activeSelectedDrawingId && drawingDragOffset !== null;
+            const isSelected = drawing.id === activeSelectedDrawingId;
+            const isDragging = isSelected && drawingDragOffset !== null;
+            const pinchPreview = isSelected ? drawingPinchPreview : null;
+
             return (
               <g
                 key={drawing.id}
@@ -1004,9 +1143,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 }
               >
                 <DrawingStroke
-                  points={drawing.points}
+                  points={pinchPreview?.points ?? drawing.points}
                   color={drawing.color}
-                  strokeWidth={drawing.strokeWidth}
+                  strokeWidth={pinchPreview?.strokeWidth ?? drawing.strokeWidth}
                 />
               </g>
             );
@@ -1015,12 +1154,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             <DrawingStroke points={drawingPoints} color={drawColor} strokeWidth={drawStrokeWidth} />
           )}
         </svg>
-        {selectedDrawingBounds && (
+        {selectedDrawingBaseSize && activeDrawingBoxTransform && (
           <SelectionBoxFrame
-            x={selectedDrawingBounds.x + (drawingDragOffset?.x ?? 0)}
-            y={selectedDrawingBounds.y + (drawingDragOffset?.y ?? 0)}
-            width={selectedDrawingBounds.width}
-            height={selectedDrawingBounds.height}
+            x={activeDrawingBoxTransform.x + (drawingDragOffset?.x ?? 0)}
+            y={activeDrawingBoxTransform.y + (drawingDragOffset?.y ?? 0)}
+            width={selectedDrawingBaseSize.width * activeDrawingBoxTransform.scale}
+            height={selectedDrawingBaseSize.height * activeDrawingBoxTransform.scale}
+            rotation={activeDrawingBoxTransform.rotation}
             zIndex={9999}
           />
         )}

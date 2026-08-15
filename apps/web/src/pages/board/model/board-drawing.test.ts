@@ -20,6 +20,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  computeDrawingBoxPinchTransform,
+  computeDrawingPinchTransform,
   getDrawingBounds,
   hitTestDrawingId,
   isPointInDrawingBounds,
@@ -246,5 +248,162 @@ describe('isPointInDrawingBounds', () => {
 
   it('세로로 경계를 벗어나면 밖으로 본다', () => {
     expect(isPointInDrawingBounds({ x: 10, y: 12.1 }, bounds)).toBe(false);
+  });
+});
+
+describe('computeDrawingPinchTransform', () => {
+  it('거리·각도 변화 없이 중심점만 이동하면 점들이 그만큼 평행이동하고 굵기는 그대로다', () => {
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 150, y: 120 }, distance: 50, angle: 0 };
+
+    const result = computeDrawingPinchTransform([{ x: 150, y: 80 }], 4, start, current);
+
+    expect(result.points[0]!.x).toBeCloseTo(200);
+    expect(result.points[0]!.y).toBeCloseTo(100);
+    expect(result.strokeWidth).toBe(4);
+  });
+
+  it('중심점 고정, 거리가 2배가 되면 점도 중심에서 2배 멀어지고 굵기도 2배가 된다', () => {
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 100, angle: 0 };
+
+    const result = computeDrawingPinchTransform([{ x: 130, y: 100 }], 4, start, current);
+
+    expect(result.points[0]!.x).toBeCloseTo(160);
+    expect(result.points[0]!.y).toBeCloseTo(100);
+    expect(result.strokeWidth).toBe(8);
+  });
+
+  it('중심점·거리 고정, 각도만 바뀌면 그 각도만큼 중심점 기준으로 회전한다', () => {
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 50, angle: 45 };
+
+    const result = computeDrawingPinchTransform([{ x: 130, y: 100 }], 4, start, current);
+
+    expect(result.points[0]!.x).toBeCloseTo(121.213, 2);
+    expect(result.points[0]!.y).toBeCloseTo(121.213, 2);
+    expect(result.strokeWidth).toBe(4);
+  });
+
+  it('여러 점이면 각 점 모두에 동일한 변환을 적용한다', () => {
+    const start = { centroid: { x: 0, y: 0 }, distance: 10, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 20, angle: 0 };
+
+    const result = computeDrawingPinchTransform(
+      [
+        { x: 10, y: 0 },
+        { x: 0, y: 10 },
+      ],
+      2,
+      start,
+      current,
+    );
+
+    expect(result.points[0]!.x).toBeCloseTo(20);
+    expect(result.points[1]!.y).toBeCloseTo(20);
+  });
+
+  it('배율이 상한(4배)을 넘으면 상한으로 고정된다', () => {
+    const start = { centroid: { x: 0, y: 0 }, distance: 10, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 1000, angle: 0 };
+
+    const result = computeDrawingPinchTransform([{ x: 10, y: 0 }], 2, start, current);
+
+    expect(result.strokeWidth).toBe(8);
+  });
+
+  it('배율이 하한(0.3배) 밑으로 내려가면 하한으로 고정된다', () => {
+    const start = { centroid: { x: 0, y: 0 }, distance: 100, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 1, angle: 0 };
+
+    const result = computeDrawingPinchTransform([{ x: 10, y: 0 }], 2, start, current);
+
+    expect(result.strokeWidth).toBeCloseTo(0.6);
+  });
+
+  it('시작 거리가 0이면(손가락이 겹친 상태) 나눗셈 대신 원래 점/굵기를 그대로 반환한다', () => {
+    const points = [{ x: 5, y: 5 }];
+    const start = { centroid: { x: 0, y: 0 }, distance: 0, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 50, angle: 90 };
+
+    const result = computeDrawingPinchTransform(points, 3, start, current);
+
+    expect(result).toEqual({ points, strokeWidth: 3 });
+  });
+});
+
+describe('computeDrawingBoxPinchTransform', () => {
+  it('거리·각도 변화 없이 중심점만 이동하면 그만큼 평행이동한다', () => {
+    const base = { x: 100, y: 100, rotation: 0, scale: 1 };
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 150, y: 120 }, distance: 50, angle: 0 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result).toEqual({ x: 150, y: 120, rotation: 0, scale: 1 });
+  });
+
+  it('중심점 고정, 거리만 2배가 되면 박스도 2배 확대되고 중심에서 멀어진다', () => {
+    const base = { x: 130, y: 100, rotation: 0, scale: 1 };
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 100, angle: 0 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.scale).toBe(2);
+    expect(result.x).toBeCloseTo(160);
+    expect(result.y).toBeCloseTo(100);
+  });
+
+  it('중심점·거리 고정, 각도만 바뀌면 그 각도만큼 중심점 기준으로 회전한다', () => {
+    const base = { x: 130, y: 100, rotation: 0, scale: 1 };
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 50, angle: 45 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.rotation).toBe(45);
+    expect(result.x).toBeCloseTo(121.213, 2);
+    expect(result.y).toBeCloseTo(121.213, 2);
+  });
+
+  it('스티커와 달리 90도 근처로 회전해도 스냅되지 않고 자유 회전한다', () => {
+    const base = { x: 100, y: 100, rotation: 0, scale: 1 };
+    const start = { centroid: { x: 0, y: 0 }, distance: 10, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 10, angle: 92 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.rotation).toBe(92);
+  });
+
+  it('배율이 상한(4배)을 넘으면 상한으로 고정된다', () => {
+    const base = { x: 100, y: 100, rotation: 0, scale: 3.5 };
+    const start = { centroid: { x: 0, y: 0 }, distance: 10, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 1000, angle: 0 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.scale).toBe(4);
+  });
+
+  it('배율이 하한(0.3배) 밑으로 내려가면 하한으로 고정된다', () => {
+    const base = { x: 100, y: 100, rotation: 0, scale: 0.5 };
+    const start = { centroid: { x: 0, y: 0 }, distance: 100, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 1, angle: 0 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.scale).toBe(0.3);
+  });
+
+  it('시작 거리가 0이면(손가락이 겹친 상태) 나눗셈 대신 base를 그대로 반환한다', () => {
+    const base = { x: 5, y: 5, rotation: 10, scale: 2 };
+    const start = { centroid: { x: 0, y: 0 }, distance: 0, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 50, angle: 90 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result).toEqual(base);
   });
 });

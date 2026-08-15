@@ -1,7 +1,8 @@
 import type { BoardDetail, UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
 import { uuidv7 } from '@/shared/lib/uuidv7';
 
-import { distance, distanceToSegment, type Point } from './geometry';
+import type { PinchSample } from './board-transform';
+import { clamp, distance, distanceToSegment, type Point } from './geometry';
 
 type DrawingChanges = NonNullable<UpdateBoardLayoutInput['drawings']>;
 export type DrawingCreateInput = NonNullable<NonNullable<DrawingChanges['created']>[number]>;
@@ -126,4 +127,70 @@ export function isPointInDrawingBounds(point: Point, bounds: DrawingBounds): boo
     Math.abs(point.x - bounds.x) <= bounds.width / 2 &&
     Math.abs(point.y - bounds.y) <= bounds.height / 2
   );
+}
+
+export const DRAWING_PINCH_SCALE_MIN = 0.3;
+export const DRAWING_PINCH_SCALE_MAX = 4;
+
+export function computeDrawingPinchTransform(
+  basePoints: Point[],
+  baseStrokeWidth: number,
+  start: PinchSample,
+  current: PinchSample,
+): { points: Point[]; strokeWidth: number } {
+  if (start.distance === 0) return { points: basePoints, strokeWidth: baseStrokeWidth };
+
+  const scaleRatio = clamp(
+    current.distance / start.distance,
+    DRAWING_PINCH_SCALE_MIN,
+    DRAWING_PINCH_SCALE_MAX,
+  );
+  const rad = ((current.angle - start.angle) * Math.PI) / 180;
+  const dx = current.centroid.x - start.centroid.x;
+  const dy = current.centroid.y - start.centroid.y;
+
+  const transformPoint = (point: Point): Point => {
+    const vx = point.x - start.centroid.x;
+    const vy = point.y - start.centroid.y;
+    return {
+      x: start.centroid.x + (vx * Math.cos(rad) - vy * Math.sin(rad)) * scaleRatio + dx,
+      y: start.centroid.y + (vx * Math.sin(rad) + vy * Math.cos(rad)) * scaleRatio + dy,
+    };
+  };
+
+  return {
+    points: basePoints.map(transformPoint),
+    strokeWidth: baseStrokeWidth * scaleRatio,
+  };
+}
+
+export type DrawingBoxTransform = { x: number; y: number; rotation: number; scale: number };
+
+export function computeDrawingBoxPinchTransform(
+  base: DrawingBoxTransform,
+  start: PinchSample,
+  current: PinchSample,
+): DrawingBoxTransform {
+  if (start.distance === 0) return base;
+
+  const scale = clamp(
+    base.scale * (current.distance / start.distance),
+    DRAWING_PINCH_SCALE_MIN,
+    DRAWING_PINCH_SCALE_MAX,
+  );
+  const scaleRatio = scale / base.scale;
+  const rotation = base.rotation + (current.angle - start.angle);
+  const rad = ((current.angle - start.angle) * Math.PI) / 180;
+
+  const vx = base.x - start.centroid.x;
+  const vy = base.y - start.centroid.y;
+  const dx = current.centroid.x - start.centroid.x;
+  const dy = current.centroid.y - start.centroid.y;
+
+  return {
+    x: start.centroid.x + (vx * Math.cos(rad) - vy * Math.sin(rad)) * scaleRatio + dx,
+    y: start.centroid.y + (vx * Math.sin(rad) + vy * Math.cos(rad)) * scaleRatio + dy,
+    rotation,
+    scale,
+  };
 }
