@@ -525,6 +525,7 @@ export function createLoadingMotion(opts) {
       const pool = shuffle(state.photos).slice(0, n);
       for (const p of pool) {
         const el = makeTile();
+        el.style.backgroundImage = `url(${p.src})`;
         elTiles.appendChild(el);
         items.push({
           el,
@@ -548,6 +549,7 @@ export function createLoadingMotion(opts) {
       const used = new Set();
       for (const r of rects.slice(0, n)) {
         const el = makeTile();
+        el.style.backgroundImage = `url(${r.p.src})`;
         elTiles.appendChild(el);
         used.add(r.p.id);
         items.push({
@@ -564,6 +566,7 @@ export function createLoadingMotion(opts) {
       while (items.length < n && rest.length) {
         const p = rest.pop();
         const el = makeTile();
+        el.style.backgroundImage = `url(${p.src})`;
         elTiles.appendChild(el);
         items.push({
           el,
@@ -679,7 +682,6 @@ export function createLoadingMotion(opts) {
         it.el.style.height = c.h.toFixed(1) + 'px';
         it.el.style.transform = `translate3d(${c.x.toFixed(1)}px,${c.y.toFixed(1)}px,0) rotate(${c.r.toFixed(2)}deg) scale(${c.s.toFixed(3)})`;
         it.el.style.opacity = c.o.toFixed(3);
-        it.el.style.backgroundImage = `url(${it.p.src})`;
       }
     }
 
@@ -826,7 +828,12 @@ export function createLoadingMotion(opts) {
       const it = picks[i];
       if (!it) return;
       picks.forEach((q, qi) => {
-        if (q) q.el.style.zIndex = String(qi === i ? 30 : 3);
+        if (!q) return;
+        const active = qi === i;
+        q.el.style.zIndex = String(active ? 30 : 3);
+        q.el.style.boxShadow = active
+          ? '0 20px 44px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.22)'
+          : 'none';
       });
     }
 
@@ -877,12 +884,6 @@ export function createLoadingMotion(opts) {
         it.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
         it.el.style.opacity = o.toFixed(3);
         it.el.style.filter = `brightness(${bright.toFixed(2)})`;
-        // 뽑힌 장만 앞으로 떠오르게 한다.
-        it.el.style.boxShadow =
-          pickIndex === i
-            ? '0 20px 44px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.22)'
-            : 'none';
-        it.el.style.backgroundImage = `url(${it.p.src})`;
       }
     }
 
@@ -993,6 +994,7 @@ export function createLoadingMotion(opts) {
       extras = [];
       ordered.forEach((src, i) => {
         const el = makeTile();
+        el.style.backgroundImage = `url(${src.p.src})`;
         elDeck.appendChild(el);
         const item = { el, p: src.p, from: { x: src.x, y: src.y, w: src.w, h: src.h } };
         if (i < COUNT) {
@@ -1058,7 +1060,6 @@ export function createLoadingMotion(opts) {
         c.el.style.height = lerp(f.h, CARD_H, e).toFixed(1) + 'px';
         c.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
         c.el.style.opacity = (1 - clamp((k - 0.45) / 0.4, 0, 1)).toFixed(3);
-        c.el.style.backgroundImage = `url(${c.p.src})`;
       }
 
       for (const c of cards) {
@@ -1116,7 +1117,6 @@ export function createLoadingMotion(opts) {
         c.el.style.width = w.toFixed(1) + 'px';
         c.el.style.height = h.toFixed(1) + 'px';
         c.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) scale(${s.toFixed(3)})`;
-        c.el.style.backgroundImage = `url(${c.p.src})`;
       }
     }
 
@@ -1245,6 +1245,7 @@ export function createLoadingMotion(opts) {
       const srcs = sources(cells.length);
       cards = srcs.map((src, i) => {
         const el = makeTile();
+        el.style.backgroundImage = `url(${src.p.src})`;
         elReveal.appendChild(el);
         const cell = cells[i];
         const cx = cell.x + cell.w / 2,
@@ -1277,9 +1278,10 @@ export function createLoadingMotion(opts) {
     }
 
     function idle(dt) {
-      if (boardT >= LAND_END) return;
+      if (boardT >= LAND_END) return false;
       boardT = Math.min(boardT + dt, LAND_END);
       paintBoard(boardT);
+      return boardT < LAND_END;
     }
 
     function update(t, dt) {
@@ -1303,7 +1305,6 @@ export function createLoadingMotion(opts) {
         c.el.style.width = w.toFixed(1) + 'px';
         c.el.style.height = h.toFixed(1) + 'px';
         c.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
-        c.el.style.backgroundImage = `url(${c.p.src})`;
         c.el.style.opacity = tileAlpha;
       }
 
@@ -1446,7 +1447,7 @@ export function createLoadingMotion(opts) {
     if (dtReal > 100) dtReal = 100; // 백그라운드 복귀 시 프레임 점프 방지
     const dt = dtReal * tl.speed;
     if (tl.finished) {
-      reveal.idle(dt);
+      if (!reveal.idle(dt)) cancelAnimationFrame(raf);
       return;
     }
 

@@ -6,6 +6,7 @@ import { AnalysisLoadingScreen } from './AnalysisLoadingScreen';
 
 type LoadingBridgeHandlers = {
   GET_ANALYSIS_LOADING_STATE: () => Promise<AnalysisLoadingBridgeState>;
+  ANALYSIS_LOADING_READY: () => unknown;
   ANALYSIS_LOADING_PHASE_STARTED: (payload: {
     phase: AnalysisLoadingBridgeState['visiblePhase'];
   }) => Promise<void>;
@@ -41,6 +42,7 @@ jest.mock('@/shared/ui/AppWebView', () => {
 });
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: {
+    beginUpload: jest.fn(),
     clearCurrent: jest.fn(),
     finish: jest.fn(),
     getCurrent: jest.fn(),
@@ -57,6 +59,7 @@ jest.mock('@/features/photo-upload', () => ({
 
 const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
   photoUploadService: {
+    beginUpload: jest.Mock;
     finish: jest.Mock;
     getCurrent: jest.Mock;
     getLastSeenLoadingPhase: jest.Mock;
@@ -101,6 +104,8 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
   await act(async () => {
     state = await loadingBridgeHandlers!.GET_ANALYSIS_LOADING_STATE();
   });
+  await act(async () => void loadingBridgeHandlers!.ANALYSIS_LOADING_READY());
+  expect(photoUploadService.beginUpload).toHaveBeenCalledTimes(1);
   expect(state).toEqual({
     photoCount: 100,
     photos: [{ id: 'photo-1', uri: 'data:image/jpeg;base64,AA==', width: 1200, height: 800 }],

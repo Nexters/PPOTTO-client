@@ -1,7 +1,7 @@
 import * as MediaLibrary from 'expo-media-library';
 
 import type { GalleryPhoto } from '../model/gallery-photo';
-import type { FetchPhotoPage } from '../model/load-photo-groups';
+import type { FetchPhotoPage } from '../model/photo-page';
 
 const toGalleryPhoto = (asset: MediaLibrary.Asset): GalleryPhoto => ({
   id: asset.id,

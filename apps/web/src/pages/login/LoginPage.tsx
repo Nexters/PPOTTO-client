@@ -3,8 +3,6 @@
 import { AppleLogo, KakaoLogo, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 
-import { userApi } from '@/entities/user/api/user-api';
-import { hasSeenOnboarding } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 
@@ -15,13 +13,8 @@ export function LoginPage() {
     try {
       const result = await bridge.request(channel);
       if (!result) return;
-      if (result.pendingTerms.length > 0) {
-        replace('Terms', {});
-        return;
-      }
-
-      const me = await userApi.getMe();
-      replace(hasSeenOnboarding(me.id) ? 'Board' : 'Onboarding', {});
+      // 약관 미동의 여부는 보드 진입 시 useTermsGate가 GET /terms로 판단한다
+      replace('Board', {});
     } catch (error) {
       console.error('로그인 실패', error);
     }

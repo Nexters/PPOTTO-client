@@ -14,7 +14,7 @@ import { OnboardingPage } from '@/pages/onboarding';
 import { PhotoViewerPage } from '@/pages/photo-viewer';
 import { RecapPage } from '@/pages/recap';
 import { SettingsPage } from '@/pages/settings';
-import { TermsPage } from '@/pages/terms';
+import { TermsDetailPage, TermsPage } from '@/pages/terms';
 
 import { config } from './config';
 
@@ -43,6 +43,12 @@ const OnboardingActivity: ActivityComponentType<'Onboarding'> = () => (
 const TermsActivity: ActivityComponentType<'Terms'> = () => (
   <AppScreen>
     <TermsPage />
+  </AppScreen>
+);
+
+const TermsDetailActivity: ActivityComponentType<'TermsDetail'> = ({ params }) => (
+  <AppScreen>
+    <TermsDetailPage code={params.code === 'PRIVACY' ? 'PRIVACY' : 'TOS'} />
   </AppScreen>
 );
 
@@ -76,6 +82,7 @@ export const { Stack } = stackflow({
     Login: LoginActivity,
     Onboarding: OnboardingActivity,
     Terms: TermsActivity,
+    TermsDetail: TermsDetailActivity,
     Board: BoardActivity,
     Recap: RecapActivity,
     PhotoViewer: PhotoViewerActivity,

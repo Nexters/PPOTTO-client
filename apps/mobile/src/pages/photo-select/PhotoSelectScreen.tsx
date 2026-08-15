@@ -12,7 +12,7 @@ import {
   selectedPhotoGroups,
   usePhotoSelection,
 } from '@/features/photo-selection';
-import { photoUploadService } from '@/features/photo-upload';
+import { photoUploadService, sampleMotionPhotos } from '@/features/photo-upload';
 import { Button } from '@/shared/ui/Button';
 import { Header } from '@/shared/ui/Header';
 
@@ -59,25 +59,36 @@ export function PhotoSelectScreen() {
   const handleSubmit = () => {
     if (!selection || !boardId) return;
 
-    const motionPhotos = selection.groups.flatMap((group) => {
-      const representative = group.photos[selection.excludedCounts[group.id] ?? 0];
-      return representative ? [representative] : [];
-    });
-    if (mode === 'additional') {
-      photoCompressionQueue.start(selectedPhotoGroups(selection));
-    }
-    const compressedPhotos = photoCompressionQueue.wait();
-    photoUploadService.start(
-      compressedPhotos.then((photos) =>
-        prepareUploadJob({
-          jobId: Crypto.randomUUID(),
+    const selectedGroups = selectedPhotoGroups(selection);
+    const photoCount = selectedGroups.reduce((count, group) => count + group.photos.length, 0);
+    const motionPhotos = sampleMotionPhotos(selectedGroups.map((group) => group.photos[0]!));
+    photoCompressionQueue.start(
+      motionPhotos.map((photo) => ({ id: photo.id, photos: [photo] })),
+      { maxDimension: 768, quality: 0.6 },
+    );
+    const preparedMotionPhotos = photoCompressionQueue.wait().then((photos) =>
+      motionPhotos.flatMap((photo) => {
+        const preview = photos.get(photo.id);
+        return preview && preview.uri !== photo.uri
+          ? [{ ...preview, contentType: 'image/jpeg' as const }]
+          : [];
+      }),
+    );
+    const jobId = Crypto.randomUUID();
+
+    photoUploadService.start({
+      motionPhotos: preparedMotionPhotos,
+      photoCount,
+      prepareJob: async () => {
+        photoCompressionQueue.start(selectedGroups);
+        return prepareUploadJob({
+          jobId,
           boardId,
           selection,
-          compressedPhotos: photos,
-        }),
-      ),
-      motionPhotos,
-    );
+          compressedPhotos: await photoCompressionQueue.wait(),
+        });
+      },
+    });
     router.replace({ pathname: '/analysis-loading', params: { boardId } });
   };
 
@@ -108,7 +119,7 @@ export function PhotoSelectScreen() {
         <View className="flex-1">
           <PhotoGrid
             bottomPadding={insets.bottom + 76}
-            grouped={mode === 'initial'}
+            grouped
             onEndReached={() => void loadMore()}
             onPress={toggleUnit}
             units={photoUnits}

@@ -13,7 +13,8 @@ describe('ppotto loading motion', () => {
       frames.push(callback);
       return ++nextFrameId;
     });
-    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const cancelFrame = vi.fn();
+    vi.stubGlobal('cancelAnimationFrame', cancelFrame);
     vi.spyOn(performance, 'now').mockImplementation(() => now);
 
     const mount = document.createElement('div');
@@ -101,6 +102,7 @@ describe('ppotto loading motion', () => {
       currentFrames.forEach((frame) => frame(now));
     }
     expect(stickers.every((sticker) => Number(sticker.style.opacity) === 1)).toBe(true);
+    expect(cancelFrame).toHaveBeenCalled();
 
     motion.destroy();
     mount.remove();

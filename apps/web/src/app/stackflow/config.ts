@@ -5,6 +5,7 @@ declare module '@stackflow/config' {
     Login: Record<string, never>;
     Onboarding: Record<string, never>;
     Terms: Record<string, never>;
+    TermsDetail: { code: string };
     Board: Record<string, never>;
     Recap: { stickerId: string; boardId: string };
     PhotoViewer: { stickerId: string; initialIndex: string };
@@ -18,6 +19,7 @@ export const config = defineConfig({
     { name: 'Login', route: '/login' },
     { name: 'Onboarding', route: '/onboarding' },
     { name: 'Terms', route: '/terms' },
+    { name: 'TermsDetail', route: '/terms-detail' },
     { name: 'Board', route: '/board' },
     { name: 'Recap', route: '/recap' },
     { name: 'PhotoViewer', route: '/photo-viewer' },

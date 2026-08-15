@@ -17,6 +17,8 @@ import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutatio
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { stickerQueryOptions } from '@/entities/sticker/api/sticker-queries';
+import { useMeQuery } from '@/entities/user/api/user-queries';
+import { hasSeenOnboarding } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
@@ -180,6 +182,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
   );
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
+  const { data: me } = useMeQuery();
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
   const queryClient = useQueryClient();
@@ -1125,16 +1128,16 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
   if (isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <p className="text-body-04 text-gray-400">보드를 불러오는 중이에요</p>
+      <div className="flex items-center justify-center w-full h-full">
+        <p className="text-gray-400 text-body-04">보드를 불러오는 중이에요</p>
       </div>
     );
   }
 
   if (isError || !data) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <p className="text-body-04 text-gray-400">보드를 불러오지 못했어요</p>
+      <div className="flex items-center justify-center w-full h-full">
+        <p className="text-gray-400 text-body-04">보드를 불러오지 못했어요</p>
       </div>
     );
   }
@@ -1149,7 +1152,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   return (
     <div
       ref={setContainer}
-      className="relative h-full w-full touch-none overflow-hidden"
+      className="relative w-full h-full overflow-hidden touch-none"
       style={{
         backgroundColor: '#000',
         backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
@@ -1162,7 +1165,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         <EmptyBoardSticker
           title={emptyBoardStickerTitle}
           isQuickMenuOpen={isEmptyBoardQuickMenuOpen}
-          onLongPress={() => setIsEmptyBoardQuickMenuOpen(true)}
+          onLongPress={() => {
+            // 온보딩을 끝까지 본 적('사진 업로드 하러가기' CTA를 누른 적) 없으면 온보딩으로,
+            // 본 적 있으면 이름 변경 바텀시트를 연다
+            if (me && hasSeenOnboarding(me.id)) setIsEmptyBoardQuickMenuOpen(true);
+            else push('Onboarding', {});
+          }}
         />
       )}
       <div

@@ -60,6 +60,7 @@ const dependencies: PhotoUploadServiceDependencies = {
 };
 
 let currentUpload: Promise<void> | null = null;
+let beginCurrentUpload: (() => void) | null = null;
 let runId = 0;
 const listeners = new Set<() => void>();
 
@@ -68,7 +69,13 @@ export interface UploadMotionPhoto {
   uri: string;
   width: number;
   height: number;
-  contentType?: 'image/jpeg' | 'image/png' | 'image/heic';
+  contentType?: 'image/jpeg' | 'image/png' | 'image/heic' | 'image/webp';
+}
+
+interface StartPhotoUploadOptions {
+  motionPhotos: Promise<readonly UploadMotionPhoto[]>;
+  photoCount: number;
+  prepareJob: () => Promise<UploadJobSnapshot>;
 }
 
 export interface PhotoUploadViewState {
@@ -176,32 +183,35 @@ async function waitUntilComplete(analysisId: string) {
 }
 
 export const photoUploadService = {
-  start(
-    snapshot: UploadJobSnapshot | Promise<UploadJobSnapshot>,
-    photos: readonly UploadMotionPhoto[] = [],
-  ) {
+  start({ motionPhotos: preparedMotionPhotos, photoCount, prepareJob }: StartPhotoUploadOptions) {
     const id = ++runId;
     const startedAt = Date.now();
     viewState = { progress: 0, status: 'UPLOADING' };
-    motionPhotoCount = photos.length;
-    motionPhotos = sampleMotionPhotos(photos);
+    motionPhotoCount = photoCount;
+    motionPhotos = [];
     webMotionPhotos = null;
     listeners.forEach((listener) => listener());
-    logPhotoUpload(`#${id} 시작 — 압축 결과와 작업 스냅샷 대기`);
+    logPhotoUpload(`#${id} 시작 — 모션 사진 준비 대기`);
 
     void setLastSeenLoadingPhase('SCAN').catch((error) =>
       logPhotoUploadError('로딩 단계 초기화 실패', error),
     );
 
-    const preparedJob = Promise.resolve(snapshot);
-    const restoredMotionPhotos = preparedJob.then((job) => restoreMotionPhotos(job));
-    motionPhotosReady = restoredMotionPhotos;
+    motionPhotosReady = preparedMotionPhotos.then((photos) => {
+      motionPhotos = [...photos];
+      if (!motionPhotos.length) throw new Error('로딩 화면용 사진을 준비하지 못했습니다.');
+    });
+    const loadingReady = new Promise<void>((resolve) => {
+      beginCurrentUpload = resolve;
+    });
 
     currentUpload = (async () => {
-      const job = await preparedJob;
-      await restoredMotionPhotos;
-      const photoCount = job.groups.reduce((count, group) => count + group.items.length, 0);
-      logPhotoUpload(`#${id} 작업 준비 완료 (${job.groups.length}그룹, ${photoCount}장)`);
+      await motionPhotosReady;
+      await loadingReady;
+      logPhotoUpload(`#${id} 모션 시작 — 업로드 사진 압축 시작`);
+      const job = await prepareJob();
+      const uploadPhotoCount = job.groups.reduce((count, group) => count + group.items.length, 0);
+      logPhotoUpload(`#${id} 작업 준비 완료 (${job.groups.length}그룹, ${uploadPhotoCount}장)`);
 
       const { analysisId, status } = await startPhotoUpload(job, dependencies);
       logPhotoUpload(`#${id} 업로드 단계 종료 (${analysisId}, ${status})`);
@@ -220,6 +230,12 @@ export const photoUploadService = {
   },
 
   getCurrent: () => currentUpload,
+
+  beginUpload() {
+    const begin = beginCurrentUpload;
+    beginCurrentUpload = null;
+    begin?.();
+  },
 
   getMotionPhotoCount: () => motionPhotoCount,
 
@@ -250,6 +266,7 @@ export const photoUploadService = {
 
     const id = ++runId;
     const startedAt = Date.now();
+    beginCurrentUpload = null;
     viewState = { progress: 0, status: 'UPLOADING' };
     motionPhotos = [];
     motionPhotoCount = 0;
@@ -305,6 +322,7 @@ export const photoUploadService = {
 
   clearCurrent() {
     currentUpload = null;
+    beginCurrentUpload = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -316,6 +334,7 @@ export const photoUploadService = {
     await storage.clearJob();
     await clearLastSeenLoadingPhase();
     currentUpload = null;
+    beginCurrentUpload = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -325,6 +344,7 @@ export const photoUploadService = {
 
   async discard() {
     currentUpload = null;
+    beginCurrentUpload = null;
     const result = await discardSavedPhotoUpload(dependencies);
     if (result === 'DISCARDED') await clearLastSeenLoadingPhase();
     return result;

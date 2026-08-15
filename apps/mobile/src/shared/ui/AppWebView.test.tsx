@@ -228,6 +228,7 @@ describe('분석 로딩 브리지', () => {
     const nextState = { visiblePhase: 'GROUP' as const, visualProgress: 50 };
     const bridgeHandlers = {
       GET_ANALYSIS_LOADING_STATE: jest.fn(() => state),
+      ANALYSIS_LOADING_READY: jest.fn(),
       ANALYSIS_LOADING_PHASE_STARTED: jest.fn(),
       ANALYSIS_LOADING_PHASE_FINISHED: jest.fn(() => nextState),
       ANALYSIS_LOADING_REVEAL_FINISHED: jest.fn(),
@@ -235,12 +236,14 @@ describe('분석 로딩 브리지', () => {
     await render(<AppWebView bridgeHandlers={bridgeHandlers} path="/analysis-loading" />);
 
     expect(await mockBridgeHandlers.GET_ANALYSIS_LOADING_STATE!()).toEqual(state);
+    await act(async () => void mockBridgeHandlers.ANALYSIS_LOADING_READY!());
     await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED!({ phase: 'SCAN' });
     expect(await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED!({ phase: 'SCAN' })).toEqual(
       nextState,
     );
     await mockBridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED!();
 
+    expect(bridgeHandlers.ANALYSIS_LOADING_READY).toHaveBeenCalledTimes(1);
     expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED).toHaveBeenCalledWith({ phase: 'SCAN' });
     expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED).toHaveBeenCalledWith({ phase: 'SCAN' });
     expect(bridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED).toHaveBeenCalledTimes(1);

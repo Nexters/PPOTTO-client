@@ -4,21 +4,20 @@
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/ppotto-icon.png",
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/ppotto-icon.png",
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.ppotto.mobile"
     },
     "android": {
+      "icon": "./assets/ppotto-icon.png",
       "package": "com.ppotto.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/ppotto-icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [

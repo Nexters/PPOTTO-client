@@ -45,6 +45,7 @@ async function openInstagramStore() {
 type PageBridgeHandlers = Pick<
   Handlers<BridgeContract>,
   | 'GET_ANALYSIS_LOADING_STATE'
+  | 'ANALYSIS_LOADING_READY'
   | 'ANALYSIS_LOADING_PHASE_STARTED'
   | 'ANALYSIS_LOADING_PHASE_FINISHED'
   | 'ANALYSIS_LOADING_REVEAL_FINISHED'
@@ -96,7 +97,10 @@ export function AppWebView({
       router.push({ pathname: '/photo-select', params: { boardId, mode } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
     BOARD_READY: () => setLoaded(true),
-    ANALYSIS_LOADING_READY: () => setLoaded(true),
+    ANALYSIS_LOADING_READY: () => {
+      setLoaded(true);
+      return bridgeHandlers?.ANALYSIS_LOADING_READY?.();
+    },
     GET_ANALYSIS_LOADING_STATE: () => {
       const handler = bridgeHandlers?.GET_ANALYSIS_LOADING_STATE;
       if (!handler) throw new Error('analysis loading bridge handler is not configured');

@@ -6,10 +6,10 @@ import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { bridge } from '@/shared/lib/bridge';
-import { Modal } from '@/shared/ui/common/Modal';
 
 import { sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
+import { useTermsGate } from './model/use-terms-gate';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
@@ -27,6 +27,7 @@ const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.B
 const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
 
 export function BoardPage() {
+  useTermsGate();
   const {
     boardId,
     canDeleteStickers,
@@ -34,8 +35,6 @@ export function BoardPage() {
     isDeletingStickers,
     isBoardListLoading,
     isBoardLoading,
-    isInitialUploadModalOpen,
-    setIsInitialUploadModalOpen,
     openPhotoSelect,
   } = useBoardPageState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
@@ -251,15 +250,6 @@ export function BoardPage() {
           </div>
         )}
       </div>
-      <Modal
-        open={isInitialUploadModalOpen}
-        onOpenChange={setIsInitialUploadModalOpen}
-        title="묵은 사진 대방출!"
-        description="아직 사진을 올린 적이 없어요. 사진을 올리러 가볼까요?"
-      >
-        <Modal.Cancel>취소</Modal.Cancel>
-        <Modal.Confirm onClick={openPhotoSelect}>확인</Modal.Confirm>
-      </Modal>
     </>
   );
 }

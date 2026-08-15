@@ -1,12 +1,13 @@
 'use client';
 
-import { Logo } from '@ppotto/assets';
-import { useEffect } from 'react';
+import { ChevronLeft, Logo } from '@ppotto/assets';
+import { useFlow } from '@stackflow/react';
 
 import { useBoardListQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { markOnboardingAsSeen } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
+import { hasCompletedFirstUpload } from '@/shared/lib/first-upload-storage';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/common/Button';
 
@@ -15,6 +16,7 @@ import { OnboardingIndicator } from './ui/OnboardingIndicator';
 import { ONBOARDING_SLIDES } from './ui/OnboardingSlides';
 
 export function OnboardingPage() {
+  const { pop } = useFlow();
   const { data: boards } = useBoardListQuery();
   const boardId = boards?.[0]?.id;
   const { data: me } = useMeQuery();
@@ -22,13 +24,13 @@ export function OnboardingPage() {
     ONBOARDING_SLIDES.length,
   );
 
-  useEffect(() => {
-    if (me) markOnboardingAsSeen(me.id);
-  }, [me]);
-
   const handlePrimaryAction = () => {
     if (isLastSlide) {
-      if (boardId) bridge.send('OPEN_PHOTO_SELECT', { boardId, mode: 'initial' });
+      // 마지막 슬라이드의 CTA를 누른 것을 '온보딩을 봤다'의 기준으로 기록한다
+      if (me) markOnboardingAsSeen(me.id);
+      // 업로드 이력이 있으면(스티커를 전부 지우고 온보딩을 다시 본 경우) 추가 업로드로 연다
+      const mode = me && hasCompletedFirstUpload(me.id) ? 'additional' : 'initial';
+      if (boardId) bridge.send('OPEN_PHOTO_SELECT', { boardId, mode });
       return;
     }
     goNext();
@@ -37,6 +39,11 @@ export function OnboardingPage() {
   return (
     <main
       className={cn('mx-auto flex h-dvh w-full max-w-107.5 flex-col', 'overflow-hidden text-white')}
+      style={{
+        backgroundColor: '#000',
+        backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px)',
+        backgroundSize: '18px 18px',
+      }}
     >
       <header
         className={cn('relative z-10 flex items-center justify-center', 'h-18 shrink-0 px-6')}
@@ -48,6 +55,14 @@ export function OnboardingPage() {
             'bg-linear-to-b from-black to-transparent',
           )}
         />
+        <button
+          type="button"
+          aria-label="뒤로 가기"
+          onClick={() => pop()}
+          className="absolute left-6 z-10"
+        >
+          <ChevronLeft />
+        </button>
         <div className="relative z-10">
           <Logo width={105} height={32} />
         </div>

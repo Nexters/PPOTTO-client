@@ -64,6 +64,22 @@ it('압축은 한 번 재시도하고 또 실패하면 원본을 보관한 뒤 �
   expect(result.get('next')).toEqual(compressed(next));
 });
 
+it('사진이 끝날 때마다 진행률을 알린다', async () => {
+  const first = photo('first');
+  const second = photo('second');
+  const compress = jest.fn(async (source: GalleryPhoto) => compressed(source));
+  const onProgress = jest.fn();
+  const queue = createPhotoCompressionQueue(compress);
+
+  queue.start([group(first, second)], compress, onProgress);
+  await queue.wait();
+
+  expect(onProgress.mock.calls.map(([progress]) => progress.completed).sort()).toEqual([1, 2]);
+  expect(onProgress).toHaveBeenLastCalledWith(
+    expect.objectContaining({ total: 2, photo: expect.any(Object), result: expect.any(Object) }),
+  );
+});
+
 it('다섯 장씩 압축하고 새 목록이 시작되면 대기 중인 이전 사진은 시작하지 않는다', async () => {
   const finishOldPhotos = new Map<string, (result: GalleryPhoto) => void>();
   const oldPhotos = Array.from({ length: 6 }, (_, index) => photo(`old-${index}`));
