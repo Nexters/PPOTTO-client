@@ -15,9 +15,20 @@ const PALETTE_COLORS = [
 type DrawingColorPaletteProps = {
   color: string;
   onColorChange: (color: string) => void;
+  eyedropperColor: string;
+  isEyedropperActive: boolean;
+  isEyedropperColorApplied: boolean;
+  onEyedropperStart: () => void;
 };
 
-export function DrawingColorPalette({ color, onColorChange }: DrawingColorPaletteProps) {
+export function DrawingColorPalette({
+  color,
+  onColorChange,
+  eyedropperColor,
+  isEyedropperActive,
+  isEyedropperColorApplied,
+  onEyedropperStart,
+}: DrawingColorPaletteProps) {
   return (
     <div className="pointer-events-auto flex items-center gap-2 px-2 drop-shadow-[0px_6px_10px_rgba(0,0,0,0.12)]">
       {PALETTE_COLORS.map((swatch) => (
@@ -31,7 +42,7 @@ export function DrawingColorPalette({ color, onColorChange }: DrawingColorPalett
             swatch.className,
           )}
         >
-          {color === swatch.value && (
+          {!isEyedropperActive && color === swatch.value && (
             <span className="absolute top-0.5 left-0.5">
               <Check color="#181818" width={16} height={16} />
             </span>
@@ -41,13 +52,18 @@ export function DrawingColorPalette({ color, onColorChange }: DrawingColorPalett
       <button
         type="button"
         aria-label="스포이드"
-        disabled
+        onClick={onEyedropperStart}
+        style={{ backgroundColor: eyedropperColor }}
         className={cn(
           'flex size-7 shrink-0 items-center justify-center rounded-8',
-          'border-2 border-white bg-white disabled:opacity-40',
+          'border-2 border-white',
         )}
       >
-        <IconEyedropper color="#181818" width={20} height={20} />
+        <IconEyedropper
+          color={isEyedropperColorApplied ? '#ffffff' : '#181818'}
+          width={20}
+          height={20}
+        />
       </button>
     </div>
   );

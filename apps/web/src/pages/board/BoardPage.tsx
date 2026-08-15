@@ -1,11 +1,13 @@
 'use client';
 
+import { toCanvas } from 'html-to-image';
 import dynamic from 'next/dynamic';
-import { type RefObject, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { Modal } from '@/shared/ui/common/Modal';
 
+import { sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
@@ -13,10 +15,14 @@ import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { DrawingColorPalette } from './ui/DrawingColorPalette';
 import { DrawingHeader } from './ui/DrawingHeader';
 import { DRAW_STROKE_WIDTH_MIN, DrawingSizeSlider } from './ui/DrawingSizeSlider';
+import { EyedropperMarker } from './ui/EyedropperMarker';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
 });
+
+// 스포이드로 아직 색을 고른 적 없거나, 팔레트 색을 다시 선택해 스포이드 선택이 풀렸을 때의 기본값
+const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
 
 export function BoardPage() {
   const {
@@ -36,10 +42,101 @@ export function BoardPage() {
   const [canUndo, setCanUndo] = useState(false);
   const isDrawingUiHidden = toolbarMode === 'draw' && isDrawingActive;
   const canvasRef = useRef<BoardCanvasHandle>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const captureRef = useRef<HTMLCanvasElement | null>(null);
+  const previewColorRef = useRef<string | null>(null);
+
+  const [isPickingColor, setIsPickingColor] = useState(false);
+  const [pickerPosition, setPickerPosition] = useState<{ x: number; y: number } | null>(null);
+  const [previewColor, setPreviewColor] = useState<string | null>(null);
+  const [eyedropperColor, setEyedropperColor] = useState(DEFAULT_EYEDROPPER_COLOR);
+  const [colorSource, setColorSource] = useState<'palette' | 'eyedropper'>('palette');
+
+  const isEyedropperActive = isPickingColor || colorSource === 'eyedropper';
+  const isEyedropperColorApplied = colorSource === 'eyedropper';
+
+  const captureBoard = (element: HTMLElement) =>
+    toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
+
+  // 화면 좌표 위치의 마커를 그리고, 그 지점의 캡처된 픽셀 색을 미리보기로 반영한다
+  const sampleAtClientPoint = (clientX: number, clientY: number) => {
+    setPickerPosition({ x: clientX, y: clientY });
+
+    const canvas = captureRef.current;
+    const rect = pageRef.current?.getBoundingClientRect();
+    if (!canvas || !rect) return;
+    const color = sampleColorAt(canvas, clientX - rect.left, clientY - rect.top);
+    if (color) {
+      previewColorRef.current = color;
+      setPreviewColor(color);
+    }
+  };
+
+  const startPicking = async () => {
+    if (!pageRef.current) return;
+    try {
+      // 첫 캡처는 워밍업으로 버리고 두 번째 결과를 쓴다
+      await captureBoard(pageRef.current);
+      captureRef.current = await captureBoard(pageRef.current);
+      setIsPickingColor(true);
+      // 아직 드래그하지 않아도 화면 중앙의 색을 먼저 미리보기로 보여준다
+      const rect = pageRef.current.getBoundingClientRect();
+      sampleAtClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    } catch (error) {
+      console.error('[eyedropper] 보드 캡처 실패', error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isPickingColor) return;
+
+    const updatePosition = (e: PointerEvent) => sampleAtClientPoint(e.clientX, e.clientY);
+
+    const stopPicking = () => {
+      setIsPickingColor(false);
+      setPickerPosition(null);
+      setPreviewColor(null);
+      captureRef.current = null;
+
+      const color = previewColorRef.current;
+      previewColorRef.current = null;
+      if (color) {
+        setDrawColor(color);
+        setEyedropperColor(color);
+        setColorSource('eyedropper');
+      }
+    };
+
+    window.addEventListener('pointermove', updatePosition);
+    window.addEventListener('pointerup', stopPicking);
+    return () => {
+      window.removeEventListener('pointermove', updatePosition);
+      window.removeEventListener('pointerup', stopPicking);
+    };
+  }, [isPickingColor]);
+
+  // 드로잉 모드를 나가면 스포이드 선택 상태를 초기화한다
+  const [prevToolbarMode, setPrevToolbarMode] = useState(toolbarMode);
+  if (toolbarMode !== prevToolbarMode) {
+    setPrevToolbarMode(toolbarMode);
+    if (toolbarMode !== 'draw') {
+      setColorSource('palette');
+      setEyedropperColor(DEFAULT_EYEDROPPER_COLOR);
+      setIsPickingColor(false);
+      setPickerPosition(null);
+      setPreviewColor(null);
+    }
+  }
+
+  useEffect(() => {
+    if (toolbarMode === 'draw') return;
+    captureRef.current = null;
+    previewColorRef.current = null;
+  }, [toolbarMode]);
 
   return (
     <>
-      <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
+      <div ref={pageRef} className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
         {!isDrawingUiHidden &&
           (toolbarMode === 'draw' ? (
             <DrawingHeader
@@ -67,6 +164,7 @@ export function BoardPage() {
           mode={toolbarMode}
           drawColor={drawColor}
           drawStrokeWidth={drawStrokeWidth}
+          isPointerInputSuspended={isPickingColor}
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
           canvasRef={canvasRef}
@@ -84,10 +182,29 @@ export function BoardPage() {
             onAddSticker={openPhotoSelect}
             aboveModeSwitcher={
               toolbarMode === 'draw' ? (
-                <DrawingColorPalette color={drawColor} onColorChange={setDrawColor} />
+                <DrawingColorPalette
+                  color={drawColor}
+                  onColorChange={(next) => {
+                    setDrawColor(next);
+                    setColorSource('palette');
+                    setEyedropperColor(DEFAULT_EYEDROPPER_COLOR);
+                  }}
+                  eyedropperColor={eyedropperColor}
+                  isEyedropperActive={isEyedropperActive}
+                  isEyedropperColorApplied={isEyedropperColorApplied}
+                  onEyedropperStart={() => void startPicking()}
+                />
               ) : undefined
             }
           />
+        )}
+        {pickerPosition && (
+          <div
+            className="pointer-events-none fixed z-70 -translate-x-1/2 -translate-y-full"
+            style={{ left: pickerPosition.x, top: pickerPosition.y }}
+          >
+            <EyedropperMarker color={previewColor ?? drawColor} />
+          </div>
         )}
       </div>
       <Modal
@@ -109,6 +226,7 @@ function BoardContent({
   mode,
   drawColor,
   drawStrokeWidth,
+  isPointerInputSuspended,
   onDrawingActiveChange,
   onCanUndoChange,
   canvasRef,
@@ -118,6 +236,7 @@ function BoardContent({
   mode: ToolbarMode;
   drawColor: string;
   drawStrokeWidth: number;
+  isPointerInputSuspended: boolean;
   onDrawingActiveChange: (active: boolean) => void;
   onCanUndoChange: (canUndo: boolean) => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
@@ -130,6 +249,7 @@ function BoardContent({
         mode={mode}
         drawColor={drawColor}
         drawStrokeWidth={drawStrokeWidth}
+        isPointerInputSuspended={isPointerInputSuspended}
         onDrawingActiveChange={onDrawingActiveChange}
         onCanUndoChange={onCanUndoChange}
       />
