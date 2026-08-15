@@ -33,7 +33,7 @@ export function useStickerQuickMenu(boardId: string) {
 
   const cancelRename = () => setIsRenamingTitle(false);
 
-  const startDirectEdit = (stickerId: string) => setDirectEditStickerId(stickerId);
+  const startDirectEdit = setDirectEditStickerId;
 
   const submitDirectEdit = (title: string) => {
     if (directEditStickerId) {

@@ -7,6 +7,7 @@ import {
   type RefObject,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -222,24 +223,30 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     .filter((sticker) => !needsInitialLayout(sticker))
     .map((sticker) => ({ posX: sticker.posX!, posY: sticker.posY!, zIndex: sticker.zIndex! }));
 
-  // 렌더링/제스처 쪽에는 항상 실제 좌표만 넘어가게, 아직 배치 전인 스티커는 배치 계산이
-  // 끝나기 전까지만 임시로 0/1로 채워서 보여준다(배치 이펙트가 곧바로 실제 값으로 덮어씀)
-  const stickers: StickerData[] = [...rawStickers]
-    .map((sticker) => ({
-      ...sticker,
-      posX: sticker.posX ?? 0,
-      posY: sticker.posY ?? 0,
-      zIndex: sticker.zIndex ?? 0,
-    }))
-    .sort((a, b) => a.zIndex - b.zIndex);
+  const stickers: StickerData[] = useMemo(
+    () =>
+      [...rawStickers]
+        .map((sticker) => ({
+          ...sticker,
+          posX: sticker.posX ?? 0,
+          posY: sticker.posY ?? 0,
+          zIndex: sticker.zIndex ?? 0,
+        }))
+        .sort((a, b) => a.zIndex - b.zIndex),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data?.stickers],
+  );
 
-  // 저장된 그림(전부 scope=BOARD, 스티커 귀속은 별도 이슈) — 렌더용으로 stroke에서 점 배열을 복원
-  const drawings = (data?.drawings ?? []).map((drawing) => ({
-    id: drawing.id,
-    points: parseStrokePoints(drawing.stroke),
-    color: drawing.color,
-    strokeWidth: drawing.strokeWidth,
-  }));
+  const drawings = useMemo(
+    () =>
+      (data?.drawings ?? []).map((drawing) => ({
+        id: drawing.id,
+        points: parseStrokePoints(drawing.stroke),
+        color: drawing.color,
+        strokeWidth: drawing.strokeWidth,
+      })),
+    [data?.drawings],
+  );
 
   const cameraRef = useRef(camera);
   const stickersRef = useRef(stickers);
@@ -1218,7 +1225,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             <StickerBadgeMark
               key={sticker.id}
               sticker={sticker}
-              onNameClick={() => quickMenu.startDirectEdit(sticker.id)}
+              onNameClick={quickMenu.startDirectEdit}
             />
           ))}
         {selectedSticker && (
