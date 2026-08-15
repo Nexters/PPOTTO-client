@@ -13,6 +13,7 @@ let mockWebviewDebuggingEnabled: boolean | undefined;
 let mockScrollEnabled: boolean | undefined;
 const mockPushMessage = jest.fn();
 const mockEmit = jest.fn();
+const mockFileWrite = jest.fn();
 
 jest.mock('@/lib/auth-session', () => ({
   getAccessToken: jest.fn(),
@@ -26,6 +27,23 @@ jest.mock('expo-router', () => ({
   },
 }));
 jest.mock('@/shared/ui/Toast', () => ({ useToast: () => jest.fn() }));
+jest.mock('expo-file-system', () => ({
+  File: jest.fn(() => ({
+    uri: 'file:///cache/recap-instagram-story.png',
+    write: mockFileWrite,
+    delete: jest.fn(),
+  })),
+  Paths: { cache: 'cache' },
+}));
+jest.mock('react-native-share', () => ({
+  __esModule: true,
+  Social: { InstagramStories: 'instagramstories' },
+  default: {
+    Social: { INSTAGRAM_STORIES: 'instagramstories' },
+    isPackageInstalled: jest.fn(),
+    shareSingle: jest.fn(),
+  },
+}));
 jest.mock('@/shared/ui/AppBackground', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');
   return { AppBackground: () => <Text>앱 로딩 배경</Text> };
@@ -83,6 +101,11 @@ jest.mock('webview-bridge-kit/react-native', () => ({
 const { router } = jest.requireMock('expo-router') as {
   router: { push: jest.Mock; replace: jest.Mock };
 };
+const share = (
+  jest.requireMock('react-native-share') as {
+    default: { isPackageInstalled: jest.Mock; shareSingle: jest.Mock };
+  }
+).default;
 const originalQaToolEnabled = process.env.EXPO_PUBLIC_QA_TOOL_ENABLED;
 
 beforeEach(() => {
@@ -127,6 +150,38 @@ describe('WebView 외부 링크', () => {
 
     expect(openURL).toHaveBeenCalledTimes(1);
     expect(openURL).toHaveBeenCalledWith('https://example.com');
+  });
+});
+
+describe('인스타그램 스토리 공유', () => {
+  it('설치되어 있으면 합성 이미지를 스토리 작성 화면으로 전달한다', async () => {
+    jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
+    share.shareSingle.mockResolvedValue({ success: true });
+    await render(<AppWebView />);
+
+    await expect(
+      mockBridgeHandlers.SHARE_INSTAGRAM_STORY!({ base64: 'image-base64' }),
+    ).resolves.toEqual({ success: true });
+
+    expect(mockFileWrite).toHaveBeenCalledWith('image-base64', { encoding: 'base64' });
+    expect(share.shareSingle).toHaveBeenCalledWith({
+      social: 'instagramstories',
+      appId: '1002723789453387',
+      backgroundImage: 'file:///cache/recap-instagram-story.png',
+    });
+  });
+
+  it('설치되어 있지 않으면 앱스토어로 이동한다', async () => {
+    jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(false);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    await render(<AppWebView />);
+
+    await expect(
+      mockBridgeHandlers.SHARE_INSTAGRAM_STORY!({ base64: 'image-base64' }),
+    ).resolves.toEqual({ success: true });
+
+    expect(openURL).toHaveBeenCalledWith('https://apps.apple.com/app/instagram/id389801252');
+    expect(share.shareSingle).not.toHaveBeenCalled();
   });
 });
 

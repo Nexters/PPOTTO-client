@@ -12,5 +12,5 @@ type StickerPhotoImageProps = Omit<ImageProps, 'onError'> & {
 export function StickerPhotoImage({ stickerId, alt, ...props }: StickerPhotoImageProps) {
   const { refetch } = useStickerQuery(stickerId);
 
-  return <Image {...props} alt={alt} onError={() => refetch()} />;
+  return <Image {...props} unoptimized alt={alt} onError={() => refetch()} />;
 }

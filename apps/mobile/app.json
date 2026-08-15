@@ -46,6 +46,13 @@
         }
       ],
       [
+        "react-native-share",
+        {
+          "ios": ["instagram-stories"],
+          "android": ["com.instagram.android"]
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#000000"
