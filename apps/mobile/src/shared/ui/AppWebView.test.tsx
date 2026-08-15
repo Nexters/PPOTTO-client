@@ -10,6 +10,7 @@ let mockOnMessage: ((event: { nativeEvent: { data: string } }) => void) | undefi
 let mockOnOpenWindow: ((event: { nativeEvent: { targetUrl: string } }) => void) | undefined;
 let mockInjectedJavaScript: string | undefined;
 let mockWebviewDebuggingEnabled: boolean | undefined;
+let mockScrollEnabled: boolean | undefined;
 const mockPushMessage = jest.fn();
 const mockEmit = jest.fn();
 
@@ -43,6 +44,7 @@ jest.mock('react-native-webview', () => {
         onOpenWindow?: (event: { nativeEvent: { targetUrl: string } }) => void;
         injectedJavaScriptBeforeContentLoaded?: string;
         webviewDebuggingEnabled?: boolean;
+        scrollEnabled?: boolean;
       }
     >(function MockWebView(
       {
@@ -52,6 +54,7 @@ jest.mock('react-native-webview', () => {
         onMessage,
         onOpenWindow,
         webviewDebuggingEnabled,
+        scrollEnabled,
       },
       _ref,
     ) {
@@ -61,6 +64,7 @@ jest.mock('react-native-webview', () => {
       mockOnOpenWindow = onOpenWindow;
       mockInjectedJavaScript = injectedJavaScriptBeforeContentLoaded;
       mockWebviewDebuggingEnabled = webviewDebuggingEnabled;
+      mockScrollEnabled = scrollEnabled;
       return <View accessibilityLabel="웹뷰" />;
     }),
   };
@@ -90,6 +94,7 @@ beforeEach(() => {
   mockOnOpenWindow = undefined;
   mockInjectedJavaScript = undefined;
   mockWebviewDebuggingEnabled = undefined;
+  mockScrollEnabled = undefined;
 });
 
 afterAll(() => {
@@ -210,6 +215,16 @@ describe('사진 선택 화면 이동', () => {
       pathname: '/photo-select',
       params: { boardId: 'board-1', mode: 'additional' },
     });
+  });
+});
+
+describe('보드 WebView 스크롤', () => {
+  it('보드가 활성화되면 네이티브 스크롤을 끈다', async () => {
+    await render(<AppWebView path="/board" />);
+
+    expect(mockScrollEnabled).toBe(true);
+    await act(async () => void mockBridgeHandlers.SET_BOARD_ACTIVE!({ active: true }));
+    expect(mockScrollEnabled).toBe(false);
   });
 });
 

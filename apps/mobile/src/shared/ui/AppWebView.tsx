@@ -145,6 +145,7 @@ export function AppWebView({
         }}
         allowsBackForwardNavigationGestures={false}
         webviewDebuggingEnabled={qaToolEnabled}
+        scrollEnabled={!boardActive}
         bounces={!boardActive}
         overScrollMode={boardActive ? 'never' : 'always'}
         scalesPageToFit={false}
