@@ -15,13 +15,30 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import {
   type CameraState,
   computeBoardPinchZoom,
+  computeFocusTarget,
   panCamera,
   toWorldPoint,
   zoomCamera,
   zoomCameraTo,
 } from '../model/board-camera';
+import {
+  type DrawGesture,
+  type DrawGestureResult,
+  drawGestureReducer,
+} from '../model/board-draw-gesture';
+import {
+  type DrawingCreateInput,
+  parseStrokePoints,
+  toDrawingCreateInput,
+} from '../model/board-drawing';
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
-import { computeBringToFrontZIndex, toLayoutInput } from '../model/board-layout';
+import {
+  computeBringToFrontZIndex,
+  computeInitialLayout,
+  type ExistingSticker,
+  needsInitialLayout,
+  toLayoutInput,
+} from '../model/board-layout';
 import {
   computeStickerPinchTransform,
   scaleBadgeOffset,
@@ -32,6 +49,7 @@ import { useDeleteSticker } from '../model/use-delete-sticker';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 
 import type { ToolbarMode } from './BoardToolbar';
+import { DrawingStroke } from './DrawingStroke';
 import {
   EmptyBoardSticker,
   EMPTY_BOARD_STICKER_DEFAULT_TITLE,
@@ -53,6 +71,19 @@ const TAP_MOVE_THRESHOLD = 6;
 // 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
 const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
 const DOUBLE_TAP_MAX_DISTANCE = 24;
+// 색상 팔레트/펜 크기 UI가 아직 없어서 임시로 고정한 값 (디자인 확정되면 팔레트/슬라이더로 교체)
+const TEMP_DRAWING_COLOR = '#FFFFFF';
+const TEMP_DRAWING_STROKE_WIDTH = 4;
+// 새 스티커 배치 후 카메라가 포커스로 이동하는 시간(ms)
+const CAMERA_FOCUS_ANIMATION_MS = 350;
+// 카메라 포커스 범위(AABB) 계산용 스티커 절반 크기 근사치. 실제 이미지 크기를 몰라서(로드해봐야
+// 알 수 있음) Sticker.tsx의 STICKER_MAX_EDGE(160)의 절반으로 근사한다. 뱃지(제목)는 줌과 무관하게
+// 고정 크기를 유지할 예정이라 이 범위 계산에는 포함하지 않는다.
+const STICKER_FIT_HALF_SIZE = 80;
+
+function easeOutCubic(progress: number): number {
+  return 1 - (1 - progress) ** 3;
+}
 
 function hitTestStickerId(target: EventTarget | null): string | null {
   if (!(target instanceof Element)) return null;
@@ -66,6 +97,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
+  // 그리는 도중인 선의 점들(보드 월드 좌표). 그리는 중이 아니면 null
+  const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
@@ -77,6 +110,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
   const isEditMode = mode === 'move';
+  const isDrawMode = mode === 'draw';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
   const selectedId = isEditMode ? selectedStickerId : null;
 
@@ -88,15 +122,39 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     if (!isEditMode) setSelectedStickerId(null);
   }
 
-  const stickers: StickerData[] = data
-    ? [...data.stickers].sort((a, b) => a.zIndex - b.zIndex)
-    : [];
+  const rawStickers = data?.stickers ?? [];
+  // 새로 생성됐지만 좌표를 아직 안 정한 스티커(posX/posY/zIndex가 null) — 빈 공간 배치 대상
+  const unplacedStickers = rawStickers.filter(needsInitialLayout);
+  const placedStickers: ExistingSticker[] = rawStickers
+    .filter((sticker) => !needsInitialLayout(sticker))
+    .map((sticker) => ({ posX: sticker.posX!, posY: sticker.posY!, zIndex: sticker.zIndex! }));
+
+  // 렌더링/제스처 쪽에는 항상 실제 좌표만 넘어가게, 아직 배치 전인 스티커는 배치 계산이
+  // 끝나기 전까지만 임시로 0/1로 채워서 보여준다(배치 이펙트가 곧바로 실제 값으로 덮어씀)
+  const stickers: StickerData[] = [...rawStickers]
+    .map((sticker) => ({
+      ...sticker,
+      posX: sticker.posX ?? 0,
+      posY: sticker.posY ?? 0,
+      zIndex: sticker.zIndex ?? 0,
+    }))
+    .sort((a, b) => a.zIndex - b.zIndex);
+
+  // 저장된 그림(전부 scope=BOARD, 스티커 귀속은 별도 이슈) — 렌더용으로 stroke에서 점 배열을 복원
+  const drawings = (data?.drawings ?? []).map((drawing) => ({
+    id: drawing.id,
+    points: parseStrokePoints(drawing.stroke),
+    color: drawing.color,
+    strokeWidth: drawing.strokeWidth,
+  }));
 
   const cameraRef = useRef(camera);
   const stickersRef = useRef(stickers);
   const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
+  const isDrawModeRef = useRef(isDrawMode);
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
+  const drawGestureRef = useRef<DrawGesture | null>(null); // draw 모드의 그리기/핀치줌 상태
 
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
@@ -152,11 +210,11 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       input: toLayoutInput([
         {
           id: updated.id,
-          posX: updated.posX,
-          posY: updated.posY,
+          posX: updated.posX ?? 0,
+          posY: updated.posY ?? 0,
           rotation: updated.rotation,
           scale: updated.scale,
-          zIndex: updated.zIndex,
+          zIndex: updated.zIndex ?? 0,
           badgeOffsetX: updated.badgeOffsetX,
           badgeOffsetY: updated.badgeOffsetY,
         },
@@ -167,14 +225,27 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   // 스티커를 선택하면 다른 스티커 위로 보이도록 zIndex를 맨 위로 올림
   const selectSticker = (sticker: StickerData): StickerData => {
     setSelectedStickerId(sticker.id);
-    const newZIndex = computeBringToFrontZIndex(stickersRef.current, sticker.id);
+    const newZIndex = computeBringToFrontZIndex(
+      stickersRef.current.map((s) => ({ id: s.id, zIndex: s.zIndex ?? 0 })),
+      sticker.id,
+    );
     if (newZIndex === null) return sticker;
     saveStickerLayout(sticker, { zIndex: newZIndex });
     return { ...sticker, zIndex: newZIndex };
   };
 
+  // 새 그림을 캐시에 낙관적으로 반영하고 저장 요청을 보냄
+  const saveDrawing = (input: DrawingCreateInput) => {
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current ? { ...current, drawings: [...current.drawings, input] } : current,
+    );
+
+    saveLayout({ boardId, input: { drawings: { created: [input] } } });
+  };
+
   const saveStickerLayoutRef = useRef(saveStickerLayout);
   const selectStickerRef = useRef(selectSticker);
+  const saveDrawingRef = useRef(saveDrawing);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
 
@@ -184,11 +255,103 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     stickersRef.current = stickers;
     selectedIdRef.current = selectedId;
     isEditModeRef.current = isEditMode;
+    isDrawModeRef.current = isDrawMode;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
+    saveDrawingRef.current = saveDrawing;
     pushRef.current = push;
     longPressRef.current = longPress;
   });
+
+  // 배치 처리 시작한 스티커 id를 기억해서, 저장 응답이 캐시에 반영되기 전에 리렌더가 껴도
+  // 같은 스티커를 다시 계산·저장하지 않게 막는다
+  const handledPlacementRef = useRef(new Set<string>());
+  const cameraFocusFrameRef = useRef<number | null>(null);
+  // 새로 배치된 무리를 카메라로 포커스해달라는 요청. 배치 계산과 분리된 별도 상태로 둬서,
+  // 이 상태를 구독하는 애니메이션 이펙트가 배치 이펙트의 재실행(캐시 갱신 등으로 인한)에
+  // 휘말려 애니메이션이 중간에 취소되지 않게 한다.
+  const [focusRequest, setFocusRequest] = useState<{
+    targets: Point[];
+    viewport: { width: number; height: number };
+  } | null>(null);
+
+  // 새로 생성돼 좌표가 없는 스티커를 빈 공간에 배치하고 저장한다
+  useEffect(() => {
+    if (!container) return;
+
+    const pending = unplacedStickers.filter(
+      (sticker) => !handledPlacementRef.current.has(sticker.id),
+    );
+    if (pending.length === 0) return;
+    pending.forEach((sticker) => handledPlacementRef.current.add(sticker.id));
+
+    const rect = container.getBoundingClientRect();
+    const viewport = { width: rect.width, height: rect.height };
+    const laidOut = computeInitialLayout(pending, placedStickers, viewport);
+
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current
+        ? {
+            ...current,
+            stickers: current.stickers.map((sticker) => {
+              const placement = laidOut.find((laid) => laid.id === sticker.id);
+              return placement ? { ...sticker, ...placement } : sticker;
+            }),
+          }
+        : current,
+    );
+
+    saveLayout({ boardId, input: toLayoutInput(laidOut) });
+
+    // 카메라 포커스는 AABB를 계산하므로, 스티커 중심점이 아니라 대략적인 외곽 두 지점을 넘긴다
+    const targets = laidOut.flatMap((sticker) => [
+      { x: sticker.posX - STICKER_FIT_HALF_SIZE, y: sticker.posY - STICKER_FIT_HALF_SIZE },
+      { x: sticker.posX + STICKER_FIT_HALF_SIZE, y: sticker.posY + STICKER_FIT_HALF_SIZE },
+    ]);
+    if (placedStickers.length === 0) {
+      // 최초 배치에는 카메라 애니메이션 없이 바로 포커스 위치로 세팅한다
+      setCamera((current) => computeFocusTarget(current, targets, viewport));
+    } else {
+      setFocusRequest({ targets, viewport });
+    }
+    // unplacedStickers/placedStickers는 data에서 매 렌더 새로 파생되므로 의도적으로 deps에서 제외.
+    // data 참조가 실제로 바뀔 때만(우리 자신의 setQueryData 포함) 재실행되면 되고, handledPlacementRef가
+    // 중복 처리를 막아준다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [container, data, boardId, queryClient, saveLayout]);
+
+  // 포커스 요청이 들어오면 그 무리의 중심으로 카메라를 부드럽게 이동시킨다.
+  // focusRequest는 위 배치 이펙트가 새 무리를 배치했을 때만 바뀌므로, 배치 이펙트의 잦은
+  // 재실행과 무관하게 애니메이션이 끝까지 방해받지 않고 진행된다.
+  useEffect(() => {
+    if (!focusRequest) return;
+
+    const startCamera = cameraRef.current;
+    const targetCamera = computeFocusTarget(
+      startCamera,
+      focusRequest.targets,
+      focusRequest.viewport,
+    );
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const progress = Math.min((now - startTime) / CAMERA_FOCUS_ANIMATION_MS, 1);
+      const eased = easeOutCubic(progress);
+      setCamera({
+        scale: startCamera.scale + (targetCamera.scale - startCamera.scale) * eased,
+        x: startCamera.x + (targetCamera.x - startCamera.x) * eased,
+        y: startCamera.y + (targetCamera.y - startCamera.y) * eased,
+      });
+      if (progress < 1) {
+        cameraFocusFrameRef.current = requestAnimationFrame(animate);
+      }
+    };
+    cameraFocusFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (cameraFocusFrameRef.current !== null) cancelAnimationFrame(cameraFocusFrameRef.current);
+    };
+  }, [focusRequest]);
 
   // 포인터, 휠 제스처는 Konva 없이 순수 DOM 이벤트로 직접 처리
   // pointerdown은 컨테이너에, move/up/cancel은 window에 붙여서 손가락이 컨테이너 밖으로 나가도(빠르게 드래그할 때 흔함) 계속 추적되게 함
@@ -205,9 +368,47 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       setDragTransform(next);
     };
 
+    // drawGestureReducer 결과를 실제 상태(refs/state)에 반영하고, 완성된 선이 있으면 저장한다
+    const applyDrawGestureResult = (result: DrawGestureResult) => {
+      drawGestureRef.current = result.state;
+      setDrawingPoints(result.state?.kind === 'drawing' ? result.state.points : null);
+
+      if (result.finalizedStroke && result.finalizedStroke.length > 0) {
+        saveDrawingRef.current(
+          toDrawingCreateInput(result.finalizedStroke, {
+            color: TEMP_DRAWING_COLOR,
+            strokeWidth: TEMP_DRAWING_STROKE_WIDTH,
+          }),
+        );
+      }
+    };
+
     const handlePointerDown = (e: PointerEvent) => {
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
+
+      if (isDrawModeRef.current) {
+        if (pointersRef.current.size === 1) {
+          applyDrawGestureResult(
+            drawGestureReducer(drawGestureRef.current, {
+              type: 'POINTER_DOWN',
+              pointerId: e.pointerId,
+              point: toWorldPoint(cameraRef.current, point),
+            }),
+          );
+        } else if (pointersRef.current.size === 2) {
+          const points = [...pointersRef.current.values()];
+          applyDrawGestureResult(
+            drawGestureReducer(drawGestureRef.current, {
+              type: 'MULTI_TOUCH',
+              points: [points[0]!, points[1]!],
+              camera: cameraRef.current,
+            }),
+          );
+        }
+        return;
+      }
+
       if (pointersRef.current.size !== 1) return;
 
       const stickerId = hitTestStickerId(e.target);
@@ -244,6 +445,31 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (!pointersRef.current.has(e.pointerId)) return;
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
+
+      if (isDrawModeRef.current) {
+        if (pointersRef.current.size >= 2) {
+          const gesture = drawGestureRef.current;
+          if (gesture?.kind !== 'pinching') return;
+          const points = [...pointersRef.current.values()];
+          setCamera(
+            computeBoardPinchZoom(
+              gesture.startCamera,
+              { centroid: gesture.startCentroid, distance: gesture.startDistance },
+              { centroid: centroid(points), distance: distance(points[0]!, points[1]!) },
+            ),
+          );
+          return;
+        }
+
+        applyDrawGestureResult(
+          drawGestureReducer(drawGestureRef.current, {
+            type: 'POINTER_MOVE',
+            pointerId: e.pointerId,
+            point: toWorldPoint(cameraRef.current, point),
+          }),
+        );
+        return;
+      }
 
       if (tapCandidateRef.current?.pointerId === e.pointerId) {
         if (distance(tapCandidateRef.current.startClient, point) > TAP_MOVE_THRESHOLD) {
@@ -328,6 +554,22 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       if (!pointersRef.current.has(e.pointerId)) return;
       const point = getLocalPoint(e);
       pointersRef.current.delete(e.pointerId);
+
+      if (isDrawModeRef.current) {
+        if (pointersRef.current.size === 0) {
+          // 드래그 없이 탭만 해도 점 하나(찍은 점)로 저장한다
+          applyDrawGestureResult(
+            drawGestureReducer(drawGestureRef.current, { type: 'POINTER_UP_TO_ZERO' }),
+          );
+        } else if (pointersRef.current.size === 1) {
+          // 핀치줌 중 손가락 하나가 떨어짐 -> 종료 (남은 손가락으로 이어서 그리진 않음)
+          applyDrawGestureResult(
+            drawGestureReducer(drawGestureRef.current, { type: 'POINTER_UP_TO_ONE' }),
+          );
+        }
+        return;
+      }
+
       longPressRef.current.cancel();
 
       const gesture = gestureRef.current;
@@ -487,6 +729,24 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
         }}
       >
+        {/* 저장된 그림 + 그리는 도중인 선의 실시간 미리보기 */}
+        <svg style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>
+          {drawings.map((drawing) => (
+            <DrawingStroke
+              key={drawing.id}
+              points={drawing.points}
+              color={drawing.color}
+              strokeWidth={drawing.strokeWidth}
+            />
+          ))}
+          {drawingPoints && (
+            <DrawingStroke
+              points={drawingPoints}
+              color={TEMP_DRAWING_COLOR}
+              strokeWidth={TEMP_DRAWING_STROKE_WIDTH}
+            />
+          )}
+        </svg>
         {stickers.map((sticker) => (
           <Sticker
             key={sticker.id}

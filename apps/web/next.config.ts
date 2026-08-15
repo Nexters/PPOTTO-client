@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['10.0.2.2', ...(allowedDevOrigin ? [allowedDevOrigin] : [])],
   images: {
     remotePatterns: [
+      { hostname: 'storage.googleapis.com', pathname: '/ppotto-bucket-dev/stickers/**' },
+      { hostname: 'storage.googleapis.com', pathname: '/ppotto-bucket-dev/photos/**' },
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-stickers/**' },
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-photos/**' },
     ],

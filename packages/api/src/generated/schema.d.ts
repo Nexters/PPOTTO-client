@@ -662,16 +662,16 @@ export interface components {
             isNew: boolean;
             /**
              * Format: double
-             * @description 보드 좌표 X
+             * @description 보드 좌표 X. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함
              * @example 62.5
              */
-            posX: number;
+            posX?: number | null;
             /**
              * Format: double
-             * @description 보드 좌표 Y
+             * @description 보드 좌표 Y. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함
              * @example 318
              */
-            posY: number;
+            posY?: number | null;
             /**
              * Format: double
              * @description 회전 각도(degree)
@@ -680,7 +680,7 @@ export interface components {
             rotation: number;
             /**
              * Format: double
-             * @description 확대 비율
+             * @description 확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용
              * @example 0.8
              */
             scale: number;
@@ -702,10 +702,10 @@ export interface components {
             type: "IMAGE" | "TEXT";
             /**
              * Format: int32
-             * @description 겹침 순서
+             * @description 겹침 순서. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함
              * @example 3
              */
-            zIndex: number;
+            zIndex?: number | null;
         };
         /** @description 분석 생성과 사진 업로드 URL 발급 요청 */
         CreateAnalysisRequest: {
@@ -1066,8 +1066,37 @@ export interface components {
              */
             summary: string;
         };
+        /** @description 연사 그룹 내 나머지 사진 */
+        RecapGroupPhotoResponse: {
+            /**
+             * Format: uuid
+             * @description 사진 ID (uuidv7)
+             * @example 01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+             */
+            id: string;
+            /**
+             * @description 읽기용 signed URL (만료 1시간)
+             * @example https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample
+             */
+            imageUrl: string;
+            /**
+             * Format: date-time
+             * @description 촬영 시각
+             * @example 2026-06-14T13:22:11+09:00
+             */
+            takenAt: string;
+        };
         /** @description 분석 리캡 사진 */
         RecapPhotoResponse: {
+            group?: boolean;
+            /**
+             * Format: uuid
+             * @description 연사 그룹 ID. 그룹이 아니면 null
+             * @example 01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b
+             */
+            groupId?: string | null;
+            /** @description 연사 그룹 내 나머지(비대표) 사진들. takenAt, id 오름차순. 그룹이 아니면 빈 배열 */
+            groupPhotos: components["schemas"]["RecapGroupPhotoResponse"][];
             /**
              * Format: uuid
              * @description 사진 ID (uuidv7)
@@ -1175,7 +1204,7 @@ export interface components {
             rotation: number;
             /**
              * Format: double
-             * @description 확대 비율
+             * @description 확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용
              * @example 1.1
              */
             scale: number;
@@ -1228,17 +1257,22 @@ export interface components {
              */
             isNew: boolean;
             /**
-             * Format: double
-             * @description 보드 좌표 X
-             * @example 62.5
+             * @description 스티커 대상의 대표 색상(hex). 리캡 상세 화면 배경색으로 사용
+             * @example #FF6B6B
              */
-            posX: number;
+            mainColor: string;
             /**
              * Format: double
-             * @description 보드 좌표 Y
+             * @description 보드 좌표 X. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함
+             * @example 62.5
+             */
+            posX?: number | null;
+            /**
+             * Format: double
+             * @description 보드 좌표 Y. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함
              * @example 318
              */
-            posY: number;
+            posY?: number | null;
             /**
              * Format: double
              * @description 회전 각도(degree)
@@ -1247,7 +1281,7 @@ export interface components {
             rotation: number;
             /**
              * Format: double
-             * @description 확대 비율
+             * @description 확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용
              * @example 0.8
              */
             scale: number;
@@ -1269,10 +1303,10 @@ export interface components {
             type: "IMAGE" | "TEXT";
             /**
              * Format: int32
-             * @description 겹침 순서
+             * @description 겹침 순서. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함
              * @example 3
              */
-            zIndex: number;
+            zIndex?: number | null;
         };
         /** @description 현재 유효한 약관과 사용자 동의 상태 */
         TermResponse: {

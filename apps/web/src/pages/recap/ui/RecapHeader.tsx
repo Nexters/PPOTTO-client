@@ -12,7 +12,7 @@ export function RecapHeader({ title, onBack, onShare }: RecapHeaderProps) {
       <button type="button" onClick={onBack}>
         <ChevronLeft />
       </button>
-      <span className="text-body-01 text-gray-50">{title}</span>
+      <span className="text-body-01 text-center text-gray-50">{title}</span>
       <button type="button" onClick={onShare}>
         <Share color="#FAFAFA" />
       </button>

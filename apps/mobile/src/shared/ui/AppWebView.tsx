@@ -1,4 +1,6 @@
 import { contract, type BridgeContract } from '@ppotto/bridge';
+import { File, Paths } from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Linking } from 'react-native';
@@ -74,8 +76,8 @@ export function AppWebView({
       router.replace('/');
     },
     AUTH_EXPIRED: () => router.replace('/'),
-    OPEN_PHOTO_SELECT: ({ boardId }) =>
-      router.push({ pathname: '/photo-select', params: { boardId } }),
+    OPEN_PHOTO_SELECT: ({ boardId, mode }) =>
+      router.push({ pathname: '/photo-select', params: { boardId, mode } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
     BOARD_READY: () => setLoaded(true),
     ANALYSIS_LOADING_READY: () => setLoaded(true),
@@ -92,6 +94,22 @@ export function AppWebView({
       return handler(payload);
     },
     ANALYSIS_LOADING_REVEAL_FINISHED: () => bridgeHandlers?.ANALYSIS_LOADING_REVEAL_FINISHED?.(),
+    SAVE_IMAGE: async ({ base64 }) => {
+      try {
+        const { status } = await MediaLibrary.requestPermissionsAsync(true);
+        if (status !== 'granted') return { success: false };
+
+        const file = new File(Paths.cache, `recap-${Date.now()}.png`);
+        file.write(base64, { encoding: 'base64' });
+        await MediaLibrary.saveToLibraryAsync(file.uri);
+        file.delete();
+
+        return { success: true };
+      } catch (error) {
+        console.warn('이미지 저장 실패', error);
+        return { success: false };
+      }
+    },
   });
 
   useEffect(() => {

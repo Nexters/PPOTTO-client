@@ -1,4 +1,8 @@
-import type { GalleryPhoto, PhotoSelection } from '@/features/photo-selection';
+import {
+  type GalleryPhoto,
+  type PhotoSelection,
+  selectedPhotoGroups,
+} from '@/features/photo-selection';
 import type { UploadJobPhoto, UploadJobSnapshot } from '@/features/photo-upload';
 
 interface PreparedPhoto {
@@ -20,16 +24,13 @@ export function createUploadJob({
   selection,
   preparedPhotos,
 }: CreateUploadJobOptions): UploadJobSnapshot {
-  const selectedGroups = selection.groups
-    .map((group) => group.photos.slice(selection.excludedCounts[group.id] ?? 0))
-    .filter((photos) => photos.length > 0)
-    .reverse();
+  const selectedGroups = selectedPhotoGroups(selection).reverse();
 
   return {
     jobId,
     boardId,
-    groups: selectedGroups.map((photos) => ({
-      items: photos.map((photo, index) => toUploadJobPhoto(photo, index, preparedPhotos)),
+    groups: selectedGroups.map((group) => ({
+      items: group.photos.map((photo, index) => toUploadJobPhoto(photo, index, preparedPhotos)),
     })),
   };
 }

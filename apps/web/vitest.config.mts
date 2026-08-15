@@ -8,8 +8,10 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+    alias: [
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+      { find: 'react-native-svg', replacement: 'react-native-svg/lib/module/elements.web.js' },
+      { find: /^react-native$/, replacement: 'react-native-web' },
+    ],
   },
 });
