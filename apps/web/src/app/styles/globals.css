@@ -18,6 +18,16 @@
   --color-foreground: var(--foreground);
 }
 
+/* 스켈레톤 시머 — 하이라이트 밴드가 좌→우로 쓸고 지나간다 */
+@keyframes skeleton-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
 @keyframes toast-up {
   from {
     transform: translateY(1.5rem);
