@@ -1,9 +1,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
+import { bridge } from '@/shared/lib/bridge';
 import { Modal } from '@/shared/ui/common/Modal';
 
 import { useBoardPageState } from './model/use-board-page-state';
@@ -21,11 +22,25 @@ export function BoardPage() {
     deleteAllStickers,
     isDeletingStickers,
     isBoardListLoading,
+    isBoardLoading,
     isInitialUploadModalOpen,
     setIsInitialUploadModalOpen,
     openPhotoSelect,
   } = useBoardPageState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
+
+  useEffect(() => {
+    if (isBoardListLoading || (boardId && isBoardLoading)) return;
+
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => bridge.send('BOARD_READY'));
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
+  }, [boardId, isBoardListLoading, isBoardLoading]);
 
   return (
     <>

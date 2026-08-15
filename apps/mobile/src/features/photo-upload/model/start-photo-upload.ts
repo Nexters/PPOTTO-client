@@ -74,12 +74,14 @@ export async function discardSavedPhotoUpload(
     return 'RETRY';
   }
 
+  if (active?.status === 'ANALYZING') return 'ANALYZING';
+
   try {
     await dependencies.clearJob();
   } catch {
     // 실패 화면을 빠져나가는 동작은 남은 임시 파일 정리에 막히지 않는다.
   }
-  return active?.status === 'ANALYZING' ? 'ANALYZING' : 'DISCARDED';
+  return 'DISCARDED';
 }
 
 async function continuePreparing(
@@ -88,7 +90,6 @@ async function continuePreparing(
 ): Promise<StartedPhotoUpload> {
   const analysis = await createAnalysisOrRecover(snapshot, dependencies);
   if (analysis.kind === 'ANALYZING') {
-    await dependencies.clearJob();
     return { analysisId: analysis.analysisId, status: 'ANALYZING' };
   }
 
