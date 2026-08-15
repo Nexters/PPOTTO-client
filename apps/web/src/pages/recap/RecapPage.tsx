@@ -1,5 +1,5 @@
 import { useFlow } from '@stackflow/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
@@ -24,11 +24,13 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
   const { markViewed } = useMarkStickerViewed(boardId);
   const { pop } = useFlow();
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const markedViewedStickerIdRef = useRef<string | null>(null);
 
   useRefetchOnActive(refetch, isStale);
 
   useEffect(() => {
-    if (data?.sticker.isNew) {
+    if (data?.sticker.isNew && markedViewedStickerIdRef.current !== stickerId) {
+      markedViewedStickerIdRef.current = stickerId;
       markViewed(stickerId);
     }
   }, [data?.sticker.isNew, markViewed, stickerId]);

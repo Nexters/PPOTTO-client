@@ -9,9 +9,13 @@ vi.mock('../api/sticker-queries', () => ({
 
 // fill은 next/image 전용 boolean prop이라 DOM에 그대로 넘기면 경고가 나 제외
 vi.mock('next/image', () => ({
-  default: ({ fill: _fill, ...props }: React.ComponentProps<'img'> & { fill?: boolean }) => (
+  default: ({
+    fill: _fill,
+    unoptimized,
+    ...props
+  }: React.ComponentProps<'img'> & { fill?: boolean; unoptimized?: boolean }) => (
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- next/image 대체 mock이라 규칙 대상 아님
-    <img {...props} />
+    <img {...props} data-unoptimized={String(unoptimized)} />
   ),
 }));
 
@@ -27,6 +31,7 @@ describe('StickerPhotoImage', () => {
 
     fireEvent.error(container.querySelector('img')!);
 
+    expect(container.querySelector('img')).toHaveAttribute('data-unoptimized', 'true');
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,4 +1,4 @@
-import { IconDraw, IconHand, IconPlus, IconText } from '@ppotto/assets';
+import { IconDraw, IconHand, IconPlus } from '@ppotto/assets';
 import type { ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
@@ -48,17 +48,6 @@ export function BoardToolbar({
             )}
           >
             <IconDraw color={mode === 'draw' ? 'black' : 'white'} />
-          </button>
-          <button
-            type="button"
-            aria-label="텍스트"
-            onClick={() => toggle('text')}
-            className={cn(
-              'flex size-8 items-center justify-center rounded-full',
-              mode === 'text' && 'bg-white',
-            )}
-          >
-            <IconText color={mode === 'text' ? 'black' : 'white'} />
           </button>
           <button
             type="button"

@@ -3,7 +3,8 @@ import { File, Paths } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
+import Share, { Social } from 'react-native-share';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import type { Handlers } from 'webview-bridge-kit';
@@ -25,6 +26,21 @@ import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
 const WEB_URL = __DEV__ ? process.env.EXPO_PUBLIC_WEB_URL : 'https://ppotto.co.kr';
+const INSTAGRAM_APP_ID = '1002723789453387';
+const INSTAGRAM_PACKAGE = 'com.instagram.android';
+
+async function openInstagramStore() {
+  if (Platform.OS !== 'android') {
+    await Linking.openURL('https://apps.apple.com/app/instagram/id389801252');
+    return;
+  }
+
+  try {
+    await Linking.openURL(`market://details?id=${INSTAGRAM_PACKAGE}`);
+  } catch {
+    await Linking.openURL(`https://play.google.com/store/apps/details?id=${INSTAGRAM_PACKAGE}`);
+  }
+}
 
 type PageBridgeHandlers = Pick<
   Handlers<BridgeContract>,
@@ -107,6 +123,32 @@ export function AppWebView({
         return { success: true };
       } catch (error) {
         console.warn('이미지 저장 실패', error);
+        return { success: false };
+      }
+    },
+    SHARE_INSTAGRAM_STORY: async ({ base64 }) => {
+      try {
+        const installed =
+          Platform.OS === 'android'
+            ? (await Share.isPackageInstalled(INSTAGRAM_PACKAGE)).isInstalled
+            : await Linking.canOpenURL('instagram-stories://share');
+
+        if (!installed) {
+          await openInstagramStore();
+          return { success: true };
+        }
+
+        const file = new File(Paths.cache, 'recap-instagram-story.png');
+        file.write(base64, { encoding: 'base64' });
+        const result = await Share.shareSingle({
+          social: Social.InstagramStories,
+          appId: INSTAGRAM_APP_ID,
+          backgroundImage: file.uri,
+        });
+
+        return { success: result.success };
+      } catch (error) {
+        console.warn('인스타그램 스토리 공유 실패', error);
         return { success: false };
       }
     },

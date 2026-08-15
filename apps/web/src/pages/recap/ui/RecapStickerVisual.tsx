@@ -18,6 +18,7 @@ export function RecapStickerVisual({ imageUrl, floatComments }: RecapStickerVisu
           src={imageUrl}
           alt=""
           fill
+          unoptimized
           sizes="176px"
           className="object-contain"
           style={{ filter: `url(#${STICKER_OUTLINE_FILTER_ID})` }}

@@ -48,7 +48,7 @@ export function AuthScreen() {
         <Text className="text-center text-white text-body-03">연결을 확인해 주세요.</Text>
         <Pressable
           accessibilityRole="button"
-          className="rounded-full bg-white px-6 py-3"
+          className="px-6 py-3 bg-white rounded-full"
           onPress={() => void retry()}
         >
           <Text className="text-gray-900 text-body-03">다시 시도</Text>

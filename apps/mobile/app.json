@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "뽀또",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -46,13 +46,16 @@
         }
       ],
       [
+        "react-native-share",
+        {
+          "ios": ["instagram-stories"],
+          "android": ["com.instagram.android"]
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
+          "backgroundColor": "#000000"
         }
       ],
       [
