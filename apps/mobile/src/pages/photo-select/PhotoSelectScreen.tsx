@@ -1,5 +1,4 @@
 import * as Crypto from 'expo-crypto';
-import { SaveFormat } from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -65,13 +64,13 @@ export function PhotoSelectScreen() {
     const motionPhotos = sampleMotionPhotos(selectedGroups.map((group) => group.photos[0]!));
     photoCompressionQueue.start(
       motionPhotos.map((photo) => ({ id: photo.id, photos: [photo] })),
-      { format: SaveFormat.WEBP, maxDimension: 512, quality: 0.6 },
+      { maxDimension: 768, quality: 0.6 },
     );
     const preparedMotionPhotos = photoCompressionQueue.wait().then((photos) =>
       motionPhotos.flatMap((photo) => {
         const preview = photos.get(photo.id);
         return preview && preview.uri !== photo.uri
-          ? [{ ...preview, contentType: 'image/webp' as const }]
+          ? [{ ...preview, contentType: 'image/jpeg' as const }]
           : [];
       }),
     );
@@ -81,7 +80,7 @@ export function PhotoSelectScreen() {
       motionPhotos: preparedMotionPhotos,
       photoCount,
       prepareJob: async () => {
-        photoCompressionQueue.start(selectedGroups, { format: SaveFormat.WEBP });
+        photoCompressionQueue.start(selectedGroups);
         return prepareUploadJob({
           jobId,
           boardId,

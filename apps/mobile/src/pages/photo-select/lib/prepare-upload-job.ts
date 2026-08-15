@@ -32,7 +32,7 @@ export async function prepareUploadJob({
         if (compressed.uri !== source.uri) {
           return [
             source.id,
-            { fileUri: compressed.uri, contentType: 'image/webp' as const },
+            { fileUri: compressed.uri, contentType: 'image/jpeg' as const },
           ] as const;
         }
 

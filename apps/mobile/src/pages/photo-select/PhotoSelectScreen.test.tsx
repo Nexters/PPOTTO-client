@@ -258,17 +258,17 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
 
   expect(photoUploadService.start).toHaveBeenCalledTimes(1);
   await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(25));
-  expect(mockImageResize).toHaveBeenCalledWith({ width: 512, height: 341 });
-  expect(mockImageSave.mock.calls.every(([options]) => options.format === 'webp')).toBe(true);
+  expect(mockImageResize).toHaveBeenCalledWith({ width: 768, height: 512 });
+  expect(mockImageSave.mock.calls.every(([options]) => options.format === 'jpeg')).toBe(true);
   const startOptions = photoUploadService.start.mock.calls[0]![0];
   expect(startOptions.photoCount).toBe(100);
   await expect(startOptions.motionPhotos).resolves.toEqual(
-    expect.arrayContaining([expect.objectContaining({ contentType: 'image/webp' })]),
+    expect.arrayContaining([expect.objectContaining({ contentType: 'image/jpeg' })]),
   );
 
   const uploadJob = await startOptions.prepareJob();
   expect(uploadJob.groups).toHaveLength(100);
-  expect(mockImageSave.mock.calls.slice(25).every(([options]) => options.format === 'webp')).toBe(
+  expect(mockImageSave.mock.calls.slice(25).every(([options]) => options.format === 'jpeg')).toBe(
     true,
   );
   expect(router.replace).toHaveBeenCalledWith({

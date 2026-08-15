@@ -25,7 +25,30 @@ export const photoCompressionQueue = {
     log(`[photo-compression:${id}] 시작 (${photoCount}장)`);
 
     clearCompressedPhotos();
-    queue.start(groups, (photo) => compressPhoto(photo, options));
+    queue.start(
+      groups,
+      async (photo) => {
+        let slowTimer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          return await compressPhoto(photo, options, (stage) => {
+            if (slowTimer) clearTimeout(slowTimer);
+            slowTimer = setTimeout(
+              () => log(`[photo-compression:${id}] 지연 (${photo.id}, ${stage}, 15초+)`),
+              15_000,
+            );
+          });
+        } finally {
+          if (slowTimer) clearTimeout(slowTimer);
+        }
+      },
+      ({ completed, total, photo, result }) => {
+        if (result === photo) log(`[photo-compression:${id}] 원본 폴백 (${photo.id})`);
+        if (completed % 10 === 0) {
+          const seconds = ((Date.now() - startedAt) / 1000).toFixed(2);
+          log(`[photo-compression:${id}] 진행 (${completed}/${total}, ${seconds}초)`);
+        }
+      },
+    );
     const current = queue.wait();
     void current.then(() => {
       if (queue.wait() === current) {
