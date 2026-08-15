@@ -23,7 +23,7 @@ import { isQaToolEnabled } from '@/shared/lib/qa-tool';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
-const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL;
+const WEB_URL = __DEV__ ? process.env.EXPO_PUBLIC_WEB_URL : 'https://ppotto.co.kr';
 
 // 앱 표준 웹뷰
 export function AppWebView({ path = '', onReady }: { path?: string; onReady?: () => void }) {
