@@ -23,6 +23,8 @@
     "@ppotto/api": "workspace:*",
     "@ppotto/assets": "workspace:*",
     "@ppotto/bridge": "workspace:*",
+    "@react-native-kakao/core": "2.4.6",
+    "@react-native-kakao/share": "2.4.6",
     "@react-native-seoul/kakao-login": "^5.4.2",
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",
