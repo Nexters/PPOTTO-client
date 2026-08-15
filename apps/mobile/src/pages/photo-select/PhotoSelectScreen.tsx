@@ -5,15 +5,19 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { photoCompressionQueue, PhotoGrid, usePhotoSelection } from '@/features/photo-selection';
+import { useMeQuery } from '@/entities/user/api/user-queries';
+import {
+  photoCompressionQueue,
+  PhotoGrid,
+  selectedPhotoGroups,
+  usePhotoSelection,
+} from '@/features/photo-selection';
 import { photoUploadService } from '@/features/photo-upload';
 import { Button } from '@/shared/ui/Button';
 import { Header } from '@/shared/ui/Header';
 
 import { prepareUploadJob } from './lib/prepare-upload-job';
 import { AlbumDropdown } from './ui/AlbumDropdown';
-
-const MIN_SUBMIT_UNITS = 90;
 
 const TARGET_UNITS = 100;
 
@@ -26,13 +30,20 @@ const ALBUM_OPTIONS = [
 type AlbumKey = (typeof ALBUM_OPTIONS)[number]['value'];
 
 export function PhotoSelectScreen() {
-  const { boardId } = useLocalSearchParams<{ boardId: string }>();
+  const { boardId, mode: modeParam } = useLocalSearchParams<{
+    boardId: string;
+    mode?: string;
+  }>();
+  const mode = modeParam === 'additional' ? 'additional' : 'initial';
+  const minSubmitUnits = mode === 'additional' ? 20 : 90;
   const [album, setAlbum] = useState<AlbumKey>('RECENT');
   const insets = useSafeAreaInsets();
+  const { data: me } = useMeQuery();
 
   const {
     canSubmit,
     everythingSelected,
+    loadMore,
     photoUnits,
     selection,
     selectedCount,
@@ -41,12 +52,20 @@ export function PhotoSelectScreen() {
   } = usePhotoSelection({
     album,
     targetUnits: TARGET_UNITS,
-    minSubmitUnits: MIN_SUBMIT_UNITS,
+    minSubmitUnits,
+    mode,
   });
 
   const handleSubmit = () => {
     if (!selection || !boardId) return;
 
+    const motionPhotos = selection.groups.flatMap((group) => {
+      const representative = group.photos[selection.excludedCounts[group.id] ?? 0];
+      return representative ? [representative] : [];
+    });
+    if (mode === 'additional') {
+      photoCompressionQueue.start(selectedPhotoGroups(selection));
+    }
     const compressedPhotos = photoCompressionQueue.wait();
     photoUploadService.start(
       compressedPhotos.then((photos) =>
@@ -57,8 +76,9 @@ export function PhotoSelectScreen() {
           compressedPhotos: photos,
         }),
       ),
+      motionPhotos,
     );
-    router.replace({ pathname: '/board', params: { boardId } });
+    router.replace({ pathname: '/analysis-loading', params: { boardId } });
   };
 
   return (
@@ -67,7 +87,9 @@ export function PhotoSelectScreen() {
         <View className="gap-8 px-6 pt-4 pb-8">
           <Header />
           <View className="gap-1">
-            <Text className="text-white text-body-01">김용희님의 최근 사진 100장을 골랐어요</Text>
+            <Text className="text-white text-body-01">
+              {me ? `${me.name}님의 ` : ''}최근 사진 100장을 골랐어요
+            </Text>
             <Text className="text-gray-400 text-body-06 opacity-[0.85]">
               연속 사진은 한 묶음으로 표시돼요
             </Text>
@@ -84,7 +106,13 @@ export function PhotoSelectScreen() {
         </View>
 
         <View className="flex-1">
-          <PhotoGrid bottomPadding={insets.bottom + 76} onPress={toggleUnit} units={photoUnits} />
+          <PhotoGrid
+            bottomPadding={insets.bottom + 76}
+            grouped={mode === 'initial'}
+            onEndReached={() => void loadMore()}
+            onPress={toggleUnit}
+            units={photoUnits}
+          />
 
           <LinearGradient
             colors={['transparent', '#000000']}
@@ -105,7 +133,7 @@ export function PhotoSelectScreen() {
               <Text
                 className={canSubmit ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'}
               >
-                이 사진으로 보드 만들기{' '}
+                {canSubmit ? '이 사진으로 보드 만들기' : `최소 ${minSubmitUnits}장을 선택해 주세요`}{' '}
                 <Text className={canSubmit ? 'text-blue-500' : 'text-red-300'}>
                   {selectedCount} / {TARGET_UNITS}
                 </Text>

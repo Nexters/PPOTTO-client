@@ -1,46 +1,66 @@
 import { CommonActions, useNavigation, usePreventRemove } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 
 import { photoUploadService } from '@/features/photo-upload';
+import { AppBackground } from '@/shared/ui/AppBackground';
 import { AppWebView } from '@/shared/ui/AppWebView';
-import { useToast } from '@/shared/ui/Toast';
 
-import { LoadingOverlay } from './ui/LoadingOverlay';
 import { PendingUploadModal } from './ui/PendingUploadModal';
 import { UploadFailureModal } from './ui/UploadFailureModal';
 
 type BoardScreenState =
-  | { status: 'CHECKING' }
-  | { status: 'READY' }
-  | { status: 'PENDING' }
-  | { status: 'UPLOADING'; uploadPromise: Promise<void> }
-  | { status: 'FAILED' };
+  { status: 'CHECKING' } | { status: 'READY' } | { status: 'PENDING' } | { status: 'FAILED' };
+
+function logPendingUpload(message: string, details?: unknown) {
+  if (!__DEV__ || process.env.NODE_ENV === 'test') return;
+  // eslint-disable-next-line no-console
+  console.log(`[pending-upload] ${message}`, details ?? '');
+}
 
 // 보드, 리캡 전용 웹뷰
 export function BoardScreen() {
   const navigation = useNavigation();
-  const toast = useToast();
-  const { boardId } = useLocalSearchParams<{ boardId?: string }>();
+  const allowPendingNavigation = useRef(false);
+  const { boardId, confirmResume } = useLocalSearchParams<{
+    boardId?: string;
+    confirmResume?: string;
+  }>();
   const [screenState, setScreenState] = useState<BoardScreenState>(() => {
-    const uploadPromise = photoUploadService.getCurrent();
-    return uploadPromise ? { status: 'UPLOADING', uploadPromise } : { status: 'CHECKING' };
+    if (confirmResume === '1') return { status: 'PENDING' };
+    if (photoUploadService.getCurrent() && photoUploadService.getViewState().status === 'FAILED') {
+      return { status: 'FAILED' };
+    }
+    return { status: 'CHECKING' };
   });
 
-  usePreventRemove(
-    screenState.status === 'UPLOADING' || screenState.status === 'PENDING',
-    () => undefined,
-  );
+  usePreventRemove(screenState.status === 'PENDING', ({ data }) => {
+    if (!allowPendingNavigation.current) {
+      logPendingUpload('화면 이동 차단', { action: data.action.type });
+      return;
+    }
+    logPendingUpload('확인된 화면 이동 실행', { action: data.action.type });
+    navigation.dispatch(data.action);
+  });
 
   useEffect(() => {
     if (screenState.status !== 'CHECKING') return;
+
+    if (photoUploadService.getCurrent()) {
+      router.replace({ pathname: '/analysis-loading', params: boardId ? { boardId } : undefined });
+      return;
+    }
 
     let active = true;
     void photoUploadService.hasPending().then(
       (hasPending) => {
         if (!active) return;
-        setScreenState({ status: hasPending ? 'PENDING' : 'READY' });
+        if (!hasPending) {
+          setScreenState({ status: 'READY' });
+          return;
+        }
+        setScreenState({ status: 'PENDING' });
       },
       () => {
         if (active) setScreenState({ status: 'READY' });
@@ -50,38 +70,14 @@ export function BoardScreen() {
     return () => {
       active = false;
     };
-  }, [screenState.status]);
+  }, [boardId, screenState.status]);
 
   useEffect(() => {
-    if (screenState.status !== 'UPLOADING') return;
+    if (screenState.status !== 'PENDING') return;
 
-    let active = true;
-    void screenState.uploadPromise.then(
-      () => {
-        photoUploadService.clearCurrent();
-        if (active) setScreenState({ status: 'READY' });
-      },
-      (error) => {
-        if (!active) return;
-        if (photoUploadService.isStatusUnavailableError(error)) {
-          photoUploadService.clearCurrent();
-          setScreenState({ status: 'READY' });
-          toast('분석 상태를 확인하지 못했어요. 잠시 후 다시 확인해주세요.');
-          return;
-        }
-        if (photoUploadService.isRecoverableError(error)) {
-          photoUploadService.clearCurrent();
-          setScreenState({ status: 'PENDING' });
-          return;
-        }
-        setScreenState({ status: 'FAILED' });
-      },
-    );
-
-    return () => {
-      active = false;
-    };
-  }, [screenState, toast]);
+    photoUploadService.resume();
+    void photoUploadService.getMotionPhotosForWeb().catch(() => undefined);
+  }, [screenState.status]);
 
   const clearPreviousScreens = () => {
     navigation.dispatch((state) =>
@@ -89,8 +85,25 @@ export function BoardScreen() {
     );
   };
 
+  const openLoadingScreen = () => {
+    logPendingUpload('확인 처리 시작', { boardId, screenStatus: screenState.status });
+    allowPendingNavigation.current = true;
+    if (screenState.status !== 'PENDING') {
+      photoUploadService.resume();
+      void photoUploadService.getMotionPhotosForWeb().catch(() => undefined);
+    }
+    logPendingUpload('사전 resume 상태', photoUploadService.getViewState());
+    router.replace({ pathname: '/analysis-loading', params: boardId ? { boardId } : undefined });
+    logPendingUpload('router.replace 요청 완료', { pathname: '/analysis-loading', boardId });
+  };
+
   const cancelRetry = async () => {
-    if ((await photoUploadService.discard()) === 'RETRY') return;
+    const result = await photoUploadService.discard();
+    if (result === 'RETRY') return;
+    if (result === 'ANALYZING') {
+      openLoadingScreen();
+      return;
+    }
     setScreenState({ status: 'READY' });
   };
 
@@ -98,29 +111,21 @@ export function BoardScreen() {
     const result = await photoUploadService.discard();
     if (result === 'RETRY') return;
     if (result === 'ANALYZING') {
-      setScreenState({ status: 'READY' });
+      openLoadingScreen();
       return;
     }
     if (boardId) router.replace({ pathname: '/photo-select', params: { boardId } });
   };
 
-  const confirmPending = () => {
-    setScreenState({ status: 'UPLOADING', uploadPromise: photoUploadService.resume() });
-  };
-
-  const isBoardVisible =
-    screenState.status === 'CHECKING' ||
-    screenState.status === 'READY' ||
-    screenState.status === 'PENDING';
+  const confirmPending = openLoadingScreen;
 
   return (
     <View style={{ flex: 1 }}>
-      {isBoardVisible ? (
-        <AppWebView path="/board" onReady={clearPreviousScreens} />
+      {screenState.status === 'CHECKING' || screenState.status === 'READY' ? (
+        <AppWebView path="/board" onReady={clearPreviousScreens} waitForBoardReady />
       ) : (
-        <LoadingOverlay />
+        <AppBackground />
       )}
-      {screenState.status === 'CHECKING' && <View style={StyleSheet.absoluteFill} />}
       <PendingUploadModal onConfirm={confirmPending} visible={screenState.status === 'PENDING'} />
       <UploadFailureModal
         onCancel={() => void cancelRetry()}

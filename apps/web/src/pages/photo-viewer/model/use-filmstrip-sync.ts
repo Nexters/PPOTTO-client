@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 
 // scrollend는 구형 WebView 미지원 → scroll로 대체
 const SCROLL_END_DELAY_MS = 100;
@@ -23,22 +23,33 @@ function findClosestIndex(container: HTMLDivElement, items: (HTMLButtonElement |
   return closestIndex;
 }
 
-// 필름스트립과 selectedIndex를 양방향으로 동기화
 export function useFilmstripSync(selectedIndex: number, onSelect: (index: number) => void) {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const skipAnimationRef = useRef(true);
+  const isFirstSyncRef = useRef(true);
+  // 필름스트립 자체 스크롤이면 관성 스크롤과 안 겹치게 auto로 이동
+  const isOwnScrollUpdateRef = useRef(false);
 
-  useEffect(() => {
+  // 아래 리스너는 마운트 시 한 번만 등록되므로, 최신 selectedIndex/onSelect는 ref로 읽음
+  const selectedIndexRef = useRef(selectedIndex);
+  const onSelectRef = useRef(onSelect);
+  useLayoutEffect(() => {
+    selectedIndexRef.current = selectedIndex;
+    onSelectRef.current = onSelect;
+  });
+
+  useLayoutEffect(() => {
+    const behavior = isFirstSyncRef.current || isOwnScrollUpdateRef.current ? 'auto' : 'smooth';
+    isFirstSyncRef.current = false;
+    isOwnScrollUpdateRef.current = false;
+
     itemRefs.current[selectedIndex]?.scrollIntoView({
-      behavior: skipAnimationRef.current ? 'auto' : 'smooth',
+      behavior,
       inline: 'center',
       block: 'nearest',
     });
-    skipAnimationRef.current = false;
   }, [selectedIndex]);
 
-  // 위 effect의 스크롤도 감지되지만 같은 인덱스라 재호출 없음
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -47,7 +58,10 @@ export function useFilmstripSync(selectedIndex: number, onSelect: (index: number
 
     const handleScrollEnd = () => {
       const closestIndex = findClosestIndex(container, itemRefs.current);
-      if (closestIndex !== selectedIndex) onSelect(closestIndex);
+      if (closestIndex !== selectedIndexRef.current) {
+        isOwnScrollUpdateRef.current = true;
+        onSelectRef.current(closestIndex);
+      }
     };
 
     const handleScroll = () => {
@@ -60,7 +74,7 @@ export function useFilmstripSync(selectedIndex: number, onSelect: (index: number
       container.removeEventListener('scroll', handleScroll);
       clearTimeout(scrollEndTimer);
     };
-  }, [selectedIndex, onSelect]);
+  }, []);
 
   const getItemRef = (index: number) => (el: HTMLButtonElement | null) => {
     itemRefs.current[index] = el;

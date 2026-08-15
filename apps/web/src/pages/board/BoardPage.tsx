@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
+import { bridge } from '@/shared/lib/bridge';
 import { Modal } from '@/shared/ui/common/Modal';
 
 import { sampleColorAt } from './model/eyedropper';
@@ -31,6 +32,7 @@ export function BoardPage() {
     deleteAllStickers,
     isDeletingStickers,
     isBoardListLoading,
+    isBoardLoading,
     isInitialUploadModalOpen,
     setIsInitialUploadModalOpen,
     openPhotoSelect,
@@ -133,6 +135,19 @@ export function BoardPage() {
     captureRef.current = null;
     previewColorRef.current = null;
   }, [toolbarMode]);
+
+  useEffect(() => {
+    if (isBoardListLoading || (boardId && isBoardLoading)) return;
+
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => bridge.send('BOARD_READY'));
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
+  }, [boardId, isBoardListLoading, isBoardLoading]);
 
   return (
     <>

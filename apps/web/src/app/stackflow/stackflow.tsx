@@ -8,6 +8,7 @@ import { basicRendererPlugin } from '@stackflow/plugin-renderer-basic';
 import { stackflow, type ActivityComponentType } from '@stackflow/react';
 
 import { BoardPage } from '@/pages/board';
+import { AnalysisLoadingPage } from '@/pages/analysis-loading';
 import { LoginPage } from '@/pages/login';
 import { OnboardingPage } from '@/pages/onboarding';
 import { PhotoViewerPage } from '@/pages/photo-viewer';
@@ -63,6 +64,12 @@ const SettingsActivity: ActivityComponentType<'Settings'> = () => (
   </AppScreen>
 );
 
+const AnalysisLoadingActivity: ActivityComponentType<'AnalysisLoading'> = () => (
+  <AppScreen>
+    <AnalysisLoadingPage />
+  </AppScreen>
+);
+
 export const { Stack } = stackflow({
   config,
   components: {
@@ -73,6 +80,7 @@ export const { Stack } = stackflow({
     Recap: RecapActivity,
     PhotoViewer: PhotoViewerActivity,
     Settings: SettingsActivity,
+    AnalysisLoading: AnalysisLoadingActivity,
   },
   plugins: [
     basicRendererPlugin(),

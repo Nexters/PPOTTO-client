@@ -399,12 +399,23 @@
                           {
                             "id": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample",
-                            "takenAt": "2026-06-14T04:22:10Z"
+                            "takenAt": "2026-06-14T04:22:10Z",
+                            "isGroup": true,
+                            "groupId": "01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b",
+                            "groupPhotos": [
+                              {
+                                "id": "01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                                "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-3c.jpg?X-Goog-Signature=smpl",
+                                "takenAt": "2026-06-14T04:22:11Z"
+                              }
+                            ]
                           },
                           {
                             "id": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
                             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample",
-                            "takenAt": "2026-07-02T10:05:44Z"
+                            "takenAt": "2026-07-02T10:05:44Z",
+                            "isGroup": false,
+                            "groupPhotos": []
                           }
                         ]
                       }
@@ -1839,12 +1850,23 @@
                           {
                             "id": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample",
-                            "takenAt": "2026-06-14T04:22:10Z"
+                            "takenAt": "2026-06-14T04:22:10Z",
+                            "isGroup": true,
+                            "groupId": "01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b",
+                            "groupPhotos": [
+                              {
+                                "id": "01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                                "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-3c.jpg?X-Goog-Signature=smpl",
+                                "takenAt": "2026-06-14T04:22:11Z"
+                              }
+                            ]
                           },
                           {
                             "id": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
                             "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample",
-                            "takenAt": "2026-07-02T10:05:44Z"
+                            "takenAt": "2026-07-02T10:05:44Z",
+                            "isGroup": false,
+                            "groupPhotos": []
                           }
                         ]
                       }
@@ -3724,6 +3746,30 @@
         },
         "required": ["comments", "photos", "sticker", "summary"]
       },
+      "RecapGroupPhotoResponse": {
+        "type": "object",
+        "description": "연사 그룹 내 나머지 사진",
+        "properties": {
+          "imageUrl": {
+            "type": "string",
+            "description": "읽기용 signed URL (만료 1시간)",
+            "example": "https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample"
+          },
+          "takenAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "촬영 시각",
+            "example": "2026-06-14T13:22:11+09:00"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "사진 ID (uuidv7)",
+            "example": "01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          }
+        },
+        "required": ["id", "imageUrl", "takenAt"]
+      },
       "RecapPhotoResponse": {
         "type": "object",
         "description": "분석 리캡 사진",
@@ -3739,6 +3785,22 @@
             "description": "촬영 시각",
             "example": "2026-06-14T13:22:10+09:00"
           },
+          "groupId": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "연사 그룹 ID. 그룹이 아니면 null",
+            "example": "01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b"
+          },
+          "groupPhotos": {
+            "type": "array",
+            "description": "연사 그룹 내 나머지(비대표) 사진들. takenAt, id 오름차순. 그룹이 아니면 빈 배열",
+            "items": {
+              "$ref": "#/components/schemas/RecapGroupPhotoResponse"
+            }
+          },
+          "group": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -3746,7 +3808,7 @@
             "example": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
         },
-        "required": ["id", "imageUrl", "takenAt"]
+        "required": ["groupPhotos", "id", "imageUrl", "takenAt"]
       },
       "StickerResponse": {
         "type": "object",

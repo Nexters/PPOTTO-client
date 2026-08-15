@@ -79,7 +79,7 @@ async function resumePutting(
 
   logPhotoUpload(`GCS PUT 전체 완료 (${pendingPhotos.length}장)`);
   await dependencies.appendEvent({ type: 'START_REQUESTED' });
-  return startAndClear(analysisId, dependencies);
+  return startAnalysis(analysisId, dependencies);
 }
 
 async function uploadPhotos(
@@ -202,7 +202,7 @@ async function recoverCancelFailure(
   }
 }
 
-async function startAndClear(
+async function startAnalysis(
   analysisId: string,
   dependencies: UploadRunnerDependencies,
 ): Promise<UploadRunResult> {
@@ -213,7 +213,6 @@ async function startAndClear(
     throw error;
   }
 
-  await dependencies.clearJob();
   return 'ANALYZING';
 }
 
@@ -224,12 +223,12 @@ async function resolveStartOutcome(
   const status = await dependencies.getAnalysisStatus(analysisId);
   if (status === 'UPLOADING') {
     await dependencies.startAnalysis(analysisId);
-    await dependencies.clearJob();
     return 'ANALYZING';
   }
 
+  if (status !== 'FAILED') return 'ANALYZING';
   await dependencies.clearJob();
-  return status === 'FAILED' ? 'UPLOAD_FAILED' : 'ANALYZING';
+  return 'UPLOAD_FAILED';
 }
 
 interface PendingPhoto {

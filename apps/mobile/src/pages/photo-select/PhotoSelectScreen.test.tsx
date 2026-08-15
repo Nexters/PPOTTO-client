@@ -1,7 +1,19 @@
-import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  userEvent,
+  waitFor,
+} from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { usePhotoSelection } from '@/features/photo-selection';
+
 import { PhotoSelectScreen } from './PhotoSelectScreen';
+
+let mockSearchParams: { boardId: string; mode?: string } = { boardId: 'board-1' };
 
 /**
  * 동작 범위 (2026-07-30 인터뷰, 2026-07-30 축소)
@@ -23,7 +35,7 @@ import { PhotoSelectScreen } from './PhotoSelectScreen';
  * 제외: 진입 시 갤러리 전체에 100그룹 미만 → 생성 불가 안내 화면 — 별도 작업, Unable 시안 없음
  * 제외: 권한 거부 안내·설정 이동 — 별도 시안 필요
  * 제외: 백그라운드 중 설정에서 권한 회수 후 복귀 — 드묾, 실제 문제 시 추가
- * CTA는 업로드 서비스 시작과 BoardScreen 이동만 검증하고 업로드 내부 동작은 feature 테스트가 담당
+ * CTA는 업로드 서비스 시작과 로딩 화면 이동만 검증하고 업로드 내부 동작은 feature 테스트가 담당
  * 제외: 로딩 중 타일 표현 — 시안의 회색 타일은 샘플 필러이지 플레이스홀더가 아님
  *
  * [팀확인] 700:7641 시안의 dim 누락 — 디자이너 확인, 구현은 dim 적용
@@ -38,7 +50,7 @@ jest.mock('expo-media-library', () => ({
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'job-1') }));
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), replace: jest.fn() },
-  useLocalSearchParams: jest.fn(() => ({ boardId: 'board-1' })),
+  useLocalSearchParams: jest.fn(() => mockSearchParams),
 }));
 jest.mock('expo-image-manipulator', () => ({
   ImageManipulator: {
@@ -61,6 +73,9 @@ jest.mock('expo-image-manipulator', () => ({
 }));
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: { start: jest.fn() },
+}));
+jest.mock('@/entities/user/api/user-queries', () => ({
+  useMeQuery: () => ({ data: { name: '뽀또' } }),
 }));
 
 const { getAssetsAsync, requestPermissionsAsync } = jest.requireMock('expo-media-library') as {
@@ -123,9 +138,10 @@ async function renderLoadedScreen() {
 }
 
 const counter = (text: string) => screen.getByText(text);
-const cta = () => screen.getByRole('button', { name: /보드 만들기/ });
+const cta = () => screen.getByRole('button', { name: /보드 만들기|선택해 주세요/ });
 
 beforeEach(() => {
+  mockSearchParams = { boardId: 'board-1' };
   jest.clearAllMocks();
 });
 
@@ -134,6 +150,7 @@ it('진입 시 불러온 그룹을 전체 선택 상태로 표시하고 카운�
 
   await renderLoadedScreen();
 
+  expect(screen.getByText('뽀또님의 최근 사진 100장을 골랐어요')).toBeOnTheScreen();
   expect(counter('100 / 100')).toBeOnTheScreen();
   expect(screen.getAllByRole('checkbox')[0]).toBeChecked();
 });
@@ -227,7 +244,7 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
 
   expect(photoUploadService.start).toHaveBeenCalledTimes(1);
   expect(router.replace).toHaveBeenCalledWith({
-    pathname: '/board',
+    pathname: '/analysis-loading',
     params: { boardId: 'board-1' },
   });
 });
@@ -268,4 +285,84 @@ it('앨범에 100개가 안 되면 CTA가 비활성화된다', async () => {
 
   expect(counter('50 / 100')).toBeOnTheScreen();
   expect(cta()).toBeDisabled();
+});
+
+describe('추가 업로드', () => {
+  beforeEach(() => {
+    mockSearchParams = { boardId: 'board-1', mode: 'additional' };
+  });
+
+  it('사진을 개별 표시하고 20장부터 제출할 수 있다', async () => {
+    // 20번의 순차 press가 있는 테스트라 타일 수가 곧 실행 시간 — 계약(최소 20장)에 필요한 만큼만 깐다
+    setGallery(spacedAssets(30));
+    const { user } = await renderLoadedScreen();
+
+    expect(counter('0 / 100')).toBeOnTheScreen();
+    expect(cta()).toBeDisabled();
+
+    await user.press(screen.getAllByRole('checkbox')[0]!);
+
+    expect(counter('1 / 100')).toBeOnTheScreen();
+    expect(screen.getByText(/최소 20장을 선택해 주세요/)).toBeOnTheScreen();
+    expect(cta()).toBeDisabled();
+
+    for (let index = 1; index < 20; index += 1) {
+      await user.press(screen.getAllByRole('checkbox')[index]!);
+    }
+
+    expect(counter('20 / 100')).toBeOnTheScreen();
+    expect(cta()).toBeEnabled();
+    // userEvent.press는 press당 ~130ms를 소모해 20번 누르면 기본 5초를 넘길 수 있다
+  }, 15_000);
+
+  it('자동 선택은 최신 사진 100장을 선택한다', async () => {
+    setGallery(spacedAssets(150));
+    const { user } = await renderLoadedScreen();
+
+    await user.press(screen.getByRole('button', { name: '자동 선택' }));
+
+    expect(counter('100 / 100')).toBeOnTheScreen();
+    expect(cta()).toBeEnabled();
+  });
+
+  it('스크롤 끝에 도달하면 다음 사진 페이지를 불러온다', async () => {
+    setGallery(spacedAssets(250));
+    await renderLoadedScreen();
+
+    await act(async () => {
+      fireEvent(screen.getByTestId('photo-grid'), 'onEndReached');
+    });
+
+    await waitFor(() =>
+      expect(getAssetsAsync).toHaveBeenCalledWith({
+        first: 100,
+        after: '100',
+        sortBy: 'creationTime',
+      }),
+    );
+  });
+
+  it('100장이 선택된 상태에서는 사진을 더 선택하지 않는다', async () => {
+    setGallery(spacedAssets(150));
+    const { result } = await renderHook(() =>
+      usePhotoSelection({
+        album: 'RECENT',
+        minSubmitUnits: 1,
+        mode: 'additional',
+        targetUnits: 100,
+      }),
+    );
+    await waitFor(() => expect(result.current.photoUnits).toHaveLength(100));
+
+    await act(() => result.current.toggleEverything());
+    await act(async () => {
+      await result.current.loadMore();
+    });
+    await waitFor(() => expect(result.current.photoUnits).toHaveLength(150));
+
+    await act(() => result.current.toggleUnit(result.current.photoUnits[100]!));
+
+    expect(result.current.selectedCount).toBe(100);
+    expect(result.current.photoUnits[100]).toMatchObject({ excluded: true });
+  });
 });
