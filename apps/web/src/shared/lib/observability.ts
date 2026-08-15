@@ -1,18 +1,13 @@
 import HyperDX from '@hyperdx/browser';
+import { resolveEnvironment } from '@ppotto/observability';
 
 const apiKey = process.env.NEXT_PUBLIC_HYPERDX_API_KEY;
 const ingestUrl = process.env.NEXT_PUBLIC_HYPERDX_URL ?? 'https://otel.ppotto.co.kr';
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
 let initialized = false;
 
-function resolveEnvironment() {
-  if (apiUrl.includes('dev-api.ppotto.co.kr')) return 'development';
-  if (apiUrl.includes('api.ppotto.co.kr')) return 'production';
-  return 'local';
-}
-
-export function initHyperDX() {
+export function initObservability() {
   if (initialized || typeof window === 'undefined') return;
   if (!apiKey) return;
 
@@ -25,7 +20,7 @@ export function initHyperDX() {
     consoleCapture: true,
     advancedNetworkCapture: true,
     disableReplay: true,
-    otelResourceAttributes: { environment: resolveEnvironment() },
+    otelResourceAttributes: { environment: resolveEnvironment(apiUrl) },
   });
 }
 

@@ -21,9 +21,11 @@
   },
   "dependencies": {
     "@hyperdx/otel-react-native": "^0.3.0",
+    "@opentelemetry/api": "^1.9.1",
     "@ppotto/api": "workspace:*",
     "@ppotto/assets": "workspace:*",
     "@ppotto/bridge": "workspace:*",
+    "@ppotto/observability": "workspace:*",
     "@react-native-seoul/kakao-login": "^5.4.2",
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",

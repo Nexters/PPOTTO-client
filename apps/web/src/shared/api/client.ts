@@ -1,7 +1,7 @@
 import { createApiClient } from '@ppotto/api';
 
 import { bridge } from '@/shared/lib/bridge';
-import { recordBridgeFailure } from '@/shared/lib/hyperdx';
+import { recordBridgeFailure } from '@/shared/lib/observability';
 
 async function requestAccessToken(forceRefresh: boolean) {
   try {

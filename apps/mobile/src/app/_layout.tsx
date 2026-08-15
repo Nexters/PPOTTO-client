@@ -5,19 +5,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { userQueryKeys } from '@/entities/user/api/user-query-keys';
 import { QaRecorderProbe } from '@/features/qa-report';
-import { initObservability, watchUserIdentity } from '@/lib/observability';
+import { useObservability } from '@/lib/use-observability';
 import { isQaToolEnabled } from '@/shared/lib/qa-tool';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { AppLaunchScreen } from '@/shared/ui/AppLaunchScreen';
 import { ToastProvider } from '@/shared/ui/Toast';
 
-initObservability();
-
 const queryClient = new QueryClient();
-
-watchUserIdentity(queryClient, userQueryKeys.me());
 const appTheme = {
   ...DarkTheme,
   colors: {
@@ -28,6 +23,8 @@ const appTheme = {
 };
 
 export default function RootLayout() {
+  useObservability(queryClient);
+
   return (
     <QueryClientProvider client={queryClient}>
       <View style={styles.root}>

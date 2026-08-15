@@ -1,18 +1,15 @@
 import { HyperDXRum } from '@hyperdx/otel-react-native';
-import type { QueryClient, QueryKey } from '@tanstack/react-query';
+import { type Attributes, SpanStatusCode } from '@opentelemetry/api';
+import { resolveEnvironment } from '@ppotto/observability';
 
 const apiKey = process.env.EXPO_PUBLIC_HYPERDX_API_KEY;
 const beaconEndpoint =
   process.env.EXPO_PUBLIC_HYPERDX_BEACON_URL ?? 'https://otel.ppotto.co.kr/api/v2/spans';
-const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? '';
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+const TRACER_NAME = 'ppotto-mobile';
 
 let initialized = false;
-
-function resolveEnvironment() {
-  if (apiUrl.includes('dev-api.ppotto.co.kr')) return 'development';
-  if (apiUrl.includes('api.ppotto.co.kr')) return 'production';
-  return 'local';
-}
 
 export function initObservability() {
   if (initialized || !apiKey) return;
@@ -21,8 +18,8 @@ export function initObservability() {
   HyperDXRum.init({
     apiKey,
     beaconEndpoint,
-    service: 'ppotto-mobile',
-    deploymentEnvironment: resolveEnvironment(),
+    service: TRACER_NAME,
+    deploymentEnvironment: resolveEnvironment(apiUrl),
     networkHeadersCapture: true,
     networkBodyCapture: true,
     tracePropagationTargets: [/dev-api\.ppotto\.co\.kr/, /api\.ppotto\.co\.kr/],
@@ -34,28 +31,23 @@ export function identifyUser(userId: string) {
   HyperDXRum.setGlobalAttributes({ userId });
 }
 
-export function watchUserIdentity(queryClient: QueryClient, queryKey: QueryKey) {
-  let lastUserId: string | undefined;
+function recordFailure(name: string, attributes: Attributes, error: unknown) {
+  if (!initialized) return;
 
-  const apply = () => {
-    const id = queryClient.getQueryData<{ id?: string }>(queryKey)?.id;
-    if (!id || id === lastUserId) return;
-    lastUserId = id;
-    identifyUser(id);
-  };
+  const tracer = HyperDXRum.provider?.getTracer(TRACER_NAME);
+  if (!tracer) return;
 
-  apply();
-  return queryClient.getQueryCache().subscribe(apply);
+  const span = tracer.startSpan(name);
+  span.setAttributes(attributes);
+  span.recordException(error instanceof Error ? error : new Error(String(error)));
+  span.setStatus({ code: SpanStatusCode.ERROR });
+  span.end();
 }
 
 export function recordBridgeFailure(channel: string, error: unknown) {
-  if (!initialized) return;
-  const message = error instanceof Error ? error.message : String(error);
-  HyperDXRum.reportError(new Error(`bridge ${channel} 실패: ${message}`));
+  recordFailure('bridge.failure', { 'bridge.channel': channel }, error);
 }
 
 export function recordAuthFailure(stage: string, error: unknown) {
-  if (!initialized) return;
-  const message = error instanceof Error ? error.message : String(error);
-  HyperDXRum.reportError(new Error(`auth ${stage} 실패: ${message}`));
+  recordFailure('auth.failure', { 'auth.stage': stage }, error);
 }

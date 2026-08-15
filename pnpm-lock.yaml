@@ -35,6 +35,9 @@ importers:
       '@hyperdx/otel-react-native':
         specifier: ^0.3.0
         version: 0.3.0(react-native@0.83.6(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.0))(react@19.2.0)
+      '@opentelemetry/api':
+        specifier: ^1.9.1
+        version: 1.9.1
       '@ppotto/api':
         specifier: workspace:*
         version: link:../../packages/api
@@ -44,6 +47,9 @@ importers:
       '@ppotto/bridge':
         specifier: workspace:*
         version: link:../../packages/bridge
+      '@ppotto/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@react-native-seoul/kakao-login':
         specifier: ^5.4.2
         version: 5.4.2(react-native@0.83.6(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.0))(react@19.2.0)
@@ -216,6 +222,9 @@ importers:
       '@ppotto/bridge':
         specifier: workspace:*
         version: link:../../packages/bridge
+      '@ppotto/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@radix-ui/react-dialog':
         specifier: ^1.1.23
         version: 1.1.23(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -371,6 +380,18 @@ importers:
         version: 4.4.3
 
   packages/eslint-rules: {}
+
+  packages/observability:
+    devDependencies:
+      '@tanstack/react-query':
+        specifier: ^5.101.2
+        version: 5.101.2(react@19.2.0)
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   packages/tokens: {}
 
@@ -9438,7 +9459,7 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 20.19.43
+      '@types/node': 22.20.1
       jest-mock: 29.7.0
 
   '@jest/expect-utils@29.7.0':
@@ -9456,7 +9477,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.3
       '@sinonjs/fake-timers': 10.3.0
-      '@types/node': 20.19.43
+      '@types/node': 22.20.1
       jest-message-util: 29.7.0
       jest-mock: 29.7.0
       jest-util: 29.7.0
@@ -13663,7 +13684,7 @@ snapshots:
       '@jest/environment': 29.7.0
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 20.19.43
+      '@types/node': 22.20.1
       jest-mock: 29.7.0
       jest-util: 29.7.0
 
@@ -13747,7 +13768,7 @@ snapshots:
   jest-mock@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 20.19.43
+      '@types/node': 22.20.1
       jest-util: 29.7.0
 
   jest-pnp-resolver@1.2.3(jest-resolve@29.7.0):
@@ -13856,7 +13877,7 @@ snapshots:
   jest-util@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 20.19.43
+      '@types/node': 22.20.1
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11

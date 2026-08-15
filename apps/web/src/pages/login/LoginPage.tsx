@@ -5,7 +5,7 @@ import { useFlow } from '@stackflow/react';
 
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
-import { recordBridgeFailure } from '@/shared/lib/hyperdx';
+import { recordBridgeFailure } from '@/shared/lib/observability';
 
 export function LoginPage() {
   const { replace } = useFlow();

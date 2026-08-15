@@ -17,7 +17,7 @@ import { SettingsPage } from '@/pages/settings';
 import { TermsDetailPage, TermsPage } from '@/pages/terms';
 
 import { config } from './config';
-import { hyperdxPlugin } from './hyperdx-plugin';
+import { observabilityPlugin } from './observability-plugin';
 
 const LoginActivity: ActivityComponentType<'Login'> = () => {
   return (
@@ -98,6 +98,6 @@ export const { Stack } = stackflow({
       backgroundImage: 'none',
     }),
     historySyncPlugin({ config, fallbackActivity: () => 'Login' }),
-    hyperdxPlugin,
+    observabilityPlugin,
   ],
 });
