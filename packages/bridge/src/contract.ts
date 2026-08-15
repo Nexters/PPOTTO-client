@@ -61,7 +61,7 @@ export const contract = defineContract({
     response: z.object({ success: z.boolean() }),
   }),
   SHARE_KAKAO: request({
-    payload: z.object({ imageUrl: z.string(), templateArgs: z.record(z.string(), z.string()) }),
+    payload: z.object({ templateArgs: z.record(z.string(), z.string()) }),
     response: z.object({ success: z.boolean() }),
   }),
   // 보드 화면 진입/이탈 — 보드에 있는 동안만 바운스 끔

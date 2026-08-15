@@ -78,8 +78,8 @@ export function RecapShareList({ cardRef, data, onOptionsClick, onSaved }: Recap
       const { infos } = await window.Kakao.Share.uploadImage({ file: blob });
 
       const { success } = await bridge.request('SHARE_KAKAO', {
-        imageUrl: infos.original.url,
         templateArgs: {
+          IMAGE_URL: infos.original.url,
           USER_NAME: me?.name ?? '',
           STICKER_NAME: data.sticker.title,
           KEYWORDS: tags.join(', '),
