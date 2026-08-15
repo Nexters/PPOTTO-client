@@ -8,6 +8,7 @@ import { StyleSheet, View } from 'react-native';
 import { QaRecorderProbe } from '@/features/qa-report';
 import { isQaToolEnabled } from '@/shared/lib/qa-tool';
 import { AppBackground } from '@/shared/ui/AppBackground';
+import { AppLaunchScreen } from '@/shared/ui/AppLaunchScreen';
 import { ToastProvider } from '@/shared/ui/Toast';
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ export default function RootLayout() {
             {isQaToolEnabled() && <QaRecorderProbe />}
           </ToastProvider>
         </ThemeProvider>
+        <AppLaunchScreen />
       </View>
     </QueryClientProvider>
   );
