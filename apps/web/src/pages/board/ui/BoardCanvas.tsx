@@ -285,14 +285,20 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     pressedStickerRef.current = null;
   };
 
+  // 롱프레스가 성공하면 눌린 연출을 그대로 두고, 퀵메뉴가 닫힐 때 원래 크기로 되돌린다.
+  // (메뉴 뜨기 직전에 스티커가 줄어드는 게 보이지 않게)
+  useEffect(() => {
+    if (quickMenu.quickMenuStickerId === null) clearPressedSticker();
+  }, [quickMenu.quickMenuStickerId]);
+
   const longPress = useLongPress({
     onLongPress: (stickerId) => {
-      clearPressedSticker();
       bridge.send('HAPTIC', { type: 'heavy' });
       quickMenu.openQuickMenu(stickerId);
       // 리캡 이동과 안 겹치게 탭 후보 제거
       tapCandidateRef.current = null;
     },
+    onPressEnd: clearPressedSticker,
   });
 
   // draw 모드에서 기존 그림을 롱프레스하면 선택(삭제 대상)한다. 스티커 롱프레스와는
@@ -712,7 +718,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       if (pointersRef.current.size !== 1) {
         tapCandidateRef.current = null;
         longPressRef.current.cancel();
-        clearPressedSticker();
         return;
       }
 
@@ -723,9 +728,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       // 편집 모드에선 pointerdown이 바로 드래그로 이어지므로 롱프레스는 기본 뷰 모드에서만
       if (stickerId && stickerElement && !isEditModeRef.current) {
         clearPressedSticker();
+        longPressRef.current.start(point, stickerId);
         stickerElement.dataset.pressed = 'true';
         pressedStickerRef.current = stickerElement;
-        longPressRef.current.start(point, stickerId);
       }
 
       // 스티커를 처음 선택하는 순간이면 맨 위로 올리는 부수효과를 먼저 실행하고,
@@ -829,7 +834,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       if (tapCandidateRef.current?.pointerId === e.pointerId) {
         if (distance(tapCandidateRef.current.startClient, point) > TAP_MOVE_THRESHOLD) {
           tapCandidateRef.current = null;
-          clearPressedSticker();
         }
       }
 
@@ -842,7 +846,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         // 두 손가락이 됐으면 탭일 수 없음
         tapCandidateRef.current = null;
         longPressRef.current.cancel();
-        clearPressedSticker();
 
         const points = [...pointersRef.current.values()];
 
@@ -1018,7 +1021,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       }
 
       longPressRef.current.cancel();
-      clearPressedSticker();
 
       const gesture = gestureRef.current;
 

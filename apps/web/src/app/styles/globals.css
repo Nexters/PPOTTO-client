@@ -29,6 +29,34 @@
   }
 }
 
+/* iOS 홈 화면 아이콘 롱프레스 곡선. 딤 → 정지 → 선형 성장 → 오버슈트 정착 */
+@keyframes sticker-long-press-progress {
+  0%,
+  20% {
+    transform: scale(1);
+    filter: brightness(0.88);
+  }
+  78% {
+    transform: scale(1.22);
+    filter: brightness(1);
+  }
+  100% {
+    transform: scale(1.15);
+    filter: brightness(1);
+  }
+}
+
+.sticker-long-press-visual {
+  transform-origin: center;
+  transition:
+    transform 100ms ease-out,
+    filter 100ms ease-out;
+}
+
+[data-sticker-id][data-pressed='true'] > .sticker-long-press-visual {
+  animation: sticker-long-press-progress 500ms linear forwards;
+}
+
 @keyframes toast-fade-out {
   to {
     opacity: 0;
@@ -104,6 +132,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-sticker-id][data-pressed='true'] > .sticker-long-press-visual {
+    animation-duration: 1ms;
+  }
+
   .modal-overlay,
   .modal-content,
   .sheet-content {

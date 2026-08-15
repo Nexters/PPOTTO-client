@@ -14,17 +14,21 @@ describe('useLongPress', () => {
 
   it('누르고 500ms 이상 유지하면 대상 id와 함께 콜백이 실행된다', () => {
     const onLongPress = vi.fn();
-    const { result } = renderHook(() => useLongPress({ onLongPress }));
+    const onPressEnd = vi.fn();
+    const { result } = renderHook(() => useLongPress({ onLongPress, onPressEnd }));
 
     result.current.start({ x: 0, y: 0 }, 'sticker-1');
     vi.advanceTimersByTime(500);
 
     expect(onLongPress).toHaveBeenCalledWith('sticker-1');
+    // 성공 시엔 눌린 연출을 유지해야 하므로 onPressEnd는 안 불린다
+    expect(onPressEnd).not.toHaveBeenCalled();
   });
 
   it('500ms 전에 취소하면 콜백이 실행되지 않는다', () => {
     const onLongPress = vi.fn();
-    const { result } = renderHook(() => useLongPress({ onLongPress }));
+    const onPressEnd = vi.fn();
+    const { result } = renderHook(() => useLongPress({ onLongPress, onPressEnd }));
 
     result.current.start({ x: 0, y: 0 }, 'sticker-1');
     vi.advanceTimersByTime(400);
@@ -32,6 +36,7 @@ describe('useLongPress', () => {
     vi.advanceTimersByTime(200);
 
     expect(onLongPress).not.toHaveBeenCalled();
+    expect(onPressEnd).toHaveBeenCalledTimes(1);
   });
 
   it('누른 채로 임계값 이상 움직이면 콜백이 실행되지 않는다', () => {

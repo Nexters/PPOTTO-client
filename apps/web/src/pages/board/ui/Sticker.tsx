@@ -85,7 +85,6 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
   return (
     <div
       data-sticker-id={sticker.id}
-      className="group"
       style={{
         position: 'absolute',
         left: x,
@@ -97,22 +96,29 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
         touchAction: 'none',
       }}
     >
-      <canvas
-        ref={canvasRef}
-        aria-hidden
-        className="transition-[transform,opacity] duration-180 ease-out motion-reduce:transition-none group-data-[pressed=true]:scale-[0.95] group-data-[pressed=true]:opacity-[0.65] group-data-[pressed=true]:duration-100"
+      <div
+        className="sticker-long-press-visual"
         style={{
           position: 'absolute',
           left: -outline,
           top: -outline,
           width: width + outline * 2,
           height: height + outline * 2,
-          filter: selected
-            ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
-            : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
           pointerEvents: 'none',
         }}
-      />
+      >
+        <canvas
+          ref={canvasRef}
+          aria-hidden
+          style={{
+            width: '100%',
+            height: '100%',
+            filter: selected
+              ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
+              : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
+          }}
+        />
+      </div>
     </div>
   );
 }
