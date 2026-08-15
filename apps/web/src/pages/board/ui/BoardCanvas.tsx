@@ -441,6 +441,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     return () => clearTimeout(timer);
   }, [boardId, camera]);
 
+  useEffect(() => {
+    return () => saveCamera(boardId, cameraRef.current);
+  }, [boardId]);
+
   // 그림 선택(삭제 대상) 여부를 부모에 알림 — 상단 UI 숨김/하단 삭제 바 전환에 사용
   useEffect(() => {
     onDrawingSelectionChange?.(activeSelectedDrawingId !== null);
