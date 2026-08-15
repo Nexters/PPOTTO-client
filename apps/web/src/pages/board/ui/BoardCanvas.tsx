@@ -28,6 +28,8 @@ import {
 } from '../model/board-draw-gesture';
 import {
   type DrawingCreateInput,
+  getDrawingBounds,
+  hitTestDrawingId,
   parseStrokePoints,
   toDrawingCreateInput,
 } from '../model/board-drawing';
@@ -57,6 +59,7 @@ import {
 } from './empty-state/EmptyBoardSticker';
 import { EmptyBoardStickerQuickMenu } from './empty-state/EmptyBoardStickerQuickMenu';
 import { SelectBox } from './SelectBox';
+import { SelectionBoxFrame } from './SelectionBoxFrame';
 import { Sticker, type StickerData } from './Sticker';
 import { StickerBadgeMark } from './StickerBadgeMark';
 import { StickerPreview } from './StickerPreview';
@@ -124,6 +127,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   // 그리는 도중인 선의 점들(보드 월드 좌표). 그리는 중이 아니면 null
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
+  // draw 모드에서 롱프레스로 선택된 그림(삭제 대상). draw 모드에서만 의미 있음
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
@@ -139,6 +144,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const isDrawMode = mode === 'draw';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
   const selectedId = isEditMode ? selectedStickerId : null;
+  // draw 모드를 벗어나면 그림 선택도 같이 해제된 것으로 취급
+  const activeSelectedDrawingId = isDrawMode ? selectedDrawingId : null;
 
   // 편집 모드를 벗어났다가 다시 들어와도 이전 선택이 되살아나지 않도록 상태 자체를 지움.
   // useEffect 대신 렌더 중 비교 후 setState하는 방식(React 공식 권장 패턴)으로 처리해 커밋 사이클을 하나 아낀다
@@ -146,6 +153,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   if (isEditMode !== prevIsEditMode) {
     setPrevIsEditMode(isEditMode);
     if (!isEditMode) setSelectedStickerId(null);
+  }
+
+  // draw 모드를 벗어났다가 다시 들어와도 이전 그림 선택이 되살아나지 않도록 상태 자체를 지움
+  const [prevIsDrawMode, setPrevIsDrawMode] = useState(isDrawMode);
+  if (isDrawMode !== prevIsDrawMode) {
+    setPrevIsDrawMode(isDrawMode);
+    if (!isDrawMode) setSelectedDrawingId(null);
   }
 
   const rawStickers = data?.stickers ?? [];
@@ -177,6 +191,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const cameraRef = useRef(camera);
   const stickersRef = useRef(stickers);
   const selectedIdRef = useRef(selectedId);
+  const selectedDrawingIdRef = useRef(activeSelectedDrawingId);
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
   const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
@@ -201,6 +216,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       // 리캡 이동과 안 겹치게 탭 후보 제거
       tapCandidateRef.current = null;
     },
+  });
+
+  // draw 모드에서 기존 그림을 롱프레스하면 선택(삭제 대상)한다. 스티커 롱프레스와는
+  // 완전히 별개 인스턴스 — draw 모드에서는 스티커 롱프레스 코드 경로 자체를 안 탄다
+  const drawingLongPress = useLongPress({
+    onLongPress: (drawingId) => setSelectedDrawingId(drawingId),
   });
 
   useRefetchOnActive(refetch, isStale);
@@ -288,6 +309,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const drawingsRef = useRef(drawings);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
+  const drawingLongPressRef = useRef(drawingLongPress);
   const onDrawingActiveChangeRef = useRef(onDrawingActiveChange);
   // 직전에 알려준 "그리는 중" 여부
   const isDrawingActiveRef = useRef(false);
@@ -297,6 +319,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     cameraRef.current = camera;
     stickersRef.current = stickers;
     selectedIdRef.current = selectedId;
+    selectedDrawingIdRef.current = activeSelectedDrawingId;
     isEditModeRef.current = isEditMode;
     isDrawModeRef.current = isDrawMode;
     isPointerInputSuspendedRef.current = isPointerInputSuspended;
@@ -309,6 +332,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawingsRef.current = drawings;
     pushRef.current = push;
     longPressRef.current = longPress;
+    drawingLongPressRef.current = drawingLongPress;
     onDrawingActiveChangeRef.current = onDrawingActiveChange;
   });
 
@@ -469,14 +493,35 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
       if (isDrawModeRef.current) {
         if (pointersRef.current.size === 1) {
+          const worldPoint = toWorldPoint(cameraRef.current, point);
+
+          if (selectedDrawingIdRef.current) {
+            // 선택된 그림이 있는 동안의 드래그(삭제) 처리는 다음 단계에서 구현 —
+            // 지금은 선택된 그림 바깥을 탭하면 선택만 해제한다
+            if (
+              hitTestDrawingId(worldPoint, drawingsRef.current) !== selectedDrawingIdRef.current
+            ) {
+              setSelectedDrawingId(null);
+            }
+            return;
+          }
+
+          const hitDrawingId = hitTestDrawingId(worldPoint, drawingsRef.current);
+          if (hitDrawingId) {
+            // 기존 그림을 롱프레스로 선택하는 중엔 그리기를 시작하지 않는다
+            drawingLongPressRef.current.start(point, hitDrawingId);
+            return;
+          }
+
           applyDrawGestureResult(
             drawGestureReducer(drawGestureRef.current, {
               type: 'POINTER_DOWN',
               pointerId: e.pointerId,
-              point: toWorldPoint(cameraRef.current, point),
+              point: worldPoint,
             }),
           );
         } else if (pointersRef.current.size === 2) {
+          drawingLongPressRef.current.cancel();
           const points = [...pointersRef.current.values()];
           applyDrawGestureResult(
             drawGestureReducer(drawGestureRef.current, {
@@ -528,6 +573,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
       if (isDrawModeRef.current) {
         if (pointersRef.current.size >= 2) {
+          drawingLongPressRef.current.cancel();
           const gesture = drawGestureRef.current;
           if (gesture?.kind !== 'pinching') return;
           const points = [...pointersRef.current.values()];
@@ -540,6 +586,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           );
           return;
         }
+
+        if (selectedDrawingIdRef.current) {
+          // 선택된 그림 드래그(삭제)는 다음 단계에서 구현
+          return;
+        }
+
+        // 손가락이 여유 거리 이상 움직이면 롱프레스가 아니라 그리려는 의도로 보고 취소한다
+        drawingLongPressRef.current.move(point);
 
         applyDrawGestureResult(
           drawGestureReducer(drawGestureRef.current, {
@@ -636,6 +690,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       pointersRef.current.delete(e.pointerId);
 
       if (isDrawModeRef.current) {
+        // 손을 뗐는데 롱프레스 타이머가 아직 안 끝났으면(=탭이었으면) 취소 —
+        // 안 그러면 손을 뗀 뒤에도 타이머가 계속 돌다가 뒤늦게 선택돼버린다
+        drawingLongPressRef.current.cancel();
+
+        if (selectedDrawingIdRef.current) return;
+
         if (pointersRef.current.size === 0) {
           // 드래그 없이 탭만 해도 점 하나(찍은 점)로 저장한다
           applyDrawGestureResult(
@@ -785,6 +845,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const directEditSticker = stickers.find(
     (sticker) => sticker.id === quickMenu.directEditStickerId,
   );
+  const selectedDrawing = drawings.find((drawing) => drawing.id === activeSelectedDrawingId);
+  const selectedDrawingBounds = selectedDrawing
+    ? getDrawingBounds(selectedDrawing.points, selectedDrawing.strokeWidth)
+    : null;
 
   return (
     <div
@@ -826,6 +890,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             <DrawingStroke points={drawingPoints} color={drawColor} strokeWidth={drawStrokeWidth} />
           )}
         </svg>
+        {selectedDrawingBounds && (
+          <SelectionBoxFrame
+            x={selectedDrawingBounds.x}
+            y={selectedDrawingBounds.y}
+            width={selectedDrawingBounds.width}
+            height={selectedDrawingBounds.height}
+            zIndex={9999}
+          />
+        )}
         {stickers.map((sticker) => (
           <Sticker
             key={sticker.id}
