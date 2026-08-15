@@ -18,6 +18,7 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
+import { useMarkAppReady } from '@/shared/lib/app-ready';
 import {
   recordWebQaDiagnosticMessage,
   WEB_QA_DIAGNOSTICS_SCRIPT,
@@ -82,6 +83,13 @@ export function AppWebView({
   const toast = useToast();
   const [loaded, setLoaded] = useState(false);
   const [boardActive, setBoardActive] = useState(false);
+  const markAppReady = useMarkAppReady();
+
+  // 웹뷰가 첫 화면을 그렸다 — 커버를 걷고, 앱 시작 화면도 같이 비켜준다
+  const markLoaded = () => {
+    setLoaded(true);
+    markAppReady();
+  };
 
   const { bridge, pushMessage } = useNativeBridge(ref, contract, {
     APPLE_LOGIN: () => loginWithApple(),
@@ -106,9 +114,9 @@ export function AppWebView({
     HAPTIC: ({ type }) => {
       void Haptics.impactAsync(HAPTIC_STYLES[type]);
     },
-    BOARD_READY: () => setLoaded(true),
+    BOARD_READY: () => markLoaded(),
     ANALYSIS_LOADING_READY: () => {
-      setLoaded(true);
+      markLoaded();
       return bridgeHandlers?.ANALYSIS_LOADING_READY?.();
     },
     GET_ANALYSIS_LOADING_STATE: () => {
@@ -197,7 +205,7 @@ export function AppWebView({
           );
         }}
         onLoadEnd={() => {
-          if (!waitForAnalysisReady && !waitForBoardReady) setLoaded(true);
+          if (!waitForAnalysisReady && !waitForBoardReady) markLoaded();
         }}
         allowsBackForwardNavigationGestures={false}
         webviewDebuggingEnabled={qaToolEnabled}

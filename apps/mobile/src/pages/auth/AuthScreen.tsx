@@ -3,11 +3,18 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { getAccessToken } from '@/lib/auth-session';
+import { useMarkAppReady } from '@/shared/lib/app-ready';
 import { AppWebView } from '@/shared/ui/AppWebView';
 
 // 로그인/온보딩/약관 전용 웹뷰
 export function AuthScreen() {
   const [status, setStatus] = useState<'checking' | 'login' | 'retry'>('checking');
+  const markAppReady = useMarkAppReady();
+
+  // 재시도 화면은 웹뷰가 없어 준비 신호를 못 보낸다 — 상한까지 스플래시를 붙잡지 않게 여기서 알린다
+  useEffect(() => {
+    if (status === 'retry') markAppReady();
+  }, [status, markAppReady]);
 
   const retry = async () => {
     setStatus('checking');
