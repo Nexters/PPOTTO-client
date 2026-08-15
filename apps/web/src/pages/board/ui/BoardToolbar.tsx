@@ -1,4 +1,4 @@
-import { IconDraw, IconHand, IconPlus, IconText } from '@ppotto/assets';
+import { IconDraw, IconHand, IconPlus } from '@ppotto/assets';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -23,7 +23,7 @@ export function BoardToolbar({ mode, onModeChange, onAddSticker }: BoardToolbarP
       )}
       style={{ backgroundImage: 'linear-gradient(to top, black, transparent)' }}
     >
-      <div className="flex items-center justify-center gap-2 rounded-full bg-gray-800 p-2">
+      <div className="flex items-center justify-center gap-2 p-2 bg-gray-800 rounded-full">
         <button
           type="button"
           aria-label="그리기"
@@ -35,7 +35,8 @@ export function BoardToolbar({ mode, onModeChange, onAddSticker }: BoardToolbarP
         >
           <IconDraw color={mode === 'draw' ? 'black' : 'white'} />
         </button>
-        <button
+        {/* 임시 가리기 */}
+        {/* <button
           type="button"
           aria-label="텍스트"
           onClick={() => toggle('text')}
@@ -45,7 +46,7 @@ export function BoardToolbar({ mode, onModeChange, onAddSticker }: BoardToolbarP
           )}
         >
           <IconText color={mode === 'text' ? 'black' : 'white'} />
-        </button>
+        </button> */}
         <button
           type="button"
           aria-label="선택"
@@ -62,7 +63,7 @@ export function BoardToolbar({ mode, onModeChange, onAddSticker }: BoardToolbarP
         type="button"
         aria-label="스티커 추가"
         onClick={onAddSticker}
-        className="flex size-12 items-center justify-center rounded-full bg-white"
+        className="flex items-center justify-center bg-white rounded-full size-12"
       >
         <IconPlus width={18} height={18} />
       </button>

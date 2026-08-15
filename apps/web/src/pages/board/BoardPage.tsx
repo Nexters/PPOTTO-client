@@ -44,7 +44,14 @@ export function BoardPage() {
 
   return (
     <>
-      <div className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden">
+      <div
+        className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden"
+        style={{
+          backgroundColor: '#000',
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
+          backgroundSize: '18px 18px',
+        }}
+      >
         <BoardHeader />
         <button
           type="button"
