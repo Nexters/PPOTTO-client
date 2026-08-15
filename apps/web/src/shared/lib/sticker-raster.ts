@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 
 const STICKER_BITMAP_MAX_EDGE = 750;
 
@@ -8,17 +8,60 @@ function toProxiedImageSrc(src: string): string {
   return `/_next/image?url=${encodeURIComponent(src)}&w=750&q=75`;
 }
 
+/**
+ * 세션 동안 로드한 스티커 이미지 보관함. GCS 서명 URL은 응답마다 서명이 달라져
+ * 브라우저 캐시가 매번 빗나가므로, 서명 쿼리를 뗀 객체 경로를 키로 디코딩된
+ * 이미지를 재사용한다 — 보드에서 로드한 이미지를 리캡이 즉시 쓸 수 있다.
+ */
+const stickerImageCache = new Map<string, HTMLImageElement>();
+
+function cacheKeyOf(src: string): string {
+  try {
+    const url = new URL(src, window.location.origin);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return src;
+  }
+}
+
+function readCached(src?: string): HTMLImageElement | null {
+  const cached = src ? stickerImageCache.get(cacheKeyOf(src)) : undefined;
+  return cached?.complete && cached.naturalWidth > 0 ? cached : null;
+}
+
 export function useStickerImage(src?: string) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  // 캐시는 렌더에서 직접 읽는다 — 이미 받아둔 이미지를 한 프레임도 비우지 않고 그리려고.
+  // 항목은 null → 이미지로만 바뀌므로 렌더 중 읽어도 값이 뒤집히지 않는다
+  const [, onSettled] = useReducer((count: number) => count + 1, 0);
 
   useEffect(() => {
     if (!src) return;
-    const img = new window.Image();
-    img.src = toProxiedImageSrc(src);
-    img.onload = () => setImage(img);
+
+    const key = cacheKeyOf(src);
+    let img = stickerImageCache.get(key);
+    // 로드에 실패했던 항목은 버리고 새로 시도한다
+    if (img?.complete && img.naturalWidth === 0) {
+      stickerImageCache.delete(key);
+      img = undefined;
+    }
+    if (!img) {
+      img = new window.Image();
+      img.src = toProxiedImageSrc(src);
+      stickerImageCache.set(key, img);
+    }
+    if (img.complete && img.naturalWidth > 0) return;
+
+    const target = img;
+    const handleError = () => stickerImageCache.delete(key);
+    target.addEventListener('load', onSettled);
+    target.addEventListener('error', handleError);
+    return () => {
+      target.removeEventListener('load', onSettled);
+      target.removeEventListener('error', handleError);
+    };
   }, [src]);
 
-  return image;
+  return readCached(src);
 }
 
 export function drawOutlinedSticker(
