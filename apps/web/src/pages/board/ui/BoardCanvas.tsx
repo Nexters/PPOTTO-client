@@ -2,7 +2,14 @@
 
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import {
+  forwardRef,
+  type RefObject,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 
 import type { BoardDetail } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
@@ -30,6 +37,7 @@ import {
   type DrawingCreateInput,
   getDrawingBounds,
   hitTestDrawingId,
+  isPointInDrawingBounds,
   parseStrokePoints,
   toDrawingCreateInput,
 } from '../model/board-drawing';
@@ -81,6 +89,8 @@ type BoardCanvasProps = {
   onCameraScaleChange?: (scale: number) => void;
   // draw 모드에서 그림이 선택됐는지 여부가 바뀔 때마다 호출
   onDrawingSelectionChange?: (selected: boolean) => void;
+  // 그림 드래그-삭제 드롭 판정에 쓰는 휴지통 버튼의 DOM ref
+  trashButtonRef?: RefObject<HTMLButtonElement | null>;
 };
 
 export type BoardCanvasHandle = {
@@ -121,6 +131,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onCanUndoChange,
     onCameraScaleChange,
     onDrawingSelectionChange,
+    trashButtonRef,
   },
   ref,
 ) {
@@ -128,10 +139,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
-  // 그리는 도중인 선의 점들(보드 월드 좌표). 그리는 중이 아니면 null
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
-  // draw 모드에서 롱프레스로 선택된 그림(삭제 대상). draw 모드에서만 의미 있음
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [drawingDragOffset, setDrawingDragOffset] = useState<Point | null>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
@@ -162,7 +172,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [prevIsDrawMode, setPrevIsDrawMode] = useState(isDrawMode);
   if (isDrawMode !== prevIsDrawMode) {
     setPrevIsDrawMode(isDrawMode);
-    if (!isDrawMode) setSelectedDrawingId(null);
+    if (!isDrawMode) {
+      setSelectedDrawingId(null);
+      setDrawingDragOffset(null);
+    }
   }
 
   const rawStickers = data?.stickers ?? [];
@@ -200,8 +213,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
   const drawColorRef = useRef(drawColor);
   const drawStrokeWidthRef = useRef(drawStrokeWidth);
-  const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
-  const drawGestureRef = useRef<DrawGesture | null>(null); // draw 모드의 그리기/핀치줌 상태
+  const dragTransformRef = useRef<DragTransform | null>(null);
+  const drawGestureRef = useRef<DrawGesture | null>(null);
+  const drawingDragStartRef = useRef<{ pointerId: number; startWorldPoint: Point } | null>(null);
 
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
@@ -353,6 +367,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onDrawingSelectionChange?.(activeSelectedDrawingId !== null);
   }, [activeSelectedDrawingId, onDrawingSelectionChange]);
 
+  // draw 모드를 벗어나면 드래그 시작 지점 ref도 정리 — 렌더 중엔 ref를 못 건드려 별도 effect로 분리
+  useEffect(() => {
+    if (isDrawMode) return;
+    drawingDragStartRef.current = null;
+  }, [isDrawMode]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -465,6 +485,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
 
+    const isDroppedOnTrash = (e: PointerEvent): boolean => {
+      const rect = trashButtonRef?.current?.getBoundingClientRect();
+      if (!rect) return false;
+      return (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      );
+    };
+
     const setLiveTransform = (next: DragTransform | null) => {
       dragTransformRef.current = next;
       setDragTransform(next);
@@ -504,11 +535,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           const worldPoint = toWorldPoint(cameraRef.current, point);
 
           if (selectedDrawingIdRef.current) {
-            // 선택된 그림이 있는 동안의 드래그(삭제) 처리는 다음 단계에서 구현 —
-            // 지금은 선택된 그림 바깥을 탭하면 선택만 해제한다
-            if (
-              hitTestDrawingId(worldPoint, drawingsRef.current) !== selectedDrawingIdRef.current
-            ) {
+            const selected = drawingsRef.current.find(
+              (drawing) => drawing.id === selectedDrawingIdRef.current,
+            );
+            const bounds = selected && getDrawingBounds(selected.points, selected.strokeWidth);
+
+            if (bounds && isPointInDrawingBounds(worldPoint, bounds)) {
+              drawingDragStartRef.current = { pointerId: e.pointerId, startWorldPoint: worldPoint };
+              setDrawingDragOffset({ x: 0, y: 0 });
+            } else {
               setSelectedDrawingId(null);
             }
             return;
@@ -582,6 +617,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       if (isDrawModeRef.current) {
         if (pointersRef.current.size >= 2) {
           drawingLongPressRef.current.cancel();
+          if (drawingDragStartRef.current) {
+            // 드래그 중 두 번째 손가락이 닿으면 드래그를 취소한다(선택은 유지)
+            drawingDragStartRef.current = null;
+            setDrawingDragOffset(null);
+          }
           const gesture = drawGestureRef.current;
           if (gesture?.kind !== 'pinching') return;
           const points = [...pointersRef.current.values()];
@@ -596,7 +636,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         }
 
         if (selectedDrawingIdRef.current) {
-          // 선택된 그림 드래그(삭제)는 다음 단계에서 구현
+          const dragStart = drawingDragStartRef.current;
+          if (!dragStart || dragStart.pointerId !== e.pointerId) return;
+          const worldPoint = toWorldPoint(cameraRef.current, point);
+          setDrawingDragOffset({
+            x: worldPoint.x - dragStart.startWorldPoint.x,
+            y: worldPoint.y - dragStart.startWorldPoint.y,
+          });
           return;
         }
 
@@ -702,7 +748,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         // 안 그러면 손을 뗀 뒤에도 타이머가 계속 돌다가 뒤늦게 선택돼버린다
         drawingLongPressRef.current.cancel();
 
-        if (selectedDrawingIdRef.current) return;
+        if (selectedDrawingIdRef.current) {
+          const dragStart = drawingDragStartRef.current;
+          drawingDragStartRef.current = null;
+          setDrawingDragOffset(null);
+
+          if (dragStart && dragStart.pointerId === e.pointerId && isDroppedOnTrash(e)) {
+            deleteDrawingRef.current(selectedDrawingIdRef.current);
+            setSelectedDrawingId(null);
+          }
+          return;
+        }
 
         if (pointersRef.current.size === 0) {
           // 드래그 없이 탭만 해도 점 하나(찍은 점)로 저장한다
@@ -830,7 +886,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       container.removeEventListener('gesturechange', blockGesture);
       container.removeEventListener('gestureend', blockGesture);
     };
-  }, [container, boardId, quickMenu.isEditingRef]);
+  }, [container, boardId, quickMenu.isEditingRef, trashButtonRef]);
 
   if (isLoading) {
     return (
@@ -886,22 +942,33 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       >
         {/* 저장된 그림 + 그리는 도중인 선의 실시간 미리보기 */}
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>
-          {drawings.map((drawing) => (
-            <DrawingStroke
-              key={drawing.id}
-              points={drawing.points}
-              color={drawing.color}
-              strokeWidth={drawing.strokeWidth}
-            />
-          ))}
+          {drawings.map((drawing) => {
+            const isDragging = drawing.id === activeSelectedDrawingId && drawingDragOffset !== null;
+            return (
+              <g
+                key={drawing.id}
+                transform={
+                  isDragging
+                    ? `translate(${drawingDragOffset!.x}, ${drawingDragOffset!.y})`
+                    : undefined
+                }
+              >
+                <DrawingStroke
+                  points={drawing.points}
+                  color={drawing.color}
+                  strokeWidth={drawing.strokeWidth}
+                />
+              </g>
+            );
+          })}
           {drawingPoints && (
             <DrawingStroke points={drawingPoints} color={drawColor} strokeWidth={drawStrokeWidth} />
           )}
         </svg>
         {selectedDrawingBounds && (
           <SelectionBoxFrame
-            x={selectedDrawingBounds.x}
-            y={selectedDrawingBounds.y}
+            x={selectedDrawingBounds.x + (drawingDragOffset?.x ?? 0)}
+            y={selectedDrawingBounds.y + (drawingDragOffset?.y ?? 0)}
             width={selectedDrawingBounds.width}
             height={selectedDrawingBounds.height}
             zIndex={9999}

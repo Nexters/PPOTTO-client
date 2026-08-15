@@ -22,6 +22,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getDrawingBounds,
   hitTestDrawingId,
+  isPointInDrawingBounds,
   parseStrokePoints,
   shouldSampleStrokePoint,
   toDrawingCreateInput,
@@ -225,5 +226,25 @@ describe('getDrawingBounds', () => {
     const result = getDrawingBounds(points, 2);
 
     expect(result).toEqual({ x: 5, y: 2, width: 12, height: 6 });
+  });
+});
+
+describe('isPointInDrawingBounds', () => {
+  const bounds = { x: 10, y: 10, width: 8, height: 4 };
+
+  it('바운딩 박스 중심점은 안에 있는 것으로 본다', () => {
+    expect(isPointInDrawingBounds({ x: 10, y: 10 }, bounds)).toBe(true);
+  });
+
+  it('경계선 위의 점도 안에 있는 것으로 본다', () => {
+    expect(isPointInDrawingBounds({ x: 14, y: 12 }, bounds)).toBe(true);
+  });
+
+  it('가로로 경계를 벗어나면 밖으로 본다', () => {
+    expect(isPointInDrawingBounds({ x: 14.1, y: 10 }, bounds)).toBe(false);
+  });
+
+  it('세로로 경계를 벗어나면 밖으로 본다', () => {
+    expect(isPointInDrawingBounds({ x: 10, y: 12.1 }, bounds)).toBe(false);
   });
 });

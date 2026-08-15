@@ -51,6 +51,8 @@ export function BoardPage() {
   const pageRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLCanvasElement | null>(null);
   const previewColorRef = useRef<string | null>(null);
+  // 그림 드래그-삭제 드롭 판정을 위해 BoardCanvas에도 그대로 넘겨준다
+  const trashButtonRef = useRef<HTMLButtonElement>(null);
 
   const [isPickingColor, setIsPickingColor] = useState(false);
   const [pickerPosition, setPickerPosition] = useState<{ x: number; y: number } | null>(null);
@@ -190,6 +192,7 @@ export function BoardPage() {
           onCameraScaleChange={setCameraScale}
           onDrawingSelectionChange={setIsDrawingSelected}
           canvasRef={canvasRef}
+          trashButtonRef={trashButtonRef}
         />
         {toolbarMode === 'draw' && !isDrawingUiHidden && (
           <DrawingSizeSlider
@@ -226,7 +229,7 @@ export function BoardPage() {
             }
           />
         )}
-        {isDrawingSelected && <DrawingDeleteBar />}
+        {isDrawingSelected && <DrawingDeleteBar trashButtonRef={trashButtonRef} />}
         {pickerPosition && (
           <div
             className="pointer-events-none fixed z-70 -translate-x-1/2 -translate-y-full"
@@ -261,6 +264,7 @@ function BoardContent({
   onCameraScaleChange,
   onDrawingSelectionChange,
   canvasRef,
+  trashButtonRef,
 }: {
   boardId?: string;
   isLoading: boolean;
@@ -273,6 +277,7 @@ function BoardContent({
   onCameraScaleChange: (scale: number) => void;
   onDrawingSelectionChange: (selected: boolean) => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
+  trashButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
   if (boardId) {
     return (
@@ -287,6 +292,7 @@ function BoardContent({
         onCanUndoChange={onCanUndoChange}
         onCameraScaleChange={onCameraScaleChange}
         onDrawingSelectionChange={onDrawingSelectionChange}
+        trashButtonRef={trashButtonRef}
       />
     );
   }

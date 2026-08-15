@@ -104,3 +104,10 @@ export function getDrawingBounds(points: Point[], strokeWidth: number): DrawingB
     height: maxY - minY,
   };
 }
+
+export function isPointInDrawingBounds(point: Point, bounds: DrawingBounds): boolean {
+  return (
+    Math.abs(point.x - bounds.x) <= bounds.width / 2 &&
+    Math.abs(point.y - bounds.y) <= bounds.height / 2
+  );
+}
