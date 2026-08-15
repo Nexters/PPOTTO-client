@@ -3,8 +3,6 @@
 import type { paths } from '@ppotto/api';
 import { memo, useEffect, useState } from 'react';
 
-import { STICKER_OUTLINE_FILTER_ID } from '@/shared/ui/StickerOutlineFilter';
-
 import type { StickerTransform } from '../model/board-transform';
 
 // 스티커 크기는 긴 변을 이 값으로 맞추고 비율을 유지한다
@@ -30,19 +28,82 @@ export type StickerData = Omit<ApiSticker, 'badgeRotation' | 'posX' | 'posY' | '
 };
 
 // GCS 원본 URL을 next/image 프록시(same-origin)로 바꾼다.
-function toProxiedImageSrc(src: string): string {
-  return `/_next/image?url=${encodeURIComponent(src)}&w=1080&q=75`;
+function toProxiedImageSrc(src: string, width: number): string {
+  return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=75`;
 }
 
-export function useStickerImage(src?: string) {
+// next.config.ts에 별도 images.imageSizes/deviceSizes 설정이 없어 next/image 기본값을 쓰는데,
+// 그 목록에 없는 w 값을 요청하면 400이 나서 기본값 안에서만 골라야 한다.
+const STICKER_IMAGE_WIDTH_STEPS = [128, 256, 384, 640, 750, 828, 1080];
+
+// 스티커는 화면에 STICKER_MAX_EDGE(160) * scale CSS px로만 표시되는데
+// 항상 1080px 원본을 받아오면 디코드/필터 비용이 실제 필요보다 훨씬 커진다.
+// 표시 크기 기준으로 next/image가 지원하는 가장 작은 사이즈를 고른다.
+function pickStickerImageWidth(scale: number): number {
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
+  const targetWidth = STICKER_MAX_EDGE * scale * dpr;
+  return (
+    STICKER_IMAGE_WIDTH_STEPS.find((step) => step >= targetWidth) ??
+    STICKER_IMAGE_WIDTH_STEPS[STICKER_IMAGE_WIDTH_STEPS.length - 1]!
+  );
+}
+
+const OUTLINE_RADIUS_CSS_PX = 3;
+const OUTLINE_STEPS = 16;
+
+function bakeStickerOutline(source: HTMLImageElement, scale: number): string {
+  const w = source.naturalWidth;
+  const h = source.naturalHeight;
+  const displayedLongestEdge = STICKER_MAX_EDGE * scale;
+  const rawRadius = (OUTLINE_RADIUS_CSS_PX * Math.max(w, h)) / displayedLongestEdge;
+  const pad = Math.ceil(rawRadius) + 2;
+
+  const silhouette = document.createElement('canvas');
+  silhouette.width = w;
+  silhouette.height = h;
+  const silhouetteCtx = silhouette.getContext('2d')!;
+  silhouetteCtx.drawImage(source, 0, 0);
+  silhouetteCtx.globalCompositeOperation = 'source-in';
+  silhouetteCtx.fillStyle = '#fff';
+  silhouetteCtx.fillRect(0, 0, w, h);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w + pad * 2;
+  canvas.height = h + pad * 2;
+  const ctx = canvas.getContext('2d')!;
+  for (let i = 0; i < OUTLINE_STEPS; i++) {
+    const angle = (i / OUTLINE_STEPS) * Math.PI * 2;
+    ctx.drawImage(silhouette, pad + Math.cos(angle) * rawRadius, pad + Math.sin(angle) * rawRadius);
+  }
+  ctx.drawImage(source, pad, pad);
+
+  return canvas.toDataURL('image/png');
+}
+
+export function useStickerImage(src: string | undefined, scale: number) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const width = pickStickerImageWidth(scale);
 
   useEffect(() => {
     if (!src) return;
-    const img = new window.Image();
-    img.src = toProxiedImageSrc(src);
-    img.onload = () => setImage(img);
-  }, [src]);
+    let cancelled = false;
+
+    const raw = new window.Image();
+    raw.src = toProxiedImageSrc(src, width);
+    raw.onload = () => {
+      if (cancelled) return;
+      const outlined = new window.Image();
+      outlined.onload = () => {
+        if (!cancelled) setImage(outlined);
+      };
+      outlined.src = bakeStickerOutline(raw, scale);
+    };
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, width]);
 
   return image;
 }
@@ -81,8 +142,8 @@ export const Sticker = memo(function Sticker({
   selected,
   transformOverride,
 }: StickerProps) {
-  const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const scale = transformOverride?.scale ?? sticker.scale;
+  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, scale);
   const { width, height } = getPhotoSize(photoImage, scale);
 
   if (!photoImage || width <= 0 || height <= 0) return null;
@@ -106,11 +167,9 @@ export const Sticker = memo(function Sticker({
         height,
         zIndex: stickerZIndex(sticker),
         transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-        filter: `url(#${STICKER_OUTLINE_FILTER_ID}) ${
-          selected
-            ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
-            : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))'
-        }`,
+        filter: selected
+          ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
+          : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
         willChange: 'transform',
         touchAction: 'none',
       }}
