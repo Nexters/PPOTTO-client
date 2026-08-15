@@ -71,6 +71,7 @@ describe('ppotto loading motion', () => {
     });
 
     motion.start();
+    expect(mount.querySelector('.pm-fact')).toBeNull();
     for (let count = 0; count < 500 && !onRevealFinished.mock.calls.length; count += 1) {
       now += 100;
       const currentFrames = frames;

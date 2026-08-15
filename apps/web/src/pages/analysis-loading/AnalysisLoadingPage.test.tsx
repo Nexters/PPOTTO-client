@@ -5,7 +5,6 @@ import { AnalysisLoadingPage } from './AnalysisLoadingPage';
 
 interface MotionOptions {
   boardBgSrc: string;
-  photoCount: number;
   speed: number;
   phase: string;
   photos: Array<{ src: string; ratio: number; capturedAt: null }>;
@@ -99,7 +98,6 @@ describe('AnalysisLoadingPage', () => {
 
     expect(options.speed).toBe(0.6);
     expect(options.phase).toBe('SCAN');
-    expect(options.photoCount).toBe(20);
     expect(options.boardBgSrc).toBe('/analysis-loading/board-bg.png');
     expect(options.stickerSrcs).toHaveLength(9);
     expect(options.photos).toHaveLength(20);

@@ -18,10 +18,7 @@ export function createLoadingMotion(opts) {
 
   const state = {
     photos: opts.photos,
-    photoCount: opts.photoCount ?? opts.photos.length,
     reduced: opts.reducedMotion ?? matchMedia('(prefers-reduced-motion: reduce)').matches,
-    // 촬영일시가 하나도 없으면 시각·요일 문구는 만들지 않는다
-    noMeta: !opts.photos.some((p) => p.capturedAt),
     loading: false,
   };
 
@@ -77,7 +74,6 @@ export function createLoadingMotion(opts) {
     elBoard.appendChild(image);
     return image;
   });
-  const elFact = mk('pm-fact');
   const elProgress = mk('pm-progress');
   const elProgressFill = mk('pm-progress-fill', elProgress);
   mk('pm-vignette');
@@ -708,80 +704,6 @@ export function createLoadingMotion(opts) {
     const SORTS = [(p) => p.hue, (p) => p.lig, (p) => p.sat];
     let phase = -1;
 
-    // 상단 빈 띠에 도는 분석 문구. 한 장당 3.6s(3~5s 범위), 앞뒤 0.3s는 페이드다.
-    const FACT_MS = 3600,
-      FACT_FADE = 300;
-    // 막이 끝날 때 문구가 사라지는 데 쓰는 시간. 완료 신호는 언제 올지 모르므로
-    // 문구 주기와 맞물릴 수 없다 — 끝낼 시점이 정해지면 이만큼 더 끌어서 지운다.
-    const FACT_OUT = 420;
-    let facts = [],
-      factIdx = -1,
-      endAt = 0;
-
-    /* 값이 없는 문구는 만들지 않는다 — 빈칸이나 "0장"이 뜨면 안 된다.
-       메타 없는 조건(state.noMeta)에서는 시각·요일 문구가 통째로 빠진다. */
-    function buildFacts() {
-      const ps = state.photos;
-      const out = [];
-      if (!ps.length) return out;
-
-      out.push(`총 <b>${state.photoCount}장</b>을 살펴보고 있어요`);
-
-      // 색상환을 40°씩 나눠 2장 이상 모인 칸만 덩어리로 센다 —
-      // 화면에서 지금 색으로 묶이는 중이라 이 문구가 앵커 역할을 한다
-      const bins = new Array(9).fill(0);
-      for (const q of ps) bins[Math.min(8, Math.floor(q.hue / 40))]++;
-      const groups = bins.filter((n) => n >= 2).length;
-      if (groups >= 2) out.push(`비슷한 색끼리 <b>${groups}덩어리</b>로 모였어요`);
-
-      const timed = ps.filter((q) => q.capturedAt);
-      if (timed.length) {
-        const night = timed.filter((q) => {
-          const h = new Date(q.capturedAt).getHours();
-          return h >= 19 || h < 5;
-        }).length;
-        if (night) out.push(`밤에 찍은 사진이 <b>${night}장</b>이에요`);
-      }
-
-      // "가장 많아요"라고 쓰려면 실제로 1위여야 한다
-      const shape = { 세로: 0, 가로: 0, 정방형: 0 };
-      for (const q of ps) {
-        const w = q.w || 0,
-          h = q.h || 0;
-        if (h > w) shape.세로++;
-        else if (w > h) shape.가로++;
-        else shape.정방형++;
-      }
-      const top = Object.entries(shape).sort((x, y) => y[1] - x[1]);
-      if (top[0][1] > top[1][1])
-        out.push(`${top[0][0]} 사진이 <b>${top[0][1]}장</b>으로 가장 많아요`);
-
-      if (timed.length) {
-        const DAY = ['일', '월', '화', '수', '목', '금', '토'];
-        const cnt = new Array(7).fill(0);
-        for (const q of timed) cnt[new Date(q.capturedAt).getDay()]++;
-        const rank = cnt.map((n, i) => [n, i]).sort((x, y) => y[0] - x[0]);
-        if (rank[0][0] > rank[1][0])
-          out.push(`<b>${DAY[rank[0][1]]}요일</b>에 찍은 사진이 가장 많아요`);
-      }
-      return out;
-    }
-
-    function paintFact(t) {
-      if (!facts.length) return;
-      const i = Math.floor(t / FACT_MS) % facts.length;
-      if (i !== factIdx) {
-        factIdx = i;
-        elFact.innerHTML = facts[i];
-      }
-      const local = t - Math.floor(t / FACT_MS) * FACT_MS;
-      let o = Math.min(clamp(local / FACT_FADE, 0, 1), clamp((FACT_MS - local) / FACT_FADE, 0, 1));
-      // 막이 끝나기로 정해졌으면 그 지점에 맞춰 같이 사라진다
-      if (endAt) o = Math.min(o, clamp((endAt - t) / FACT_OUT, 0, 1));
-      elFact.style.opacity = o.toFixed(3);
-      elFact.style.transform = `translateY(${lerp(6, 0, clamp(local / FACT_FADE, 0, 1)).toFixed(1)}px)`;
-    }
-
     function enter() {
       elScan.classList.add('hidden');
       elDeck.classList.add('hidden');
@@ -801,11 +723,6 @@ export function createLoadingMotion(opts) {
       }
       tiles.apply(performance.now());
       phase = -1;
-
-      facts = buildFacts();
-      factIdx = -1;
-      endAt = 0;
-      elFact.style.opacity = '0';
 
       // 배경은 사진들의 대표 색 평균으로 가라앉는다
       setTint(averageTint(), 600);
@@ -828,21 +745,12 @@ export function createLoadingMotion(opts) {
         );
       }
       tiles.apply(performance.now());
-      paintFact(t);
     }
 
     function beginExit(t) {
-      endAt = t + FACT_OUT;
-      return endAt;
+      return t;
     }
-
-    function exit() {
-      elFact.style.opacity = '0';
-      elFact.textContent = '';
-      factIdx = -1;
-      endAt = 0;
-    }
-    return { id: 'group', enter, update, exit, dur, beginExit };
+    return { id: 'group', enter, update, dur, beginExit };
   })();
 
   /* ============================================================
@@ -1596,8 +1504,6 @@ export function createLoadingMotion(opts) {
     elTint.style.background = '#000';
     elProgress.style.opacity = '0';
     elProgressFill.style.transform = `scaleX(${progressShown.toFixed(4)})`;
-    elFact.style.opacity = '0';
-    elFact.textContent = '';
     handoff.length = 0;
     enterCurrentAct({
       visiblePhase: ACT_NAME[tl.actIndex],

@@ -54,7 +54,6 @@ export function AnalysisLoadingPage() {
 
         motion = createLoadingMotion({
           mount: mountRef.current,
-          photoCount: state.photoCount,
           photos,
           phase: state.visiblePhase,
           visualProgress: state.visualProgress,
