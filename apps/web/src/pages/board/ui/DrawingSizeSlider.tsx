@@ -11,9 +11,14 @@ const HANDLE_SIZE = 24;
 type DrawingSizeSliderProps = {
   strokeWidth: number;
   onStrokeWidthChange: (strokeWidth: number) => void;
+  onDraggingChange?: (isDragging: boolean) => void;
 };
 
-export function DrawingSizeSlider({ strokeWidth, onStrokeWidthChange }: DrawingSizeSliderProps) {
+export function DrawingSizeSlider({
+  strokeWidth,
+  onStrokeWidthChange,
+  onDraggingChange,
+}: DrawingSizeSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   const updateFromClientY = (clientY: number) => {
@@ -28,6 +33,7 @@ export function DrawingSizeSlider({ strokeWidth, onStrokeWidthChange }: DrawingS
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId);
+    onDraggingChange?.(true);
     updateFromClientY(e.clientY);
   };
 
@@ -35,6 +41,8 @@ export function DrawingSizeSlider({ strokeWidth, onStrokeWidthChange }: DrawingS
     if (e.buttons === 0) return;
     updateFromClientY(e.clientY);
   };
+
+  const handlePointerEnd = () => onDraggingChange?.(false);
 
   const ratio =
     (strokeWidth - DRAW_STROKE_WIDTH_MIN) / (DRAW_STROKE_WIDTH_MAX - DRAW_STROKE_WIDTH_MIN);
@@ -46,6 +54,8 @@ export function DrawingSizeSlider({ strokeWidth, onStrokeWidthChange }: DrawingS
       style={{ height: TRACK_HEIGHT, width: HANDLE_SIZE }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
     >
       <div
         ref={trackRef}

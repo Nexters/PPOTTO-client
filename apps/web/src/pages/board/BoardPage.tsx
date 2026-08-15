@@ -16,13 +16,13 @@ import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { DrawingColorPalette } from './ui/DrawingColorPalette';
 import { DrawingHeader } from './ui/DrawingHeader';
 import { DRAW_STROKE_WIDTH_MIN, DrawingSizeSlider } from './ui/DrawingSizeSlider';
+import { DrawingSizePreview } from './ui/DrawingSizePreview';
 import { EyedropperMarker } from './ui/EyedropperMarker';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
 });
 
-// 스포이드로 아직 색을 고른 적 없거나, 팔레트 색을 다시 선택해 스포이드 선택이 풀렸을 때의 기본값
 const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
 
 export function BoardPage() {
@@ -41,7 +41,9 @@ export function BoardPage() {
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_MIN);
   const [isDrawingActive, setIsDrawingActive] = useState(false);
+  const [isAdjustingStrokeWidth, setIsAdjustingStrokeWidth] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
+  const [cameraScale, setCameraScale] = useState(1);
   const isDrawingUiHidden = toolbarMode === 'draw' && isDrawingActive;
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -127,6 +129,7 @@ export function BoardPage() {
       setIsPickingColor(false);
       setPickerPosition(null);
       setPreviewColor(null);
+      setIsAdjustingStrokeWidth(false);
     }
   }
 
@@ -182,13 +185,20 @@ export function BoardPage() {
           isPointerInputSuspended={isPickingColor}
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
+          onCameraScaleChange={setCameraScale}
           canvasRef={canvasRef}
         />
         {toolbarMode === 'draw' && !isDrawingUiHidden && (
           <DrawingSizeSlider
             strokeWidth={drawStrokeWidth}
             onStrokeWidthChange={setDrawStrokeWidth}
+            onDraggingChange={setIsAdjustingStrokeWidth}
           />
+        )}
+        {isAdjustingStrokeWidth && (
+          <div className="pointer-events-none fixed top-1/2 left-1/2 z-70 -translate-x-1/2 -translate-y-1/2">
+            <DrawingSizePreview strokeWidth={drawStrokeWidth * cameraScale} />
+          </div>
         )}
         {!isDrawingUiHidden && (
           <BoardToolbar
@@ -244,6 +254,7 @@ function BoardContent({
   isPointerInputSuspended,
   onDrawingActiveChange,
   onCanUndoChange,
+  onCameraScaleChange,
   canvasRef,
 }: {
   boardId?: string;
@@ -254,6 +265,7 @@ function BoardContent({
   isPointerInputSuspended: boolean;
   onDrawingActiveChange: (active: boolean) => void;
   onCanUndoChange: (canUndo: boolean) => void;
+  onCameraScaleChange: (scale: number) => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
 }) {
   if (boardId) {
@@ -267,6 +279,7 @@ function BoardContent({
         isPointerInputSuspended={isPointerInputSuspended}
         onDrawingActiveChange={onDrawingActiveChange}
         onCanUndoChange={onCanUndoChange}
+        onCameraScaleChange={onCameraScaleChange}
       />
     );
   }

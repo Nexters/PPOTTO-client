@@ -73,6 +73,8 @@ type BoardCanvasProps = {
   onDrawingActiveChange?: (active: boolean) => void;
   // 실행취소할 그림이 있는지 여부가 바뀔 때마다 호출
   onCanUndoChange?: (canUndo: boolean) => void;
+  // 카메라 줌 배율이 바뀔 때마다 호출
+  onCameraScaleChange?: (scale: number) => void;
 };
 
 export type BoardCanvasHandle = {
@@ -111,6 +113,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     isPointerInputSuspended = false,
     onDrawingActiveChange,
     onCanUndoChange,
+    onCameraScaleChange,
   },
   ref,
 ) {
@@ -312,6 +315,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   useEffect(() => {
     onCanUndoChange?.(drawings.length > 0);
   }, [drawings.length, onCanUndoChange]);
+
+  useEffect(() => {
+    onCameraScaleChange?.(camera.scale);
+  }, [camera.scale, onCameraScaleChange]);
 
   useImperativeHandle(
     ref,
