@@ -6,8 +6,6 @@ import { useState } from 'react';
 
 import { useAgreeTermsMutation } from '@/entities/terms/api/terms-mutations';
 import { useTermsListQuery } from '@/entities/terms/api/terms-queries';
-import { userApi } from '@/entities/user/api/user-api';
-import { hasSeenOnboarding } from '@/features/onboarding';
 import { Button } from '@/shared/ui/common/Button';
 
 const TERMS = [
@@ -46,8 +44,7 @@ export function TermsPage() {
       await agreeTerms({
         termIds: visibleTerms.flatMap(({ serverTerm }) => (serverTerm ? [serverTerm.id] : [])),
       });
-      const me = await userApi.getMe();
-      replace(hasSeenOnboarding(me.id) ? 'Board' : 'Onboarding', {});
+      replace('Board', {});
     } catch (error) {
       console.error('약관 동의 실패', error);
     }

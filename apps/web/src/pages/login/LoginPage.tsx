@@ -3,8 +3,6 @@
 import { AppleLogo, KakaoLogo, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 
-import { userApi } from '@/entities/user/api/user-api';
-import { hasSeenOnboarding } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 
@@ -20,8 +18,7 @@ export function LoginPage() {
         return;
       }
 
-      const me = await userApi.getMe();
-      replace(hasSeenOnboarding(me.id) ? 'Board' : 'Onboarding', {});
+      replace('Board', {});
     } catch (error) {
       console.error('로그인 실패', error);
     }
