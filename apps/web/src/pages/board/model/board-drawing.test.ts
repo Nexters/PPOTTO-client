@@ -20,10 +20,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  computeDrawingBoxPinchTransform,
+  computeDrawingPinchTransform,
+  getDrawingBounds,
+  hitTestDrawingId,
+  isPointInDrawingBounds,
   parseStrokePoints,
   shouldSampleStrokePoint,
   toDrawingCreateInput,
   toPathData,
+  type ParsedDrawing,
 } from './board-drawing';
 
 describe('shouldSampleStrokePoint', () => {
@@ -148,5 +154,256 @@ describe('parseStrokePoints', () => {
       { x: 1, y: 2 },
       { x: 4, y: 5 },
     ]);
+  });
+});
+
+function fakeDrawing(overrides: Partial<ParsedDrawing> = {}): ParsedDrawing {
+  return {
+    id: 'drawing-1',
+    points: [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+    ],
+    color: '#fff',
+    strokeWidth: 0,
+    ...overrides,
+  };
+}
+
+describe('hitTestDrawingId', () => {
+  it('선 위의 점을 찍으면 그 그림의 id를 반환한다', () => {
+    const drawing = fakeDrawing({ id: 'a' });
+
+    expect(hitTestDrawingId({ x: 5, y: 0 }, [drawing])).toBe('a');
+  });
+
+  it('선에서 여유 거리(HIT_TEST_TOLERANCE) 이내면 히트로 본다', () => {
+    const drawing = fakeDrawing({ id: 'a' });
+
+    expect(hitTestDrawingId({ x: 5, y: 8 }, [drawing])).toBe('a');
+  });
+
+  it('여유 거리보다 멀면 히트로 보지 않는다', () => {
+    const drawing = fakeDrawing({ id: 'a' });
+
+    expect(hitTestDrawingId({ x: 5, y: 9 }, [drawing])).toBeNull();
+  });
+
+  it('여러 그림이 겹치면 나중에 그려진(배열 뒤쪽) 것을 반환한다', () => {
+    const first = fakeDrawing({ id: 'a' });
+    const second = fakeDrawing({ id: 'b' });
+
+    expect(hitTestDrawingId({ x: 5, y: 0 }, [first, second])).toBe('b');
+  });
+
+  it('점이 하나뿐인 그림은 그 점을 중심으로 한 원형 범위로 히트를 판단한다', () => {
+    const drawing = fakeDrawing({ id: 'a', points: [{ x: 5, y: 5 }] });
+
+    expect(hitTestDrawingId({ x: 13, y: 5 }, [drawing])).toBe('a');
+    expect(hitTestDrawingId({ x: 14, y: 5 }, [drawing])).toBeNull();
+  });
+
+  it('그림이 하나도 없으면 null을 반환한다', () => {
+    expect(hitTestDrawingId({ x: 0, y: 0 }, [])).toBeNull();
+  });
+});
+
+describe('getDrawingBounds', () => {
+  it('점이 없으면 null을 반환한다', () => {
+    expect(getDrawingBounds([], 4)).toBeNull();
+  });
+
+  it('점이 하나면 strokeWidth만큼 패딩된 정사각형을 반환한다', () => {
+    const result = getDrawingBounds([{ x: 10, y: 20 }], 6);
+
+    expect(result).toEqual({ x: 10, y: 20, width: 6, height: 6 });
+  });
+
+  it('여러 점이면 최소/최대 좌표에 패딩을 더해 중심과 크기를 계산한다', () => {
+    const points = [
+      { x: 0, y: 0 },
+      { x: 10, y: 4 },
+    ];
+
+    const result = getDrawingBounds(points, 2);
+
+    expect(result).toEqual({ x: 5, y: 2, width: 12, height: 6 });
+  });
+});
+
+describe('isPointInDrawingBounds', () => {
+  const bounds = { x: 10, y: 10, width: 8, height: 4 };
+
+  it('바운딩 박스 중심점은 안에 있는 것으로 본다', () => {
+    expect(isPointInDrawingBounds({ x: 10, y: 10 }, bounds)).toBe(true);
+  });
+
+  it('경계선 위의 점도 안에 있는 것으로 본다', () => {
+    expect(isPointInDrawingBounds({ x: 14, y: 12 }, bounds)).toBe(true);
+  });
+
+  it('가로로 경계를 벗어나면 밖으로 본다', () => {
+    expect(isPointInDrawingBounds({ x: 14.1, y: 10 }, bounds)).toBe(false);
+  });
+
+  it('세로로 경계를 벗어나면 밖으로 본다', () => {
+    expect(isPointInDrawingBounds({ x: 10, y: 12.1 }, bounds)).toBe(false);
+  });
+});
+
+describe('computeDrawingPinchTransform', () => {
+  it('거리·각도 변화 없이 중심점만 이동하면 점들이 그만큼 평행이동하고 굵기는 그대로다', () => {
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 150, y: 120 }, distance: 50, angle: 0 };
+
+    const result = computeDrawingPinchTransform([{ x: 150, y: 80 }], 4, start, current);
+
+    expect(result.points[0]!.x).toBeCloseTo(200);
+    expect(result.points[0]!.y).toBeCloseTo(100);
+    expect(result.strokeWidth).toBe(4);
+  });
+
+  it('중심점 고정, 거리가 2배가 되면 점도 중심에서 2배 멀어지고 굵기도 2배가 된다', () => {
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 100, angle: 0 };
+
+    const result = computeDrawingPinchTransform([{ x: 130, y: 100 }], 4, start, current);
+
+    expect(result.points[0]!.x).toBeCloseTo(160);
+    expect(result.points[0]!.y).toBeCloseTo(100);
+    expect(result.strokeWidth).toBe(8);
+  });
+
+  it('중심점·거리 고정, 각도만 바뀌면 그 각도만큼 중심점 기준으로 회전한다', () => {
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 50, angle: 45 };
+
+    const result = computeDrawingPinchTransform([{ x: 130, y: 100 }], 4, start, current);
+
+    expect(result.points[0]!.x).toBeCloseTo(121.213, 2);
+    expect(result.points[0]!.y).toBeCloseTo(121.213, 2);
+    expect(result.strokeWidth).toBe(4);
+  });
+
+  it('여러 점이면 각 점 모두에 동일한 변환을 적용한다', () => {
+    const start = { centroid: { x: 0, y: 0 }, distance: 10, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 20, angle: 0 };
+
+    const result = computeDrawingPinchTransform(
+      [
+        { x: 10, y: 0 },
+        { x: 0, y: 10 },
+      ],
+      2,
+      start,
+      current,
+    );
+
+    expect(result.points[0]!.x).toBeCloseTo(20);
+    expect(result.points[1]!.y).toBeCloseTo(20);
+  });
+
+  it('배율이 상한(4배)을 넘으면 상한으로 고정된다', () => {
+    const start = { centroid: { x: 0, y: 0 }, distance: 10, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 1000, angle: 0 };
+
+    const result = computeDrawingPinchTransform([{ x: 10, y: 0 }], 2, start, current);
+
+    expect(result.strokeWidth).toBe(8);
+  });
+
+  it('배율이 하한(0.3배) 밑으로 내려가면 하한으로 고정된다', () => {
+    const start = { centroid: { x: 0, y: 0 }, distance: 100, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 1, angle: 0 };
+
+    const result = computeDrawingPinchTransform([{ x: 10, y: 0 }], 2, start, current);
+
+    expect(result.strokeWidth).toBeCloseTo(0.6);
+  });
+
+  it('시작 거리가 0이면(손가락이 겹친 상태) 나눗셈 대신 원래 점/굵기를 그대로 반환한다', () => {
+    const points = [{ x: 5, y: 5 }];
+    const start = { centroid: { x: 0, y: 0 }, distance: 0, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 50, angle: 90 };
+
+    const result = computeDrawingPinchTransform(points, 3, start, current);
+
+    expect(result).toEqual({ points, strokeWidth: 3 });
+  });
+});
+
+describe('computeDrawingBoxPinchTransform', () => {
+  it('거리·각도 변화 없이 중심점만 이동하면 그만큼 평행이동한다', () => {
+    const base = { x: 100, y: 100, rotation: 0, scale: 1 };
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 150, y: 120 }, distance: 50, angle: 0 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result).toEqual({ x: 150, y: 120, rotation: 0, scale: 1 });
+  });
+
+  it('중심점 고정, 거리만 2배가 되면 박스도 2배 확대되고 중심에서 멀어진다', () => {
+    const base = { x: 130, y: 100, rotation: 0, scale: 1 };
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 100, angle: 0 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.scale).toBe(2);
+    expect(result.x).toBeCloseTo(160);
+    expect(result.y).toBeCloseTo(100);
+  });
+
+  it('중심점·거리 고정, 각도만 바뀌면 그 각도만큼 중심점 기준으로 회전한다', () => {
+    const base = { x: 130, y: 100, rotation: 0, scale: 1 };
+    const start = { centroid: { x: 100, y: 100 }, distance: 50, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 50, angle: 45 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.rotation).toBe(45);
+    expect(result.x).toBeCloseTo(121.213, 2);
+    expect(result.y).toBeCloseTo(121.213, 2);
+  });
+
+  it('스티커와 달리 90도 근처로 회전해도 스냅되지 않고 자유 회전한다', () => {
+    const base = { x: 100, y: 100, rotation: 0, scale: 1 };
+    const start = { centroid: { x: 0, y: 0 }, distance: 10, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 10, angle: 92 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.rotation).toBe(92);
+  });
+
+  it('배율이 상한(4배)을 넘으면 상한으로 고정된다', () => {
+    const base = { x: 100, y: 100, rotation: 0, scale: 3.5 };
+    const start = { centroid: { x: 0, y: 0 }, distance: 10, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 1000, angle: 0 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.scale).toBe(4);
+  });
+
+  it('배율이 하한(0.3배) 밑으로 내려가면 하한으로 고정된다', () => {
+    const base = { x: 100, y: 100, rotation: 0, scale: 0.5 };
+    const start = { centroid: { x: 0, y: 0 }, distance: 100, angle: 0 };
+    const current = { centroid: { x: 0, y: 0 }, distance: 1, angle: 0 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result.scale).toBe(0.3);
+  });
+
+  it('시작 거리가 0이면(손가락이 겹친 상태) 나눗셈 대신 base를 그대로 반환한다', () => {
+    const base = { x: 5, y: 5, rotation: 10, scale: 2 };
+    const start = { centroid: { x: 0, y: 0 }, distance: 0, angle: 0 };
+    const current = { centroid: { x: 100, y: 100 }, distance: 50, angle: 90 };
+
+    const result = computeDrawingBoxPinchTransform(base, start, current);
+
+    expect(result).toEqual(base);
   });
 });
