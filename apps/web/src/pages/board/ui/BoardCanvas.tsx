@@ -47,6 +47,7 @@ import {
 import { angleBetween, centroid, distance, type Point } from '../model/geometry';
 import { useDeleteSticker } from '../model/use-delete-sticker';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
+import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
 import type { ToolbarMode } from './BoardToolbar';
 import { DrawingStroke } from './DrawingStroke';
@@ -96,7 +97,6 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
-  const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
   // 그리는 도중인 선의 점들(보드 월드 좌표). 그리는 중이 아니면 null
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
@@ -109,6 +109,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const queryClient = useQueryClient();
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
+  const quickMenu = useStickerQuickMenu(boardId);
   const isEditMode = mode === 'move';
   const isDrawMode = mode === 'draw';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
@@ -168,7 +169,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
 
   const longPress = useLongPress({
     onLongPress: (stickerId) => {
-      setQuickMenuStickerId(stickerId);
+      quickMenu.openQuickMenu(stickerId);
       // 리캡 이동과 안 겹치게 탭 후보 제거
       tapCandidateRef.current = null;
     },
@@ -384,6 +385,8 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     };
 
     const handlePointerDown = (e: PointerEvent) => {
+      // 퀵메뉴/이름 직접 편집 중엔 캔버스 제스처 비활성화
+      if (quickMenu.isEditingRef.current) return;
       const point = getLocalPoint(e);
       pointersRef.current.set(e.pointerId, point);
 
@@ -682,7 +685,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       container.removeEventListener('gesturechange', blockGesture);
       container.removeEventListener('gestureend', blockGesture);
     };
-  }, [container, boardId]);
+  }, [container, boardId, quickMenu.isEditingRef]);
 
   if (isLoading) {
     return (
@@ -701,7 +704,10 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   }
 
   const selectedSticker = stickers.find((sticker) => sticker.id === selectedId);
-  const quickMenuSticker = stickers.find((sticker) => sticker.id === quickMenuStickerId);
+  const quickMenuSticker = stickers.find((sticker) => sticker.id === quickMenu.quickMenuStickerId);
+  const directEditSticker = stickers.find(
+    (sticker) => sticker.id === quickMenu.directEditStickerId,
+  );
 
   return (
     <div
@@ -758,7 +764,11 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
         {stickers
           .filter((sticker) => sticker.id !== selectedId)
           .map((sticker) => (
-            <StickerBadgeMark key={sticker.id} sticker={sticker} />
+            <StickerBadgeMark
+              key={sticker.id}
+              sticker={sticker}
+              onNameClick={() => quickMenu.startDirectEdit(sticker.id)}
+            />
           ))}
         {selectedSticker && (
           <SelectBox
@@ -767,18 +777,41 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
           />
         )}
       </div>
-      {quickMenuSticker && <StickerPreview sticker={quickMenuSticker} />}
+      {directEditSticker && (
+        <>
+          <div
+            aria-hidden
+            className="modal-overlay fixed inset-0 z-50 backdrop-blur-[30px]"
+            onClick={quickMenu.cancelDirectEdit}
+          />
+          <StickerPreview
+            sticker={directEditSticker}
+            titleInputRef={quickMenu.directEditInputRef}
+            isEditingTitle
+            onSubmitTitle={quickMenu.submitDirectEdit}
+            onCancelEditTitle={quickMenu.cancelDirectEdit}
+          />
+        </>
+      )}
       <StickerQuickMenu
-        stickerTitle={quickMenuSticker?.title ?? ''}
-        isOpen={quickMenuStickerId !== null}
-        onClose={() => setQuickMenuStickerId(null)}
+        sticker={quickMenuSticker}
+        isOpen={quickMenu.quickMenuStickerId !== null}
+        onClose={quickMenu.closeQuickMenu}
+        onRename={quickMenu.startRename}
+        isEditingTitle={quickMenu.isRenamingTitle}
+        onSubmitTitle={quickMenu.submitRename}
+        onCancelEditTitle={quickMenu.cancelRename}
+        titleInputRef={quickMenu.titleInputRef}
         onRegenerate={() => {
-          if (quickMenuStickerId) regenerate(quickMenuStickerId, () => setQuickMenuStickerId(null));
+          if (quickMenu.quickMenuStickerId) {
+            regenerate(quickMenu.quickMenuStickerId, quickMenu.closeQuickMenu);
+          }
         }}
         isRegenerating={isRegenerating}
         onDelete={() => {
-          if (quickMenuStickerId)
-            deleteSticker(quickMenuStickerId, () => setQuickMenuStickerId(null));
+          if (quickMenu.quickMenuStickerId) {
+            deleteSticker(quickMenu.quickMenuStickerId, quickMenu.closeQuickMenu);
+          }
         }}
         isDeleting={isDeleting}
       />
