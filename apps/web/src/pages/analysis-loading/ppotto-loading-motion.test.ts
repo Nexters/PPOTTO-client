@@ -100,7 +100,7 @@ describe('ppotto loading motion', () => {
       frames = [];
       currentFrames.forEach((frame) => frame(now));
     }
-    expect(stickers.every((sticker) => sticker.style.opacity === '0')).toBe(true);
+    expect(stickers.every((sticker) => Number(sticker.style.opacity) === 1)).toBe(true);
 
     motion.destroy();
     mount.remove();

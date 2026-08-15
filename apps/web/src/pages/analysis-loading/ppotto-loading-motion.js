@@ -1183,25 +1183,20 @@ export function createLoadingMotion(opts) {
     const ORDER = [2, 9, 7, 3, 4, 8, 1, 5, 6].map((number) => number - 1);
     const FADE_MS = 80;
     const STAGGER = 200;
-    const HOLD_MS = 1400;
-    const GAP_MS = 2000;
     const LAND_END = STAGGER * (STICKERS.length - 1) + FADE_MS;
-    const HOLD_END = LAND_END + HOLD_MS;
-    const LOOP_MS = HOLD_END + GAP_MS;
 
     let cards = [];
     let ctaOn = false;
     let boardT = 0;
 
-    function paintBoard(time, loopDuration) {
-      const loop = time % loopDuration;
-      const cleared = loop >= HOLD_END;
+    // 스티커는 한 번만 붙고 그대로 멈춘다 — 완성된 보드가 대기 화면의 끝 그림이다
+    function paintBoard(time) {
       for (let index = 0; index < STICKERS.length; index++) {
         const sticker = STICKERS[index];
         const element = elStickers[index];
         if (!element) continue;
         const start = ORDER.indexOf(index) * STAGGER;
-        element.style.opacity = cleared ? '0' : clamp((loop - start) / FADE_MS, 0, 1).toFixed(3);
+        element.style.opacity = clamp((time - start) / FADE_MS, 0, 1).toFixed(3);
         element.style.width = sticker.w + 'px';
         element.style.height = sticker.h + 'px';
         element.style.transform = `translate3d(${sticker.x}px,${sticker.y}px,0)`;
@@ -1282,14 +1277,9 @@ export function createLoadingMotion(opts) {
     }
 
     function idle(dt) {
-      if (state.reduced) {
-        if (boardT >= LAND_END) return;
-        boardT = Math.min(boardT + dt, LAND_END);
-        paintBoard(boardT, Number.POSITIVE_INFINITY);
-        return;
-      }
-      boardT += dt;
-      paintBoard(boardT, LOOP_MS);
+      if (boardT >= LAND_END) return;
+      boardT = Math.min(boardT + dt, LAND_END);
+      paintBoard(boardT);
     }
 
     function update(t, dt) {
