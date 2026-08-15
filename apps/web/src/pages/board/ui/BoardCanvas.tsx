@@ -40,6 +40,7 @@ import {
   isPointInDrawingBounds,
   parseStrokePoints,
   toDrawingCreateInput,
+  toDrawingMoveInput,
 } from '../model/board-drawing';
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
 import {
@@ -216,6 +217,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const dragTransformRef = useRef<DragTransform | null>(null);
   const drawGestureRef = useRef<DrawGesture | null>(null);
   const drawingDragStartRef = useRef<{ pointerId: number; startWorldPoint: Point } | null>(null);
+  // handlePointerUp에서 최종 이동량을 읽어야 해서 state와 별도로 ref에도 최신값을 들고 있는다
+  const drawingDragOffsetRef = useRef<Point | null>(null);
 
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
@@ -319,16 +322,27 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     saveLayout({ boardId, input: { drawings: { deletedIds: [id] } } });
   };
 
+  // 그림을 새 위치로 캐시에 낙관적으로 반영하고 저장 요청을 보냄
+  const moveDrawing = (input: DrawingCreateInput) => {
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current
+        ? { ...current, drawings: current.drawings.map((d) => (d.id === input.id ? input : d)) }
+        : current,
+    );
+
+    saveLayout({ boardId, input: { drawings: { created: [input] } } });
+  };
+
   const saveStickerLayoutRef = useRef(saveStickerLayout);
   const selectStickerRef = useRef(selectSticker);
   const saveDrawingRef = useRef(saveDrawing);
   const deleteDrawingRef = useRef(deleteDrawing);
+  const moveDrawingRef = useRef(moveDrawing);
   const drawingsRef = useRef(drawings);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
   const drawingLongPressRef = useRef(drawingLongPress);
   const onDrawingActiveChangeRef = useRef(onDrawingActiveChange);
-  // 직전에 알려준 "그리는 중" 여부
   const isDrawingActiveRef = useRef(false);
 
   // ref들을 매 렌더 이후 최신값으로 동기화
@@ -346,6 +360,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     selectStickerRef.current = selectSticker;
     saveDrawingRef.current = saveDrawing;
     deleteDrawingRef.current = deleteDrawing;
+    moveDrawingRef.current = moveDrawing;
     drawingsRef.current = drawings;
     pushRef.current = push;
     longPressRef.current = longPress;
@@ -367,10 +382,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onDrawingSelectionChange?.(activeSelectedDrawingId !== null);
   }, [activeSelectedDrawingId, onDrawingSelectionChange]);
 
-  // draw 모드를 벗어나면 드래그 시작 지점 ref도 정리 — 렌더 중엔 ref를 못 건드려 별도 effect로 분리
+  // draw 모드를 벗어나면 드래그 관련 ref도 정리 — 렌더 중엔 ref를 못 건드려 별도 effect로 분리
   useEffect(() => {
     if (isDrawMode) return;
     drawingDragStartRef.current = null;
+    drawingDragOffsetRef.current = null;
   }, [isDrawMode]);
 
   useImperativeHandle(
@@ -501,6 +517,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       setDragTransform(next);
     };
 
+    const setLiveDrawingDragOffset = (next: Point | null) => {
+      drawingDragOffsetRef.current = next;
+      setDrawingDragOffset(next);
+    };
+
     // drawGestureReducer 결과를 실제 상태(refs/state)에 반영하고, 완성된 선이 있으면 저장한다
     const applyDrawGestureResult = (result: DrawGestureResult) => {
       drawGestureRef.current = result.state;
@@ -542,7 +563,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
             if (bounds && isPointInDrawingBounds(worldPoint, bounds)) {
               drawingDragStartRef.current = { pointerId: e.pointerId, startWorldPoint: worldPoint };
-              setDrawingDragOffset({ x: 0, y: 0 });
+              setLiveDrawingDragOffset({ x: 0, y: 0 });
             } else {
               setSelectedDrawingId(null);
             }
@@ -620,7 +641,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           if (drawingDragStartRef.current) {
             // 드래그 중 두 번째 손가락이 닿으면 드래그를 취소한다(선택은 유지)
             drawingDragStartRef.current = null;
-            setDrawingDragOffset(null);
+            setLiveDrawingDragOffset(null);
           }
           const gesture = drawGestureRef.current;
           if (gesture?.kind !== 'pinching') return;
@@ -639,7 +660,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           const dragStart = drawingDragStartRef.current;
           if (!dragStart || dragStart.pointerId !== e.pointerId) return;
           const worldPoint = toWorldPoint(cameraRef.current, point);
-          setDrawingDragOffset({
+          setLiveDrawingDragOffset({
             x: worldPoint.x - dragStart.startWorldPoint.x,
             y: worldPoint.y - dragStart.startWorldPoint.y,
           });
@@ -750,12 +771,28 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
         if (selectedDrawingIdRef.current) {
           const dragStart = drawingDragStartRef.current;
+          const offset = drawingDragOffsetRef.current;
           drawingDragStartRef.current = null;
-          setDrawingDragOffset(null);
+          setLiveDrawingDragOffset(null);
 
           if (dragStart && dragStart.pointerId === e.pointerId && isDroppedOnTrash(e)) {
             deleteDrawingRef.current(selectedDrawingIdRef.current);
             setSelectedDrawingId(null);
+          } else if (dragStart && dragStart.pointerId === e.pointerId && offset) {
+            const isMoved = offset.x !== 0 || offset.y !== 0;
+            const drawing = drawingsRef.current.find((d) => d.id === selectedDrawingIdRef.current);
+            if (isMoved && drawing) {
+              const movedPoints = drawing.points.map((p) => ({
+                x: p.x + offset.x,
+                y: p.y + offset.y,
+              }));
+              moveDrawingRef.current(
+                toDrawingMoveInput(drawing.id, movedPoints, {
+                  color: drawing.color,
+                  strokeWidth: drawing.strokeWidth,
+                }),
+              );
+            }
           }
           return;
         }

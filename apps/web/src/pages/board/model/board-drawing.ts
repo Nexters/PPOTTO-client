@@ -22,17 +22,33 @@ export function shouldSampleStrokePoint(points: Point[], candidate: Point): bool
 }
 
 // scope는 항상 'BOARD' — 스티커 귀속(scope='STICKER')은 귀속 기준이 아직 정해지지 않아 별도 이슈로 미룸
-export function toDrawingCreateInput(
+function toDrawingInput(
+  id: string,
   points: Point[],
   options: { color: string; strokeWidth: number },
 ): DrawingCreateInput {
   return {
-    id: uuidv7(),
+    id,
     scope: 'BOARD',
     stroke: { points: points.map((point) => [point.x, point.y]) },
     color: options.color,
     strokeWidth: options.strokeWidth,
   };
+}
+
+export function toDrawingCreateInput(
+  points: Point[],
+  options: { color: string; strokeWidth: number },
+): DrawingCreateInput {
+  return toDrawingInput(uuidv7(), points, options);
+}
+
+export function toDrawingMoveInput(
+  id: string,
+  points: Point[],
+  options: { color: string; strokeWidth: number },
+): DrawingCreateInput {
+  return toDrawingInput(id, points, options);
 }
 
 // 저장된 그림의 stroke(자유 형식 JSON)에서 점 배열을 복원한다.
