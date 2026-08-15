@@ -31,6 +31,8 @@ describe('captureElementAsBlob', () => {
     await captureElementAsBlob(element);
 
     expect(toCanvas).toHaveBeenCalledWith(element, { includeQueryParams: true });
+    // iOS WebKit 첫 래스터라이즈 누락 대응 — 같은 입력을 여러 번 그린다
+    expect(toCanvas).toHaveBeenCalledTimes(3);
   });
 
   it('모든 이미지의 디코딩이 끝난 뒤 캡처한다', async () => {
@@ -54,7 +56,7 @@ describe('captureElementAsBlob', () => {
     expect(toCanvas).not.toHaveBeenCalled();
     finishDecode();
     await capturing;
-    expect(toCanvas).toHaveBeenCalledOnce();
+    expect(toCanvas).toHaveBeenCalledTimes(3);
   });
 
   it('전달한 옵션을 병합해 toCanvas에 넘긴다', async () => {
