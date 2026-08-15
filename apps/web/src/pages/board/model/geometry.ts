@@ -4,6 +4,19 @@ export function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+export function distanceToSegment(p: Point, a: Point, b: Point): number {
+  const segmentLengthSquared = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+  if (segmentLengthSquared === 0) return distance(p, a);
+
+  const t = clamp(
+    ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / segmentLengthSquared,
+    0,
+    1,
+  );
+  const projection = { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
+  return distance(p, projection);
+}
+
 export function centroid(points: Point[]): Point {
   const sum = points.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), {
     x: 0,

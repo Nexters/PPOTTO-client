@@ -1,16 +1,19 @@
 import type { BoardDetail, UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
 import { uuidv7 } from '@/shared/lib/uuidv7';
 
-import { distance, type Point } from './geometry';
+import { distance, distanceToSegment, type Point } from './geometry';
 
 type DrawingChanges = NonNullable<UpdateBoardLayoutInput['drawings']>;
 export type DrawingCreateInput = NonNullable<NonNullable<DrawingChanges['created']>[number]>;
 export type DrawingItem = BoardDetail['drawings'][number];
 
-// 직전에 채택한 점에서 이 거리(보드 좌표 단위 — 화면 픽셀 아님, 줌 배율에 따라 화면상 간격이
-// 달라짐) 이상 떨어졌을 때만 새 점으로 채택한다.
-// pointermove는 손가락을 거의 안 움직여도 자주 발생해서, 그대로 다 담으면 점이 불필요하게 쌓인다.
-// 첫 시도값이라 렌더링 붙이고 실제로 보면서 조정 필요할 수 있음
+export type ParsedDrawing = {
+  id: string;
+  points: Point[];
+  color: string;
+  strokeWidth: number;
+};
+
 const STROKE_SAMPLE_MIN_DISTANCE = 2;
 
 export function shouldSampleStrokePoint(points: Point[], candidate: Point): boolean {
@@ -18,7 +21,6 @@ export function shouldSampleStrokePoint(points: Point[], candidate: Point): bool
   return !last || distance(last, candidate) >= STROKE_SAMPLE_MIN_DISTANCE;
 }
 
-// 캡처된 점들과 색상/굵기를 저장 요청 형태로 직렬화한다.
 // scope는 항상 'BOARD' — 스티커 귀속(scope='STICKER')은 귀속 기준이 아직 정해지지 않아 별도 이슈로 미룸
 export function toDrawingCreateInput(
   points: Point[],
@@ -58,4 +60,47 @@ export function toPathData(points: Point[]): string {
   const start = `M${first!.x},${first!.y}`;
   const segments = rest.map((point) => `L${point.x},${point.y}`);
   return [start, ...segments].join(' ');
+}
+
+const HIT_TEST_TOLERANCE = 8;
+
+export function hitTestDrawingId(point: Point, drawings: ParsedDrawing[]): string | null {
+  for (let i = drawings.length - 1; i >= 0; i -= 1) {
+    const drawing = drawings[i]!;
+    if (isPointNearDrawing(point, drawing)) return drawing.id;
+  }
+  return null;
+}
+
+function isPointNearDrawing(point: Point, drawing: ParsedDrawing): boolean {
+  const threshold = drawing.strokeWidth / 2 + HIT_TEST_TOLERANCE;
+  const { points } = drawing;
+
+  if (points.length === 1) return distance(point, points[0]!) <= threshold;
+
+  for (let i = 0; i < points.length - 1; i += 1) {
+    if (distanceToSegment(point, points[i]!, points[i + 1]!) <= threshold) return true;
+  }
+  return false;
+}
+
+export type DrawingBounds = { x: number; y: number; width: number; height: number };
+
+export function getDrawingBounds(points: Point[], strokeWidth: number): DrawingBounds | null {
+  if (points.length === 0) return null;
+
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const padding = strokeWidth / 2;
+  const minX = Math.min(...xs) - padding;
+  const maxX = Math.max(...xs) + padding;
+  const minY = Math.min(...ys) - padding;
+  const maxY = Math.max(...ys) + padding;
+
+  return {
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
 }

@@ -20,10 +20,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getDrawingBounds,
+  hitTestDrawingId,
   parseStrokePoints,
   shouldSampleStrokePoint,
   toDrawingCreateInput,
   toPathData,
+  type ParsedDrawing,
 } from './board-drawing';
 
 describe('shouldSampleStrokePoint', () => {
@@ -148,5 +151,79 @@ describe('parseStrokePoints', () => {
       { x: 1, y: 2 },
       { x: 4, y: 5 },
     ]);
+  });
+});
+
+function fakeDrawing(overrides: Partial<ParsedDrawing> = {}): ParsedDrawing {
+  return {
+    id: 'drawing-1',
+    points: [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+    ],
+    color: '#fff',
+    strokeWidth: 0,
+    ...overrides,
+  };
+}
+
+describe('hitTestDrawingId', () => {
+  it('선 위의 점을 찍으면 그 그림의 id를 반환한다', () => {
+    const drawing = fakeDrawing({ id: 'a' });
+
+    expect(hitTestDrawingId({ x: 5, y: 0 }, [drawing])).toBe('a');
+  });
+
+  it('선에서 여유 거리(HIT_TEST_TOLERANCE) 이내면 히트로 본다', () => {
+    const drawing = fakeDrawing({ id: 'a' });
+
+    expect(hitTestDrawingId({ x: 5, y: 8 }, [drawing])).toBe('a');
+  });
+
+  it('여유 거리보다 멀면 히트로 보지 않는다', () => {
+    const drawing = fakeDrawing({ id: 'a' });
+
+    expect(hitTestDrawingId({ x: 5, y: 9 }, [drawing])).toBeNull();
+  });
+
+  it('여러 그림이 겹치면 나중에 그려진(배열 뒤쪽) 것을 반환한다', () => {
+    const first = fakeDrawing({ id: 'a' });
+    const second = fakeDrawing({ id: 'b' });
+
+    expect(hitTestDrawingId({ x: 5, y: 0 }, [first, second])).toBe('b');
+  });
+
+  it('점이 하나뿐인 그림은 그 점을 중심으로 한 원형 범위로 히트를 판단한다', () => {
+    const drawing = fakeDrawing({ id: 'a', points: [{ x: 5, y: 5 }] });
+
+    expect(hitTestDrawingId({ x: 13, y: 5 }, [drawing])).toBe('a');
+    expect(hitTestDrawingId({ x: 14, y: 5 }, [drawing])).toBeNull();
+  });
+
+  it('그림이 하나도 없으면 null을 반환한다', () => {
+    expect(hitTestDrawingId({ x: 0, y: 0 }, [])).toBeNull();
+  });
+});
+
+describe('getDrawingBounds', () => {
+  it('점이 없으면 null을 반환한다', () => {
+    expect(getDrawingBounds([], 4)).toBeNull();
+  });
+
+  it('점이 하나면 strokeWidth만큼 패딩된 정사각형을 반환한다', () => {
+    const result = getDrawingBounds([{ x: 10, y: 20 }], 6);
+
+    expect(result).toEqual({ x: 10, y: 20, width: 6, height: 6 });
+  });
+
+  it('여러 점이면 최소/최대 좌표에 패딩을 더해 중심과 크기를 계산한다', () => {
+    const points = [
+      { x: 0, y: 0 },
+      { x: 10, y: 4 },
+    ];
+
+    const result = getDrawingBounds(points, 2);
+
+    expect(result).toEqual({ x: 5, y: 2, width: 12, height: 6 });
   });
 });
