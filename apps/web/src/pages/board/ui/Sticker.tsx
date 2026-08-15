@@ -1,9 +1,13 @@
 'use client';
 
 import type { paths } from '@ppotto/api';
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
-import { STICKER_OUTLINE_FILTER_ID } from '@/shared/ui/StickerOutlineFilter';
+import {
+  drawOutlinedSticker,
+  STICKER_OUTLINE_WIDTH,
+  useStickerImage,
+} from '@/shared/lib/sticker-raster';
 
 import type { StickerTransform } from '../model/board-transform';
 
@@ -28,24 +32,6 @@ export type StickerData = Omit<ApiSticker, 'badgeRotation' | 'posX' | 'posY' | '
   posY: number;
   zIndex: number;
 };
-
-// GCS 원본 URL을 next/image 프록시(same-origin)로 바꾼다.
-function toProxiedImageSrc(src: string): string {
-  return `/_next/image?url=${encodeURIComponent(src)}&w=1080&q=75`;
-}
-
-export function useStickerImage(src?: string) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-
-  useEffect(() => {
-    if (!src) return;
-    const img = new window.Image();
-    img.src = toProxiedImageSrc(src);
-    img.onload = () => setImage(img);
-  }, [src]);
-
-  return image;
-}
 
 export function stickerZIndex(sticker: Pick<StickerData, 'zIndex'>): number {
   return (sticker.zIndex ?? 0) * 2;
@@ -78,8 +64,15 @@ type StickerProps = {
 
 export function Sticker({ sticker, selected, transformOverride }: StickerProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const scale = transformOverride?.scale ?? sticker.scale;
   const { width, height } = getPhotoSize(photoImage, scale);
+
+  useLayoutEffect(() => {
+    if (canvasRef.current && photoImage) {
+      drawOutlinedSticker(canvasRef.current, photoImage, STICKER_MAX_EDGE);
+    }
+  }, [photoImage]);
 
   if (!photoImage || width <= 0 || height <= 0) return null;
 
@@ -87,13 +80,11 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
   const y = transformOverride?.y ?? sticker.posY ?? 0;
   const rotation = transformOverride?.rotation ?? sticker.rotation;
 
+  const outline = STICKER_OUTLINE_WIDTH * scale;
+
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- 보드 좌표계에 직접 배치하는 스티커라 next/image 최적화 대상이 아님
-    <img
-      src={photoImage.src}
-      alt=""
+    <div
       data-sticker-id={sticker.id}
-      draggable={false}
       style={{
         position: 'absolute',
         left: x,
@@ -102,13 +93,24 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
         height,
         zIndex: stickerZIndex(sticker),
         transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-        filter: `url(#${STICKER_OUTLINE_FILTER_ID}) ${
-          selected
-            ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
-            : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))'
-        }`,
         touchAction: 'none',
       }}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: -outline,
+          top: -outline,
+          width: width + outline * 2,
+          height: height + outline * 2,
+          filter: selected
+            ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
+            : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
+          pointerEvents: 'none',
+        }}
+      />
+    </div>
   );
 }

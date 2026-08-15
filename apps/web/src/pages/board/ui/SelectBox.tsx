@@ -1,8 +1,10 @@
 'use client';
 
+import { useStickerImage } from '@/shared/lib/sticker-raster';
+
 import type { StickerTransform } from '../model/board-transform';
 
-import { getPhotoSize, stickerZIndex, useStickerImage, type StickerData } from './Sticker';
+import { getPhotoSize, stickerZIndex, type StickerData } from './Sticker';
 import { SelectionBoxFrame } from './SelectionBoxFrame';
 
 type SelectBoxProps = {
