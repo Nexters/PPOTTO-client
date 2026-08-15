@@ -895,9 +895,23 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         drawingLongPressRef.current.cancel();
 
         if (selectedDrawingIdRef.current) {
+          const pinchStart = drawingPinchStartRef.current;
+
+          if (pinchStart && pointersRef.current.size === 1) {
+            drawingPinchStartRef.current = null;
+            drawingBoxPinchStartRef.current = null;
+
+            const [remainingPointerId, remainingPoint] = [...pointersRef.current][0]!;
+            drawingDragStartRef.current = {
+              pointerId: remainingPointerId,
+              startWorldPoint: toWorldPoint(cameraRef.current, remainingPoint),
+            };
+            setLiveDrawingDragOffset({ x: 0, y: 0 });
+            return;
+          }
+
           const dragStart = drawingDragStartRef.current;
           const offset = drawingDragOffsetRef.current;
-          const pinchStart = drawingPinchStartRef.current;
           const pinchPreview = drawingPinchPreviewRef.current;
           const boxPinchPreview = drawingBoxPinchPreviewRef.current;
           drawingDragStartRef.current = null;
@@ -908,43 +922,50 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           drawingBoxPinchStartRef.current = null;
           setLiveDrawingBoxPinchPreview(null);
 
-          if (pinchStart) {
-            // 두 손가락 중 하나라도 떨어지면 리사이즈+회전을 끝내고 결과를 저장한다(선택은 유지).
-            // 실제로 손가락이 안 움직여 미리보기가 없었으면(=변화 없음) 저장하지 않는다
-            const drawing = drawingsRef.current.find((d) => d.id === selectedDrawingIdRef.current);
-            if (drawing && pinchPreview) {
-              moveDrawingRef.current(
-                toDrawingMoveInput(drawing.id, pinchPreview.points, {
-                  color: drawing.color,
-                  strokeWidth: pinchPreview.strokeWidth,
-                }),
-              );
-            }
-            // 선택 박스의 회전/배율/중심도 같이 확정해서, 다음 제스처가 이 값을 기준으로 이어지게 한다
-            if (boxPinchPreview) {
-              selectedDrawingBoxTransformRef.current = boxPinchPreview;
-              setSelectedDrawingBoxTransform(boxPinchPreview);
-            }
-          } else if (dragStart && dragStart.pointerId === e.pointerId && isOverTrash(e)) {
+          if (dragStart && dragStart.pointerId === e.pointerId && isOverTrash(e)) {
             deleteDrawingRef.current(selectedDrawingIdRef.current);
             setSelectedDrawingId(null);
             setSelectedDrawingBaseSize(null);
             setSelectedDrawingBoxTransform(null);
-          } else if (dragStart && dragStart.pointerId === e.pointerId && offset) {
-            const isMoved = offset.x !== 0 || offset.y !== 0;
-            const drawing = drawingsRef.current.find((d) => d.id === selectedDrawingIdRef.current);
-            if (isMoved && drawing) {
-              const movedPoints = drawing.points.map((p) => ({
-                x: p.x + offset.x,
-                y: p.y + offset.y,
-              }));
-              moveDrawingRef.current(
-                toDrawingMoveInput(drawing.id, movedPoints, {
-                  color: drawing.color,
-                  strokeWidth: drawing.strokeWidth,
-                }),
-              );
-            }
+            return;
+          }
+
+          const isMoved = !!(
+            dragStart &&
+            dragStart.pointerId === e.pointerId &&
+            offset &&
+            (offset.x !== 0 || offset.y !== 0)
+          );
+          const drawing = drawingsRef.current.find((d) => d.id === selectedDrawingIdRef.current);
+          const basePoints = pinchPreview?.points ?? drawing?.points;
+          const baseStrokeWidth = pinchPreview?.strokeWidth ?? drawing?.strokeWidth;
+
+          if (drawing && basePoints && baseStrokeWidth !== undefined && (pinchPreview || isMoved)) {
+            const finalPoints =
+              isMoved && offset
+                ? basePoints.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y }))
+                : basePoints;
+            moveDrawingRef.current(
+              toDrawingMoveInput(drawing.id, finalPoints, {
+                color: drawing.color,
+                strokeWidth: baseStrokeWidth,
+              }),
+            );
+          }
+
+          // 선택 박스의 회전/배율/중심도 같이 확정해서, 다음 제스처가 이 값을 기준으로 이어지게 한다
+          const baseBoxTransform = boxPinchPreview ?? selectedDrawingBoxTransformRef.current;
+          if (baseBoxTransform && (boxPinchPreview || isMoved)) {
+            const finalBoxTransform =
+              isMoved && offset
+                ? {
+                    ...baseBoxTransform,
+                    x: baseBoxTransform.x + offset.x,
+                    y: baseBoxTransform.y + offset.y,
+                  }
+                : baseBoxTransform;
+            selectedDrawingBoxTransformRef.current = finalBoxTransform;
+            setSelectedDrawingBoxTransform(finalBoxTransform);
           }
           return;
         }
