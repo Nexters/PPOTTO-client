@@ -56,6 +56,22 @@ describe('TRACE_PROPAGATION_TARGETS', () => {
     assert.equal(matches('https://kapi.kakao.com/v1/user'), false);
   });
 
+  it('호스트를 접두사로 위장한 도메인에는 전파하지 않는다', () => {
+    assert.equal(matches('https://api.ppotto.co.kr.attacker.com/steal'), false);
+    assert.equal(matches('https://dev-api.ppotto.co.kr.evil.net/'), false);
+  });
+
+  it('경로나 쿼리에 호스트 문자열이 들어가도 전파하지 않는다', () => {
+    assert.equal(matches('https://attacker.com/api.ppotto.co.kr'), false);
+    assert.equal(matches('https://evil.com/?next=https://api.ppotto.co.kr'), false);
+  });
+
+  it('포트나 쿼리가 붙은 우리 호스트에는 전파한다', () => {
+    assert.ok(matches('https://api.ppotto.co.kr'));
+    assert.ok(matches('https://api.ppotto.co.kr:443/boards'));
+    assert.ok(matches('https://dev-api.ppotto.co.kr/users/me?x=1'));
+  });
+
   it('환경 판별과 같은 호스트 목록을 쓴다', () => {
     assert.equal(TRACE_PROPAGATION_TARGETS.length, 2);
   });

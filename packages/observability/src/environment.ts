@@ -6,7 +6,7 @@ const HOST_ENVIRONMENTS: Record<string, Environment> = {
 };
 
 export const TRACE_PROPAGATION_TARGETS: RegExp[] = Object.keys(HOST_ENVIRONMENTS).map(
-  (host) => new RegExp(host.replaceAll('.', '\\.')),
+  (host) => new RegExp(`^https://${host.replaceAll('.', '\\.')}(?::\\d+)?(?:[/?#]|$)`),
 );
 
 export function resolveEnvironment(apiUrl: string | undefined): Environment {
