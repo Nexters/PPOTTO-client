@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 
@@ -14,7 +16,10 @@ type RecapShareCardProps = {
 };
 
 export function RecapShareCard({ stickerId, data, options }: RecapShareCardProps) {
-  const floatComments = data.comments.filter((comment) => comment.posX != null);
+  const floatComments = useMemo(
+    () => data.comments.filter((comment) => comment.posX != null),
+    [data.comments],
+  );
   const tags = data.comments.filter((comment) => comment.posX == null);
 
   return (

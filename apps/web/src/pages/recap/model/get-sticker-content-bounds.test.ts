@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeContentBounds } from './get-sticker-content-bounds';
+import { computeContentBounds, computeOccupancyGrid } from './get-sticker-content-bounds';
 
 function makePixels(
   width: number,
@@ -66,5 +66,44 @@ describe('computeContentBounds', () => {
     ]);
 
     expect(computeContentBounds(pixels, 10, 4)).toEqual({ x: 8, y: 1, width: 2, height: 2 });
+  });
+});
+
+describe('computeOccupancyGrid', () => {
+  it('불투명 픽셀이 있는 칸만 점유로 표시한다', () => {
+    // 4x4를 2px 칸으로 나눈 2x2 격자, 오른쪽 아래 칸에만 불투명 픽셀
+    const pixels = makePixels(4, 4, [[3, 3]]);
+
+    const grid = computeOccupancyGrid(pixels, 4, 4, 2);
+
+    expect(grid).toEqual({ cellSize: 2, cols: 2, rows: 2, occupied: [false, false, false, true] });
+  });
+
+  it('원형처럼 가운데만 채워진 모양이면 모서리 칸은 비어 있다고 판단한다', () => {
+    // 6x6을 2px 칸으로 나눈 3x3 격자, 가운데 칸(2~3,2~3)에만 불투명 픽셀
+    const points: [number, number][] = [
+      [2, 2],
+      [3, 2],
+      [2, 3],
+      [3, 3],
+    ];
+    const pixels = makePixels(6, 6, points);
+
+    const grid = computeOccupancyGrid(pixels, 6, 6, 2);
+
+    // 네 모서리 칸
+    expect(grid.occupied[0 * 3 + 0]).toBe(false);
+    expect(grid.occupied[0 * 3 + 2]).toBe(false);
+    expect(grid.occupied[2 * 3 + 0]).toBe(false);
+    expect(grid.occupied[2 * 3 + 2]).toBe(false);
+    expect(grid.occupied[1 * 3 + 1]).toBe(true);
+  });
+
+  it('전부 투명하면 모든 칸이 비어 있다', () => {
+    const pixels = makePixels(4, 4, []);
+
+    const grid = computeOccupancyGrid(pixels, 4, 4, 2);
+
+    expect(grid.occupied.every((cell) => cell === false)).toBe(true);
   });
 });

@@ -1,12 +1,17 @@
 import { useFlow } from '@stackflow/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 
+import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
+import { useUpdateCommentPositionsMutation } from '@/entities/sticker/api/sticker-mutations';
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
+import { stickerQueryKeys } from '@/entities/sticker/api/sticker-query-keys';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 
 import { useMarkStickerViewed } from '../board/model/use-mark-sticker-viewed';
 
+import type { PlacedBubble } from './model/recap-bubble-layout';
 import { RecapHeader } from './ui/RecapHeader';
 import { RecapPhotoGrid } from './ui/RecapPhotoGrid';
 import { RecapShareSheet } from './ui/RecapShareSheet';
@@ -24,6 +29,8 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
   const { markViewed } = useMarkStickerViewed(boardId);
   const { pop } = useFlow();
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { mutate: saveCommentPositions } = useUpdateCommentPositionsMutation();
 
   useRefetchOnActive(refetch, isStale);
 
@@ -38,10 +45,42 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
       (data?.comments.filter((comment) => comment.posX == null) ?? []).map((tag) => tag.content),
     [data?.comments],
   );
+  const floatComments = useMemo(
+    () => data?.comments.filter((comment) => comment.posX != null) ?? [],
+    [data?.comments],
+  );
+
+  // 불필요한 API 호출 방지 — 저장된 값과 다를 때만 저장
+  const handleLayoutComputed = (placed: PlacedBubble[]) => {
+    const changed = placed.some((bubble) => {
+      const original = floatComments.find((comment) => comment.id === bubble.id);
+      return !original || original.posX !== bubble.posX || original.posY !== bubble.posY;
+    });
+    if (!changed) return;
+
+    saveCommentPositions(
+      { stickerId, comments: placed },
+      {
+        onSuccess: () => {
+          queryClient.setQueryData(
+            stickerQueryKeys.detail(stickerId),
+            (current: StickerRecap | undefined) =>
+              current
+                ? {
+                    ...current,
+                    comments: current.comments.map((comment) => {
+                      const match = placed.find((bubble) => bubble.id === comment.id);
+                      return match ? { ...comment, posX: match.posX, posY: match.posY } : comment;
+                    }),
+                  }
+                : current,
+          );
+        },
+      },
+    );
+  };
 
   if (!data) return null;
-
-  const floatComments = data.comments.filter((comment) => comment.posX != null);
 
   return (
     <div
@@ -70,6 +109,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
               <RecapStickerVisual
                 imageUrl={data.sticker.imageUrl ?? ''}
                 floatComments={floatComments}
+                onLayoutComputed={handleLayoutComputed}
               />
               <RecapSummary content={data.summary} />
             </div>

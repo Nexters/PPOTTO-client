@@ -3,6 +3,7 @@ import { cn } from '@/shared/lib/cn';
 type BubbleProps = {
   content: string;
   direction: 'left' | 'right';
+  maxWidth: number;
 };
 
 const tailPath = {
@@ -11,17 +12,18 @@ const tailPath = {
     'M16.3048 20.1846C11.1048 20.9846 5.97148 18.1212 4.30482 16.2879C6.02269 12.1914 -4.5831 2.24186 2.4169 2.24148C4.03551 2.24148 5.41797 -1.9986 11.3048 1.1846C11.326 2.47144 11.3048 6.92582 11.3048 7.6842C11.3048 18.1842 17.3048 19.5813 16.3048 20.1846Z',
 };
 
-export function Bubble({ content, direction }: BubbleProps) {
+export function Bubble({ content, direction, maxWidth }: BubbleProps) {
   return (
     <div className="relative inline-flex self-start">
       <div
         className={cn(
-          'flex max-w-35 items-start self-stretch rounded-[18px]',
+          'flex items-start self-stretch rounded-[18px]',
           'bg-gray-200 px-3 py-1.5',
           direction === 'right' && 'justify-end',
         )}
+        style={{ maxWidth }}
       >
-        <span className="text-body-06 text-gray-900 wrap-break-word">{content}</span>
+        <span className="text-body-06 text-gray-900 break-keep">{content}</span>
       </div>
       <div
         className={cn(
