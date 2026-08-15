@@ -13,11 +13,7 @@ export function LoginPage() {
     try {
       const result = await bridge.request(channel);
       if (!result) return;
-      if (result.pendingTerms.length > 0) {
-        replace('Terms', {});
-        return;
-      }
-
+      // 약관 미동의 여부는 보드 진입 시 useTermsGate가 GET /terms로 판단한다
       replace('Board', {});
     } catch (error) {
       console.error('로그인 실패', error);

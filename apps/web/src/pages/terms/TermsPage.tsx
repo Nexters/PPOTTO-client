@@ -1,33 +1,35 @@
 'use client';
 
-import { CheckCircle, CheckCircleEmpty } from '@ppotto/assets';
+import {
+  Check,
+  CheckCircle,
+  CheckCircleEmpty,
+  ChevronLeft,
+  ChevronLeftSmall,
+  Logo,
+} from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import { useState } from 'react';
 
 import { useAgreeTermsMutation } from '@/entities/terms/api/terms-mutations';
 import { useTermsListQuery } from '@/entities/terms/api/terms-queries';
+import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/common/Button';
 
-const TERMS = [
-  {
-    code: 'TOS',
-    label: '서비스 이용약관',
-  },
-  {
-    code: 'PRIVACY',
-    label: '개인정보 처리방침',
-  },
-] as const;
+import { TERMS_META, type TermCode } from './terms-content';
+
+const TERM_CODES: TermCode[] = ['TOS', 'PRIVACY'];
 
 export function TermsPage() {
-  const { replace } = useFlow();
+  const { push, pop, replace } = useFlow();
   const { data: currentTerms } = useTermsListQuery();
   const { mutateAsync: agreeTerms, isPending } = useAgreeTermsMutation();
   const [checkedCodes, setCheckedCodes] = useState<string[]>([]);
 
-  const visibleTerms = TERMS.map((term) => ({
-    ...term,
-    serverTerm: currentTerms?.find(({ code }) => code === term.code),
+  const visibleTerms = TERM_CODES.map((code) => ({
+    code,
+    label: TERMS_META[code].label,
+    serverTerm: currentTerms?.find((term) => term.code === code),
   }));
   const allChecked = visibleTerms.every(
     ({ code, serverTerm }) => serverTerm?.agreed || checkedCodes.includes(code),
@@ -38,6 +40,13 @@ export function TermsPage() {
     setCheckedCodes((previous) =>
       previous.includes(code) ? previous.filter((item) => item !== code) : [...previous, code],
     );
+
+  const toggleAll = () => {
+    const togglableCodes = visibleTerms
+      .filter(({ serverTerm }) => !serverTerm?.agreed)
+      .map(({ code }) => code);
+    setCheckedCodes(allChecked ? [] : togglableCodes);
+  };
 
   const handleSubmit = async () => {
     try {
@@ -51,64 +60,88 @@ export function TermsPage() {
   };
 
   return (
-    <main className="flex min-h-dvh flex-col px-7.5">
-      <h1 className="text-subtitle-01 text-white">
-        서비스 이용을 위해
-        <br />
-        약관에 동의해 주세요
-      </h1>
+    <main className="flex h-dvh flex-col overflow-hidden bg-black px-6 text-white">
+      <header className="relative flex h-18 shrink-0 items-center justify-center">
+        <button
+          type="button"
+          aria-label="뒤로 가기"
+          onClick={() => pop()}
+          className="absolute left-0"
+        >
+          <ChevronLeft />
+        </button>
+        <Logo width={105} height={32} />
+      </header>
 
-      <div className="mt-10 flex flex-col gap-2">
-        <ul>
+      <div className="mt-9 flex flex-col gap-4">
+        <h1 className="text-subtitle-01 whitespace-pre-line text-white">
+          {'서비스 이용을 위해\n약관에 동의가 필요해요'}
+        </h1>
+        <p className="text-body-06 text-gray-500">
+          제공하시는 정보는 암호화되어 안전하게 저장되며,
+          <br />
+          <span className="font-semibold text-[#e0e0e0]">서비스 이용을 위해서만 사용</span>
+          됩니다.
+        </p>
+      </div>
+
+      <div className="flex-1" />
+
+      <section className="flex flex-col gap-5">
+        <button
+          type="button"
+          aria-pressed={allChecked}
+          onClick={toggleAll}
+          className={cn(
+            'flex h-14 w-full items-center gap-2 rounded-lg px-4',
+            allChecked ? 'bg-gray-900' : 'border-2 border-gray-900',
+          )}
+        >
+          {allChecked ? (
+            <CheckCircle width={24} height={24} />
+          ) : (
+            <CheckCircleEmpty width={24} height={24} color="#5c5f66" />
+          )}
+          <span className="text-body-03 text-gray-100">약관 전체동의</span>
+        </button>
+
+        <ul className="flex flex-col gap-4 pr-2 pl-4">
           {visibleTerms.map(({ code, label, serverTerm }) => {
             const checked = Boolean(serverTerm?.agreed || checkedCodes.includes(code));
             return (
-              <li key={code} className="flex items-center gap-3 px-4 py-3">
+              <li key={code} className="flex items-center justify-between">
                 <button
                   type="button"
                   aria-pressed={checked}
                   onClick={() => {
                     if (!serverTerm?.agreed) toggle(code);
                   }}
-                  className="flex flex-1 items-center gap-3 text-left"
+                  className="flex items-center gap-4"
                 >
-                  <Check checked={checked} />
-                  <span className="text-body-06 text-gray-300">
-                    <span className="text-white">[필수]</span> {label}
+                  <Check width={16} height={16} color={checked ? 'white' : '#5c5f66'} />
+                  <span className="text-body-04 text-gray-100">{label}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`${label} 상세보기`}
+                  onClick={() => push('TermsDetail', { code })}
+                  className="flex size-6 items-center justify-center"
+                >
+                  <span className="flex rotate-180">
+                    <ChevronLeftSmall />
                   </span>
                 </button>
-
-                {serverTerm?.contentUrl && (
-                  <a
-                    href={serverTerm.contentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-caption-01 text-gray-500 underline"
-                  >
-                    보기
-                  </a>
-                )}
               </li>
             );
           })}
         </ul>
-      </div>
+      </section>
 
-      <Button
-        disabled={!canSubmit || isPending}
-        onClick={() => void handleSubmit()}
-        className="mt-auto"
-      >
-        동의하고 계속하기
-      </Button>
+      <footer className="shrink-0 pt-8 pb-12">
+        <Button disabled={!canSubmit || isPending} onClick={() => void handleSubmit()}>
+          동의하고 계속하기
+        </Button>
+      </footer>
     </main>
-  );
-}
-
-function Check({ checked }: { checked: boolean }) {
-  return checked ? (
-    <CheckCircle width={24} height={24} />
-  ) : (
-    <CheckCircleEmpty width={24} height={24} color="#5c5f66" />
   );
 }

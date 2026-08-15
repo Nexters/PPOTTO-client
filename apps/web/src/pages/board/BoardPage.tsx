@@ -9,6 +9,7 @@ import { bridge } from '@/shared/lib/bridge';
 
 import { sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
+import { useTermsGate } from './model/use-terms-gate';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
@@ -26,6 +27,7 @@ const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.B
 const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
 
 export function BoardPage() {
+  useTermsGate();
   const {
     boardId,
     canDeleteStickers,
