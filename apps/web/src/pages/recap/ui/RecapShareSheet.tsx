@@ -1,6 +1,8 @@
+import Script from 'next/script';
 import { useRef, useState } from 'react';
 
 import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
+import { initKakao } from '@/shared/lib/kakao';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 
 import { RecapShareCard } from './RecapShareCard';
@@ -31,6 +33,12 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
 
   return (
     <>
+      <Script
+        src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.2/kakao.min.js"
+        strategy="lazyOnload"
+        crossOrigin="anonymous"
+        onLoad={initKakao}
+      />
       <BottomSheet isOpen={isOpen} onClose={handleClose} overlayClassName="bg-black/50">
         {screen === 'list' ? (
           <RecapShareList
