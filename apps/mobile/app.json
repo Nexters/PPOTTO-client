@@ -4,11 +4,11 @@
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/ppotto-icon.png",
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/ppotto-icon.png",
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.ppotto.mobile"
     },
