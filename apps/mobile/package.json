@@ -20,6 +20,7 @@
     }
   },
   "dependencies": {
+    "@hyperdx/otel-react-native": "^0.3.0",
     "@ppotto/api": "workspace:*",
     "@ppotto/assets": "workspace:*",
     "@ppotto/bridge": "workspace:*",
