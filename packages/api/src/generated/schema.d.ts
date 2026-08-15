@@ -268,6 +268,26 @@ export interface paths {
         patch: operations["updateTitle"];
         trace?: never;
     };
+    "/stickers/{stickerId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 리캡 코멘트 위치 일괄 수정
+         * @description 이미 위치가 있는 말풍선 코멘트만 대상으로, 리캡 상세 화면에서 바뀐 위치만 일괄 저장함. 하단 키워드 칩(posX/posY가 없던 코멘트)의 id는 허용되지 않음
+         */
+        patch: operations["updateCommentPositions"];
+        trace?: never;
+    };
     "/stickers/{stickerId}/regenerate": {
         parameters: {
             query?: never;
@@ -1026,6 +1046,27 @@ export interface components {
              */
             uploadUrl: string;
         };
+        /** @description 말풍선 코멘트 위치 */
+        RecapCommentPositionRequest: {
+            /**
+             * Format: uuid
+             * @description 코멘트 ID (uuidv7)
+             * @example 01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+             */
+            id: string;
+            /**
+             * Format: double
+             * @description 스티커 기준 상대 좌표 X
+             * @example -96
+             */
+            posX: number;
+            /**
+             * Format: double
+             * @description 스티커 기준 상대 좌표 Y
+             * @example -150
+             */
+            posY: number;
+        };
         /** @description 분석 리캡 코멘트. posX, posY가 있으면 스티커 주변 말풍선, null이면 하단 키워드 칩 */
         RecapCommentResponse: {
             /**
@@ -1360,6 +1401,11 @@ export interface components {
              * @example sample-refresh-token-01983f2a4d5e7f6a
              */
             refreshToken: string;
+        };
+        /** @description 리캡 코멘트 위치 일괄 저장 요청. 바뀐 말풍선 코멘트만 보냄 */
+        UpdateRecapCommentPositionsRequest: {
+            /** @description 변경된 말풍선 코멘트 위치 */
+            comments: components["schemas"]["RecapCommentPositionRequest"][];
         };
         /** @description 스티커 제목 변경 요청 */
         UpdateStickerTitleRequest: {
@@ -2341,6 +2387,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseUpdateStickerTitleResponse"];
+                };
+            };
+            /** @description 요청 값이 올바르지 않음 (COMMON-001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 스티커를 찾을 수 없음 (STICKER-001) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCommentPositions: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1";
+            };
+            path: {
+                /**
+                 * @description 코멘트가 속한 스티커 ID (uuidv7)
+                 * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+                 */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRecapCommentPositionsRequest"];
+            };
+        };
+        responses: {
+            /** @description 처리 완료. data는 항상 null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
             /** @description 요청 값이 올바르지 않음 (COMMON-001) */
