@@ -22,6 +22,7 @@ type StickerPreviewProps = {
   onSubmitTitle?: (title: string) => void;
   onCancelEditTitle?: () => void;
   titleInputRef?: Ref<HTMLInputElement>;
+  imageRef?: Ref<HTMLDivElement>;
 };
 
 export function StickerPreview({
@@ -30,6 +31,7 @@ export function StickerPreview({
   onSubmitTitle,
   onCancelEditTitle,
   titleInputRef,
+  imageRef,
 }: StickerPreviewProps) {
   if (!sticker.imageUrl) return null;
 
@@ -43,6 +45,7 @@ export function StickerPreview({
       style={{ top: HEADER_HEIGHT, bottom: BOTTOM_RESERVE_HEIGHT }}
     >
       <div
+        ref={imageRef}
         className="relative"
         style={{
           width: PREVIEW_MAX_WIDTH,

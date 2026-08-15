@@ -1,8 +1,10 @@
 import { Download, Edit, Reload, Trash } from '@ppotto/assets';
-import { useState, type Ref } from 'react';
+import { useRef, useState, type ComponentType, type Ref } from 'react';
 
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 import { Modal } from '@/shared/ui/common/Modal';
+
+import { useSaveStickerImage } from '../model/use-save-sticker-image';
 
 import type { StickerData } from './Sticker';
 import { StickerPreview } from './StickerPreview';
@@ -22,6 +24,27 @@ type StickerQuickMenuProps = {
   isDeleting: boolean;
 };
 
+type QuickMenuButtonProps = {
+  Icon: ComponentType<{ color?: string }>;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+};
+
+function QuickMenuButton({ Icon, label, onClick, disabled }: QuickMenuButtonProps) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className="flex items-center gap-2 text-white disabled:opacity-50"
+      onClick={onClick}
+    >
+      <Icon color="white" />
+      <span className="text-body-04 font-medium">{label}</span>
+    </button>
+  );
+}
+
 export function StickerQuickMenu({
   sticker,
   isOpen,
@@ -37,23 +60,12 @@ export function StickerQuickMenu({
   isDeleting,
 }: StickerQuickMenuProps) {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const previewImageRef = useRef<HTMLDivElement>(null);
+  const { saveStickerImage, isSaving } = useSaveStickerImage();
 
-  const menuItems = [
-    { label: '이름 변경하기', Icon: Edit, onClick: onRename, disabled: false },
-    { label: '스티커 저장하기', Icon: Download, onClick: onClose, disabled: false },
-    {
-      label: isRegenerating ? '스티커 다시 만드는 중...' : '스티커 다시 만들기',
-      Icon: Reload,
-      onClick: onRegenerate,
-      disabled: isRegenerating,
-    },
-    {
-      label: '삭제하기',
-      Icon: Trash,
-      onClick: () => setIsDeleteConfirmOpen(true),
-      disabled: isDeleting,
-    },
-  ];
+  const handleSave = () => {
+    if (previewImageRef.current) void saveStickerImage(previewImageRef.current, onClose);
+  };
 
   return (
     <>
@@ -63,23 +75,31 @@ export function StickerQuickMenu({
           <StickerPreview
             sticker={sticker}
             titleInputRef={titleInputRef}
+            imageRef={previewImageRef}
             isEditingTitle={isEditingTitle}
             onSubmitTitle={onSubmitTitle}
             onCancelEditTitle={onCancelEditTitle}
           />
         )}
-        {menuItems.map(({ label, Icon, onClick, disabled }) => (
-          <button
-            key={label}
-            type="button"
-            disabled={disabled}
-            className="flex items-center gap-2 text-white disabled:opacity-50"
-            onClick={onClick}
-          >
-            <Icon color="white" />
-            <span className="text-body-04 font-medium">{label}</span>
-          </button>
-        ))}
+        <QuickMenuButton Icon={Edit} label="이름 변경하기" onClick={onRename} />
+        <QuickMenuButton
+          Icon={Download}
+          label={isSaving ? '스티커 저장하는 중...' : '스티커 저장하기'}
+          onClick={handleSave}
+          disabled={isSaving}
+        />
+        <QuickMenuButton
+          Icon={Reload}
+          label={isRegenerating ? '스티커 다시 만드는 중...' : '스티커 다시 만들기'}
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        />
+        <QuickMenuButton
+          Icon={Trash}
+          label="삭제하기"
+          onClick={() => setIsDeleteConfirmOpen(true)}
+          disabled={isDeleting}
+        />
       </BottomSheet>
       <Modal
         open={isDeleteConfirmOpen}
