@@ -1,7 +1,7 @@
 'use client';
 
 import type { paths } from '@ppotto/api';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 
 import { STICKER_OUTLINE_FILTER_ID } from '@/shared/ui/StickerOutlineFilter';
 
@@ -76,7 +76,11 @@ type StickerProps = {
   transformOverride?: StickerTransform;
 };
 
-export function Sticker({ sticker, selected, transformOverride }: StickerProps) {
+export const Sticker = memo(function Sticker({
+  sticker,
+  selected,
+  transformOverride,
+}: StickerProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const scale = transformOverride?.scale ?? sticker.scale;
   const { width, height } = getPhotoSize(photoImage, scale);
@@ -111,4 +115,4 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
       }}
     />
   );
-}
+});

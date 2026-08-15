@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 import { toPathData } from '../model/board-drawing';
 import type { Point } from '../model/geometry';
 
@@ -8,7 +10,11 @@ type DrawingStrokeProps = {
 };
 
 // 점이 하나뿐인 stroke는 <path>가 moveto만 갖게 되어 브라우저에 따라 렌더가 안 될 수 있어 원으로 그린다
-export function DrawingStroke({ points, color, strokeWidth }: DrawingStrokeProps) {
+export const DrawingStroke = memo(function DrawingStroke({
+  points,
+  color,
+  strokeWidth,
+}: DrawingStrokeProps) {
   if (points.length === 0) return null;
 
   if (points.length === 1) {
@@ -25,4 +31,4 @@ export function DrawingStroke({ points, color, strokeWidth }: DrawingStrokeProps
       strokeLinejoin="round"
     />
   );
-}
+});
