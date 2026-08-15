@@ -43,6 +43,7 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
         {screen === 'list' ? (
           <RecapShareList
             cardRef={cardRef}
+            data={data}
             onOptionsClick={() => setScreen('options')}
             onSaved={handleClose}
           />

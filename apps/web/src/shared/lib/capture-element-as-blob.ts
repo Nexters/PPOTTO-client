@@ -2,10 +2,10 @@ import { toCanvas } from 'html-to-image';
 
 import { canvasToBlob } from './canvas-to-blob';
 
-export async function captureElementAsBlob(
+export async function captureElementAsCanvas(
   element: HTMLElement,
   options?: Parameters<typeof toCanvas>[1],
-): Promise<Blob> {
+): Promise<HTMLCanvasElement> {
   await Promise.all(
     Array.from(element.querySelectorAll('img'), (image) => {
       image.loading = 'eager';
@@ -13,6 +13,13 @@ export async function captureElementAsBlob(
     }),
   );
 
-  const canvas = await toCanvas(element, { includeQueryParams: true, ...options });
+  return toCanvas(element, { includeQueryParams: true, ...options });
+}
+
+export async function captureElementAsBlob(
+  element: HTMLElement,
+  options?: Parameters<typeof toCanvas>[1],
+): Promise<Blob> {
+  const canvas = await captureElementAsCanvas(element, options);
   return canvasToBlob(canvas);
 }
