@@ -1,4 +1,5 @@
 import { contract, type BridgeContract } from '@ppotto/bridge';
+import { shareCustomTemplate } from '@react-native-kakao/share';
 import { File, Paths } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import { router } from 'expo-router';
@@ -28,6 +29,7 @@ import { useToast } from '@/shared/ui/Toast';
 const WEB_URL = __DEV__ ? process.env.EXPO_PUBLIC_WEB_URL : 'https://ppotto.co.kr';
 const INSTAGRAM_APP_ID = '1002723789453387';
 const INSTAGRAM_PACKAGE = 'com.instagram.android';
+const KAKAO_SHARE_TEMPLATE_ID = 136185;
 
 async function openInstagramStore() {
   if (Platform.OS !== 'android') {
@@ -153,6 +155,15 @@ export function AppWebView({
         return { success: result.success };
       } catch (error) {
         console.warn('인스타그램 스토리 공유 실패', error);
+        return { success: false };
+      }
+    },
+    SHARE_KAKAO: async ({ templateArgs }) => {
+      try {
+        await shareCustomTemplate({ templateId: KAKAO_SHARE_TEMPLATE_ID, templateArgs });
+        return { success: true };
+      } catch (error) {
+        console.warn('카카오톡 공유 실패', error);
         return { success: false };
       }
     },
