@@ -79,6 +79,8 @@ type BoardCanvasProps = {
   onCanUndoChange?: (canUndo: boolean) => void;
   // 카메라 줌 배율이 바뀔 때마다 호출
   onCameraScaleChange?: (scale: number) => void;
+  // draw 모드에서 그림이 선택됐는지 여부가 바뀔 때마다 호출
+  onDrawingSelectionChange?: (selected: boolean) => void;
 };
 
 export type BoardCanvasHandle = {
@@ -118,6 +120,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onDrawingActiveChange,
     onCanUndoChange,
     onCameraScaleChange,
+    onDrawingSelectionChange,
   },
   ref,
 ) {
@@ -344,6 +347,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   useEffect(() => {
     onCameraScaleChange?.(camera.scale);
   }, [camera.scale, onCameraScaleChange]);
+
+  // 그림 선택(삭제 대상) 여부를 부모에 알림 — 상단 UI 숨김/하단 삭제 바 전환에 사용
+  useEffect(() => {
+    onDrawingSelectionChange?.(activeSelectedDrawingId !== null);
+  }, [activeSelectedDrawingId, onDrawingSelectionChange]);
 
   useImperativeHandle(
     ref,

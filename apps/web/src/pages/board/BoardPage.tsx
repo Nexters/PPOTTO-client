@@ -14,6 +14,7 @@ import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { DrawingColorPalette } from './ui/DrawingColorPalette';
+import { DrawingDeleteBar } from './ui/DrawingDeleteBar';
 import { DrawingHeader } from './ui/DrawingHeader';
 import { DRAW_STROKE_WIDTH_MIN, DrawingSizeSlider } from './ui/DrawingSizeSlider';
 import { DrawingSizePreview } from './ui/DrawingSizePreview';
@@ -44,7 +45,8 @@ export function BoardPage() {
   const [isAdjustingStrokeWidth, setIsAdjustingStrokeWidth] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [cameraScale, setCameraScale] = useState(1);
-  const isDrawingUiHidden = toolbarMode === 'draw' && isDrawingActive;
+  const [isDrawingSelected, setIsDrawingSelected] = useState(false);
+  const isDrawingUiHidden = toolbarMode === 'draw' && (isDrawingActive || isDrawingSelected);
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLCanvasElement | null>(null);
@@ -186,6 +188,7 @@ export function BoardPage() {
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
           onCameraScaleChange={setCameraScale}
+          onDrawingSelectionChange={setIsDrawingSelected}
           canvasRef={canvasRef}
         />
         {toolbarMode === 'draw' && !isDrawingUiHidden && (
@@ -223,6 +226,7 @@ export function BoardPage() {
             }
           />
         )}
+        {isDrawingSelected && <DrawingDeleteBar />}
         {pickerPosition && (
           <div
             className="pointer-events-none fixed z-70 -translate-x-1/2 -translate-y-full"
@@ -255,6 +259,7 @@ function BoardContent({
   onDrawingActiveChange,
   onCanUndoChange,
   onCameraScaleChange,
+  onDrawingSelectionChange,
   canvasRef,
 }: {
   boardId?: string;
@@ -266,6 +271,7 @@ function BoardContent({
   onDrawingActiveChange: (active: boolean) => void;
   onCanUndoChange: (canUndo: boolean) => void;
   onCameraScaleChange: (scale: number) => void;
+  onDrawingSelectionChange: (selected: boolean) => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
 }) {
   if (boardId) {
@@ -280,6 +286,7 @@ function BoardContent({
         onDrawingActiveChange={onDrawingActiveChange}
         onCanUndoChange={onCanUndoChange}
         onCameraScaleChange={onCameraScaleChange}
+        onDrawingSelectionChange={onDrawingSelectionChange}
       />
     );
   }
