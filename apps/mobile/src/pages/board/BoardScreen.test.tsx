@@ -1,4 +1,4 @@
-import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, userEvent, waitFor } from '@testing-library/react-native';
 
 import { BoardScreen } from './BoardScreen';
 
@@ -63,7 +63,6 @@ beforeEach(() => {
 });
 
 it('저장된 작업은 미리 준비하고 확인하기 전까지 로딩 화면으로 이동하지 않는다', async () => {
-  const user = userEvent.setup();
   photoUploadService.hasPending.mockResolvedValue(true);
 
   await render(<BoardScreen />);
@@ -79,7 +78,7 @@ it('저장된 작업은 미리 준비하고 확인하기 전까지 로딩 화면
   mockPreventRemoveCallback!({ data: { action: replaceAction } });
   expect(mockNavigationDispatch).not.toHaveBeenCalled();
 
-  await user.press(screen.getByRole('button', { name: '확인' }));
+  fireEvent.press(screen.getByRole('button', { name: '확인' }));
 
   mockPreventRemoveCallback!({ data: { action: replaceAction } });
 
