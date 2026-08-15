@@ -2,6 +2,7 @@ import Image from 'next/image';
 
 import type { StickerComment } from '@/entities/sticker/api/sticker-api';
 import { Bubble } from '@/shared/ui/Bubble';
+import { STICKER_OUTLINE_FILTER_ID, StickerOutlineFilter } from '@/shared/ui/StickerOutlineFilter';
 
 type RecapStickerVisualProps = {
   imageUrl: string;
@@ -11,17 +12,7 @@ type RecapStickerVisualProps = {
 export function RecapStickerVisual({ imageUrl, floatComments }: RecapStickerVisualProps) {
   return (
     <div className="relative flex h-52 w-full items-center justify-center">
-      <svg width="0" height="0" className="absolute">
-        <filter id="sticker-outline">
-          <feMorphology in="SourceAlpha" operator="dilate" radius="3" result="dilated" />
-          <feFlood floodColor="white" result="color" />
-          <feComposite in="color" in2="dilated" operator="in" result="outline" />
-          <feMerge>
-            <feMergeNode in="outline" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </svg>
+      <StickerOutlineFilter />
       <div className="relative h-44 w-44">
         <Image
           src={imageUrl}
@@ -29,7 +20,7 @@ export function RecapStickerVisual({ imageUrl, floatComments }: RecapStickerVisu
           fill
           sizes="176px"
           className="object-contain"
-          style={{ filter: 'url(#sticker-outline)' }}
+          style={{ filter: `url(#${STICKER_OUTLINE_FILTER_ID})` }}
         />
       </div>
       {floatComments.map((comment) => (
