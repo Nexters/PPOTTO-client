@@ -90,6 +90,8 @@ type BoardCanvasProps = {
   onCameraScaleChange?: (scale: number) => void;
   // draw 모드에서 그림이 선택됐는지 여부가 바뀔 때마다 호출
   onDrawingSelectionChange?: (selected: boolean) => void;
+  // 그림을 드래그하는 동안 휴지통 버튼 위에 있는지 여부가 바뀔 때마다 호출 — 놓기 전 확대 피드백에 사용
+  onDrawingDragOverTrashChange?: (isOver: boolean) => void;
   // 그림 드래그-삭제 드롭 판정에 쓰는 휴지통 버튼의 DOM ref
   trashButtonRef?: RefObject<HTMLButtonElement | null>;
 };
@@ -132,6 +134,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onCanUndoChange,
     onCameraScaleChange,
     onDrawingSelectionChange,
+    onDrawingDragOverTrashChange,
     trashButtonRef,
   },
   ref,
@@ -143,6 +146,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [drawingDragOffset, setDrawingDragOffset] = useState<Point | null>(null);
+  // 선택된 그림을 드래그하는 동안, 현재 휴지통 버튼 위에 있는지 — 놓기 전 시각 피드백(확대)에 사용
+  const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
@@ -176,6 +181,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     if (!isDrawMode) {
       setSelectedDrawingId(null);
       setDrawingDragOffset(null);
+      setIsDrawingOverTrash(false);
     }
   }
 
@@ -382,6 +388,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onDrawingSelectionChange?.(activeSelectedDrawingId !== null);
   }, [activeSelectedDrawingId, onDrawingSelectionChange]);
 
+  useEffect(() => {
+    onDrawingDragOverTrashChange?.(isDrawingOverTrash);
+  }, [isDrawingOverTrash, onDrawingDragOverTrashChange]);
+
   // draw 모드를 벗어나면 드래그 관련 ref도 정리 — 렌더 중엔 ref를 못 건드려 별도 effect로 분리
   useEffect(() => {
     if (isDrawMode) return;
@@ -501,7 +511,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
 
-    const isDroppedOnTrash = (e: PointerEvent): boolean => {
+    const isOverTrash = (e: PointerEvent): boolean => {
       const rect = trashButtonRef?.current?.getBoundingClientRect();
       if (!rect) return false;
       return (
@@ -642,6 +652,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             // 드래그 중 두 번째 손가락이 닿으면 드래그를 취소한다(선택은 유지)
             drawingDragStartRef.current = null;
             setLiveDrawingDragOffset(null);
+            setIsDrawingOverTrash(false);
           }
           const gesture = drawGestureRef.current;
           if (gesture?.kind !== 'pinching') return;
@@ -664,6 +675,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             x: worldPoint.x - dragStart.startWorldPoint.x,
             y: worldPoint.y - dragStart.startWorldPoint.y,
           });
+          setIsDrawingOverTrash(isOverTrash(e));
           return;
         }
 
@@ -774,8 +786,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           const offset = drawingDragOffsetRef.current;
           drawingDragStartRef.current = null;
           setLiveDrawingDragOffset(null);
+          setIsDrawingOverTrash(false);
 
-          if (dragStart && dragStart.pointerId === e.pointerId && isDroppedOnTrash(e)) {
+          if (dragStart && dragStart.pointerId === e.pointerId && isOverTrash(e)) {
             deleteDrawingRef.current(selectedDrawingIdRef.current);
             setSelectedDrawingId(null);
           } else if (dragStart && dragStart.pointerId === e.pointerId && offset) {

@@ -7,9 +7,10 @@ import { cn } from '@/shared/lib/cn';
 
 type DrawingDeleteBarProps = {
   trashButtonRef?: Ref<HTMLButtonElement>;
+  isDragOver?: boolean;
 };
 
-export function DrawingDeleteBar({ trashButtonRef }: DrawingDeleteBarProps) {
+export function DrawingDeleteBar({ trashButtonRef, isDragOver }: DrawingDeleteBarProps) {
   return (
     <div
       className={cn(
@@ -23,7 +24,11 @@ export function DrawingDeleteBar({ trashButtonRef }: DrawingDeleteBarProps) {
         ref={trashButtonRef}
         type="button"
         aria-label="삭제"
-        className="pointer-events-auto flex size-12 items-center justify-center rounded-full bg-white"
+        className={cn(
+          'pointer-events-auto flex size-12 items-center justify-center rounded-full',
+          'bg-white transition-transform duration-150 ease-out',
+          isDragOver && 'scale-125',
+        )}
       >
         <Trash color="#181818" width={28} height={28} />
       </button>

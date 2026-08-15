@@ -46,6 +46,7 @@ export function BoardPage() {
   const [canUndo, setCanUndo] = useState(false);
   const [cameraScale, setCameraScale] = useState(1);
   const [isDrawingSelected, setIsDrawingSelected] = useState(false);
+  const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
   const isDrawingUiHidden = toolbarMode === 'draw' && (isDrawingActive || isDrawingSelected);
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -191,6 +192,7 @@ export function BoardPage() {
           onCanUndoChange={setCanUndo}
           onCameraScaleChange={setCameraScale}
           onDrawingSelectionChange={setIsDrawingSelected}
+          onDrawingDragOverTrashChange={setIsDrawingOverTrash}
           canvasRef={canvasRef}
           trashButtonRef={trashButtonRef}
         />
@@ -229,7 +231,9 @@ export function BoardPage() {
             }
           />
         )}
-        {isDrawingSelected && <DrawingDeleteBar trashButtonRef={trashButtonRef} />}
+        {isDrawingSelected && (
+          <DrawingDeleteBar trashButtonRef={trashButtonRef} isDragOver={isDrawingOverTrash} />
+        )}
         {pickerPosition && (
           <div
             className="pointer-events-none fixed z-70 -translate-x-1/2 -translate-y-full"
@@ -263,6 +267,7 @@ function BoardContent({
   onCanUndoChange,
   onCameraScaleChange,
   onDrawingSelectionChange,
+  onDrawingDragOverTrashChange,
   canvasRef,
   trashButtonRef,
 }: {
@@ -276,6 +281,7 @@ function BoardContent({
   onCanUndoChange: (canUndo: boolean) => void;
   onCameraScaleChange: (scale: number) => void;
   onDrawingSelectionChange: (selected: boolean) => void;
+  onDrawingDragOverTrashChange: (isOver: boolean) => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
   trashButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
@@ -292,6 +298,7 @@ function BoardContent({
         onCanUndoChange={onCanUndoChange}
         onCameraScaleChange={onCameraScaleChange}
         onDrawingSelectionChange={onDrawingSelectionChange}
+        onDrawingDragOverTrashChange={onDrawingDragOverTrashChange}
         trashButtonRef={trashButtonRef}
       />
     );
