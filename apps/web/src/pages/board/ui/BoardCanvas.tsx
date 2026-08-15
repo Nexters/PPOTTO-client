@@ -18,6 +18,7 @@ import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
+import { StickerOutlineFilter } from '@/shared/ui/StickerOutlineFilter';
 
 import {
   type CameraState,
@@ -1132,6 +1133,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         backgroundPosition: `${camera.x}px ${camera.y}px`,
       }}
     >
+      <StickerOutlineFilter />
       {stickers.length === 0 && (
         <EmptyBoardSticker
           title={emptyBoardStickerTitle}

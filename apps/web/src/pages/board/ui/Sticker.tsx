@@ -3,6 +3,8 @@
 import type { paths } from '@ppotto/api';
 import { useEffect, useState } from 'react';
 
+import { STICKER_OUTLINE_FILTER_ID } from '@/shared/ui/StickerOutlineFilter';
+
 import type { StickerTransform } from '../model/board-transform';
 
 // 스티커 크기는 긴 변을 이 값으로 맞추고 비율을 유지한다
@@ -100,9 +102,11 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
         height,
         zIndex: stickerZIndex(sticker),
         transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-        filter: selected
-          ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
-          : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
+        filter: `url(#${STICKER_OUTLINE_FILTER_ID}) ${
+          selected
+            ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
+            : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))'
+        }`,
         touchAction: 'none',
       }}
     />
