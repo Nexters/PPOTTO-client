@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import '@/app/styles/globals.css';
 
+import { HyperDXProvider } from '@/app/providers/hyperdx-provider';
 import { QueryProvider } from '@/app/providers/query-provider';
 import { cn } from '@/shared/lib/cn';
 import { ToastProvider } from '@/shared/ui/common/Toast';
@@ -33,6 +34,7 @@ export default function RootLayout({
           )}
         >
           <QueryProvider>
+            <HyperDXProvider />
             <ToastProvider>{children}</ToastProvider>
           </QueryProvider>
         </div>

@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@hyperdx/browser": "^0.25.1",
     "@ppotto/api": "workspace:*",
     "@ppotto/assets": "workspace:*",
     "@ppotto/bridge": "workspace:*",

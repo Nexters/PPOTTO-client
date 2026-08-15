@@ -5,6 +5,7 @@ import { useFlow } from '@stackflow/react';
 
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
+import { recordBridgeFailure } from '@/shared/lib/hyperdx';
 
 export function LoginPage() {
   const { replace } = useFlow();
@@ -16,6 +17,7 @@ export function LoginPage() {
       // 약관 미동의 여부는 보드 진입 시 useTermsGate가 GET /terms로 판단한다
       replace('Board', {});
     } catch (error) {
+      recordBridgeFailure(channel, error);
       console.error('로그인 실패', error);
     }
   };
