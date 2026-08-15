@@ -55,5 +55,6 @@ function contentTypeOf(filename: string) {
   if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg' as const;
   if (extension === 'png') return 'image/png' as const;
   if (extension === 'heic' || extension === 'heif') return 'image/heic' as const;
+  if (extension === 'webp') return 'image/webp' as const;
   throw new Error(`지원하지 않는 원본 이미지 형식입니다: ${filename}`);
 }

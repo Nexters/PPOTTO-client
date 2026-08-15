@@ -14,20 +14,22 @@ import { usePhotoSelection } from '@/features/photo-selection';
 import { PhotoSelectScreen } from './PhotoSelectScreen';
 
 let mockSearchParams: { boardId: string; mode?: string } = { boardId: 'board-1' };
+const mockImageResize = jest.fn();
+const mockImageSave = jest.fn();
 
 /**
- * 동작 범위 (2026-07-30 인터뷰, 2026-07-30 축소)
+ * 동작 범위 (2026-07-30 인터뷰, 2026-08-15 통일)
  *
- * 진입하면 선택된 앨범에서 100그룹을 불러와 전체 선택 상태로 시작한다. 타일 누름은 대상에 따라
- * 다르게 동작한다 — 1장 그룹은 제외, 여러 장 그룹은 다음 사진으로 승계.
- * 제외 개수에 상한은 없고 90 미만이면 CTA만 비활성화한다(PRD의 "최대 10개"는 제출 범위 90~100).
+ * 첫 업로드·이후 업로드 모두 갤러리 전체를 페이지네이션으로 불러와 그룹으로 묶는다.
+ * 유일한 모드 차이는 초기 상태 — 첫 업로드는 최신 100그룹 자동선택, 이후 업로드는 전부 미선택.
+ * 타일 누름은 대상에 따라 다르게 동작한다 — 1장 그룹은 제외, 여러 장 그룹은 다음 사진으로 승계.
+ * 선택은 제출 상한(100)까지만 가능하고, 90(추가 업로드는 20) 미만이면 CTA만 비활성화한다.
  *
- * 대역은 expo-media-library·expo-router·expo-image-manipulator 경계뿐이다. loadPhotoGroups·groupPhotos·
+ * 대역은 expo-media-library·expo-router·expo-image-manipulator 경계뿐이다. groupPhotos·
  * AlbumDropdown·PhotoTile은 실제로 돌린다.
  *
  * 검증 지점 이동 — 아래는 여기서 다시 보지 않는다.
  *   그룹화·대표 선정·승계·소진·복구 규칙       → photo-group.test.ts
- *   페이지 로딩 루프, 앨범에 100개 미만일 때 → load-photo-groups.test.ts
  *   드롭다운 열림·닫힘·선택 콜백              → AlbumDropdown.test.tsx
  *   제외된 타일의 체크 해제 표시               → 아래 2번이 간접 검증
  *   카운터 경고 색상, 타일 dim, chevron 방향   → 스타일이라 시안 대조 항목
@@ -35,7 +37,7 @@ let mockSearchParams: { boardId: string; mode?: string } = { boardId: 'board-1' 
  * 제외: 진입 시 갤러리 전체에 100그룹 미만 → 생성 불가 안내 화면 — 별도 작업, Unable 시안 없음
  * 제외: 권한 거부 안내·설정 이동 — 별도 시안 필요
  * 제외: 백그라운드 중 설정에서 권한 회수 후 복귀 — 드묾, 실제 문제 시 추가
- * CTA는 업로드 서비스 시작과 BoardScreen 이동만 검증하고 업로드 내부 동작은 feature 테스트가 담당
+ * CTA는 업로드 서비스 시작과 로딩 화면 이동만 검증하고 업로드 내부 동작은 feature 테스트가 담당
  * 제외: 로딩 중 타일 표현 — 시안의 회색 타일은 샘플 필러이지 플레이스홀더가 아님
  *
  * [팀확인] 700:7641 시안의 dim 누락 — 디자이너 확인, 구현은 dim 적용
@@ -57,22 +59,32 @@ jest.mock('expo-image-manipulator', () => ({
     manipulate: jest.fn((uri: string) => {
       const context = {
         renderAsync: jest.fn(async () => ({
-          saveAsync: jest.fn(async () => ({
-            uri: uri.replace('file:///', 'file:///compressed/'),
-            width: 1280,
-            height: 1280,
-          })),
+          saveAsync: jest.fn(async (options) => {
+            mockImageSave(options);
+            return {
+              uri: uri.replace('file:///', 'file:///compressed/'),
+              width: 512,
+              height: 341,
+            };
+          }),
           release: jest.fn(),
         })),
         release: jest.fn(),
       };
-      return { ...context, resize: jest.fn(() => context) };
+      return {
+        ...context,
+        resize: jest.fn((target) => {
+          mockImageResize(target);
+          return context;
+        }),
+      };
     }),
   },
-  SaveFormat: { JPEG: 'jpeg' },
+  SaveFormat: { JPEG: 'jpeg', WEBP: 'webp' },
 }));
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: { start: jest.fn() },
+  sampleMotionPhotos: <T,>(photos: T[]) => photos.slice(0, 25),
 }));
 jest.mock('@/entities/user/api/user-queries', () => ({
   useMeQuery: () => ({ data: { name: '뽀또' } }),
@@ -237,14 +249,30 @@ it('89개로 내려가면 CTA가 비활성화되고 90개로 회복하면 다시
 });
 
 it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다', async () => {
-  setGallery(spacedAssets(100));
+  setGallery(spacedAssets(100).map((photo) => ({ ...photo, width: 1200, height: 800 })));
   const { user } = await renderLoadedScreen();
+
+  expect(mockImageSave).not.toHaveBeenCalled();
 
   await user.press(cta());
 
   expect(photoUploadService.start).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(25));
+  expect(mockImageResize).toHaveBeenCalledWith({ width: 768, height: 512 });
+  expect(mockImageSave.mock.calls.every(([options]) => options.format === 'jpeg')).toBe(true);
+  const startOptions = photoUploadService.start.mock.calls[0]![0];
+  expect(startOptions.photoCount).toBe(100);
+  await expect(startOptions.motionPhotos).resolves.toEqual(
+    expect.arrayContaining([expect.objectContaining({ contentType: 'image/jpeg' })]),
+  );
+
+  const uploadJob = await startOptions.prepareJob();
+  expect(uploadJob.groups).toHaveLength(100);
+  expect(mockImageSave.mock.calls.slice(25).every(([options]) => options.format === 'jpeg')).toBe(
+    true,
+  );
   expect(router.replace).toHaveBeenCalledWith({
-    pathname: '/board',
+    pathname: '/analysis-loading',
     params: { boardId: 'board-1' },
   });
 });
@@ -326,7 +354,7 @@ describe('추가 업로드', () => {
   });
 
   it('스크롤 끝에 도달하면 다음 사진 페이지를 불러온다', async () => {
-    setGallery(spacedAssets(250));
+    setGallery(spacedAssets(350));
     await renderLoadedScreen();
 
     await act(async () => {
@@ -335,11 +363,27 @@ describe('추가 업로드', () => {
 
     await waitFor(() =>
       expect(getAssetsAsync).toHaveBeenCalledWith({
-        first: 100,
-        after: '100',
+        first: 500,
+        after: '300',
         sortBy: 'creationTime',
       }),
     );
+  });
+
+  it('연속 사진은 추가 업로드에서도 그룹으로 묶인다', async () => {
+    const burst = [
+      asset('b0', BASE_TIME),
+      asset('b1', BASE_TIME - minutes(1)),
+      asset('b2', BASE_TIME - minutes(2)),
+    ];
+    setGallery([...burst, ...spacedAssets(29, 10)]);
+
+    const { user } = await renderLoadedScreen();
+
+    // 분석 단위는 30개(그룹 1 + 단일 29)다. 배지는 남은 장수라 선택해야 보인다
+    expect(screen.getAllByRole('checkbox')).toHaveLength(30);
+    await user.press(screen.getAllByRole('checkbox')[0]!);
+    expect(screen.getByText('3')).toBeOnTheScreen();
   });
 
   it('100장이 선택된 상태에서는 사진을 더 선택하지 않는다', async () => {
@@ -352,13 +396,10 @@ describe('추가 업로드', () => {
         targetUnits: 100,
       }),
     );
-    await waitFor(() => expect(result.current.photoUnits).toHaveLength(100));
+    await waitFor(() => expect(result.current.photoUnits).toHaveLength(150));
 
     await act(() => result.current.toggleEverything());
-    await act(async () => {
-      await result.current.loadMore();
-    });
-    await waitFor(() => expect(result.current.photoUnits).toHaveLength(150));
+    expect(result.current.selectedCount).toBe(100);
 
     await act(() => result.current.toggleUnit(result.current.photoUnits[100]!));
 

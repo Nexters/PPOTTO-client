@@ -4,6 +4,8 @@ import { copyAsync } from 'expo-file-system/legacy';
 import type { UploadStorageFileSystem } from '../model/upload-storage';
 
 export const PHOTO_UPLOAD_ROOT_URI = new Directory(Paths.document, 'photo-upload').uri;
+export const ANALYSIS_LOADING_PHASE_URI = new File(Paths.document, 'analysis-loading-phase.txt')
+  .uri;
 
 export const expoUploadFileSystem: UploadStorageFileSystem = {
   async copyFile(sourceUri, destinationUri) {

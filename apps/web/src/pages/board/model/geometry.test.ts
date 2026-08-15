@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { angleBetween, clamp, rotatePoint } from './geometry';
+import { angleBetween, clamp, distanceToSegment, rotatePoint } from './geometry';
 
 describe('clamp', () => {
   it('범위 안의 값은 그대로 반환한다', () => {
@@ -60,5 +60,37 @@ describe('rotatePoint', () => {
     const result = rotatePoint({ x: 3, y: 4 }, 37);
 
     expect(Math.hypot(result.x, result.y)).toBeCloseTo(5);
+  });
+});
+
+describe('distanceToSegment', () => {
+  it('점이 선분 위에 있으면 0을 반환한다', () => {
+    const result = distanceToSegment({ x: 5, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 });
+
+    expect(result).toBeCloseTo(0);
+  });
+
+  it('점이 선분의 수직 투영 범위 안에 있으면 수직 거리를 반환한다', () => {
+    const result = distanceToSegment({ x: 5, y: 3 }, { x: 0, y: 0 }, { x: 10, y: 0 });
+
+    expect(result).toBeCloseTo(3);
+  });
+
+  it('점의 투영이 선분 시작점보다 앞이면 시작점까지의 거리를 반환한다', () => {
+    const result = distanceToSegment({ x: -4, y: 3 }, { x: 0, y: 0 }, { x: 10, y: 0 });
+
+    expect(result).toBeCloseTo(5);
+  });
+
+  it('점의 투영이 선분 끝점보다 뒤면 끝점까지의 거리를 반환한다', () => {
+    const result = distanceToSegment({ x: 14, y: 3 }, { x: 0, y: 0 }, { x: 10, y: 0 });
+
+    expect(result).toBeCloseTo(5);
+  });
+
+  it('선분의 길이가 0이면(양 끝점이 같으면) 점까지의 직선 거리를 반환한다', () => {
+    const result = distanceToSegment({ x: 3, y: 4 }, { x: 0, y: 0 }, { x: 0, y: 0 });
+
+    expect(result).toBeCloseTo(5);
   });
 });

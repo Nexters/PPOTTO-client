@@ -24,7 +24,7 @@ export function RecapShareOptions({ options, onBack, onToggle }: RecapShareOptio
         </button>
         <span className="text-body-01 text-white">공유 옵션</span>
       </div>
-      <div className="flex w-full flex-col gap-4">
+      <div className="flex w-full flex-col gap-5">
         {(Object.keys(shareOptionLabels) as ShareOptionKey[]).map((key) => (
           <button
             key={key}

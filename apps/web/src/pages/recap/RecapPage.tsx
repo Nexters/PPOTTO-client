@@ -1,5 +1,5 @@
 import { useFlow } from '@stackflow/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
@@ -8,11 +8,16 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { useMarkStickerViewed } from '../board/model/use-mark-sticker-viewed';
 
 import { RecapHeader } from './ui/RecapHeader';
+import { RecapHeaderSkeleton } from './ui/RecapHeaderSkeleton';
 import { RecapPhotoGrid } from './ui/RecapPhotoGrid';
+import { RecapPhotoGridSkeleton } from './ui/RecapPhotoGridSkeleton';
 import { RecapShareSheet } from './ui/RecapShareSheet';
 import { RecapStickerVisual } from './ui/RecapStickerVisual';
+import { RecapStickerVisualSkeleton } from './ui/RecapStickerVisualSkeleton';
 import { RecapSummary } from './ui/RecapSummary';
+import { RecapSummarySkeleton } from './ui/RecapSummarySkeleton';
 import { RecapThemeTags } from './ui/RecapThemeTags';
+import { RecapThemeTagsSkeleton } from './ui/RecapThemeTagsSkeleton';
 
 type RecapPageProps = {
   stickerId: string;
@@ -24,11 +29,13 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
   const { markViewed } = useMarkStickerViewed(boardId);
   const { pop } = useFlow();
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const markedViewedStickerIdRef = useRef<string | null>(null);
 
   useRefetchOnActive(refetch, isStale);
 
   useEffect(() => {
-    if (data?.sticker.isNew) {
+    if (data?.sticker.isNew && markedViewedStickerIdRef.current !== stickerId) {
+      markedViewedStickerIdRef.current = stickerId;
       markViewed(stickerId);
     }
   }, [data?.sticker.isNew, markViewed, stickerId]);
@@ -39,7 +46,32 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
     [data?.comments],
   );
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div
+        className="flex min-h-full w-full flex-col gap-10"
+        style={{
+          backgroundColor: '#000',
+          backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px)',
+          backgroundSize: '18px 18px',
+        }}
+      >
+        <div className="flex w-full flex-col gap-10 px-5">
+          <RecapHeaderSkeleton onBack={() => pop()} />
+          <div className="flex w-full flex-col gap-6">
+            <div className="flex w-full flex-col">
+              <RecapStickerVisualSkeleton />
+              <RecapSummarySkeleton />
+            </div>
+            <RecapThemeTagsSkeleton />
+          </div>
+        </div>
+        <div className="px-5">
+          <RecapPhotoGridSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   const floatComments = data.comments.filter((comment) => comment.posX != null);
 

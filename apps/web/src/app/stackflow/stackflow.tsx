@@ -8,12 +8,13 @@ import { basicRendererPlugin } from '@stackflow/plugin-renderer-basic';
 import { stackflow, type ActivityComponentType } from '@stackflow/react';
 
 import { BoardPage } from '@/pages/board';
+import { AnalysisLoadingPage } from '@/pages/analysis-loading';
 import { LoginPage } from '@/pages/login';
 import { OnboardingPage } from '@/pages/onboarding';
 import { PhotoViewerPage } from '@/pages/photo-viewer';
 import { RecapPage } from '@/pages/recap';
 import { SettingsPage } from '@/pages/settings';
-import { TermsPage } from '@/pages/terms';
+import { TermsDetailPage, TermsPage } from '@/pages/terms';
 
 import { config } from './config';
 
@@ -45,6 +46,12 @@ const TermsActivity: ActivityComponentType<'Terms'> = () => (
   </AppScreen>
 );
 
+const TermsDetailActivity: ActivityComponentType<'TermsDetail'> = ({ params }) => (
+  <AppScreen>
+    <TermsDetailPage code={params.code === 'PRIVACY' ? 'PRIVACY' : 'TOS'} />
+  </AppScreen>
+);
+
 const RecapActivity: ActivityComponentType<'Recap'> = ({ params }) => (
   <AppScreen>
     <RecapPage stickerId={params.stickerId} boardId={params.boardId} />
@@ -63,16 +70,24 @@ const SettingsActivity: ActivityComponentType<'Settings'> = () => (
   </AppScreen>
 );
 
+const AnalysisLoadingActivity: ActivityComponentType<'AnalysisLoading'> = () => (
+  <AppScreen>
+    <AnalysisLoadingPage />
+  </AppScreen>
+);
+
 export const { Stack } = stackflow({
   config,
   components: {
     Login: LoginActivity,
     Onboarding: OnboardingActivity,
     Terms: TermsActivity,
+    TermsDetail: TermsDetailActivity,
     Board: BoardActivity,
     Recap: RecapActivity,
     PhotoViewer: PhotoViewerActivity,
     Settings: SettingsActivity,
+    AnalysisLoading: AnalysisLoadingActivity,
   },
   plugins: [
     basicRendererPlugin(),

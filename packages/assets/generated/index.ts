@@ -13,6 +13,7 @@ export { default as Edit } from './Edit';
 export { default as Filter } from './Filter';
 export { default as FingerTest } from './FingerTest';
 export { default as IconDraw } from './IconDraw';
+export { default as IconEyedropper } from './IconEyedropper';
 export { default as IconHand } from './IconHand';
 export { default as IconPlus } from './IconPlus';
 export { default as IconSettings } from './IconSettings';

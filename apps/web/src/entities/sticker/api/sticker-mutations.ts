@@ -21,3 +21,14 @@ export const useDeleteStickersMutation = () =>
   useMutation({
     mutationFn: (stickerIds: string[]) => Promise.all(stickerIds.map(stickerApi.delete)),
   });
+
+type UpdateStickerTitleVariables = {
+  stickerId: string;
+  title: string;
+};
+
+export const useUpdateStickerTitleMutation = () =>
+  useMutation({
+    mutationFn: ({ stickerId, title }: UpdateStickerTitleVariables) =>
+      stickerApi.updateTitle(stickerId, title),
+  });

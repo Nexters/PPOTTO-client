@@ -8,6 +8,7 @@ import { StyleSheet, View } from 'react-native';
 import { QaRecorderProbe } from '@/features/qa-report';
 import { isQaToolEnabled } from '@/shared/lib/qa-tool';
 import { AppBackground } from '@/shared/ui/AppBackground';
+import { AppLaunchScreen } from '@/shared/ui/AppLaunchScreen';
 import { ToastProvider } from '@/shared/ui/Toast';
 
 const queryClient = new QueryClient();
@@ -30,11 +31,20 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false, contentStyle: styles.transparent }}>
               <Stack.Screen name="(auth)/index" />
               <Stack.Screen name="photo-select" options={{ animationTypeForReplace: 'pop' }} />
-              <Stack.Screen name="board" />
+              <Stack.Screen
+                name="analysis-loading"
+                options={{
+                  animation: 'default',
+                  animationTypeForReplace: 'push',
+                  gestureEnabled: false,
+                }}
+              />
+              <Stack.Screen name="board" options={{ animation: 'none' }} />
             </Stack>
             {isQaToolEnabled() && <QaRecorderProbe />}
           </ToastProvider>
         </ThemeProvider>
+        <AppLaunchScreen />
       </View>
     </QueryClientProvider>
   );

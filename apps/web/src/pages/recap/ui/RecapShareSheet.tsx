@@ -54,11 +54,13 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
           />
         )}
       </BottomSheet>
-      <div className="fixed top-0 left-[-9999px]" aria-hidden>
-        <div ref={cardRef}>
-          <RecapShareCard stickerId={stickerId} data={data} options={options} />
+      {isOpen && (
+        <div className="fixed top-0 left-[-9999px]" aria-hidden>
+          <div ref={cardRef}>
+            <RecapShareCard stickerId={stickerId} data={data} options={options} />
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

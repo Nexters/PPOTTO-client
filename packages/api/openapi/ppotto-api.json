@@ -1107,6 +1107,19 @@
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
                     }
+                  },
+                  "AUTH-007": {
+                    "summary": "애플 신규 가입인데 이메일 확보 실패. 애플 설정에서 앱 연동 해제 후 재로그인 필요",
+                    "description": "AUTH-007",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "AUTH-007",
+                        "message": "가입에 필요한 이메일을 확인할 수 없습니다. 다시 로그인해 주세요.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
                   }
                 }
               }
@@ -2100,6 +2113,180 @@
                         "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                         "title": "고양이 모음집"
                       }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청 값이 올바르지 않음 (COMMON-001)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-001": {
+                    "summary": "요청 바디 검증 실패",
+                    "description": "COMMON-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-001",
+                        "message": "잘못된 입력입니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "COMMON-001 (필드 오류)": {
+                    "summary": "필드별 검증 실패 상세가 함께 내려가는 경우",
+                    "description": "COMMON-001 (필드 오류)",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-001",
+                        "message": "잘못된 입력입니다.",
+                        "fieldErrors": [
+                          {
+                            "field": "name",
+                            "value": "열자가넘는아주긴보드이름",
+                            "reason": "크기가 1에서 10 사이여야 합니다"
+                          }
+                        ],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "스티커를 찾을 수 없음 (STICKER-001)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "STICKER-001": {
+                    "summary": "스티커 없음 또는 소유자 불일치",
+                    "description": "STICKER-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "STICKER-001",
+                        "message": "스티커를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/stickers/{stickerId}/comments": {
+      "patch": {
+        "tags": ["스티커"],
+        "summary": "리캡 코멘트 위치 일괄 수정",
+        "description": "이미 위치가 있는 말풍선 코멘트만 대상으로, 리캡 상세 화면에서 바뀐 위치만 일괄 저장함. 하단 키워드 칩(posX/posY가 없던 코멘트)의 id는 허용되지 않음",
+        "operationId": "updateCommentPositions",
+        "parameters": [
+          {
+            "name": "stickerId",
+            "in": "path",
+            "description": "코멘트가 속한 스티커 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1"]
+            },
+            "example": "1"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecapCommentPositionsRequest"
+              },
+              "examples": {
+                "말풍선 위치 수정": {
+                  "description": "말풍선 위치 수정",
+                  "value": {
+                    "comments": [
+                      {
+                        "id": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                        "posX": -80,
+                        "posY": 40
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "처리 완료. data는 항상 null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUnit"
+                },
+                "examples": {
+                  "성공": {
+                    "description": "성공",
+                    "value": {
+                      "success": true
                     }
                   }
                 }
@@ -4244,7 +4431,7 @@
           "contentType": {
             "type": "string",
             "description": "지원 형식. 업로드 시 Content-Type과 일치해야 함",
-            "enum": ["image/jpeg", "image/png", "image/heic"],
+            "enum": ["image/jpeg", "image/png", "image/heic", "image/webp"],
             "example": "image/jpeg"
           },
           "isRepresentative": {
@@ -4493,6 +4680,46 @@
           }
         },
         "required": ["id", "title"]
+      },
+      "RecapCommentPositionRequest": {
+        "type": "object",
+        "description": "말풍선 코멘트 위치",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "코멘트 ID (uuidv7)",
+            "example": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "posX": {
+            "type": "number",
+            "format": "double",
+            "description": "스티커 기준 상대 좌표 X",
+            "example": -96
+          },
+          "posY": {
+            "type": "number",
+            "format": "double",
+            "description": "스티커 기준 상대 좌표 Y",
+            "example": -150
+          }
+        },
+        "required": ["id", "posX", "posY"]
+      },
+      "UpdateRecapCommentPositionsRequest": {
+        "type": "object",
+        "description": "리캡 코멘트 위치 일괄 저장 요청. 바뀐 말풍선 코멘트만 보냄",
+        "properties": {
+          "comments": {
+            "type": "array",
+            "description": "변경된 말풍선 코멘트 위치",
+            "items": {
+              "$ref": "#/components/schemas/RecapCommentPositionRequest"
+            },
+            "minItems": 1
+          }
+        },
+        "required": ["comments"]
       },
       "RenameBoardRequest": {
         "type": "object",

@@ -1,15 +1,19 @@
-import { render } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 
 import { AppWebView } from './AppWebView';
 
-let mockBridgeHandlers: Record<string, (...args: never[]) => unknown>;
+let mockBridgeHandlers: Record<string, (payload?: unknown) => unknown>;
 let mockOnLoad: (() => void) | undefined;
+let mockOnLoadEnd: (() => void) | undefined;
 let mockOnMessage: ((event: { nativeEvent: { data: string } }) => void) | undefined;
 let mockOnOpenWindow: ((event: { nativeEvent: { targetUrl: string } }) => void) | undefined;
 let mockInjectedJavaScript: string | undefined;
 let mockWebviewDebuggingEnabled: boolean | undefined;
+let mockScrollEnabled: boolean | undefined;
 const mockPushMessage = jest.fn();
+const mockEmit = jest.fn();
+const mockFileWrite = jest.fn();
 
 jest.mock('@/lib/auth-session', () => ({
   getAccessToken: jest.fn(),
@@ -23,6 +27,27 @@ jest.mock('expo-router', () => ({
   },
 }));
 jest.mock('@/shared/ui/Toast', () => ({ useToast: () => jest.fn() }));
+jest.mock('expo-file-system', () => ({
+  File: jest.fn(() => ({
+    uri: 'file:///cache/recap-instagram-story.png',
+    write: mockFileWrite,
+    delete: jest.fn(),
+  })),
+  Paths: { cache: 'cache' },
+}));
+jest.mock('react-native-share', () => ({
+  __esModule: true,
+  Social: { InstagramStories: 'instagramstories' },
+  default: {
+    Social: { INSTAGRAM_STORIES: 'instagramstories' },
+    isPackageInstalled: jest.fn(),
+    shareSingle: jest.fn(),
+  },
+}));
+jest.mock('@/shared/ui/AppBackground', () => {
+  const { Text } = jest.requireActual('react-native') as typeof import('react-native');
+  return { AppBackground: () => <Text>앱 로딩 배경</Text> };
+});
 jest.mock('react-native-webview', () => {
   const React = jest.requireActual('react') as typeof import('react');
   const { View } = jest.requireActual('react-native') as typeof import('react-native');
@@ -32,26 +57,32 @@ jest.mock('react-native-webview', () => {
       unknown,
       {
         onLoad?: () => void;
+        onLoadEnd?: () => void;
         onMessage?: (event: { nativeEvent: { data: string } }) => void;
         onOpenWindow?: (event: { nativeEvent: { targetUrl: string } }) => void;
         injectedJavaScriptBeforeContentLoaded?: string;
         webviewDebuggingEnabled?: boolean;
+        scrollEnabled?: boolean;
       }
     >(function MockWebView(
       {
         injectedJavaScriptBeforeContentLoaded,
         onLoad,
+        onLoadEnd,
         onMessage,
         onOpenWindow,
         webviewDebuggingEnabled,
+        scrollEnabled,
       },
       _ref,
     ) {
       mockOnLoad = onLoad;
+      mockOnLoadEnd = onLoadEnd;
       mockOnMessage = onMessage;
       mockOnOpenWindow = onOpenWindow;
       mockInjectedJavaScript = injectedJavaScriptBeforeContentLoaded;
       mockWebviewDebuggingEnabled = webviewDebuggingEnabled;
+      mockScrollEnabled = scrollEnabled;
       return <View accessibilityLabel="웹뷰" />;
     }),
   };
@@ -60,21 +91,33 @@ jest.mock('webview-bridge-kit/react-native', () => ({
   useNativeBridge: (
     _ref: unknown,
     _contract: unknown,
-    handlers: Record<string, (...args: never[]) => unknown>,
+    handlers: Record<string, (payload?: unknown) => unknown>,
   ) => {
     mockBridgeHandlers = handlers;
-    return { pushMessage: mockPushMessage };
+    return { bridge: { emit: mockEmit }, pushMessage: mockPushMessage };
   },
 }));
 
 const { router } = jest.requireMock('expo-router') as {
   router: { push: jest.Mock; replace: jest.Mock };
 };
+const share = (
+  jest.requireMock('react-native-share') as {
+    default: { isPackageInstalled: jest.Mock; shareSingle: jest.Mock };
+  }
+).default;
 const originalQaToolEnabled = process.env.EXPO_PUBLIC_QA_TOOL_ENABLED;
 
 beforeEach(() => {
   process.env.EXPO_PUBLIC_QA_TOOL_ENABLED = 'false';
   jest.clearAllMocks();
+  mockOnLoad = undefined;
+  mockOnLoadEnd = undefined;
+  mockOnMessage = undefined;
+  mockOnOpenWindow = undefined;
+  mockInjectedJavaScript = undefined;
+  mockWebviewDebuggingEnabled = undefined;
+  mockScrollEnabled = undefined;
 });
 
 afterAll(() => {
@@ -98,15 +141,47 @@ describe('WebView 인증 만료', () => {
 });
 
 describe('WebView 외부 링크', () => {
-  it('HTTPS 새 창만 기본 브라우저로 연다', () => {
+  it('HTTPS 새 창만 기본 브라우저로 연다', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
-    render(<AppWebView />);
+    await render(<AppWebView />);
 
     mockOnOpenWindow?.({ nativeEvent: { targetUrl: 'https://example.com' } });
     mockOnOpenWindow?.({ nativeEvent: { targetUrl: 'javascript:alert(1)' } });
 
     expect(openURL).toHaveBeenCalledTimes(1);
     expect(openURL).toHaveBeenCalledWith('https://example.com');
+  });
+});
+
+describe('인스타그램 스토리 공유', () => {
+  it('설치되어 있으면 합성 이미지를 스토리 작성 화면으로 전달한다', async () => {
+    jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
+    share.shareSingle.mockResolvedValue({ success: true });
+    await render(<AppWebView />);
+
+    await expect(
+      mockBridgeHandlers.SHARE_INSTAGRAM_STORY!({ base64: 'image-base64' }),
+    ).resolves.toEqual({ success: true });
+
+    expect(mockFileWrite).toHaveBeenCalledWith('image-base64', { encoding: 'base64' });
+    expect(share.shareSingle).toHaveBeenCalledWith({
+      social: 'instagramstories',
+      appId: '1002723789453387',
+      backgroundImage: 'file:///cache/recap-instagram-story.png',
+    });
+  });
+
+  it('설치되어 있지 않으면 앱스토어로 이동한다', async () => {
+    jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(false);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    await render(<AppWebView />);
+
+    await expect(
+      mockBridgeHandlers.SHARE_INSTAGRAM_STORY!({ base64: 'image-base64' }),
+    ).resolves.toEqual({ success: true });
+
+    expect(openURL).toHaveBeenCalledWith('https://apps.apple.com/app/instagram/id389801252');
+    expect(share.shareSingle).not.toHaveBeenCalled();
   });
 });
 
@@ -119,6 +194,68 @@ describe('WebView 로딩', () => {
     mockOnLoad?.();
 
     expect(onReady).toHaveBeenCalledTimes(1);
+  });
+
+  it('분석 로딩 화면은 웹 모션이 준비될 때까지 네이티브 배경을 유지한다', async () => {
+    await render(<AppWebView path="/analysis-loading" waitForAnalysisReady />);
+
+    await act(async () => mockOnLoadEnd?.());
+    expect(screen.queryByText('앱 로딩 배경')).toBeOnTheScreen();
+
+    await act(async () => void mockBridgeHandlers.ANALYSIS_LOADING_READY!());
+    expect(screen.queryByText('앱 로딩 배경')).not.toBeOnTheScreen();
+  });
+
+  it('보드 화면은 웹 렌더가 끝날 때까지 네이티브 배경을 유지한다', async () => {
+    await render(<AppWebView path="/board" waitForBoardReady />);
+
+    await act(async () => mockOnLoadEnd?.());
+    expect(screen.queryByText('앱 로딩 배경')).toBeOnTheScreen();
+
+    await act(async () => void mockBridgeHandlers.BOARD_READY!());
+    expect(screen.queryByText('앱 로딩 배경')).not.toBeOnTheScreen();
+  });
+});
+
+describe('분석 로딩 브리지', () => {
+  it('페이지 전용 로딩 메시지를 부모가 제공한 handler에 위임한다', async () => {
+    const state = {
+      photoCount: 20,
+      photos: [{ id: 'photo-1', uri: 'data:image/jpeg;base64,image', width: 300, height: 400 }],
+      visiblePhase: 'SCAN' as const,
+      visualProgress: 25,
+    };
+    const nextState = { visiblePhase: 'GROUP' as const, visualProgress: 50 };
+    const bridgeHandlers = {
+      GET_ANALYSIS_LOADING_STATE: jest.fn(() => state),
+      ANALYSIS_LOADING_READY: jest.fn(),
+      ANALYSIS_LOADING_PHASE_STARTED: jest.fn(),
+      ANALYSIS_LOADING_PHASE_FINISHED: jest.fn(() => nextState),
+      ANALYSIS_LOADING_REVEAL_FINISHED: jest.fn(),
+    };
+    await render(<AppWebView bridgeHandlers={bridgeHandlers} path="/analysis-loading" />);
+
+    expect(await mockBridgeHandlers.GET_ANALYSIS_LOADING_STATE!()).toEqual(state);
+    await act(async () => void mockBridgeHandlers.ANALYSIS_LOADING_READY!());
+    await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED!({ phase: 'SCAN' });
+    expect(await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED!({ phase: 'SCAN' })).toEqual(
+      nextState,
+    );
+    await mockBridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED!();
+
+    expect(bridgeHandlers.ANALYSIS_LOADING_READY).toHaveBeenCalledTimes(1);
+    expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED).toHaveBeenCalledWith({ phase: 'SCAN' });
+    expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED).toHaveBeenCalledWith({ phase: 'SCAN' });
+    expect(bridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED).toHaveBeenCalledTimes(1);
+  });
+
+  it('현재 웹뷰에 보드 전환 이벤트를 보낸다', async () => {
+    const { rerender } = await render(<AppWebView path="/analysis-loading" />);
+
+    expect(mockEmit).not.toHaveBeenCalled();
+    await act(async () => rerender(<AppWebView path="/analysis-loading" showBoard />));
+
+    expect(mockEmit).toHaveBeenCalledWith('SHOW_BOARD');
   });
 });
 
@@ -136,6 +273,16 @@ describe('사진 선택 화면 이동', () => {
       pathname: '/photo-select',
       params: { boardId: 'board-1', mode: 'additional' },
     });
+  });
+});
+
+describe('보드 WebView 스크롤', () => {
+  it('보드가 활성화되면 네이티브 스크롤을 끈다', async () => {
+    await render(<AppWebView path="/board" />);
+
+    expect(mockScrollEnabled).toBe(true);
+    await act(async () => void mockBridgeHandlers.SET_BOARD_ACTIVE!({ active: true }));
+    expect(mockScrollEnabled).toBe(false);
   });
 });
 

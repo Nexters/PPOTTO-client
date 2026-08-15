@@ -2,7 +2,7 @@
  * 새 업로드 실행 경계
  * - 작업을 먼저 영속 저장하고, 저장된 사진 경로로 분석 생성과 PUT을 진행
  * - 최초 PUT에는 POST /analysis 응답 URL을 사용하고 reissue는 호출하지 않음
- * - 모든 PUT 성공 후 분석을 시작하고 로컬 작업을 정리
+ * - 모든 PUT 성공 후 분석을 시작하고 결과 화면을 나갈 때까지 복구용 로컬 작업을 유지
  * - PREPARING 작업 복구 → 새 분석을 생성하고 업로드 재개
  * - 분석 생성 응답 유실 → 서버의 기존 UPLOADING 분석을 취소하고 다시 생성
  * - 작업 폐기 → 서버 UPLOADING은 취소, ANALYZING은 유지, 서버 확인 실패 시 로컬 작업 보존
@@ -64,7 +64,7 @@ it('작업을 저장한 뒤 최초 발급 URL로 업로드하고 분석을 시�
     status: 'ANALYZING',
   });
 
-  expect(calls).toEqual(['save', 'create', 'put', 'start', 'clear']);
+  expect(calls).toEqual(['save', 'create', 'put', 'start']);
   expect(dependencies.putPhoto).toHaveBeenCalledWith({
     contentType: 'image/jpeg',
     fileUri: 'file:///documents/photo-upload/job-1/a.jpg',
@@ -150,7 +150,7 @@ it('작업을 폐기할 때 서버가 UPLOADING이면 서버를 취소한 뒤 �
   expect(calls).toEqual(['cancel-analysis', 'clear-job']);
 });
 
-it('작업을 폐기할 때 서버가 ANALYZING이면 취소하지 않고 로컬 작업만 정리한다', async () => {
+it('작업을 폐기할 때 서버가 ANALYZING이면 취소하지 않고 로컬 작업도 보존한다', async () => {
   const snapshot = uploadJob('file:///documents/photo-upload/job-1/a.jpg');
   const dependencies = dependenciesFor(snapshot, []);
   dependencies.getActiveAnalysis.mockResolvedValue({ id: 'analysis-1', status: 'ANALYZING' });
@@ -158,7 +158,7 @@ it('작업을 폐기할 때 서버가 ANALYZING이면 취소하지 않고 로컬
   await expect(discardSavedPhotoUpload(dependencies)).resolves.toBe('ANALYZING');
 
   expect(dependencies.cancelAnalysis).not.toHaveBeenCalled();
-  expect(dependencies.clearJob).toHaveBeenCalledTimes(1);
+  expect(dependencies.clearJob).not.toHaveBeenCalled();
 });
 
 it('서버 취소가 실패하면 로컬 작업을 보존한다', async () => {

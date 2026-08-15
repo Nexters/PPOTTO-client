@@ -71,7 +71,14 @@ export function SettingsPage() {
   };
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-10 px-6">
+    <main
+      className="flex min-h-full w-full flex-col gap-10 px-6"
+      style={{
+        backgroundColor: '#000',
+        backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px)',
+        backgroundSize: '18px 18px',
+      }}
+    >
       <header className="relative w-full h-6">
         <button
           type="button"

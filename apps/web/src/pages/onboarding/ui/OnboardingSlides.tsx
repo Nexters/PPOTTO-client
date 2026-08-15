@@ -32,7 +32,8 @@ const ThemeRecap = (
     alt=""
     width={1440}
     height={1304}
-    className="absolute inset-0 w-full h-auto m-auto"
+    // 이미지(1440×1304)가 슬라이드 박스(460×385)보다 세로로 길어 contain으로 박스 안에 맞춘다
+    className="absolute inset-0 m-auto h-full w-full object-contain"
   />
 );
 
@@ -62,7 +63,7 @@ const DecorateBoard = (
     alt=""
     width={1440}
     height={1304}
-    className="absolute inset-0 w-full h-auto m-auto"
+    className="absolute inset-0 m-auto h-full w-full object-contain"
   />
 );
 

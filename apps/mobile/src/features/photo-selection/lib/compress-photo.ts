@@ -9,9 +9,12 @@ const DEFAULT_QUALITY = 0.8;
 const STAGING_DIRECTORY = new Directory(Paths.document, 'photo-compression');
 
 export type CompressPhotoOptions = {
+  format?: SaveFormat;
   maxDimension?: number;
   quality?: number;
 };
+
+type CompressPhotoStage = 'render' | 'encode' | 'copy';
 
 function computeResizeTarget(
   photo: GalleryPhoto,
@@ -27,9 +30,11 @@ function computeResizeTarget(
 export async function compressPhoto(
   photo: GalleryPhoto,
   options?: CompressPhotoOptions,
+  onStage?: (stage: CompressPhotoStage) => void,
 ): Promise<GalleryPhoto> {
   const maxDimension = options?.maxDimension ?? DEFAULT_MAX_DIMENSION;
   const quality = options?.quality ?? DEFAULT_QUALITY;
+  const format = options?.format ?? SaveFormat.JPEG;
   const sourceUri = photo.uri;
 
   const target = computeResizeTarget(photo, maxDimension);
@@ -38,10 +43,13 @@ export async function compressPhoto(
     : ImageManipulator.manipulate(sourceUri);
 
   try {
+    onStage?.('render');
     const image = await context.renderAsync();
 
     try {
-      const result = await image.saveAsync({ compress: quality, format: SaveFormat.JPEG });
+      onStage?.('encode');
+      const result = await image.saveAsync({ compress: quality, format });
+      onStage?.('copy');
       STAGING_DIRECTORY.create({ idempotent: true, intermediates: true });
       const source = new File(result.uri);
       const staged = new File(STAGING_DIRECTORY, source.name);
