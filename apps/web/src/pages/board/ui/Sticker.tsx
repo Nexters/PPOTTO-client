@@ -3,8 +3,6 @@
 import type { paths } from '@ppotto/api';
 import { memo, useEffect, useState } from 'react';
 
-import { STICKER_OUTLINE_FILTER_ID } from '@/shared/ui/StickerOutlineFilter';
-
 import type { StickerTransform } from '../model/board-transform';
 
 // 스티커 크기는 긴 변을 이 값으로 맞추고 비율을 유지한다
@@ -50,15 +48,61 @@ function pickStickerImageWidth(scale: number): number {
   );
 }
 
+const OUTLINE_RADIUS_CSS_PX = 3;
+const OUTLINE_STEPS = 16;
+
+function bakeStickerOutline(source: HTMLImageElement, scale: number): string {
+  const w = source.naturalWidth;
+  const h = source.naturalHeight;
+  const displayedLongestEdge = STICKER_MAX_EDGE * scale;
+  const rawRadius = (OUTLINE_RADIUS_CSS_PX * Math.max(w, h)) / displayedLongestEdge;
+  const pad = Math.ceil(rawRadius) + 2;
+
+  const silhouette = document.createElement('canvas');
+  silhouette.width = w;
+  silhouette.height = h;
+  const silhouetteCtx = silhouette.getContext('2d')!;
+  silhouetteCtx.drawImage(source, 0, 0);
+  silhouetteCtx.globalCompositeOperation = 'source-in';
+  silhouetteCtx.fillStyle = '#fff';
+  silhouetteCtx.fillRect(0, 0, w, h);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w + pad * 2;
+  canvas.height = h + pad * 2;
+  const ctx = canvas.getContext('2d')!;
+  for (let i = 0; i < OUTLINE_STEPS; i++) {
+    const angle = (i / OUTLINE_STEPS) * Math.PI * 2;
+    ctx.drawImage(silhouette, pad + Math.cos(angle) * rawRadius, pad + Math.sin(angle) * rawRadius);
+  }
+  ctx.drawImage(source, pad, pad);
+
+  return canvas.toDataURL('image/png');
+}
+
 export function useStickerImage(src: string | undefined, scale: number) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const width = pickStickerImageWidth(scale);
 
   useEffect(() => {
     if (!src) return;
-    const img = new window.Image();
-    img.src = toProxiedImageSrc(src, width);
-    img.onload = () => setImage(img);
+    let cancelled = false;
+
+    const raw = new window.Image();
+    raw.src = toProxiedImageSrc(src, width);
+    raw.onload = () => {
+      if (cancelled) return;
+      const outlined = new window.Image();
+      outlined.onload = () => {
+        if (!cancelled) setImage(outlined);
+      };
+      outlined.src = bakeStickerOutline(raw, scale);
+    };
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, width]);
 
   return image;
@@ -123,11 +167,9 @@ export const Sticker = memo(function Sticker({
         height,
         zIndex: stickerZIndex(sticker),
         transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-        filter: `url(#${STICKER_OUTLINE_FILTER_ID}) ${
-          selected
-            ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
-            : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))'
-        }`,
+        filter: selected
+          ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
+          : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
         willChange: 'transform',
         touchAction: 'none',
       }}
