@@ -7,9 +7,10 @@ import { badgeZIndex, type StickerData } from './Sticker';
 
 type StickerBadgeMarkProps = {
   sticker: StickerData;
+  onNameClick: () => void;
 };
 
-export function StickerBadgeMark({ sticker }: StickerBadgeMarkProps) {
+export function StickerBadgeMark({ sticker, onNameClick }: StickerBadgeMarkProps) {
   const offset = rotatePoint(
     { x: sticker.badgeOffsetX, y: sticker.badgeOffsetY },
     sticker.rotation,
@@ -23,8 +24,10 @@ export function StickerBadgeMark({ sticker }: StickerBadgeMarkProps) {
         top: (sticker.posY ?? 0) + offset.y,
         zIndex: badgeZIndex(sticker),
         transform: 'translate(-50%, -50%)',
-        pointerEvents: 'none',
+        pointerEvents: 'auto',
       }}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={onNameClick}
     >
       <StickerBadge title={sticker.title} isNew={sticker.isNew} />
     </div>
