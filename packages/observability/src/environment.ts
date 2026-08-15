@@ -5,6 +5,10 @@ const HOST_ENVIRONMENTS: Record<string, Environment> = {
   'api.ppotto.co.kr': 'production',
 };
 
+export const TRACE_PROPAGATION_TARGETS: RegExp[] = Object.keys(HOST_ENVIRONMENTS).map(
+  (host) => new RegExp(host.replaceAll('.', '\\.')),
+);
+
 export function resolveEnvironment(apiUrl: string | undefined): Environment {
   if (!apiUrl) return 'local';
 

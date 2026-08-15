@@ -1,6 +1,6 @@
 import { HyperDXRum } from '@hyperdx/otel-react-native';
 import { type Attributes, SpanStatusCode } from '@opentelemetry/api';
-import { resolveEnvironment } from '@ppotto/observability';
+import { resolveEnvironment, TRACE_PROPAGATION_TARGETS } from '@ppotto/observability';
 
 const apiKey = process.env.EXPO_PUBLIC_HYPERDX_API_KEY;
 const beaconEndpoint =
@@ -22,7 +22,7 @@ export function initObservability() {
     deploymentEnvironment: resolveEnvironment(apiUrl),
     networkHeadersCapture: true,
     networkBodyCapture: true,
-    tracePropagationTargets: [/dev-api\.ppotto\.co\.kr/, /api\.ppotto\.co\.kr/],
+    tracePropagationTargets: TRACE_PROPAGATION_TARGETS,
   });
 }
 

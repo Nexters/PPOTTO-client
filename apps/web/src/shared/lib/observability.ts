@@ -1,5 +1,5 @@
 import HyperDX from '@hyperdx/browser';
-import { resolveEnvironment } from '@ppotto/observability';
+import { resolveEnvironment, TRACE_PROPAGATION_TARGETS } from '@ppotto/observability';
 
 const apiKey = process.env.NEXT_PUBLIC_HYPERDX_API_KEY;
 const ingestUrl = process.env.NEXT_PUBLIC_HYPERDX_URL ?? 'https://otel.ppotto.co.kr';
@@ -16,7 +16,7 @@ export function initObservability() {
     url: ingestUrl,
     apiKey,
     service: 'ppotto-web',
-    tracePropagationTargets: [/dev-api\.ppotto\.co\.kr/, /api\.ppotto\.co\.kr/],
+    tracePropagationTargets: TRACE_PROPAGATION_TARGETS,
     consoleCapture: true,
     advancedNetworkCapture: true,
     disableReplay: true,

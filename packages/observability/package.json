@@ -11,11 +11,14 @@
     "test": "node --test"
   },
   "peerDependencies": {
-    "@tanstack/react-query": ">=5"
+    "@tanstack/react-query": ">=5",
+    "react": ">=18"
   },
   "devDependencies": {
     "@tanstack/react-query": "^5.101.2",
     "@types/node": "^22.20.1",
+    "@types/react": "^19",
+    "react": "^19.2.0",
     "typescript": "^5.9.3"
   }
 }
