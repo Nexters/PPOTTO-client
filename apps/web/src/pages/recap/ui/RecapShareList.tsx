@@ -1,9 +1,10 @@
 import { Download, Filter, Instagram, Kakaotalk } from '@ppotto/assets';
 import { useState, type RefObject } from 'react';
 
-import { saveRecapImage } from '@/features/save-recap-image';
-import { bridge } from '@/shared/lib/bridge';
+import { saveImageToDevice } from '@/features/save-image-to-device';
 import { blobToBase64 } from '@/shared/lib/blob-to-base64';
+import { bridge } from '@/shared/lib/bridge';
+import { captureElementAsBlob } from '@/shared/lib/capture-element-as-blob';
 import { useToast } from '@/shared/ui/common/Toast';
 
 type RecapShareListProps = {
@@ -21,9 +22,8 @@ export function RecapShareList({ cardRef, onOptionsClick, onSaved }: RecapShareL
     if (!cardRef.current) return;
     setIsSaving(true);
     try {
-      const blob = await saveRecapImage(cardRef.current);
-      const base64 = await blobToBase64(blob);
-      const { success } = await bridge.request('SAVE_IMAGE', { base64 });
+      const blob = await captureElementAsBlob(cardRef.current, { skipFonts: true, pixelRatio: 1 });
+      const success = await saveImageToDevice(blob);
       if (success) {
         toast('이미지가 저장되었습니다');
         onSaved();
@@ -42,7 +42,7 @@ export function RecapShareList({ cardRef, onOptionsClick, onSaved }: RecapShareL
     if (!cardRef.current) return;
     setIsSharingInstagram(true);
     try {
-      const blob = await saveRecapImage(cardRef.current);
+      const blob = await captureElementAsBlob(cardRef.current, { skipFonts: true, pixelRatio: 1 });
       const base64 = await blobToBase64(blob);
       const { success } = await bridge.request('SHARE_INSTAGRAM_STORY', { base64 });
       if (success) onSaved();

@@ -1,25 +1,39 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const toCanvas = vi.hoisted(() => vi.fn());
 
 vi.mock('html-to-image', () => ({ toCanvas }));
 
-import { saveRecapImage } from './save-recap-image';
+import { captureElementAsBlob } from './capture-element-as-blob';
 
-describe('saveRecapImage', () => {
+describe('captureElementAsBlob', () => {
+  afterEach(() => {
+    toCanvas.mockClear();
+  });
+
   it('엘리먼트를 캡처해 Blob으로 변환한다', async () => {
     const canvas = document.createElement('canvas');
     canvas.toBlob = (callback) => callback(new Blob(['fake']));
     toCanvas.mockResolvedValue(canvas);
     const element = document.createElement('div');
 
-    const result = await saveRecapImage(element);
+    const result = await captureElementAsBlob(element);
 
     expect(result).toBeInstanceOf(Blob);
   });
 
+  it('기본으로 includeQueryParams: true 옵션을 준다', async () => {
+    const canvas = document.createElement('canvas');
+    canvas.toBlob = (callback) => callback(new Blob(['fake']));
+    toCanvas.mockResolvedValue(canvas);
+    const element = document.createElement('div');
+
+    await captureElementAsBlob(element);
+
+    expect(toCanvas).toHaveBeenCalledWith(element, { includeQueryParams: true });
+  });
+
   it('모든 이미지의 디코딩이 끝난 뒤 캡처한다', async () => {
-    toCanvas.mockClear();
     const canvas = document.createElement('canvas');
     canvas.toBlob = (callback) => callback(new Blob(['fake']));
     toCanvas.mockResolvedValue(canvas);
@@ -34,22 +48,22 @@ describe('saveRecapImage', () => {
     );
     element.append(image);
 
-    const saving = saveRecapImage(element);
+    const capturing = captureElementAsBlob(element);
 
     expect(image.loading).toBe('eager');
     expect(toCanvas).not.toHaveBeenCalled();
     finishDecode();
-    await saving;
+    await capturing;
     expect(toCanvas).toHaveBeenCalledOnce();
   });
 
-  it('toCanvas를 includeQueryParams: true, skipFonts: true, pixelRatio: 1 옵션으로 호출한다', async () => {
+  it('전달한 옵션을 병합해 toCanvas에 넘긴다', async () => {
     const canvas = document.createElement('canvas');
     canvas.toBlob = (callback) => callback(new Blob(['fake']));
     toCanvas.mockResolvedValue(canvas);
     const element = document.createElement('div');
 
-    await saveRecapImage(element);
+    await captureElementAsBlob(element, { skipFonts: true, pixelRatio: 1 });
 
     expect(toCanvas).toHaveBeenCalledWith(element, {
       includeQueryParams: true,

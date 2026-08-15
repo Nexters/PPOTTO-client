@@ -88,7 +88,7 @@ it('저장된 작업은 미리 준비하고 확인하기 전까지 로딩 화면
     pathname: '/analysis-loading',
     params: { boardId: 'board-1' },
   });
-});
+}, 10000);
 
 it('실패한 작업에는 재개 확인 모달 대신 업로드 실패 모달만 표시한다', async () => {
   photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));

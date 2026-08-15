@@ -9,9 +9,11 @@ const request = vi.hoisted(() => vi.fn());
 
 vi.mock('./RecapShareCard', () => ({ RecapShareCard: () => null }));
 vi.mock('@/shared/ui/common/Toast', () => ({ useToast: () => vi.fn() }));
-vi.mock('@/features/save-recap-image', () => ({ saveRecapImage: vi.fn(() => new Blob()) }));
 vi.mock('@/shared/lib/blob-to-base64', () => ({ blobToBase64: vi.fn(() => 'image-base64') }));
 vi.mock('@/shared/lib/bridge', () => ({ bridge: { request } }));
+vi.mock('@/shared/lib/capture-element-as-blob', () => ({
+  captureElementAsBlob: vi.fn(() => new Blob()),
+}));
 
 beforeEach(() => request.mockReset());
 

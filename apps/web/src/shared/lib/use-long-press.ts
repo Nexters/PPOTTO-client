@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const LONG_PRESS_DELAY_MS = 3000;
+const LONG_PRESS_DELAY_MS = 500;
 const MOVE_CANCEL_THRESHOLD_PX = 10;
 
 type Point = { x: number; y: number };
