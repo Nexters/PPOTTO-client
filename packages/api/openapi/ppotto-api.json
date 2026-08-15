@@ -4244,7 +4244,7 @@
           "contentType": {
             "type": "string",
             "description": "지원 형식. 업로드 시 Content-Type과 일치해야 함",
-            "enum": ["image/jpeg", "image/png", "image/heic"],
+            "enum": ["image/jpeg", "image/png", "image/heic", "image/webp"],
             "example": "image/jpeg"
           },
           "isRepresentative": {

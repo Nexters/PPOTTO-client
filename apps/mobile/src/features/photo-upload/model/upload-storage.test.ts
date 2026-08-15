@@ -28,7 +28,7 @@ function snapshot(): UploadJobSnapshot {
           {
             clientPhotoId: 'local-a',
             fileUri: 'cache:///a.jpg',
-            contentType: 'image/jpeg',
+            contentType: 'image/webp',
             takenAt: '2026-08-09T00:00:00.000Z',
             isRepresentative: true,
           },
@@ -108,7 +108,7 @@ it('사진 ID의 경로 구분자를 파일명으로 인코딩한다', async () 
 
   expect(fileSystem.copyFile).toHaveBeenCalledWith(
     'cache:///a.jpg',
-    `${ROOT_URI}/job-1/local-a%2FL0%2F001.jpg`,
+    `${ROOT_URI}/job-1/local-a%2FL0%2F001.webp`,
   );
 });
 

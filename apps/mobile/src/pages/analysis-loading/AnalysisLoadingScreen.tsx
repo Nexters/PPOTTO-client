@@ -30,6 +30,7 @@ export function AnalysisLoadingScreen() {
   const [sequence, setSequence] = useState(() =>
     createLoadingSequence({ serverProgress: upload.progress }),
   );
+  const [motionReady, setMotionReady] = useState(false);
   const [showingBoard, setShowingBoard] = useState(false);
   const sequenceRef = useRef(sequence);
 
@@ -91,6 +92,7 @@ export function AnalysisLoadingScreen() {
   const bridgeHandlers = useMemo(
     () => ({
       GET_ANALYSIS_LOADING_STATE: getInitialBridgeState,
+      ANALYSIS_LOADING_READY: () => setMotionReady(true),
       ANALYSIS_LOADING_PHASE_STARTED: ({
         phase,
       }: {
@@ -108,6 +110,10 @@ export function AnalysisLoadingScreen() {
     uploadRef.current = upload;
     updateSequence({ type: 'SERVER_PROGRESS_UPDATED', progress: upload.progress });
   }, [updateSequence, upload]);
+
+  useEffect(() => {
+    if (motionReady) photoUploadService.beginUpload();
+  }, [motionReady]);
 
   useEffect(() => {
     const current = photoUploadService.getCurrent();

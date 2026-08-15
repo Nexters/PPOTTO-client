@@ -14,6 +14,8 @@ import { usePhotoSelection } from '@/features/photo-selection';
 import { PhotoSelectScreen } from './PhotoSelectScreen';
 
 let mockSearchParams: { boardId: string; mode?: string } = { boardId: 'board-1' };
+const mockImageResize = jest.fn();
+const mockImageSave = jest.fn();
 
 /**
  * 동작 범위 (2026-07-30 인터뷰, 2026-07-30 축소)
@@ -57,22 +59,32 @@ jest.mock('expo-image-manipulator', () => ({
     manipulate: jest.fn((uri: string) => {
       const context = {
         renderAsync: jest.fn(async () => ({
-          saveAsync: jest.fn(async () => ({
-            uri: uri.replace('file:///', 'file:///compressed/'),
-            width: 1280,
-            height: 1280,
-          })),
+          saveAsync: jest.fn(async (options) => {
+            mockImageSave(options);
+            return {
+              uri: uri.replace('file:///', 'file:///compressed/'),
+              width: 512,
+              height: 341,
+            };
+          }),
           release: jest.fn(),
         })),
         release: jest.fn(),
       };
-      return { ...context, resize: jest.fn(() => context) };
+      return {
+        ...context,
+        resize: jest.fn((target) => {
+          mockImageResize(target);
+          return context;
+        }),
+      };
     }),
   },
-  SaveFormat: { JPEG: 'jpeg' },
+  SaveFormat: { JPEG: 'jpeg', WEBP: 'webp' },
 }));
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: { start: jest.fn() },
+  sampleMotionPhotos: <T,>(photos: T[]) => photos.slice(0, 25),
 }));
 jest.mock('@/entities/user/api/user-queries', () => ({
   useMeQuery: () => ({ data: { name: '뽀또' } }),
@@ -237,12 +249,28 @@ it('89개로 내려가면 CTA가 비활성화되고 90개로 회복하면 다시
 });
 
 it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다', async () => {
-  setGallery(spacedAssets(100));
+  setGallery(spacedAssets(100).map((photo) => ({ ...photo, width: 1200, height: 800 })));
   const { user } = await renderLoadedScreen();
+
+  expect(mockImageSave).not.toHaveBeenCalled();
 
   await user.press(cta());
 
   expect(photoUploadService.start).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(25));
+  expect(mockImageResize).toHaveBeenCalledWith({ width: 512, height: 341 });
+  expect(mockImageSave.mock.calls.every(([options]) => options.format === 'webp')).toBe(true);
+  const startOptions = photoUploadService.start.mock.calls[0]![0];
+  expect(startOptions.photoCount).toBe(100);
+  await expect(startOptions.motionPhotos).resolves.toEqual(
+    expect.arrayContaining([expect.objectContaining({ contentType: 'image/webp' })]),
+  );
+
+  const uploadJob = await startOptions.prepareJob();
+  expect(uploadJob.groups).toHaveLength(100);
+  expect(mockImageSave.mock.calls.slice(25).every(([options]) => options.format === 'webp')).toBe(
+    true,
+  );
   expect(router.replace).toHaveBeenCalledWith({
     pathname: '/analysis-loading',
     params: { boardId: 'board-1' },

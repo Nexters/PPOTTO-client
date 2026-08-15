@@ -1002,7 +1002,7 @@ export interface components {
              * @example image/jpeg
              * @enum {string}
              */
-            contentType: "image/jpeg" | "image/png" | "image/heic";
+            contentType: "image/jpeg" | "image/png" | "image/heic" | "image/webp";
             /** @description 연사 그룹 내 대표 사진 여부 */
             isRepresentative: boolean;
             /**

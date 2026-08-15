@@ -4,7 +4,6 @@ import { fetchPhotoPage, requestPhotoLibraryPermission } from '../api/fetch-phot
 
 import type { GalleryPhoto } from './gallery-photo';
 import { loadPhotoGroups } from './load-photo-groups';
-import { photoCompressionQueue } from './photo-compression-queue';
 import {
   createSelection,
   excludeAllGroups,
@@ -58,7 +57,6 @@ export function usePhotoSelection({
           setSelection(createSelection(groups));
           setEndCursor(undefined);
           setHasNextPage(false);
-          photoCompressionQueue.start(groups);
           return;
         }
 
