@@ -30,6 +30,7 @@ import {
   zoomCamera,
   zoomCameraTo,
 } from '../model/board-camera';
+import { loadSavedCamera, saveCamera } from '../model/board-camera-storage';
 import {
   type DrawGesture,
   type DrawGestureResult,
@@ -146,7 +147,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   ref,
 ) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
+  const [camera, setCamera] = useState<CameraState>(
+    () => loadSavedCamera(boardId) ?? { scale: 1, x: 0, y: 0 },
+  );
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
@@ -432,6 +435,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   useEffect(() => {
     onCameraScaleChange?.(camera.scale);
   }, [camera.scale, onCameraScaleChange]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => saveCamera(boardId, camera), 400);
+    return () => clearTimeout(timer);
+  }, [boardId, camera]);
+
+  useEffect(() => {
+    return () => saveCamera(boardId, cameraRef.current);
+  }, [boardId]);
 
   // 그림 선택(삭제 대상) 여부를 부모에 알림 — 상단 UI 숨김/하단 삭제 바 전환에 사용
   useEffect(() => {
