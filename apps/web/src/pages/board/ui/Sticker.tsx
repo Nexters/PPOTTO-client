@@ -111,6 +111,7 @@ export const Sticker = memo(function Sticker({
             ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
             : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))'
         }`,
+        willChange: 'transform',
         touchAction: 'none',
       }}
     />
