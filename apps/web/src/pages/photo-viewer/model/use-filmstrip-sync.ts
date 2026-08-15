@@ -43,10 +43,19 @@ export function useFilmstripSync(selectedIndex: number, onSelect: (index: number
     isFirstSyncRef.current = false;
     isOwnScrollUpdateRef.current = false;
 
-    itemRefs.current[selectedIndex]?.scrollIntoView({
+    const container = containerRef.current;
+    const item = itemRefs.current[selectedIndex];
+    if (!container || !item) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+    container.scrollTo({
+      left:
+        container.scrollLeft +
+        itemRect.left -
+        containerRect.left -
+        (container.clientWidth - item.clientWidth) / 2,
       behavior,
-      inline: 'center',
-      block: 'nearest',
     });
   }, [selectedIndex]);
 
