@@ -18,18 +18,18 @@ const mockImageResize = jest.fn();
 const mockImageSave = jest.fn();
 
 /**
- * 동작 범위 (2026-07-30 인터뷰, 2026-07-30 축소)
+ * 동작 범위 (2026-07-30 인터뷰, 2026-08-15 통일)
  *
- * 진입하면 선택된 앨범에서 100그룹을 불러와 전체 선택 상태로 시작한다. 타일 누름은 대상에 따라
- * 다르게 동작한다 — 1장 그룹은 제외, 여러 장 그룹은 다음 사진으로 승계.
- * 제외 개수에 상한은 없고 90 미만이면 CTA만 비활성화한다(PRD의 "최대 10개"는 제출 범위 90~100).
+ * 첫 업로드·이후 업로드 모두 갤러리 전체를 페이지네이션으로 불러와 그룹으로 묶는다.
+ * 유일한 모드 차이는 초기 상태 — 첫 업로드는 최신 100그룹 자동선택, 이후 업로드는 전부 미선택.
+ * 타일 누름은 대상에 따라 다르게 동작한다 — 1장 그룹은 제외, 여러 장 그룹은 다음 사진으로 승계.
+ * 선택은 제출 상한(100)까지만 가능하고, 90(추가 업로드는 20) 미만이면 CTA만 비활성화한다.
  *
- * 대역은 expo-media-library·expo-router·expo-image-manipulator 경계뿐이다. loadPhotoGroups·groupPhotos·
+ * 대역은 expo-media-library·expo-router·expo-image-manipulator 경계뿐이다. groupPhotos·
  * AlbumDropdown·PhotoTile은 실제로 돌린다.
  *
  * 검증 지점 이동 — 아래는 여기서 다시 보지 않는다.
  *   그룹화·대표 선정·승계·소진·복구 규칙       → photo-group.test.ts
- *   페이지 로딩 루프, 앨범에 100개 미만일 때 → load-photo-groups.test.ts
  *   드롭다운 열림·닫힘·선택 콜백              → AlbumDropdown.test.tsx
  *   제외된 타일의 체크 해제 표시               → 아래 2번이 간접 검증
  *   카운터 경고 색상, 타일 dim, chevron 방향   → 스타일이라 시안 대조 항목
@@ -354,7 +354,7 @@ describe('추가 업로드', () => {
   });
 
   it('스크롤 끝에 도달하면 다음 사진 페이지를 불러온다', async () => {
-    setGallery(spacedAssets(250));
+    setGallery(spacedAssets(350));
     await renderLoadedScreen();
 
     await act(async () => {
@@ -363,11 +363,27 @@ describe('추가 업로드', () => {
 
     await waitFor(() =>
       expect(getAssetsAsync).toHaveBeenCalledWith({
-        first: 100,
-        after: '100',
+        first: 500,
+        after: '300',
         sortBy: 'creationTime',
       }),
     );
+  });
+
+  it('연속 사진은 추가 업로드에서도 그룹으로 묶인다', async () => {
+    const burst = [
+      asset('b0', BASE_TIME),
+      asset('b1', BASE_TIME - minutes(1)),
+      asset('b2', BASE_TIME - minutes(2)),
+    ];
+    setGallery([...burst, ...spacedAssets(29, 10)]);
+
+    const { user } = await renderLoadedScreen();
+
+    // 분석 단위는 30개(그룹 1 + 단일 29)다. 배지는 남은 장수라 선택해야 보인다
+    expect(screen.getAllByRole('checkbox')).toHaveLength(30);
+    await user.press(screen.getAllByRole('checkbox')[0]!);
+    expect(screen.getByText('3')).toBeOnTheScreen();
   });
 
   it('100장이 선택된 상태에서는 사진을 더 선택하지 않는다', async () => {
@@ -380,13 +396,10 @@ describe('추가 업로드', () => {
         targetUnits: 100,
       }),
     );
-    await waitFor(() => expect(result.current.photoUnits).toHaveLength(100));
+    await waitFor(() => expect(result.current.photoUnits).toHaveLength(150));
 
     await act(() => result.current.toggleEverything());
-    await act(async () => {
-      await result.current.loadMore();
-    });
-    await waitFor(() => expect(result.current.photoUnits).toHaveLength(150));
+    expect(result.current.selectedCount).toBe(100);
 
     await act(() => result.current.toggleUnit(result.current.photoUnits[100]!));
 

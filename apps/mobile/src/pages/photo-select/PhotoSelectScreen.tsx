@@ -119,7 +119,7 @@ export function PhotoSelectScreen() {
         <View className="flex-1">
           <PhotoGrid
             bottomPadding={insets.bottom + 76}
-            grouped={mode === 'initial'}
+            grouped
             onEndReached={() => void loadMore()}
             onPress={toggleUnit}
             units={photoUnits}
