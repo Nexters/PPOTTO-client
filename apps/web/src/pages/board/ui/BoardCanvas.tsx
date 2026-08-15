@@ -8,6 +8,7 @@ import type { BoardDetail } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
+import { stickerQueryOptions } from '@/entities/sticker/api/sticker-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
@@ -647,7 +648,11 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             if (isEditModeRef.current) setSelectedStickerId(null);
           }
         } else if (!isEditModeRef.current) {
-          pushRef.current('Recap', { stickerId: tap.stickerId, boardId });
+          const stickerId = tap.stickerId;
+          const openRecap = () => pushRef.current('Recap', { stickerId, boardId });
+          void queryClient
+            .ensureQueryData(stickerQueryOptions(stickerId))
+            .then(openRecap, openRecap);
         }
       }
     };
@@ -685,7 +690,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       container.removeEventListener('gesturechange', blockGesture);
       container.removeEventListener('gestureend', blockGesture);
     };
-  }, [container, boardId, quickMenu.isEditingRef]);
+  }, [container, boardId, queryClient, quickMenu.isEditingRef]);
 
   if (isLoading) {
     return (
