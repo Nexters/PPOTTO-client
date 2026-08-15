@@ -57,7 +57,6 @@ export function StickerPreview({
           src={sticker.imageUrl}
           alt=""
           fill
-          unoptimized
           sizes={`${PREVIEW_MAX_WIDTH}px`}
           style={{ objectFit: 'contain' }}
         />

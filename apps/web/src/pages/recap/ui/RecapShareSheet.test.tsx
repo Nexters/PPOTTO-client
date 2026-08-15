@@ -11,6 +11,10 @@ vi.mock('./RecapShareCard', () => ({ RecapShareCard: () => null }));
 vi.mock('@/shared/ui/common/Toast', () => ({ useToast: () => vi.fn() }));
 vi.mock('@/shared/lib/blob-to-base64', () => ({ blobToBase64: vi.fn(() => 'image-base64') }));
 vi.mock('@/shared/lib/bridge', () => ({ bridge: { request } }));
+vi.mock('@/shared/lib/compose-instagram-story-image', () => ({
+  // jsdom에는 createImageBitmap이 없어 9:16 합성은 목으로 대체한다
+  composeInstagramStoryImage: vi.fn((blob: Blob) => blob),
+}));
 vi.mock('@/shared/lib/capture-element-as-blob', () => ({
   captureElementAsBlob: vi.fn(() => new Blob()),
 }));

@@ -1,60 +1,22 @@
 import { Download, Filter, Instagram, Kakaotalk } from '@ppotto/assets';
-import { useState, type RefObject } from 'react';
-
-import { saveImageToDevice } from '@/features/save-image-to-device';
-import { blobToBase64 } from '@/shared/lib/blob-to-base64';
-import { bridge } from '@/shared/lib/bridge';
-import { captureElementAsBlob } from '@/shared/lib/capture-element-as-blob';
-import { useToast } from '@/shared/ui/common/Toast';
 
 type RecapShareListProps = {
-  cardRef: RefObject<HTMLDivElement | null>;
+  isSaving: boolean;
+  isSharingInstagram: boolean;
+  onSaveImage: () => void;
+  onInstagramShare: () => void;
   onOptionsClick: () => void;
-  onSaved: () => void;
 };
 
-export function RecapShareList({ cardRef, onOptionsClick, onSaved }: RecapShareListProps) {
-  const toast = useToast();
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSharingInstagram, setIsSharingInstagram] = useState(false);
-
-  const handleSaveImage = async () => {
-    if (!cardRef.current) return;
-    setIsSaving(true);
-    try {
-      const blob = await captureElementAsBlob(cardRef.current, { skipFonts: true, pixelRatio: 1 });
-      const success = await saveImageToDevice(blob);
-      if (success) {
-        toast('이미지가 저장되었습니다');
-        onSaved();
-      } else {
-        toast('이미지 저장에 실패했습니다');
-      }
-    } catch (error) {
-      console.error('이미지 저장 실패', error);
-      toast('이미지 저장에 실패했습니다');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleInstagramShare = async () => {
-    if (!cardRef.current) return;
-    setIsSharingInstagram(true);
-    try {
-      const blob = await captureElementAsBlob(cardRef.current, { skipFonts: true, pixelRatio: 1 });
-      const base64 = await blobToBase64(blob);
-      const { success } = await bridge.request('SHARE_INSTAGRAM_STORY', { base64 });
-      if (success) onSaved();
-      else toast('인스타그램 공유에 실패했습니다');
-    } catch (error) {
-      console.error('인스타그램 공유 실패', error);
-      toast('인스타그램 공유에 실패했습니다');
-    } finally {
-      setIsSharingInstagram(false);
-    }
-  };
-
+// 저장/공유 상태와 실행은 RecapShareSheet가 들고 있다 — 시트가 닫히면 이 컴포넌트는
+// 언마운트되므로, 진행 상태를 여기 두면 다시 열었을 때 초기화돼 보인다
+export function RecapShareList({
+  isSaving,
+  isSharingInstagram,
+  onSaveImage,
+  onInstagramShare,
+  onOptionsClick,
+}: RecapShareListProps) {
   return (
     <>
       <span className="text-body-01 text-white">공유하기</span>
@@ -67,7 +29,7 @@ export function RecapShareList({ cardRef, onOptionsClick, onSaved }: RecapShareL
           type="button"
           disabled={isSharingInstagram}
           className="flex w-[72px] flex-col items-center gap-2 text-white disabled:opacity-50"
-          onClick={handleInstagramShare}
+          onClick={onInstagramShare}
         >
           <Instagram width={48} height={48} />
           <span className="text-caption-01 w-full text-center">인스타그램</span>
@@ -76,7 +38,7 @@ export function RecapShareList({ cardRef, onOptionsClick, onSaved }: RecapShareL
           type="button"
           disabled={isSaving}
           className="flex w-[72px] flex-col items-center gap-2 text-white disabled:opacity-50"
-          onClick={handleSaveImage}
+          onClick={onSaveImage}
         >
           <span className="flex size-12 items-center justify-center rounded-full bg-gray-800">
             <Download width={28} height={28} />
