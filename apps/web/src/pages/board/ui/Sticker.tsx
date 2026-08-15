@@ -1,7 +1,7 @@
 'use client';
 
 import type { paths } from '@ppotto/api';
-import { useLayoutEffect, useRef } from 'react';
+import { memo, useLayoutEffect, useRef } from 'react';
 
 import {
   drawOutlinedSticker,
@@ -56,16 +56,24 @@ export function getPhotoSize(
   };
 }
 
+export function stickerDisplayedEdge(scale: number): number {
+  return STICKER_MAX_EDGE * scale;
+}
+
 type StickerProps = {
   sticker: StickerData;
   selected?: boolean;
   transformOverride?: StickerTransform;
 };
 
-export function Sticker({ sticker, selected, transformOverride }: StickerProps) {
-  const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export const Sticker = memo(function Sticker({
+  sticker,
+  selected,
+  transformOverride,
+}: StickerProps) {
   const scale = transformOverride?.scale ?? sticker.scale;
+  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, stickerDisplayedEdge(scale));
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { width, height } = getPhotoSize(photoImage, scale);
 
   useLayoutEffect(() => {
@@ -93,6 +101,7 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
         height,
         zIndex: stickerZIndex(sticker),
         transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+        willChange: 'transform',
         touchAction: 'none',
       }}
     >
@@ -121,4 +130,4 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
       </div>
     </div>
   );
-}
+});

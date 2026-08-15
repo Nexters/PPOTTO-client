@@ -2,7 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import type { BoardDetail } from '@/entities/board/api/board-api';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
+import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
 import { useUpdateStickerTitleMutation } from '@/entities/sticker/api/sticker-mutations';
+import { stickerQueryKeys } from '@/entities/sticker/api/sticker-query-keys';
 import { useToast } from '@/shared/ui/common/Toast';
 
 export function useRenameSticker(boardId: string) {
@@ -15,6 +17,9 @@ export function useRenameSticker(boardId: string) {
       { stickerId, title },
       {
         onSuccess: ({ id, title: nextTitle }) => {
+          queryClient.setQueryData<StickerRecap>(stickerQueryKeys.detail(id), (current) =>
+            current ? { ...current, sticker: { ...current.sticker, title: nextTitle } } : current,
+          );
           queryClient.setQueryData(
             boardQueryKeys.detail(boardId),
             (current: BoardDetail | undefined) =>

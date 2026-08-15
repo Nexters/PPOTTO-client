@@ -5,6 +5,7 @@ import { useState } from 'react';
 import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
 import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 import { cn } from '@/shared/lib/cn';
+import { Skeleton } from '@/shared/ui/Skeleton';
 
 type RecapPhotoGridProps = {
   stickerId: string;
@@ -30,11 +31,7 @@ function RecapPhotoTile({ stickerId, photo, eager, onClick }: RecapPhotoTileProp
       className="rounded-8 relative aspect-square w-full overflow-hidden bg-gray-900"
       onClick={onClick}
     >
-      {showSkeleton && (
-        <div className="absolute inset-0 overflow-hidden bg-gray-800">
-          <div className="absolute inset-0 animate-[skeleton-shimmer_1.4s_ease-in-out_infinite] bg-linear-to-r from-transparent via-white/8 to-transparent" />
-        </div>
-      )}
+      {showSkeleton && <Skeleton className="absolute inset-0 rounded-none" />}
       <StickerPhotoImage
         stickerId={stickerId}
         src={photo.imageUrl}
@@ -72,7 +69,9 @@ export function RecapPhotoGrid({ stickerId, photos, eager = false }: RecapPhotoG
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="flex w-full justify-between">
-        <span className="text-body-01 text-center text-gray-50">테마 속 사진</span>
+        <span className="text-body-01 text-center whitespace-nowrap text-gray-50">
+          테마 속 사진
+        </span>
         <span className="text-body-01 text-center font-medium text-gray-500">{photos.length}</span>
       </div>
       <div className="grid grid-cols-3 gap-3">

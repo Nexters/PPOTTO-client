@@ -1,5 +1,7 @@
 'use client';
 
+import { memo } from 'react';
+
 import { rotatePoint } from '../model/geometry';
 
 import { StickerBadge } from './StickerBadge';
@@ -7,10 +9,13 @@ import { badgeZIndex, type StickerData } from './Sticker';
 
 type StickerBadgeMarkProps = {
   sticker: StickerData;
-  onNameClick: () => void;
+  onNameClick: (stickerId: string) => void;
 };
 
-export function StickerBadgeMark({ sticker, onNameClick }: StickerBadgeMarkProps) {
+export const StickerBadgeMark = memo(function StickerBadgeMark({
+  sticker,
+  onNameClick,
+}: StickerBadgeMarkProps) {
   const offset = rotatePoint(
     { x: sticker.badgeOffsetX, y: sticker.badgeOffsetY },
     sticker.rotation,
@@ -27,9 +32,9 @@ export function StickerBadgeMark({ sticker, onNameClick }: StickerBadgeMarkProps
         pointerEvents: 'auto',
       }}
       onPointerDown={(event) => event.stopPropagation()}
-      onClick={onNameClick}
+      onClick={() => onNameClick(sticker.id)}
     >
       <StickerBadge title={sticker.title} isNew={sticker.isNew} />
     </div>
   );
-}
+});

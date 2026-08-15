@@ -4,8 +4,20 @@ const STICKER_BITMAP_MAX_EDGE = 750;
 
 export const STICKER_OUTLINE_WIDTH = 3;
 
-function toProxiedImageSrc(src: string): string {
-  return `/_next/image?url=${encodeURIComponent(src)}&w=750&q=75`;
+// next.config.ts에 별도 images.imageSizes/deviceSizes 설정이 없어 next/image 기본값을 쓰는데,
+// 그 목록에 없는 w 값을 요청하면 400이 나서 기본값 안에서만 골라야 한다.
+const IMAGE_WIDTH_STEPS = [128, 256, 384, 640, 750, 828, 1080];
+
+// 스티커는 displayedEdge CSS px로만 표시되는데 항상 원본을 받아오면 전송·디코드 비용이
+// 실제 필요보다 훨씬 크다. 표시 크기 기준으로 지원되는 가장 작은 사이즈를 고른다.
+function pickImageWidth(displayedEdge: number): number {
+  const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio;
+  const target = displayedEdge * dpr;
+  return IMAGE_WIDTH_STEPS.find((step) => step >= target) ?? IMAGE_WIDTH_STEPS.at(-1)!;
+}
+
+function toProxiedImageSrc(src: string, width: number): string {
+  return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=75`;
 }
 
 /**
@@ -15,29 +27,32 @@ function toProxiedImageSrc(src: string): string {
  */
 const stickerImageCache = new Map<string, HTMLImageElement>();
 
-function cacheKeyOf(src: string): string {
+// 요청 폭이 다르면 다른 비트맵이므로 키를 나눈다. 보드(160)와 리캡(176)은 보통 같은
+// 단계로 떨어져서 그대로 공유된다.
+function cacheKeyOf(src: string, width: number): string {
   try {
     const url = new URL(src, window.location.origin);
-    return `${url.origin}${url.pathname}`;
+    return `${url.origin}${url.pathname}@${width}`;
   } catch {
-    return src;
+    return `${src}@${width}`;
   }
 }
 
-function readCached(src?: string): HTMLImageElement | null {
-  const cached = src ? stickerImageCache.get(cacheKeyOf(src)) : undefined;
+function readCached(src: string | undefined, width: number): HTMLImageElement | null {
+  const cached = src ? stickerImageCache.get(cacheKeyOf(src, width)) : undefined;
   return cached?.complete && cached.naturalWidth > 0 ? cached : null;
 }
 
-export function useStickerImage(src?: string) {
+export function useStickerImage(src: string | undefined, displayedEdge: number) {
   // 캐시는 렌더에서 직접 읽는다 — 이미 받아둔 이미지를 한 프레임도 비우지 않고 그리려고.
   // 항목은 null → 이미지로만 바뀌므로 렌더 중 읽어도 값이 뒤집히지 않는다
   const [, onSettled] = useReducer((count: number) => count + 1, 0);
+  const width = pickImageWidth(displayedEdge);
 
   useEffect(() => {
     if (!src) return;
 
-    const key = cacheKeyOf(src);
+    const key = cacheKeyOf(src, width);
     let img = stickerImageCache.get(key);
     // 로드에 실패했던 항목은 버리고 새로 시도한다
     if (img?.complete && img.naturalWidth === 0) {
@@ -46,7 +61,7 @@ export function useStickerImage(src?: string) {
     }
     if (!img) {
       img = new window.Image();
-      img.src = toProxiedImageSrc(src);
+      img.src = toProxiedImageSrc(src, width);
       stickerImageCache.set(key, img);
     }
     if (img.complete && img.naturalWidth > 0) return;
@@ -59,9 +74,9 @@ export function useStickerImage(src?: string) {
       target.removeEventListener('load', onSettled);
       target.removeEventListener('error', handleError);
     };
-  }, [src]);
+  }, [src, width]);
 
-  return readCached(src);
+  return readCached(src, width);
 }
 
 export function drawOutlinedSticker(

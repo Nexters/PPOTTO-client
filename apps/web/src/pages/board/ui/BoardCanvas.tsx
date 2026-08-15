@@ -7,6 +7,7 @@ import {
   type RefObject,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -31,6 +32,7 @@ import {
   zoomCamera,
   zoomCameraTo,
 } from '../model/board-camera';
+import { loadSavedCamera, saveCamera } from '../model/board-camera-storage';
 import {
   type DrawGesture,
   type DrawGestureResult,
@@ -147,7 +149,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   ref,
 ) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
+  const [camera, setCamera] = useState<CameraState>(
+    () => loadSavedCamera(boardId) ?? { scale: 1, x: 0, y: 0 },
+  );
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
@@ -221,24 +225,30 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     .filter((sticker) => !needsInitialLayout(sticker))
     .map((sticker) => ({ posX: sticker.posX!, posY: sticker.posY!, zIndex: sticker.zIndex! }));
 
-  // 렌더링/제스처 쪽에는 항상 실제 좌표만 넘어가게, 아직 배치 전인 스티커는 배치 계산이
-  // 끝나기 전까지만 임시로 0/1로 채워서 보여준다(배치 이펙트가 곧바로 실제 값으로 덮어씀)
-  const stickers: StickerData[] = [...rawStickers]
-    .map((sticker) => ({
-      ...sticker,
-      posX: sticker.posX ?? 0,
-      posY: sticker.posY ?? 0,
-      zIndex: sticker.zIndex ?? 0,
-    }))
-    .sort((a, b) => a.zIndex - b.zIndex);
+  const stickers: StickerData[] = useMemo(
+    () =>
+      [...rawStickers]
+        .map((sticker) => ({
+          ...sticker,
+          posX: sticker.posX ?? 0,
+          posY: sticker.posY ?? 0,
+          zIndex: sticker.zIndex ?? 0,
+        }))
+        .sort((a, b) => a.zIndex - b.zIndex),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data?.stickers],
+  );
 
-  // 저장된 그림(전부 scope=BOARD, 스티커 귀속은 별도 이슈) — 렌더용으로 stroke에서 점 배열을 복원
-  const drawings = (data?.drawings ?? []).map((drawing) => ({
-    id: drawing.id,
-    points: parseStrokePoints(drawing.stroke),
-    color: drawing.color,
-    strokeWidth: drawing.strokeWidth,
-  }));
+  const drawings = useMemo(
+    () =>
+      (data?.drawings ?? []).map((drawing) => ({
+        id: drawing.id,
+        points: parseStrokePoints(drawing.stroke),
+        color: drawing.color,
+        strokeWidth: drawing.strokeWidth,
+      })),
+    [data?.drawings],
+  );
 
   const cameraRef = useRef(camera);
   const stickersRef = useRef(stickers);
@@ -280,19 +290,30 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   // 더블탭 감지용 — 직전에 빈 배경을 탭한 시각·위치
   const lastBackgroundTapRef = useRef<{ time: number; point: Point } | null>(null);
 
-  const clearPressedSticker = () => {
+  // 롱프레스가 성사된 순간부터 퀵메뉴가 닫힐 때까지 눌린 연출을 잠근다. 이 사이에
+  // 포인터 업·취소 등 여러 경로가 clearPressedSticker를 부르는데, 그걸 그대로 두면
+  // 메뉴가 뜨기도 전에 스티커가 원래 크기로 줄어드는 게 보인다
+  const isPressedStickerLockedRef = useRef(false);
+
+  const releasePressedSticker = () => {
+    isPressedStickerLockedRef.current = false;
     pressedStickerRef.current?.removeAttribute('data-pressed');
     pressedStickerRef.current = null;
   };
 
-  // 롱프레스가 성공하면 눌린 연출을 그대로 두고, 퀵메뉴가 닫힐 때 원래 크기로 되돌린다.
-  // (메뉴 뜨기 직전에 스티커가 줄어드는 게 보이지 않게)
+  const clearPressedSticker = () => {
+    if (isPressedStickerLockedRef.current) return;
+    releasePressedSticker();
+  };
+
+  // 퀵메뉴가 닫히는 순간에 맞춰 원래 크기로 되돌린다
   useEffect(() => {
-    if (quickMenu.quickMenuStickerId === null) clearPressedSticker();
+    if (quickMenu.quickMenuStickerId === null) releasePressedSticker();
   }, [quickMenu.quickMenuStickerId]);
 
   const longPress = useLongPress({
     onLongPress: (stickerId) => {
+      isPressedStickerLockedRef.current = true;
       bridge.send('HAPTIC', { type: 'heavy' });
       quickMenu.openQuickMenu(stickerId);
       // 리캡 이동과 안 겹치게 탭 후보 제거
@@ -448,6 +469,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   useEffect(() => {
     onCameraScaleChange?.(camera.scale);
   }, [camera.scale, onCameraScaleChange]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => saveCamera(boardId, camera), 400);
+    return () => clearTimeout(timer);
+  }, [boardId, camera]);
+
+  useEffect(() => {
+    return () => saveCamera(boardId, cameraRef.current);
+  }, [boardId]);
 
   // 그림 선택(삭제 대상) 여부를 부모에 알림 — 상단 UI 숨김/하단 삭제 바 전환에 사용
   useEffect(() => {
@@ -727,7 +757,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
       // 편집 모드에선 pointerdown이 바로 드래그로 이어지므로 롱프레스는 기본 뷰 모드에서만
       if (stickerId && stickerElement && !isEditModeRef.current) {
-        clearPressedSticker();
+        releasePressedSticker();
         longPressRef.current.start(point, stickerId);
         stickerElement.dataset.pressed = 'true';
         pressedStickerRef.current = stickerElement;
@@ -1127,7 +1157,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     container.addEventListener('gestureend', blockGesture);
 
     return () => {
-      clearPressedSticker();
+      releasePressedSticker();
       container.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
@@ -1246,7 +1276,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             <StickerBadgeMark
               key={sticker.id}
               sticker={sticker}
-              onNameClick={() => quickMenu.startDirectEdit(sticker.id)}
+              onNameClick={quickMenu.startDirectEdit}
             />
           ))}
         {selectedSticker && (
