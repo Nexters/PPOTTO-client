@@ -11,8 +11,8 @@ type SelectBoxProps = {
 };
 
 export function SelectBox({ sticker, transformOverride }: SelectBoxProps) {
-  const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const scale = transformOverride?.scale ?? sticker.scale;
+  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, scale);
   const { width, height } = getPhotoSize(photoImage, scale);
 
   if (width <= 0 || height <= 0) return null;
