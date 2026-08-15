@@ -2,7 +2,7 @@
 
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import type { BoardDetail } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
@@ -65,6 +65,22 @@ import { StickerQuickMenu } from './StickerQuickMenu';
 type BoardCanvasProps = {
   boardId: string;
   mode: ToolbarMode;
+  drawColor: string;
+  drawStrokeWidth: number;
+  // true인 동안은 포인터 입력을 무시한다 — 스포이드로 색을 고르는 동안 같은 드래그가
+  // 캔버스에 그림으로도 그려지는 걸 막기 위함
+  isPointerInputSuspended?: boolean;
+  // 그리는 도중(pointerdown~up 사이) 여부가 바뀔 때마다 호출
+  onDrawingActiveChange?: (active: boolean) => void;
+  // 실행취소할 그림이 있는지 여부가 바뀔 때마다 호출
+  onCanUndoChange?: (canUndo: boolean) => void;
+  // 카메라 줌 배율이 바뀔 때마다 호출
+  onCameraScaleChange?: (scale: number) => void;
+};
+
+export type BoardCanvasHandle = {
+  // 가장 최근에 그린 선을 삭제한다
+  undoLastStroke: () => void;
 };
 
 // 탭과 드래그를 구분하는 이동 허용 오차(px)
@@ -72,9 +88,6 @@ const TAP_MOVE_THRESHOLD = 6;
 // 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
 const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
 const DOUBLE_TAP_MAX_DISTANCE = 24;
-// 색상 팔레트/펜 크기 UI가 아직 없어서 임시로 고정한 값 (디자인 확정되면 팔레트/슬라이더로 교체)
-const TEMP_DRAWING_COLOR = '#FFFFFF';
-const TEMP_DRAWING_STROKE_WIDTH = 4;
 // 새 스티커 배치 후 카메라가 포커스로 이동하는 시간(ms)
 const CAMERA_FOCUS_ANIMATION_MS = 350;
 // 카메라 포커스 범위(AABB) 계산용 스티커 절반 크기 근사치. 실제 이미지 크기를 몰라서(로드해봐야
@@ -92,7 +105,19 @@ function hitTestStickerId(target: EventTarget | null): string | null {
   return el instanceof HTMLElement ? (el.dataset.stickerId ?? null) : null;
 }
 
-export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
+export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(function BoardCanvas(
+  {
+    boardId,
+    mode,
+    drawColor,
+    drawStrokeWidth,
+    isPointerInputSuspended = false,
+    onDrawingActiveChange,
+    onCanUndoChange,
+    onCameraScaleChange,
+  },
+  ref,
+) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [camera, setCamera] = useState<CameraState>({ scale: 1, x: 0, y: 0 });
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
@@ -154,6 +179,9 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
   const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
+  const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
+  const drawColorRef = useRef(drawColor);
+  const drawStrokeWidthRef = useRef(drawStrokeWidth);
   const dragTransformRef = useRef<DragTransform | null>(null); // 제스처 도중의 실시간 위치/회전/크기
   const drawGestureRef = useRef<DrawGesture | null>(null); // draw 모드의 그리기/핀치줌 상태
 
@@ -244,11 +272,25 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     saveLayout({ boardId, input: { drawings: { created: [input] } } });
   };
 
+  // 그림을 캐시에서 낙관적으로 제거하고 삭제 요청을 보냄
+  const deleteDrawing = (id: string) => {
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current ? { ...current, drawings: current.drawings.filter((d) => d.id !== id) } : current,
+    );
+
+    saveLayout({ boardId, input: { drawings: { deletedIds: [id] } } });
+  };
+
   const saveStickerLayoutRef = useRef(saveStickerLayout);
   const selectStickerRef = useRef(selectSticker);
   const saveDrawingRef = useRef(saveDrawing);
+  const deleteDrawingRef = useRef(deleteDrawing);
+  const drawingsRef = useRef(drawings);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
+  const onDrawingActiveChangeRef = useRef(onDrawingActiveChange);
+  // 직전에 알려준 "그리는 중" 여부
+  const isDrawingActiveRef = useRef(false);
 
   // ref들을 매 렌더 이후 최신값으로 동기화
   useEffect(() => {
@@ -257,12 +299,39 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
     selectedIdRef.current = selectedId;
     isEditModeRef.current = isEditMode;
     isDrawModeRef.current = isDrawMode;
+    isPointerInputSuspendedRef.current = isPointerInputSuspended;
+    drawColorRef.current = drawColor;
+    drawStrokeWidthRef.current = drawStrokeWidth;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
     saveDrawingRef.current = saveDrawing;
+    deleteDrawingRef.current = deleteDrawing;
+    drawingsRef.current = drawings;
     pushRef.current = push;
     longPressRef.current = longPress;
+    onDrawingActiveChangeRef.current = onDrawingActiveChange;
   });
+
+  // 실행취소할 그림이 있는지 여부를 부모에 알림
+  useEffect(() => {
+    onCanUndoChange?.(drawings.length > 0);
+  }, [drawings.length, onCanUndoChange]);
+
+  useEffect(() => {
+    onCameraScaleChange?.(camera.scale);
+  }, [camera.scale, onCameraScaleChange]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      undoLastStroke: () => {
+        const list = drawingsRef.current;
+        if (list.length === 0) return;
+        deleteDrawingRef.current(list[list.length - 1]!.id);
+      },
+    }),
+    [],
+  );
 
   // 배치 처리 시작한 스티커 id를 기억해서, 저장 응답이 캐시에 반영되기 전에 리렌더가 껴도
   // 같은 스티커를 다시 계산·저장하지 않게 막는다
@@ -374,17 +443,25 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       drawGestureRef.current = result.state;
       setDrawingPoints(result.state?.kind === 'drawing' ? result.state.points : null);
 
+      // 그리는 중(drawing/pinching) 여부가 실제로 바뀔 때만 부모에 알림
+      const isActive = result.state !== null;
+      if (isActive !== isDrawingActiveRef.current) {
+        isDrawingActiveRef.current = isActive;
+        onDrawingActiveChangeRef.current?.(isActive);
+      }
+
       if (result.finalizedStroke && result.finalizedStroke.length > 0) {
         saveDrawingRef.current(
           toDrawingCreateInput(result.finalizedStroke, {
-            color: TEMP_DRAWING_COLOR,
-            strokeWidth: TEMP_DRAWING_STROKE_WIDTH,
+            color: drawColorRef.current,
+            strokeWidth: drawStrokeWidthRef.current,
           }),
         );
       }
     };
 
     const handlePointerDown = (e: PointerEvent) => {
+      if (isPointerInputSuspendedRef.current) return;
       // 퀵메뉴/이름 직접 편집 중엔 캔버스 제스처 비활성화
       if (quickMenu.isEditingRef.current) return;
       const point = getLocalPoint(e);
@@ -746,11 +823,7 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
             />
           ))}
           {drawingPoints && (
-            <DrawingStroke
-              points={drawingPoints}
-              color={TEMP_DRAWING_COLOR}
-              strokeWidth={TEMP_DRAWING_STROKE_WIDTH}
-            />
+            <DrawingStroke points={drawingPoints} color={drawColor} strokeWidth={drawStrokeWidth} />
           )}
         </svg>
         {stickers.map((sticker) => (
@@ -823,4 +896,4 @@ export function BoardCanvas({ boardId, mode }: BoardCanvasProps) {
       />
     </div>
   );
-}
+});

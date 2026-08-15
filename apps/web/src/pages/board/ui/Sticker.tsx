@@ -27,13 +27,18 @@ export type StickerData = Omit<ApiSticker, 'badgeRotation' | 'posX' | 'posY' | '
   zIndex: number;
 };
 
+// GCS 원본 URL을 next/image 프록시(same-origin)로 바꾼다.
+function toProxiedImageSrc(src: string): string {
+  return `/_next/image?url=${encodeURIComponent(src)}&w=1080&q=75`;
+}
+
 export function useStickerImage(src?: string) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {
     if (!src) return;
     const img = new window.Image();
-    img.src = src;
+    img.src = toProxiedImageSrc(src);
     img.onload = () => setImage(img);
   }, [src]);
 
