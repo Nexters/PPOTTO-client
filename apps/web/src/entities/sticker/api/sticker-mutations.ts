@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { stickerApi } from './sticker-api';
+import { stickerApi, type UpdateCommentPositionsInput } from './sticker-api';
 
 export const useMarkStickerViewedMutation = () =>
   useMutation({
@@ -31,4 +31,15 @@ export const useUpdateStickerTitleMutation = () =>
   useMutation({
     mutationFn: ({ stickerId, title }: UpdateStickerTitleVariables) =>
       stickerApi.updateTitle(stickerId, title),
+  });
+
+type UpdateCommentPositionsVariables = {
+  stickerId: string;
+  comments: UpdateCommentPositionsInput['comments'];
+};
+
+export const useUpdateCommentPositionsMutation = () =>
+  useMutation({
+    mutationFn: ({ stickerId, comments }: UpdateCommentPositionsVariables) =>
+      stickerApi.updateCommentPositions(stickerId, { comments }),
   });
