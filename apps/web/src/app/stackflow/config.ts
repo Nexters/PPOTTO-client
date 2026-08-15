@@ -9,6 +9,7 @@ declare module '@stackflow/config' {
     Recap: { stickerId: string; boardId: string };
     PhotoViewer: { stickerId: string; initialIndex: string };
     Settings: Record<string, never>;
+    AnalysisLoading: Record<string, never>;
   }
 }
 
@@ -21,6 +22,7 @@ export const config = defineConfig({
     { name: 'Recap', route: '/recap' },
     { name: 'PhotoViewer', route: '/photo-viewer' },
     { name: 'Settings', route: '/settings' },
+    { name: 'AnalysisLoading', route: '/analysis-loading' },
   ],
   transitionDuration: 300,
 });

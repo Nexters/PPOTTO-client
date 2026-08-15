@@ -1,11 +1,12 @@
-import { contract } from '@ppotto/bridge';
+import { contract, type BridgeContract } from '@ppotto/bridge';
 import { File, Paths } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import type { Handlers } from 'webview-bridge-kit';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
 
 import {
@@ -25,8 +26,32 @@ import { useToast } from '@/shared/ui/Toast';
 
 const WEB_URL = __DEV__ ? process.env.EXPO_PUBLIC_WEB_URL : 'https://ppotto.co.kr';
 
+type PageBridgeHandlers = Pick<
+  Handlers<BridgeContract>,
+  | 'GET_ANALYSIS_LOADING_STATE'
+  | 'ANALYSIS_LOADING_PHASE_STARTED'
+  | 'ANALYSIS_LOADING_PHASE_FINISHED'
+  | 'ANALYSIS_LOADING_REVEAL_FINISHED'
+>;
+
+interface AppWebViewProps {
+  path?: string;
+  onReady?: () => void;
+  bridgeHandlers?: PageBridgeHandlers;
+  waitForAnalysisReady?: boolean;
+  waitForBoardReady?: boolean;
+  showBoard?: boolean;
+}
+
 // 앱 표준 웹뷰
-export function AppWebView({ path = '', onReady }: { path?: string; onReady?: () => void }) {
+export function AppWebView({
+  path = '',
+  onReady,
+  bridgeHandlers,
+  waitForAnalysisReady = false,
+  waitForBoardReady = false,
+  showBoard = false,
+}: AppWebViewProps) {
   const qaToolEnabled = isQaToolEnabled();
   const ref = useRef<WebView>(null);
   const ready = useRef(false);
@@ -34,7 +59,7 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
   const [loaded, setLoaded] = useState(false);
   const [boardActive, setBoardActive] = useState(false);
 
-  const { pushMessage } = useNativeBridge(ref, contract, {
+  const { bridge, pushMessage } = useNativeBridge(ref, contract, {
     APPLE_LOGIN: () => loginWithApple(),
     KAKAO_LOGIN: () => loginWithKakao(),
     GET_ACCESS_TOKEN: async ({ forceRefresh }) => ({
@@ -54,6 +79,21 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
     OPEN_PHOTO_SELECT: ({ boardId, mode }) =>
       router.push({ pathname: '/photo-select', params: { boardId, mode } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
+    BOARD_READY: () => setLoaded(true),
+    ANALYSIS_LOADING_READY: () => setLoaded(true),
+    GET_ANALYSIS_LOADING_STATE: () => {
+      const handler = bridgeHandlers?.GET_ANALYSIS_LOADING_STATE;
+      if (!handler) throw new Error('analysis loading bridge handler is not configured');
+      return handler();
+    },
+    ANALYSIS_LOADING_PHASE_STARTED: (payload) =>
+      bridgeHandlers?.ANALYSIS_LOADING_PHASE_STARTED?.(payload),
+    ANALYSIS_LOADING_PHASE_FINISHED: (payload) => {
+      const handler = bridgeHandlers?.ANALYSIS_LOADING_PHASE_FINISHED;
+      if (!handler) throw new Error('analysis loading bridge handler is not configured');
+      return handler(payload);
+    },
+    ANALYSIS_LOADING_REVEAL_FINISHED: () => bridgeHandlers?.ANALYSIS_LOADING_REVEAL_FINISHED?.(),
     SAVE_IMAGE: async ({ base64 }) => {
       try {
         const { status } = await MediaLibrary.requestPermissionsAsync(true);
@@ -72,10 +112,15 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
     },
   });
 
+  useEffect(() => {
+    if (showBoard) bridge.emit('SHOW_BOARD');
+  }, [bridge, showBoard]);
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#000' }}>
       <WebView
         ref={ref}
+        style={{ backgroundColor: '#000' }}
         source={{ uri: `${WEB_URL}${path}` }}
         injectedJavaScriptBeforeContentLoaded={
           qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : undefined
@@ -95,7 +140,9 @@ export function AppWebView({ path = '', onReady }: { path?: string; onReady?: ()
             console.warn('외부 링크 열기 실패', error),
           );
         }}
-        onLoadEnd={() => setLoaded(true)}
+        onLoadEnd={() => {
+          if (!waitForAnalysisReady && !waitForBoardReady) setLoaded(true);
+        }}
         allowsBackForwardNavigationGestures={false}
         webviewDebuggingEnabled={qaToolEnabled}
         bounces={!boardActive}

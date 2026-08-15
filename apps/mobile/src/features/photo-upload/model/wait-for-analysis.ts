@@ -5,7 +5,13 @@ import type { AnalysisStatus } from './upload-runner';
 // 분석이 완료되거나 실패할 때까지 서버 상태를 폴링한다.
 const POLL_INTERVAL_MS = 2000;
 
-type GetAnalysisStatus = (analysisId: string) => Promise<AnalysisStatus>;
+export interface AnalysisProgress {
+  failedReason?: string | null;
+  progress: number;
+  status: AnalysisStatus;
+}
+
+type GetAnalysisProgress = (analysisId: string) => Promise<AnalysisProgress>;
 type Wait = () => Promise<void>;
 
 export class AnalysisStatusUnavailableError extends Error {
@@ -18,31 +24,35 @@ export class AnalysisStatusUnavailableError extends Error {
 /** 서버 분석이 끝날 때까지 진행 상태를 조회한다. */
 export async function waitForAnalysis(
   analysisId: string,
-  getStatus: GetAnalysisStatus,
+  getProgress: GetAnalysisProgress,
   wait: Wait = () => new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS)),
+  onProgress: (progress: AnalysisProgress) => void = () => undefined,
 ): Promise<void> {
   while (true) {
-    const status = await getStatusWithRetry(analysisId, getStatus, wait);
-    if (status === 'COMPLETED') return;
-    if (status === 'FAILED') throw new Error('사진 분석에 실패했습니다.');
+    const analysis = await getProgressWithRetry(analysisId, getProgress, wait);
+    onProgress(analysis);
+    if (analysis.status === 'COMPLETED') return;
+    if (analysis.status === 'FAILED') {
+      throw new Error(analysis.failedReason ?? '사진 분석에 실패했습니다.');
+    }
     await wait();
   }
 }
 
-async function getStatusWithRetry(
+async function getProgressWithRetry(
   analysisId: string,
-  getStatus: GetAnalysisStatus,
+  getProgress: GetAnalysisProgress,
   wait: Wait,
-): Promise<AnalysisStatus> {
+): Promise<AnalysisProgress> {
   try {
-    return await getStatus(analysisId);
+    return await getProgress(analysisId);
   } catch (error) {
     if (!isTemporaryError(error)) throw error;
   }
 
   await wait();
   try {
-    return await getStatus(analysisId);
+    return await getProgress(analysisId);
   } catch (error) {
     if (isTemporaryError(error)) throw new AnalysisStatusUnavailableError(error);
     throw error;

@@ -5,6 +5,9 @@ export interface UploadJobPhoto {
   clientPhotoId: string;
   fileUri: string;
   contentType: 'image/jpeg' | 'image/png' | 'image/heic';
+  // 구버전 저장 작업에는 없을 수 있다.
+  width?: number;
+  height?: number;
   takenAt: string;
   isRepresentative: boolean;
 }

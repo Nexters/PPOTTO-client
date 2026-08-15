@@ -35,7 +35,7 @@ let mockSearchParams: { boardId: string; mode?: string } = { boardId: 'board-1' 
  * 제외: 진입 시 갤러리 전체에 100그룹 미만 → 생성 불가 안내 화면 — 별도 작업, Unable 시안 없음
  * 제외: 권한 거부 안내·설정 이동 — 별도 시안 필요
  * 제외: 백그라운드 중 설정에서 권한 회수 후 복귀 — 드묾, 실제 문제 시 추가
- * CTA는 업로드 서비스 시작과 BoardScreen 이동만 검증하고 업로드 내부 동작은 feature 테스트가 담당
+ * CTA는 업로드 서비스 시작과 로딩 화면 이동만 검증하고 업로드 내부 동작은 feature 테스트가 담당
  * 제외: 로딩 중 타일 표현 — 시안의 회색 타일은 샘플 필러이지 플레이스홀더가 아님
  *
  * [팀확인] 700:7641 시안의 dim 누락 — 디자이너 확인, 구현은 dim 적용
@@ -244,7 +244,7 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
 
   expect(photoUploadService.start).toHaveBeenCalledTimes(1);
   expect(router.replace).toHaveBeenCalledWith({
-    pathname: '/board',
+    pathname: '/analysis-loading',
     params: { boardId: 'board-1' },
   });
 });
