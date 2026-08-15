@@ -1,5 +1,6 @@
 import { contract, type BridgeContract } from '@ppotto/bridge';
 import { File, Paths } from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -26,6 +27,12 @@ import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
 const WEB_URL = __DEV__ ? process.env.EXPO_PUBLIC_WEB_URL : 'https://ppotto.co.kr';
+
+const HAPTIC_STYLES = {
+  light: Haptics.ImpactFeedbackStyle.Light,
+  medium: Haptics.ImpactFeedbackStyle.Medium,
+  heavy: Haptics.ImpactFeedbackStyle.Heavy,
+} as const;
 const INSTAGRAM_APP_ID = '1002723789453387';
 const INSTAGRAM_PACKAGE = 'com.instagram.android';
 
@@ -96,6 +103,9 @@ export function AppWebView({
     OPEN_PHOTO_SELECT: ({ boardId, mode }) =>
       router.push({ pathname: '/photo-select', params: { boardId, mode } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
+    HAPTIC: ({ type }) => {
+      void Haptics.impactAsync(HAPTIC_STYLES[type]);
+    },
     BOARD_READY: () => setLoaded(true),
     ANALYSIS_LOADING_READY: () => {
       setLoaded(true);

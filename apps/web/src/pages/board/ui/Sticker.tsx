@@ -85,6 +85,7 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
   return (
     <div
       data-sticker-id={sticker.id}
+      className="group"
       style={{
         position: 'absolute',
         left: x,
@@ -99,6 +100,7 @@ export function Sticker({ sticker, selected, transformOverride }: StickerProps) 
       <canvas
         ref={canvasRef}
         aria-hidden
+        className="transition-[transform,opacity] duration-180 ease-out motion-reduce:transition-none group-data-[pressed=true]:scale-[0.95] group-data-[pressed=true]:opacity-[0.65] group-data-[pressed=true]:duration-100"
         style={{
           position: 'absolute',
           left: -outline,
