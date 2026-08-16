@@ -12,11 +12,6 @@ import { Modal } from '@/shared/ui/common/Modal';
 import { useToast } from '@/shared/ui/common/Toast';
 
 const APP_VERSION = '1.0.0';
-const TERMS_URL =
-  'https://onyx-pick-058.notion.site/3b4145d1840e80358e69c80240cc6290?source=copy_link';
-const PRIVACY_POLICY_URL =
-  'https://onyx-pick-058.notion.site/3b4145d1840e805a9704cebc76c3f4d4?source=copy_link';
-
 type ConfirmAction = 'logout' | 'withdraw';
 
 const CONFIRM: Record<
@@ -49,7 +44,7 @@ const CONFIRM: Record<
 };
 
 export function SettingsPage() {
-  const { pop } = useFlow();
+  const { push, pop } = useFlow();
   const { data: me } = useMeQuery();
   const toast = useToast();
   const [confirming, setConfirming] = useState<ConfirmAction>('logout');
@@ -103,8 +98,10 @@ export function SettingsPage() {
         </Section>
 
         <Section label="보안">
-          <ExternalLinkItem href={TERMS_URL}>이용약관</ExternalLinkItem>
-          <ExternalLinkItem href={PRIVACY_POLICY_URL}>개인정보 처리방침</ExternalLinkItem>
+          <MenuItem onClick={() => push('TermsDetail', { code: 'TOS' })}>이용약관</MenuItem>
+          <MenuItem onClick={() => push('TermsDetail', { code: 'PRIVACY' })}>
+            개인정보 처리방침
+          </MenuItem>
           <MenuItem>오픈소스</MenuItem>
         </Section>
 
@@ -153,21 +150,6 @@ function MenuItem({ children, onClick }: { children: ReactNode; onClick?: () => 
       <button type="button" onClick={onClick} className="w-full text-left text-white text-body-03">
         {children}
       </button>
-    </Row>
-  );
-}
-
-function ExternalLinkItem({ children, href }: { children: ReactNode; href: string }) {
-  return (
-    <Row>
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="w-full text-left text-white text-body-03"
-      >
-        {children}
-      </a>
     </Row>
   );
 }
