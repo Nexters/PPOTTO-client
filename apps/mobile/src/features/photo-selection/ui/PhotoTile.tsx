@@ -38,8 +38,6 @@ export function PhotoTile({ uri, selected, onPress, grouped, photoCount = 1 }: P
       {displayedUri !== uri && (
         <View className="bg-gray-800" pointerEvents="none" style={StyleSheet.absoluteFill} />
       )}
-      {grouped && !selected && <View className="bg-black/70" style={StyleSheet.absoluteFill} />}
-
       {grouped && photoCount > 1 && (
         <View className="absolute left-1 top-1 rounded-full bg-black/60 px-1.5 py-px">
           <Text className="text-caption-02 text-white">{photoCount}</Text>

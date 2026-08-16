@@ -1,6 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
-import { fetchPhotoPage, requestPhotoLibraryPermission } from '../api/fetch-photo-page';
+import {
+  fetchPhotoPage,
+  getPhotoLibraryPermission,
+  presentPhotoLibraryPermissionPicker,
+  requestPhotoLibraryPermission,
+} from '../api/fetch-photo-page';
 
 import type { GalleryPhoto } from './gallery-photo';
 import {
@@ -8,6 +14,7 @@ import {
   excludeRepresentative,
   groupPhotos,
   type PhotoSelection,
+  type PhotoSelectionChange,
   type PhotoUnit,
   restoreGroup,
   unitCount,
@@ -32,9 +39,13 @@ export function usePhotoSelection({
   mode,
 }: UsePhotoSelectionOptions) {
   const [selection, setSelection] = useState<PhotoSelection | null>(null);
+  const [permission, setPermission] = useState<Awaited<
+    ReturnType<typeof getPhotoLibraryPermission>
+  > | null>(null);
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [endCursor, setEndCursor] = useState<string>();
   const [hasNextPage, setHasNextPage] = useState(false);
-  const loadKey = `${album}:${mode}:${targetUnits}`;
+  const loadKey = `${album}:${mode}:${targetUnits}:${reloadVersion}`;
   const [loadedKey, setLoadedKey] = useState<string>();
   const loadGeneration = useRef(0);
   const reloading = useRef(false);
@@ -94,7 +105,10 @@ export function usePhotoSelection({
 
     const load = async () => {
       try {
-        if (!(await requestPhotoLibraryPermission())) return;
+        const nextPermission = await getPhotoLibraryPermission();
+        if (cancelled) return;
+        setPermission(nextPermission);
+        if (!nextPermission.granted) return;
 
         const page = await fetchPhotoPage({ first: PAGE_SIZES[0] });
         if (cancelled) return;
@@ -118,24 +132,49 @@ export function usePhotoSelection({
     };
     // appendPhotos는 이 훅의 로컬 클로저라 deps에 넣지 않는다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [album, mode, targetUnits]);
+  }, [album, mode, reloadVersion, targetUnits]);
+
+  const reload = useCallback(() => setReloadVersion((version) => version + 1), []);
+
+  const requestPermission = useCallback(async () => {
+    const nextPermission = await requestPhotoLibraryPermission();
+    setPermission(nextPermission);
+    if (nextPermission.granted) reload();
+  }, [reload]);
+
+  const presentPermissionPicker = useCallback(async () => {
+    await presentPhotoLibraryPermissionPicker();
+    reload();
+  }, [reload]);
+
+  useEffect(() => {
+    if (permission?.status !== 'denied') return;
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') reload();
+    });
+    return () => subscription.remove();
+  }, [permission?.status, reload]);
 
   const photoUnits = selection ? units(selection) : [];
-  const selectedCount = selection ? unitCount(selection) : 0;
+  const selectedCount = photoUnits.filter((unit) => !unit.excluded).length;
   const everythingSelected =
     selection !== null &&
     selectedCount > 0 &&
     (selectedCount === targetUnits || (!hasNextPage && selectedCount === selection.groups.length));
 
-  const toggleUnit = (unit: PhotoUnit) => {
-    setSelection((previous) => {
-      if (!previous) return previous;
-      if (!unit.excluded) return excludeRepresentative(previous, unit.groupId);
-      // 제출 상한(targetUnits)을 넘겨서는 선택할 수 없다
-      if (unitCount(previous) >= targetUnits) return previous;
-      return restoreGroup(previous, unit.groupId);
-    });
-  };
+  const toggleUnit = useCallback(
+    (unit: PhotoUnit) => {
+      setSelection((previous) => {
+        if (!previous) return previous;
+        if (!unit.excluded) return excludeRepresentative(previous, unit.groupId);
+        // 제출 상한(targetUnits)을 넘겨서는 선택할 수 없다
+        if (unitCount(previous) >= targetUnits) return previous;
+        return restoreGroup(previous, unit.groupId);
+      });
+    },
+    [targetUnits],
+  );
 
   const toggleEverything = () => {
     setSelection((previous) => {
@@ -153,6 +192,37 @@ export function usePhotoSelection({
       };
     });
   };
+
+  const setGroupExcludedCounts = useCallback(
+    (changes: readonly PhotoSelectionChange[]) => {
+      setSelection((previous) => {
+        if (!previous) return previous;
+        const groups = new Map(previous.groups.map((group) => [group.id, group]));
+        const excludedCounts = { ...previous.excludedCounts };
+        let selectedCount = unitCount(previous);
+        let changed = false;
+
+        changes.forEach((change) => {
+          const group = groups.get(change.groupId);
+          if (!group) return;
+          const currentCount = excludedCounts[group.id] ?? 0;
+          const nextCount = Math.max(0, Math.min(group.photos.length, change.excludedCount));
+          if (currentCount === nextCount) return;
+
+          const currentlySelected = currentCount < group.photos.length;
+          const nextSelected = nextCount < group.photos.length;
+          if (!currentlySelected && nextSelected && selectedCount >= targetUnits) return;
+
+          excludedCounts[group.id] = nextCount;
+          if (currentlySelected !== nextSelected) selectedCount += nextSelected ? 1 : -1;
+          changed = true;
+        });
+
+        return changed ? { groups: previous.groups, excludedCounts } : previous;
+      });
+    },
+    [targetUnits],
+  );
 
   const loadMore = async () => {
     if (reloading.current || !hasNextPage || !endCursor || loadingMore.current) return;
@@ -178,9 +248,13 @@ export function usePhotoSelection({
     everythingSelected,
     loading: loadedKey !== loadKey,
     loadMore,
+    permission,
     photoUnits,
+    presentPermissionPicker,
+    requestPermission,
     selection,
     selectedCount,
+    setGroupExcludedCounts,
     toggleEverything,
     toggleUnit,
   };

@@ -20,7 +20,13 @@ export interface PhotoUnit {
   groupId: string;
   photo: GalleryPhoto;
   excluded: boolean;
+  excludedCount: number;
   photoCount: number;
+}
+
+export interface PhotoSelectionChange {
+  groupId: string;
+  excludedCount: number;
 }
 
 /**
@@ -101,6 +107,7 @@ export function units(selection: PhotoSelection): PhotoUnit[] {
       groupId: group.id,
       photo: excluded ? group.photos[0]! : group.photos[excludedCount]!,
       excluded,
+      excludedCount,
       photoCount: group.photos.length - excludedCount,
     };
   });

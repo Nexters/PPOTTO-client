@@ -11,8 +11,12 @@ const toGalleryPhoto = (asset: MediaLibrary.Asset): GalleryPhoto => ({
   height: asset.height,
 });
 
-export const requestPhotoLibraryPermission = async () =>
-  (await MediaLibrary.requestPermissionsAsync()).granted;
+export const getPhotoLibraryPermission = () => MediaLibrary.getPermissionsAsync();
+
+export const requestPhotoLibraryPermission = () => MediaLibrary.requestPermissionsAsync();
+
+export const presentPhotoLibraryPermissionPicker = () =>
+  MediaLibrary.presentPermissionsPickerAsync(['photo']);
 
 /** 그룹화에는 메타데이터만 필요하므로 getAssetsAsync 사용 */
 export const fetchPhotoPage: FetchPhotoPage = async ({ first, after }) => {
