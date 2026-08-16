@@ -48,6 +48,7 @@ import {
   hitTestDrawingId,
   isPointInDrawingBounds,
   parseStrokePoints,
+  parseStrokeZIndex,
   toDrawingCreateInput,
   toDrawingMoveInput,
 } from '../model/board-drawing';
@@ -252,6 +253,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         points: parseStrokePoints(drawing.stroke),
         color: drawing.color,
         strokeWidth: drawing.strokeWidth,
+        zIndex: parseStrokeZIndex(drawing.stroke),
       })),
     [data?.drawings],
   );

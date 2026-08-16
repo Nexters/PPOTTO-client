@@ -26,6 +26,7 @@ import {
   hitTestDrawingId,
   isPointInDrawingBounds,
   parseStrokePoints,
+  parseStrokeZIndex,
   shouldSampleStrokePoint,
   toDrawingCreateInput,
   toPathData,
@@ -79,7 +80,24 @@ describe('toDrawingCreateInput', () => {
         [10.5, 22],
         [14.2, 25.1],
       ],
+      zIndex: 0,
     });
+  });
+
+  it('zIndex를 넘기면 stroke.zIndex에 그대로 담는다', () => {
+    const result = toDrawingCreateInput([{ x: 0, y: 0 }], {
+      color: '#FFD400',
+      strokeWidth: 4,
+      zIndex: 7,
+    });
+
+    expect(result.stroke).toEqual({ points: [[0, 0]], zIndex: 7 });
+  });
+
+  it('zIndex를 안 넘기면 0으로 취급한다', () => {
+    const result = toDrawingCreateInput([{ x: 0, y: 0 }], { color: '#FFD400', strokeWidth: 4 });
+
+    expect(result.stroke).toMatchObject({ zIndex: 0 });
   });
 
   it('color/strokeWidth를 그대로 전달한다', () => {
@@ -157,6 +175,25 @@ describe('parseStrokePoints', () => {
   });
 });
 
+describe('parseStrokeZIndex', () => {
+  it('toDrawingCreateInput이 만든 zIndex를 복원한다', () => {
+    expect(parseStrokeZIndex({ zIndex: 7 })).toBe(7);
+  });
+
+  it('zIndex 필드가 없으면 0을 반환한다', () => {
+    expect(parseStrokeZIndex({})).toBe(0);
+  });
+
+  it('stroke가 null/undefined면 0을 반환한다', () => {
+    expect(parseStrokeZIndex(null)).toBe(0);
+    expect(parseStrokeZIndex(undefined)).toBe(0);
+  });
+
+  it('zIndex가 숫자가 아니면 0을 반환한다', () => {
+    expect(parseStrokeZIndex({ zIndex: 'invalid' })).toBe(0);
+  });
+});
+
 function fakeDrawing(overrides: Partial<ParsedDrawing> = {}): ParsedDrawing {
   return {
     id: 'drawing-1',
@@ -166,6 +203,7 @@ function fakeDrawing(overrides: Partial<ParsedDrawing> = {}): ParsedDrawing {
     ],
     color: '#fff',
     strokeWidth: 0,
+    zIndex: 0,
     ...overrides,
   };
 }
