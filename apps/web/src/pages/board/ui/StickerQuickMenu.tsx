@@ -25,7 +25,7 @@ type StickerQuickMenuProps = {
 };
 
 type QuickMenuButtonProps = {
-  Icon: ComponentType<{ color?: string }>;
+  Icon: ComponentType<{ color?: string; width?: number; height?: number }>;
   label: string;
   onClick: () => void;
   disabled?: boolean;
@@ -36,11 +36,13 @@ function QuickMenuButton({ Icon, label, onClick, disabled }: QuickMenuButtonProp
     <button
       type="button"
       disabled={disabled}
-      className="flex items-center gap-2 text-white disabled:opacity-50"
+      className="flex w-18 flex-col items-center gap-2 disabled:opacity-50"
       onClick={onClick}
     >
-      <Icon color="white" />
-      <span className="text-body-04 font-medium">{label}</span>
+      <span className="flex size-12 items-center justify-center rounded-full bg-gray-800">
+        <Icon color="white" width={28} height={28} />
+      </span>
+      <span className="text-caption-01 w-full text-center font-medium text-white">{label}</span>
     </button>
   );
 }
@@ -81,25 +83,28 @@ export function StickerQuickMenu({
             onCancelEditTitle={onCancelEditTitle}
           />
         )}
-        <QuickMenuButton Icon={Edit} label="이름 변경하기" onClick={onRename} />
-        <QuickMenuButton
-          Icon={Download}
-          label={isSaving ? '스티커 저장하는 중...' : '스티커 저장하기'}
-          onClick={handleSave}
-          disabled={isSaving}
-        />
-        <QuickMenuButton
-          Icon={Reload}
-          label={isRegenerating ? '스티커 다시 만드는 중...' : '스티커 다시 만들기'}
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        />
-        <QuickMenuButton
-          Icon={Trash}
-          label="삭제하기"
-          onClick={() => setIsDeleteConfirmOpen(true)}
-          disabled={isDeleting}
-        />
+        <span className="text-body-01 w-full text-white">스티커 메뉴</span>
+        <div className="flex w-full items-start justify-between">
+          <QuickMenuButton Icon={Edit} label="이름 변경하기" onClick={onRename} />
+          <QuickMenuButton
+            Icon={Download}
+            label={isSaving ? '저장하는 중...' : '스티커 저장'}
+            onClick={handleSave}
+            disabled={isSaving}
+          />
+          <QuickMenuButton
+            Icon={Reload}
+            label={isRegenerating ? '재생성 중...' : '스티커 재생성'}
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          />
+          <QuickMenuButton
+            Icon={Trash}
+            label="삭제하기"
+            onClick={() => setIsDeleteConfirmOpen(true)}
+            disabled={isDeleting}
+          />
+        </div>
       </BottomSheet>
       <Modal
         open={isDeleteConfirmOpen}
