@@ -1,6 +1,6 @@
 'use client';
 
-import { useStickerImage } from '@/shared/lib/sticker-raster';
+import { useStickerImageWithFallback } from '@/shared/lib/sticker-raster';
 
 import type { StickerTransform } from '../model/board-transform';
 
@@ -14,7 +14,10 @@ type SelectBoxProps = {
 
 export function SelectBox({ sticker, transformOverride }: SelectBoxProps) {
   const scale = transformOverride?.scale ?? sticker.scale;
-  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, stickerDisplayedEdge(scale));
+  const photoImage = useStickerImageWithFallback(
+    sticker.imageUrl ?? undefined,
+    stickerDisplayedEdge(scale),
+  );
   const { width, height } = getPhotoSize(photoImage, scale);
 
   if (width <= 0 || height <= 0) return null;

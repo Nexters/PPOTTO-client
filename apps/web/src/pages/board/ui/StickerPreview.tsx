@@ -1,9 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import type { Ref } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
 import { cn } from '@/shared/lib/cn';
+import { drawOutlinedSticker, useStickerImage } from '@/shared/lib/sticker-raster';
 
 import type { StickerData } from './Sticker';
 import { StickerBadge } from './StickerBadge';
@@ -33,6 +34,16 @@ export function StickerPreview({
   titleInputRef,
   imageRef,
 }: StickerPreviewProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, PREVIEW_MAX_WIDTH);
+
+  useLayoutEffect(() => {
+    if (canvasRef.current && photoImage) {
+      drawOutlinedSticker(canvasRef.current, photoImage, PREVIEW_MAX_WIDTH);
+    }
+  }, [photoImage]);
+
   if (!sticker.imageUrl) return null;
 
   return (
@@ -53,12 +64,16 @@ export function StickerPreview({
           height: `min(${PREVIEW_MAX_HEIGHT}px, calc(100dvh - ${HEADER_HEIGHT}px - ${BOTTOM_RESERVE_HEIGHT}px - ${BADGE_HEIGHT}px - ${CONTENT_GAP}px - ${BREATHING_ROOM}px))`,
         }}
       >
-        <Image
-          src={sticker.imageUrl}
-          alt=""
-          fill
-          sizes={`${PREVIEW_MAX_WIDTH}px`}
-          style={{ objectFit: 'contain' }}
+        <canvas
+          ref={canvasRef}
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+          }}
         />
       </div>
       <StickerBadge

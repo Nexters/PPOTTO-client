@@ -1225,12 +1225,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         />
       )}
       <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          transformOrigin: '0 0',
-          transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
-        }}
+        style={
+          {
+            position: 'absolute',
+            inset: 0,
+            transformOrigin: '0 0',
+            transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
+            '--inv-camera-scale': 1 / camera.scale,
+          } as React.CSSProperties
+        }
       >
         {/* 저장된 그림 + 그리는 도중인 선의 실시간 미리보기 */}
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>

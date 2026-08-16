@@ -28,7 +28,7 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
         left: (sticker.posX ?? 0) + offset.x,
         top: (sticker.posY ?? 0) + offset.y,
         zIndex: badgeZIndex(sticker),
-        transform: 'translate(-50%, -50%)',
+        transform: 'translate(-50%, -50%) scale(var(--inv-camera-scale, 1))',
         pointerEvents: 'auto',
       }}
       onPointerDown={(event) => event.stopPropagation()}
