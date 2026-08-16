@@ -170,13 +170,12 @@ export function AppWebView({
 
         const file = new File(Paths.cache, 'recap-instagram-story.png');
         file.write(base64, { encoding: 'base64' });
-        const result = await Share.shareSingle({
+        await Share.shareSingle({
           social: Social.InstagramStories,
           appId: INSTAGRAM_APP_ID,
-          backgroundImage: file.uri,
+          stickerImage: file.uri,
         });
-
-        return { success: result.success };
+        return { success: true };
       } catch (error) {
         console.warn('인스타그램 스토리 공유 실패', error);
         return { success: false };
