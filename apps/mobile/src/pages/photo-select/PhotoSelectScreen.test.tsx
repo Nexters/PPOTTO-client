@@ -445,7 +445,8 @@ it('전체 취소를 누르면 0이 되고 자동 선택을 누르면 다시 전
   expect(cta()).toBeEnabled();
 });
 
-it('앨범을 바꾸면 새로 조회하고 선택이 초기화된다', async () => {
+// 앨범 드롭다운 임시 숨김(기능 미구현) — UI 복구 시 skip 해제
+it.skip('앨범을 바꾸면 새로 조회하고 선택이 초기화된다', async () => {
   setGallery(spacedAssets(100));
   const { user } = await renderLoadedScreen();
   await user.press(screen.getAllByRole('checkbox')[0]!);

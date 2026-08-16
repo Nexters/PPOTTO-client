@@ -202,6 +202,7 @@ export function AppWebView({
         ref={ref}
         style={{ backgroundColor: '#000' }}
         source={{ uri: `${WEB_URL}${path}` }}
+        keyboardDisplayRequiresUserAction={false}
         injectedJavaScriptBeforeContentLoaded={injectedScript}
         onMessage={(e) => {
           const data = e.nativeEvent.data;

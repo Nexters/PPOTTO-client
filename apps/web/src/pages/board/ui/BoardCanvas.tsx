@@ -17,8 +17,6 @@ import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutatio
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { stickerQueryOptions } from '@/entities/sticker/api/sticker-queries';
-import { useMeQuery } from '@/entities/user/api/user-queries';
-import { hasSeenOnboarding } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
@@ -75,6 +73,9 @@ import { DrawingStroke } from './DrawingStroke';
 import {
   EmptyBoardSticker,
   EMPTY_BOARD_STICKER_DEFAULT_TITLE,
+  EMPTY_BOARD_STICKER_HEIGHT,
+  EMPTY_BOARD_STICKER_ID,
+  EMPTY_BOARD_STICKER_WIDTH,
   hideEmptyBoardStickerForSession,
   isEmptyBoardStickerHidden,
 } from './empty-state/EmptyBoardSticker';
@@ -124,6 +125,12 @@ const CAMERA_FOCUS_ANIMATION_MS = 350;
 // 알 수 있음) Sticker.tsx의 STICKER_MAX_EDGE(160)의 절반으로 근사한다. 뱃지(제목)는 줌과 무관하게
 // 고정 크기를 유지할 예정이라 이 범위 계산에는 포함하지 않는다.
 const STICKER_FIT_HALF_SIZE = 80;
+const EMPTY_BOARD_STICKER_INITIAL_TRANSFORM: StickerTransform = {
+  x: 0,
+  y: 0,
+  rotation: 0,
+  scale: 1,
+};
 
 function easeOutCubic(progress: number): number {
   return 1 - (1 - progress) ** 3;
@@ -185,8 +192,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
   );
+  const [emptyBoardStickerTransform, setEmptyBoardStickerTransform] = useState<StickerTransform>(
+    EMPTY_BOARD_STICKER_INITIAL_TRANSFORM,
+  );
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
-  const { data: me } = useMeQuery();
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
   const queryClient = useQueryClient();
@@ -244,6 +253,24 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data?.stickers],
   );
+  const emptyBoardSticker = useMemo<StickerData>(
+    () => ({
+      id: EMPTY_BOARD_STICKER_ID,
+      type: 'IMAGE',
+      title: emptyBoardStickerTitle,
+      isNew: false,
+      imageUrl: null,
+      textContent: null,
+      posX: emptyBoardStickerTransform.x,
+      posY: emptyBoardStickerTransform.y,
+      rotation: emptyBoardStickerTransform.rotation,
+      scale: emptyBoardStickerTransform.scale,
+      zIndex: 0,
+      badgeOffsetX: 0,
+      badgeOffsetY: 0,
+    }),
+    [emptyBoardStickerTitle, emptyBoardStickerTransform],
+  );
 
   const drawings = useMemo(
     () =>
@@ -258,6 +285,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
   const cameraRef = useRef(camera);
   const stickersRef = useRef(stickers);
+  const emptyBoardStickerRef = useRef(emptyBoardSticker);
   const selectedIdRef = useRef(selectedId);
   const selectedDrawingIdRef = useRef(activeSelectedDrawingId);
   const isEditModeRef = useRef(isEditMode);
@@ -447,6 +475,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   useEffect(() => {
     cameraRef.current = camera;
     stickersRef.current = stickers;
+    emptyBoardStickerRef.current = emptyBoardSticker;
     selectedIdRef.current = selectedId;
     selectedDrawingIdRef.current = activeSelectedDrawingId;
     selectedDrawingBoxTransformRef.current = selectedDrawingBoxTransform;
@@ -525,10 +554,39 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   // 새로 배치된 무리를 카메라로 포커스해달라는 요청. 배치 계산과 분리된 별도 상태로 둬서,
   // 이 상태를 구독하는 애니메이션 이펙트가 배치 이펙트의 재실행(캐시 갱신 등으로 인한)에
   // 휘말려 애니메이션이 중간에 취소되지 않게 한다.
-  const [focusRequest, setFocusRequest] = useState<{
-    targets: Point[];
-    viewport: { width: number; height: number };
-  } | null>(null);
+  const [focusRequest, setFocusRequest] = useState<CameraState | null>(null);
+  const previousStickerCountRef = useRef<number | null>(null);
+
+  // 빈 보드의 월드 원점(0, 0)을 화면 정중앙 1배율에 둔다. 최초 진입은 즉시 맞추고,
+  // 마지막 실제 스티커가 사라진 순간에는 기존 카메라 포커스 모션으로 이동한다.
+  useEffect(() => {
+    if (!container || !data) return;
+
+    const stickerCount = data.stickers.length;
+    const previousStickerCount = previousStickerCountRef.current;
+    if (stickerCount === previousStickerCount) return;
+    previousStickerCountRef.current = stickerCount;
+
+    if (stickerCount > 0) {
+      if (previousStickerCount === 0) {
+        setSelectedStickerId((current) => (current === EMPTY_BOARD_STICKER_ID ? null : current));
+        setIsEmptyBoardQuickMenuOpen(false);
+      }
+      return;
+    }
+
+    setEmptyBoardStickerTransform({ ...EMPTY_BOARD_STICKER_INITIAL_TRANSFORM });
+    setSelectedStickerId((current) => (current === EMPTY_BOARD_STICKER_ID ? null : current));
+
+    const rect = container.getBoundingClientRect();
+    const targetCamera = computeFocusTarget({ scale: 1, x: 0, y: 0 }, [{ x: 0, y: 0 }], {
+      width: rect.width,
+      height: rect.height,
+    });
+
+    if (previousStickerCount === null) setCamera(targetCamera);
+    else if (previousStickerCount > 0) setFocusRequest(targetCamera);
+  }, [container, data]);
 
   // 새로 생성돼 좌표가 없는 스티커를 빈 공간에 배치하고 저장한다
   useEffect(() => {
@@ -567,7 +625,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       // 최초 배치에는 카메라 애니메이션 없이 바로 포커스 위치로 세팅한다
       setCamera((current) => computeFocusTarget(current, targets, viewport));
     } else {
-      setFocusRequest({ targets, viewport });
+      setFocusRequest(computeFocusTarget(cameraRef.current, targets, viewport));
     }
     // unplacedStickers/placedStickers는 data에서 매 렌더 새로 파생되므로 의도적으로 deps에서 제외.
     // data 참조가 실제로 바뀔 때만(우리 자신의 setQueryData 포함) 재실행되면 되고, handledPlacementRef가
@@ -582,11 +640,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     if (!focusRequest) return;
 
     const startCamera = cameraRef.current;
-    const targetCamera = computeFocusTarget(
-      startCamera,
-      focusRequest.targets,
-      focusRequest.viewport,
-    );
+    const targetCamera = focusRequest;
     const startTime = performance.now();
 
     const animate = (now: number) => {
@@ -757,14 +811,16 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         return;
       }
 
-      // data-sticker-id는 보드의 실제 스티커만 단다 — 빈 보드 PPOTTO 같은 유사 스티커는
-      // 자체 핸들러로만 동작하고, 프레스 연출은 data-pressed 셀렉터를 따로 쓴다
       const stickerElement = hitTestSticker(e.target);
       const stickerId = stickerElement?.dataset.stickerId ?? null;
-      tapCandidateRef.current = { pointerId: e.pointerId, stickerId, startClient: point };
+      const isEmptyBoardSticker = stickerId === EMPTY_BOARD_STICKER_ID;
+      // 빈 보드 PPOTTO의 기본 모드 클릭·롱프레스는 자체 핸들러가 담당한다.
+      tapCandidateRef.current = isEmptyBoardSticker
+        ? null
+        : { pointerId: e.pointerId, stickerId, startClient: point };
 
       // 편집 모드에선 pointerdown이 바로 드래그로 이어지므로 롱프레스는 기본 뷰 모드에서만
-      if (stickerId && stickerElement && !isEditModeRef.current) {
+      if (stickerId && stickerElement && !isEmptyBoardSticker && !isEditModeRef.current) {
         releasePressedSticker();
         longPressRef.current.start(point, stickerId);
         stickerElement.dataset.pressed = 'true';
@@ -775,13 +831,20 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       // 그 결과(갱신된 zIndex)를 반영한 스티커를 reducer에 넘긴다 (편집 모드에서만 선택/저장 부수효과 발생)
       const found =
         stickerId && isEditModeRef.current
-          ? stickersRef.current.find((s) => s.id === stickerId)
+          ? isEmptyBoardSticker
+            ? emptyBoardStickerRef.current
+            : stickersRef.current.find((s) => s.id === stickerId)
           : undefined;
-      const stickerHit = found
-        ? selectedIdRef.current !== stickerId
-          ? selectStickerRef.current(found)
-          : found
-        : null;
+      let stickerHit: StickerData | null = null;
+      if (found) {
+        if (isEmptyBoardSticker) {
+          setSelectedStickerId(EMPTY_BOARD_STICKER_ID);
+          stickerHit = found;
+        } else {
+          stickerHit =
+            selectedIdRef.current !== stickerId ? selectStickerRef.current(found) : found;
+        }
+      }
 
       gestureRef.current = gestureReducer(gestureRef.current, {
         type: 'POINTER_DOWN',
@@ -1074,6 +1137,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           };
           setLiveTransform(null);
 
+          if (gesture.sticker.id === EMPTY_BOARD_STICKER_ID) {
+            setEmptyBoardStickerTransform(finalTransform);
+            emptyBoardStickerRef.current = {
+              ...emptyBoardStickerRef.current,
+              posX: finalTransform.x,
+              posY: finalTransform.y,
+              rotation: finalTransform.rotation,
+              scale: finalTransform.scale,
+            };
+          }
+
           // 실제로 아무것도 안 바뀌었으면(드래그 없이 탭만 한 경우) 저장 요청을 보내지 않는다
           const unchanged =
             finalTransform.x === gesture.sticker.posX &&
@@ -1081,7 +1155,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             finalTransform.rotation === gesture.sticker.rotation &&
             finalTransform.scale === gesture.sticker.scale;
 
-          if (!unchanged) {
+          if (gesture.sticker.id !== EMPTY_BOARD_STICKER_ID && !unchanged) {
             const badgeOffset = scaleBadgeOffset(
               { x: gesture.sticker.badgeOffsetX, y: gesture.sticker.badgeOffsetY },
               finalTransform.scale,
@@ -1199,6 +1273,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     (sticker) => sticker.id === quickMenu.directEditStickerId,
   );
   const activeDrawingBoxTransform = drawingBoxPinchPreview ?? selectedDrawingBoxTransform;
+  const isEmptyBoardStickerVisible = stickers.length === 0 && !isEmptyStickerHidden;
+  const activeEmptyBoardStickerTransform =
+    dragTransform?.id === EMPTY_BOARD_STICKER_ID ? dragTransform : emptyBoardStickerTransform;
+  const openEmptyBoardStickerQuickMenu = () => {
+    bridge.send('HAPTIC', { type: 'heavy' });
+    setIsEmptyBoardQuickMenuOpen(true);
+  };
 
   return (
     <div
@@ -1211,17 +1292,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         backgroundPosition: `${camera.x}px ${camera.y}px`,
       }}
     >
-      {stickers.length === 0 && !isEmptyStickerHidden && (
+      {isEmptyBoardStickerVisible && isEmptyBoardQuickMenuOpen && (
         <EmptyBoardSticker
           title={emptyBoardStickerTitle}
-          isQuickMenuOpen={isEmptyBoardQuickMenuOpen}
-          onLongPress={() => {
-            bridge.send('HAPTIC', { type: 'heavy' });
-            // 온보딩을 끝까지 본 적('사진 업로드 하러가기' CTA를 누른 적) 없으면 온보딩으로,
-            // 본 적 있으면 이름 변경 바텀시트를 연다
-            if (me && hasSeenOnboarding(me.id)) setIsEmptyBoardQuickMenuOpen(true);
-            else push('Onboarding', {});
-          }}
+          isQuickMenuOpen
+          isEditMode={false}
+          transform={activeEmptyBoardStickerTransform}
+          onClick={() => push('Onboarding', {})}
+          onLongPress={openEmptyBoardStickerQuickMenu}
         />
       )}
       <div
@@ -1272,6 +1350,28 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             rotation={activeDrawingBoxTransform.rotation}
             zIndex={9999}
           />
+        )}
+        {isEmptyBoardStickerVisible && !isEmptyBoardQuickMenuOpen && (
+          <>
+            <EmptyBoardSticker
+              title={emptyBoardStickerTitle}
+              isQuickMenuOpen={false}
+              isEditMode={isEditMode}
+              transform={activeEmptyBoardStickerTransform}
+              onClick={() => push('Onboarding', {})}
+              onLongPress={openEmptyBoardStickerQuickMenu}
+            />
+            {selectedId === EMPTY_BOARD_STICKER_ID && (
+              <SelectionBoxFrame
+                x={activeEmptyBoardStickerTransform.x}
+                y={activeEmptyBoardStickerTransform.y}
+                width={EMPTY_BOARD_STICKER_WIDTH * activeEmptyBoardStickerTransform.scale}
+                height={EMPTY_BOARD_STICKER_HEIGHT * activeEmptyBoardStickerTransform.scale}
+                rotation={activeEmptyBoardStickerTransform.rotation}
+                zIndex={9999}
+              />
+            )}
+          </>
         )}
         {stickers.map((sticker) => (
           <Sticker
@@ -1343,6 +1443,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         onDelete={() => {
           hideEmptyBoardStickerForSession();
           setIsEmptyStickerHidden(true);
+          setSelectedStickerId(null);
           toast('삭제가 완료되었어요');
         }}
       />
