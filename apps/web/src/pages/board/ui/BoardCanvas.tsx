@@ -326,6 +326,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
   const drawingLongPress = useLongPress({
     onLongPress: (drawingId) => {
+      setSelectedStickerId(null);
       setSelectedDrawingId(drawingId);
       const drawing = drawingsRef.current.find((d) => d.id === drawingId);
       const bounds = drawing && getDrawingBounds(drawing.points, drawing.strokeWidth);
