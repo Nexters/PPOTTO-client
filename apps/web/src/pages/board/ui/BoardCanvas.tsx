@@ -1262,7 +1262,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         }
       >
         {/* 저장된 그림 + 그리는 도중인 선의 실시간 미리보기 */}
-        <svg style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>
+        <svg
+          style={{
+            position: 'absolute',
+            inset: 0,
+            overflow: 'visible',
+            pointerEvents: 'none',
+            willChange: 'transform',
+          }}
+        >
           {drawings.map((drawing) => {
             const isSelected = drawing.id === activeSelectedDrawingId;
             const isDragging = isSelected && drawingDragOffset !== null;
