@@ -55,12 +55,31 @@
   top: 0;
   border-radius: 4px;
   overflow: hidden;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+.ppotto-motion .pm-tile-photo,
+.ppotto-motion .pm-tile-dim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ppotto-motion .pm-tile-photo {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   transform-origin: 50% 50%;
-  will-change: transform, opacity, filter;
-  backface-visibility: hidden;
+}
+.ppotto-motion .pm-tiles .pm-tile-photo,
+.ppotto-motion .pm-deck .pm-tile-photo,
+.ppotto-motion .pm-reveal .pm-tile-photo {
+  will-change: transform;
+}
+.ppotto-motion .pm-tile-dim {
+  background: #000;
+  opacity: 0;
+  will-change: opacity;
 }
 .ppotto-motion .pm-board-bg {
   position: absolute;
