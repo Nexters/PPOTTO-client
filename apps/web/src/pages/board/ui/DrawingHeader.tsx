@@ -30,13 +30,15 @@ export function DrawingHeader({ canUndo, onUndo, onConfirm }: DrawingHeaderProps
             'bg-gray-800 disabled:opacity-40',
           )}
         >
-          <Reload color="white" />
+          <span className="flex -scale-x-100">
+            <Reload color="white" />
+          </span>
         </button>
         <button
           type="button"
           aria-label="확정"
           onClick={onConfirm}
-          className="pointer-events-auto flex size-8 items-center justify-center rounded-full bg-gray-800"
+          className="flex items-center justify-center bg-gray-800 rounded-full pointer-events-auto size-8"
         >
           <Check color="white" />
         </button>
