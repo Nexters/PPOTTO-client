@@ -165,6 +165,11 @@ export function computeBringToFrontZIndex(
   return maxZIndex + 1;
 }
 
+export function computeTopZIndex(items: { zIndex: number }[]): number {
+  if (items.length === 0) return 0;
+  return Math.max(...items.map((item) => item.zIndex)) + 1;
+}
+
 // 배치 결과를 저장 API가 요구하는 요청 바디 형태로 변환
 export function toLayoutInput(stickers: LaidOutSticker[]): UpdateBoardLayoutInput {
   return {

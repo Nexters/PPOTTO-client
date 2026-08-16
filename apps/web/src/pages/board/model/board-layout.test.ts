@@ -35,6 +35,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeBringToFrontZIndex,
   computeInitialLayout,
+  computeTopZIndex,
   needsInitialLayout,
   toLayoutInput,
 } from './board-layout';
@@ -123,6 +124,25 @@ describe('computeBringToFrontZIndex', () => {
     const result = computeBringToFrontZIndex(stickers, 'z');
 
     expect(result).toBeNull();
+  });
+});
+
+describe('computeTopZIndex', () => {
+  it('목록이 비어있으면 0을 반환한다', () => {
+    expect(computeTopZIndex([])).toBe(0);
+  });
+
+  it('가장 큰 zIndex보다 1 큰 값을 반환한다', () => {
+    const items = [{ zIndex: 1 }, { zIndex: 5 }, { zIndex: 3 }];
+
+    expect(computeTopZIndex(items)).toBe(6);
+  });
+
+  it('스티커와 그림처럼 서로 다른 종류의 항목을 섞어도 같은 숫자 공간으로 취급한다', () => {
+    const stickers = [{ zIndex: 2 }];
+    const drawings = [{ zIndex: 7 }];
+
+    expect(computeTopZIndex([...stickers, ...drawings])).toBe(8);
   });
 });
 
