@@ -79,6 +79,12 @@ export function parseStrokeZIndex(stroke: unknown): number {
   return typeof zIndex === 'number' ? zIndex : 0;
 }
 
+// Sticker.tsx의 stickerZIndex(=zIndex*2)와 같은 배율을 써서, 스티커 뱃지가 자기 스티커
+// 바로 위(zIndex*2+1)에 오는 것과 같은 숫자 공간 안에서 그림도 스티커와 실제로 섞여 쌓이게 한다
+export function drawingZIndex(drawing: Pick<ParsedDrawing, 'zIndex'>): number {
+  return drawing.zIndex * 2;
+}
+
 // 점들을 SVG path의 d 속성 문자열로 변환한다
 export function toPathData(points: Point[]): string {
   if (points.length === 0) return '';

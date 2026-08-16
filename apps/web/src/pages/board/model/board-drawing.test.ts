@@ -24,6 +24,7 @@ import {
   computeDrawingPinchTransform,
   getDrawingBounds,
   hitTestDrawingId,
+  drawingZIndex,
   isPointInDrawingBounds,
   parseStrokePoints,
   parseStrokeZIndex,
@@ -191,6 +192,16 @@ describe('parseStrokeZIndex', () => {
 
   it('zIndex가 숫자가 아니면 0을 반환한다', () => {
     expect(parseStrokeZIndex({ zIndex: 'invalid' })).toBe(0);
+  });
+});
+
+describe('drawingZIndex', () => {
+  it('원래 zIndex의 2배를 반환한다(스티커의 stickerZIndex와 같은 배율)', () => {
+    expect(drawingZIndex({ zIndex: 5 })).toBe(10);
+  });
+
+  it('zIndex가 0이면 0을 반환한다', () => {
+    expect(drawingZIndex({ zIndex: 0 })).toBe(0);
   });
 });
 

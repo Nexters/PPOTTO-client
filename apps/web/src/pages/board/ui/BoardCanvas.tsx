@@ -45,6 +45,7 @@ import {
   computeDrawingPinchTransform,
   type DrawingBoxTransform,
   type DrawingCreateInput,
+  drawingZIndex,
   getDrawingBounds,
   hitTestDrawingId,
   isPointInDrawingBounds,
@@ -57,6 +58,7 @@ import { type DragTransform, type Gesture, gestureReducer } from '../model/board
 import {
   computeBringToFrontZIndex,
   computeInitialLayout,
+  computeTopZIndex,
   type ExistingSticker,
   needsInitialLayout,
   toLayoutInput,
@@ -126,6 +128,8 @@ const CAMERA_FOCUS_ANIMATION_MS = 350;
 // 알 수 있음) Sticker.tsx의 STICKER_MAX_EDGE(160)의 절반으로 근사한다. 뱃지(제목)는 줌과 무관하게
 // 고정 크기를 유지할 예정이라 이 범위 계산에는 포함하지 않는다.
 const STICKER_FIT_HALF_SIZE = 80;
+// 그리는 도중인 선의 실시간 미리보기는 스티커·그림 zIndex 값과 무관하게 항상 맨 위에 그려져야 한다
+const LIVE_STROKE_Z_INDEX = 999999;
 
 function easeOutCubic(progress: number): number {
   return 1 - (1 - progress) ** 3;
@@ -334,6 +338,20 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         setSelectedDrawingBaseSize({ width: bounds.width, height: bounds.height });
         setSelectedDrawingBoxTransform({ x: bounds.x, y: bounds.y, rotation: 0, scale: 1 });
       }
+
+      // 스티커를 선택할 때와 마찬가지로, 스티커+그림 통틀어 맨 위로 보이도록 zIndex를 올림
+      if (drawing) {
+        const newZIndex = computeBringToFrontZIndex(combinedZIndexPool(), drawingId);
+        if (newZIndex !== null) {
+          moveDrawingRef.current(
+            toDrawingMoveInput(drawing.id, drawing.points, {
+              color: drawing.color,
+              strokeWidth: drawing.strokeWidth,
+              zIndex: newZIndex,
+            }),
+          );
+        }
+      }
     },
   });
 
@@ -385,13 +403,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     });
   };
 
-  // 스티커를 선택하면 다른 스티커 위로 보이도록 zIndex를 맨 위로 올림
+  // 스티커의 zIndex와 그림의 zIndex(stroke.zIndex)는 같은 숫자 공간을 공유한다 —
+  // "맨 위로 올리기"는 항상 이 둘을 합친 풀 기준으로 계산해야 스티커·그림이 실제로 섞여 쌓인다
+  const combinedZIndexPool = () => [
+    ...stickersRef.current.map((s) => ({ id: s.id, zIndex: s.zIndex ?? 0 })),
+    ...drawingsRef.current.map((d) => ({ id: d.id, zIndex: d.zIndex })),
+  ];
+
+  // 스티커를 선택하면 스티커+그림 통틀어 맨 위로 보이도록 zIndex를 올림
   const selectSticker = (sticker: StickerData): StickerData => {
     setSelectedStickerId(sticker.id);
-    const newZIndex = computeBringToFrontZIndex(
-      stickersRef.current.map((s) => ({ id: s.id, zIndex: s.zIndex ?? 0 })),
-      sticker.id,
-    );
+    const newZIndex = computeBringToFrontZIndex(combinedZIndexPool(), sticker.id);
     if (newZIndex === null) return sticker;
     saveStickerLayout(sticker, { zIndex: newZIndex });
     return { ...sticker, zIndex: newZIndex };
@@ -676,14 +698,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       }
 
       if (result.finalizedStroke && result.finalizedStroke.length > 0) {
+        const finalizedStroke = result.finalizedStroke;
+        // 서버에 바로 저장하지 않고 이번 세션의 draft로만 들고 있는다 — draw 모드를 나갈 때 한 번에 저장됨
         setDraftDrawings((prev) => [
           ...prev,
           {
             id: uuidv7(),
-            points: result.finalizedStroke!,
+            points: finalizedStroke,
             color: drawColorRef.current,
             strokeWidth: drawStrokeWidthRef.current,
-            zIndex: 0,
+            // 스티커+그림+이번 세션에 이미 그린 draft를 통틀어 맨 위로 — 새로 그리면 항상 맨 위에 온다
+            zIndex: computeTopZIndex([...combinedZIndexPool(), ...prev]),
           },
         ]);
       }
@@ -1063,6 +1088,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               toDrawingMoveInput(drawing.id, finalPoints, {
                 color: drawing.color,
                 strokeWidth: baseStrokeWidth,
+                zIndex: drawing.zIndex,
               }),
             );
           }
@@ -1262,24 +1288,24 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           } as React.CSSProperties
         }
       >
-        {/* 저장된 그림 + 그리는 도중인 선의 실시간 미리보기 */}
-        <svg
-          style={{
-            position: 'absolute',
-            inset: 0,
-            overflow: 'visible',
-            pointerEvents: 'none',
-            willChange: 'transform',
-          }}
-        >
-          {drawings.map((drawing) => {
-            const isSelected = drawing.id === activeSelectedDrawingId;
-            const isDragging = isSelected && drawingDragOffset !== null;
-            const pinchPreview = isSelected ? drawingPinchPreview : null;
+        {drawings.map((drawing) => {
+          const isSelected = drawing.id === activeSelectedDrawingId;
+          const isDragging = isSelected && drawingDragOffset !== null;
+          const pinchPreview = isSelected ? drawingPinchPreview : null;
 
-            return (
+          return (
+            <svg
+              key={drawing.id}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                overflow: 'visible',
+                pointerEvents: 'none',
+                zIndex: drawingZIndex(drawing),
+                willChange: 'transform',
+              }}
+            >
               <g
-                key={drawing.id}
                 transform={
                   isDragging
                     ? `translate(${drawingDragOffset!.x}, ${drawingDragOffset!.y})`
@@ -1292,20 +1318,44 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                   strokeWidth={pinchPreview?.strokeWidth ?? drawing.strokeWidth}
                 />
               </g>
-            );
-          })}
-          {draftDrawings.map((drawing) => (
+            </svg>
+          );
+        })}
+        {/* 이번 세션에 그린 draft — 아직 저장 전이라 선택/드래그 대상이 아니다 */}
+        {draftDrawings.map((drawing) => (
+          <svg
+            key={drawing.id}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'visible',
+              pointerEvents: 'none',
+              zIndex: drawingZIndex(drawing),
+              willChange: 'transform',
+            }}
+          >
             <DrawingStroke
-              key={drawing.id}
               points={drawing.points}
               color={drawing.color}
               strokeWidth={drawing.strokeWidth}
             />
-          ))}
-          {drawingPoints && (
+          </svg>
+        ))}
+        {/* 그리는 도중인 선의 실시간 미리보기 — 항상 맨 위에 그려짐 */}
+        {drawingPoints && (
+          <svg
+            style={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'visible',
+              pointerEvents: 'none',
+              zIndex: LIVE_STROKE_Z_INDEX,
+              willChange: 'transform',
+            }}
+          >
             <DrawingStroke points={drawingPoints} color={drawColor} strokeWidth={drawStrokeWidth} />
-          )}
-        </svg>
+          </svg>
+        )}
         {selectedDrawingBaseSize && activeDrawingBoxTransform && (
           <SelectionBoxFrame
             x={activeDrawingBoxTransform.x + (drawingDragOffset?.x ?? 0)}
