@@ -83,6 +83,10 @@ it('카카오톡 버튼으로 업로드한 이미지 URL과 템플릿 변수를 
 
   fireEvent.click(screen.getByRole('button', { name: '카카오톡' }));
 
+  await waitFor(() => expect(uploadImage).toHaveBeenCalledOnce());
+  expect(uploadImage.mock.calls[0]?.[0].file).toEqual([
+    expect.objectContaining({ name: 'ppotto-recap.png', type: 'image/png' }),
+  ]);
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith('SHARE_KAKAO', {
       templateArgs: {

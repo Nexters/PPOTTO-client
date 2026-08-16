@@ -13,15 +13,15 @@ const tailPath = {
 
 export function Bubble({ content, direction }: BubbleProps) {
   return (
-    <div className="relative inline-flex self-start">
+    <div className="relative inline-flex w-max shrink-0 self-start">
       <div
         className={cn(
-          'flex items-start self-stretch rounded-[18px]',
+          'flex w-max shrink-0 items-start rounded-[18px]',
           'bg-gray-200 px-3 py-1.5',
           direction === 'right' && 'justify-end',
         )}
       >
-        <span className="text-body-06 text-gray-900">{content}</span>
+        <span className="text-body-06 text-gray-900 whitespace-nowrap">{content}</span>
       </div>
       <div
         className={cn(

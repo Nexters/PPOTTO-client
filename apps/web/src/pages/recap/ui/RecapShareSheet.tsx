@@ -96,7 +96,8 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
       });
       const cropped = cropCanvasToSquare(canvas);
       const blob = await canvasToBlob(cropped);
-      const { infos } = await window.Kakao.Share.uploadImage({ file: blob });
+      const file = new File([blob], 'ppotto-recap.png', { type: blob.type || 'image/png' });
+      const { infos } = await window.Kakao.Share.uploadImage({ file: [file] });
 
       const tags = data.comments
         .filter((comment) => comment.posX == null)

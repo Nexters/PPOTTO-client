@@ -4,7 +4,7 @@ declare global {
       init: (key: string) => void;
       isInitialized: () => boolean;
       Share: {
-        uploadImage: (params: { file: File | Blob }) => Promise<{
+        uploadImage: (params: { file: File[] | FileList }) => Promise<{
           infos: { original: { url: string } };
         }>;
       };
