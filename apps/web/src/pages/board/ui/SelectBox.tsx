@@ -1,8 +1,10 @@
 'use client';
 
+import { useStickerImage } from '@/shared/lib/sticker-raster';
+
 import type { StickerTransform } from '../model/board-transform';
 
-import { getPhotoSize, stickerZIndex, useStickerImage, type StickerData } from './Sticker';
+import { getPhotoSize, stickerDisplayedEdge, stickerZIndex, type StickerData } from './Sticker';
 import { SelectionBoxFrame } from './SelectionBoxFrame';
 
 type SelectBoxProps = {
@@ -12,7 +14,7 @@ type SelectBoxProps = {
 
 export function SelectBox({ sticker, transformOverride }: SelectBoxProps) {
   const scale = transformOverride?.scale ?? sticker.scale;
-  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, scale);
+  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, stickerDisplayedEdge(scale));
   const { width, height } = getPhotoSize(photoImage, scale);
 
   if (width <= 0 || height <= 0) return null;

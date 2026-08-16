@@ -34,7 +34,6 @@ export function BoardPage() {
     deleteAllStickers,
     isDeletingStickers,
     isBoardListLoading,
-    isBoardLoading,
     openPhotoSelect,
   } = useBoardPageState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
@@ -143,9 +142,9 @@ export function BoardPage() {
     previewColorRef.current = null;
   }, [toolbarMode]);
 
+  // 헤더·툴바·배경은 보드 데이터와 무관하게 이미 그려져 있다. 스티커를 기다리지 않고
+  // 셸이 페인트되는 즉시 커버를 걷는다 — 스티커는 그 뒤에 채워진다
   useEffect(() => {
-    if (isBoardListLoading || (boardId && isBoardLoading)) return;
-
     let secondFrame = 0;
     const firstFrame = requestAnimationFrame(() => {
       secondFrame = requestAnimationFrame(() => bridge.send('BOARD_READY'));
@@ -154,7 +153,7 @@ export function BoardPage() {
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
     };
-  }, [boardId, isBoardListLoading, isBoardLoading]);
+  }, []);
 
   return (
     <>

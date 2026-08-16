@@ -1,7 +1,13 @@
 'use client';
 
 import type { paths } from '@ppotto/api';
-import { memo, useEffect, useState } from 'react';
+import { memo, useLayoutEffect, useRef } from 'react';
+
+import {
+  drawOutlinedSticker,
+  STICKER_OUTLINE_WIDTH,
+  useStickerImage,
+} from '@/shared/lib/sticker-raster';
 
 import type { StickerTransform } from '../model/board-transform';
 
@@ -27,87 +33,6 @@ export type StickerData = Omit<ApiSticker, 'badgeRotation' | 'posX' | 'posY' | '
   zIndex: number;
 };
 
-// GCS 원본 URL을 next/image 프록시(same-origin)로 바꾼다.
-function toProxiedImageSrc(src: string, width: number): string {
-  return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=75`;
-}
-
-// next.config.ts에 별도 images.imageSizes/deviceSizes 설정이 없어 next/image 기본값을 쓰는데,
-// 그 목록에 없는 w 값을 요청하면 400이 나서 기본값 안에서만 골라야 한다.
-const STICKER_IMAGE_WIDTH_STEPS = [128, 256, 384, 640, 750, 828, 1080];
-
-// 스티커는 화면에 STICKER_MAX_EDGE(160) * scale CSS px로만 표시되는데
-// 항상 1080px 원본을 받아오면 디코드/필터 비용이 실제 필요보다 훨씬 커진다.
-// 표시 크기 기준으로 next/image가 지원하는 가장 작은 사이즈를 고른다.
-function pickStickerImageWidth(scale: number): number {
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
-  const targetWidth = STICKER_MAX_EDGE * scale * dpr;
-  return (
-    STICKER_IMAGE_WIDTH_STEPS.find((step) => step >= targetWidth) ??
-    STICKER_IMAGE_WIDTH_STEPS[STICKER_IMAGE_WIDTH_STEPS.length - 1]!
-  );
-}
-
-const OUTLINE_RADIUS_CSS_PX = 3;
-const OUTLINE_STEPS = 16;
-
-function bakeStickerOutline(source: HTMLImageElement, scale: number): string {
-  const w = source.naturalWidth;
-  const h = source.naturalHeight;
-  const displayedLongestEdge = STICKER_MAX_EDGE * scale;
-  const rawRadius = (OUTLINE_RADIUS_CSS_PX * Math.max(w, h)) / displayedLongestEdge;
-  const pad = Math.ceil(rawRadius) + 2;
-
-  const silhouette = document.createElement('canvas');
-  silhouette.width = w;
-  silhouette.height = h;
-  const silhouetteCtx = silhouette.getContext('2d')!;
-  silhouetteCtx.drawImage(source, 0, 0);
-  silhouetteCtx.globalCompositeOperation = 'source-in';
-  silhouetteCtx.fillStyle = '#fff';
-  silhouetteCtx.fillRect(0, 0, w, h);
-
-  const canvas = document.createElement('canvas');
-  canvas.width = w + pad * 2;
-  canvas.height = h + pad * 2;
-  const ctx = canvas.getContext('2d')!;
-  for (let i = 0; i < OUTLINE_STEPS; i++) {
-    const angle = (i / OUTLINE_STEPS) * Math.PI * 2;
-    ctx.drawImage(silhouette, pad + Math.cos(angle) * rawRadius, pad + Math.sin(angle) * rawRadius);
-  }
-  ctx.drawImage(source, pad, pad);
-
-  return canvas.toDataURL('image/png');
-}
-
-export function useStickerImage(src: string | undefined, scale: number) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const width = pickStickerImageWidth(scale);
-
-  useEffect(() => {
-    if (!src) return;
-    let cancelled = false;
-
-    const raw = new window.Image();
-    raw.src = toProxiedImageSrc(src, width);
-    raw.onload = () => {
-      if (cancelled) return;
-      const outlined = new window.Image();
-      outlined.onload = () => {
-        if (!cancelled) setImage(outlined);
-      };
-      outlined.src = bakeStickerOutline(raw, scale);
-    };
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, width]);
-
-  return image;
-}
-
 export function stickerZIndex(sticker: Pick<StickerData, 'zIndex'>): number {
   return (sticker.zIndex ?? 0) * 2;
 }
@@ -131,6 +56,10 @@ export function getPhotoSize(
   };
 }
 
+export function stickerDisplayedEdge(scale: number): number {
+  return STICKER_MAX_EDGE * scale;
+}
+
 type StickerProps = {
   sticker: StickerData;
   selected?: boolean;
@@ -143,8 +72,15 @@ export const Sticker = memo(function Sticker({
   transformOverride,
 }: StickerProps) {
   const scale = transformOverride?.scale ?? sticker.scale;
-  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, scale);
+  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, stickerDisplayedEdge(scale));
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { width, height } = getPhotoSize(photoImage, scale);
+
+  useLayoutEffect(() => {
+    if (canvasRef.current && photoImage) {
+      drawOutlinedSticker(canvasRef.current, photoImage, STICKER_MAX_EDGE);
+    }
+  }, [photoImage]);
 
   if (!photoImage || width <= 0 || height <= 0) return null;
 
@@ -152,13 +88,11 @@ export const Sticker = memo(function Sticker({
   const y = transformOverride?.y ?? sticker.posY ?? 0;
   const rotation = transformOverride?.rotation ?? sticker.rotation;
 
+  const outline = STICKER_OUTLINE_WIDTH * scale;
+
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- 보드 좌표계에 직접 배치하는 스티커라 next/image 최적화 대상이 아님
-    <img
-      src={photoImage.src}
-      alt=""
+    <div
       data-sticker-id={sticker.id}
-      draggable={false}
       style={{
         position: 'absolute',
         left: x,
@@ -167,12 +101,33 @@ export const Sticker = memo(function Sticker({
         height,
         zIndex: stickerZIndex(sticker),
         transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-        filter: selected
-          ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
-          : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
         willChange: 'transform',
         touchAction: 'none',
       }}
-    />
+    >
+      <div
+        className="sticker-long-press-visual"
+        style={{
+          position: 'absolute',
+          left: -outline,
+          top: -outline,
+          width: width + outline * 2,
+          height: height + outline * 2,
+          pointerEvents: 'none',
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          aria-hidden
+          style={{
+            width: '100%',
+            height: '100%',
+            filter: selected
+              ? 'drop-shadow(0 12px 26px rgba(0,0,0,0.75))'
+              : 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
+          }}
+        />
+      </div>
+    </div>
   );
 });

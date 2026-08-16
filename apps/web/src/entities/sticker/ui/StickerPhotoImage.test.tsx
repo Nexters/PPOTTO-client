@@ -31,7 +31,8 @@ describe('StickerPhotoImage', () => {
 
     fireEvent.error(container.querySelector('img')!);
 
-    expect(container.querySelector('img')).toHaveAttribute('data-unoptimized', 'true');
+    // GCS 직접 로드는 CORS가 없어 캡처가 실패하므로 최적화 경로(/_next/image)로 서빙해야 한다
+    expect(container.querySelector('img')).toHaveAttribute('data-unoptimized', 'undefined');
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 });
