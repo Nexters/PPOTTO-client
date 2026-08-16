@@ -80,7 +80,7 @@ it('사진이 끝날 때마다 진행률을 알린다', async () => {
   );
 });
 
-it('다섯 장씩 압축하고 새 목록이 시작되면 대기 중인 이전 사진은 시작하지 않는다', async () => {
+it('세 장씩 압축하고 새 목록이 시작되면 대기 중인 이전 사진은 시작하지 않는다', async () => {
   const finishOldPhotos = new Map<string, (result: GalleryPhoto) => void>();
   const oldPhotos = Array.from({ length: 6 }, (_, index) => photo(`old-${index}`));
   const compress = jest.fn((source: GalleryPhoto) => {
@@ -97,14 +97,14 @@ it('다섯 장씩 압축하고 새 목록이 시작되면 대기 중인 이전 �
 
   const latest = await queue.wait();
   oldPhotos
-    .slice(0, 5)
+    .slice(0, 3)
     .forEach((oldPhoto) => finishOldPhotos.get(oldPhoto.id)!(compressed(oldPhoto)));
   await Promise.resolve();
 
   expect(new Set(compress.mock.calls.map(([source]) => source.id))).toEqual(
-    new Set([...oldPhotos.slice(0, 5).map(({ id }) => id), 'new-a', 'new-b']),
+    new Set([...oldPhotos.slice(0, 3).map(({ id }) => id), 'new-a', 'new-b']),
   );
-  expect(compress).not.toHaveBeenCalledWith(expect.objectContaining({ id: oldPhotos[5]!.id }));
+  expect(compress).not.toHaveBeenCalledWith(expect.objectContaining({ id: oldPhotos[3]!.id }));
   expect(new Set(latest.keys())).toEqual(new Set(['new-a', 'new-b']));
   expect(new Set((await queue.wait()).keys())).toEqual(new Set(['new-a', 'new-b']));
 });

@@ -43,6 +43,7 @@ let mockImageSaveGate: Promise<void> | undefined;
  */
 
 jest.mock('expo-media-library', () => ({
+  getAssetInfoAsync: jest.fn(),
   getAssetsAsync: jest.fn(),
   getPermissionsAsync: jest.fn(async () => ({
     accessPrivileges: 'all',
@@ -103,7 +104,10 @@ jest.mock('@/entities/user/api/user-queries', () => ({
   useMeQuery: () => ({ data: { name: '뽀또' } }),
 }));
 
-const { getAssetsAsync, getPermissionsAsync } = jest.requireMock('expo-media-library') as {
+const { getAssetInfoAsync, getAssetsAsync, getPermissionsAsync } = jest.requireMock(
+  'expo-media-library',
+) as {
+  getAssetInfoAsync: jest.Mock;
   getAssetsAsync: jest.Mock;
   getPermissionsAsync: jest.Mock;
 };
@@ -169,6 +173,7 @@ beforeEach(() => {
   mockSearchParams = { boardId: 'board-1' };
   mockImageSaveGate = undefined;
   jest.clearAllMocks();
+  getAssetInfoAsync.mockImplementation(async (photo) => ({ ...photo, isNetworkAsset: false }));
 });
 
 it('드래그가 원점으로 돌아오면 범위에서 빠진 타일을 복원한다', () => {
@@ -183,6 +188,21 @@ it('진입 시 불러온 그룹을 전체 선택 상태로 표시하고 카운�
   expect(screen.getByText('뽀또님의 최근 사진 100장을 골랐어요')).toBeOnTheScreen();
   expect(counter('100 / 100')).toBeOnTheScreen();
   expect(screen.getAllByRole('checkbox')[0]).toBeChecked();
+});
+
+it('iCloud에만 있는 사진은 그리드에서 제외한다', async () => {
+  setGallery([asset('local', BASE_TIME), asset('cloud', BASE_TIME - minutes(10))]);
+  getAssetInfoAsync.mockImplementation(async (photo) => ({
+    ...photo,
+    isNetworkAsset: photo.id === 'cloud',
+  }));
+
+  await renderLoadedScreen();
+
+  expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+  expect(getAssetInfoAsync).toHaveBeenCalledWith(expect.objectContaining({ id: 'cloud' }), {
+    shouldDownloadFromNetwork: false,
+  });
 });
 
 it('사진 권한을 거부하면 설정 이동 안내를 표시하고 갤러리를 조회하지 않는다', async () => {
