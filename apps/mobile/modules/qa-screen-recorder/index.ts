@@ -17,7 +17,9 @@ let recorder: QaScreenRecorderNativeModule | undefined;
 let recorderQueue: Promise<unknown> = Promise.resolve();
 
 function requireRecorder() {
-  if (Platform.OS !== 'ios') throw new Error('QA screen recording is only available on iOS');
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+    throw new Error('QA screen recording is only available on iOS and Android');
+  }
   recorder ??= requireNativeModule<QaScreenRecorderNativeModule>('QaScreenRecorder');
   return recorder;
 }

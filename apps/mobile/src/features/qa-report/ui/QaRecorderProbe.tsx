@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { Animated, AppState, PanResponder, Platform, Pressable, Text, View } from 'react-native';
 import { FullWindowOverlay } from 'react-native-screens';
 
@@ -21,6 +21,7 @@ import { QaReportSheet } from './QaReportSheet';
 export function QaRecorderProbe() {
   const toast = useToast();
   const [recorder, send] = useReducer(qaRecorderReducer, initialQaRecorderState);
+  const startPending = useRef(false);
   const [position] = useState(() => new Animated.ValueXY());
   const [panResponder] = useState(() =>
     PanResponder.create({
@@ -43,10 +44,12 @@ export function QaRecorderProbe() {
   useEffect(() => installRnConsoleDiagnostics(), []);
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
 
     let active = true;
     const startFreshBuffer = async () => {
+      if (startPending.current) return;
+      startPending.current = true;
       try {
         await restartBuffering();
         if (active && AppState.currentState === 'active') {
@@ -58,6 +61,8 @@ export function QaRecorderProbe() {
           send({ type: 'RECORDING_FAILED' });
           toast('화면 기록을 시작하지 못했어요.');
         }
+      } finally {
+        startPending.current = false;
       }
     };
 
@@ -67,8 +72,10 @@ export function QaRecorderProbe() {
         return;
       }
 
-      send({ type: 'RECORDING_INTERRUPTED' });
-      void stopBuffering().catch(() => undefined);
+      if (!startPending.current) {
+        send({ type: 'RECORDING_INTERRUPTED' });
+        void stopBuffering().catch(() => undefined);
+      }
     };
 
     const subscription = AppState.addEventListener('change', handleAppState);
@@ -81,7 +88,7 @@ export function QaRecorderProbe() {
     };
   }, [toast]);
 
-  if (Platform.OS !== 'ios') return null;
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return null;
 
   const startReport = async () => {
     if (recorder.status !== 'ready') return;
@@ -96,10 +103,7 @@ export function QaRecorderProbe() {
         type: 'EXPORT_SUCCEEDED',
         reportSeed: {
           reportedAt: new Date(reportTime).toISOString(),
-          buildNumber:
-            Constants.platform?.ios?.buildNumber ??
-            Constants.expoConfig?.ios?.buildNumber ??
-            'unknown',
+          buildNumber: Constants.nativeBuildVersion ?? 'unknown',
           diagnostics,
           video,
         },
@@ -135,7 +139,7 @@ export function QaRecorderProbe() {
   return (
     <>
       {!reportSeed && (
-        <FullWindowOverlay>
+        <RecorderOverlay>
           <View className="absolute inset-0 z-[2147483647]" pointerEvents="box-none">
             <Animated.View
               {...panResponder.panHandlers}
@@ -161,7 +165,7 @@ export function QaRecorderProbe() {
               </Pressable>
             </Animated.View>
           </View>
-        </FullWindowOverlay>
+        </RecorderOverlay>
       )}
 
       {reportSeed && (
@@ -173,5 +177,15 @@ export function QaRecorderProbe() {
         />
       )}
     </>
+  );
+}
+
+function RecorderOverlay({ children }: { children: React.ReactNode }) {
+  return Platform.OS === 'ios' ? (
+    <FullWindowOverlay>{children}</FullWindowOverlay>
+  ) : (
+    <View className="absolute inset-0 z-[2147483647]" pointerEvents="box-none">
+      {children}
+    </View>
   );
 }
