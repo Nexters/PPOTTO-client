@@ -6,7 +6,6 @@ import { Stack } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { QaRecorderProbe } from '@/features/qa-report';
-import { useObservability } from '@/lib/use-observability';
 import { AppReadyProvider } from '@/shared/lib/app-ready';
 import { isQaToolEnabled } from '@/shared/lib/qa-tool';
 import { AppBackground } from '@/shared/ui/AppBackground';
@@ -24,8 +23,6 @@ const appTheme = {
 };
 
 export default function RootLayout() {
-  useObservability(queryClient);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AppReadyProvider>
