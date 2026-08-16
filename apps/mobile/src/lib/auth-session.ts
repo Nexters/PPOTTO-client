@@ -6,7 +6,6 @@ import { userApi } from '@/entities/user/api/user-api';
 
 import { type AppleSignInCredential, signInWithApple } from './apple-auth';
 import { KakaoLoginCancelledError, signInWithKakao } from './kakao-auth';
-import { recordAuthFailure } from './observability';
 
 const REFRESH_TOKEN_KEY = 'ppotto.refresh-token';
 
@@ -54,7 +53,6 @@ async function refreshAccessToken(): Promise<string | null> {
   } catch (error) {
     if (!(error instanceof HttpError) || error.code !== 'AUTH-002') throw error;
 
-    recordAuthFailure('refresh', error);
     await clearSession();
     return null;
   }

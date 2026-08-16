@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import '@/app/styles/globals.css';
 
-import { ObservabilityProvider } from '@/app/providers/observability-provider';
 import { QueryProvider } from '@/app/providers/query-provider';
 import { cn } from '@/shared/lib/cn';
 import { ToastProvider } from '@/shared/ui/common/Toast';
@@ -34,7 +33,6 @@ export default function RootLayout({
           )}
         >
           <QueryProvider>
-            <ObservabilityProvider />
             <ToastProvider>{children}</ToastProvider>
           </QueryProvider>
         </div>
