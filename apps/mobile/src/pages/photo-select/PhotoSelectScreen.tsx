@@ -64,6 +64,7 @@ export function PhotoSelectScreen() {
   const {
     canSubmit,
     everythingSelected,
+    hasNextPage,
     loading,
     loadMore,
     permission,
@@ -84,13 +85,19 @@ export function PhotoSelectScreen() {
   const permissionRequired = permission !== null && !permission.granted;
 
   useEffect(() => {
+    if (loading) {
+      motionPhotosRef.current = [];
+      motionPhotoPreloader.sync([]);
+      return;
+    }
+
     const representatives = selection
       ? selectedPhotoGroups(selection).map((group) => group.photos[0]!)
       : [];
     const next = retainMotionPhotos(motionPhotosRef.current, representatives);
     motionPhotosRef.current = next;
     motionPhotoPreloader.sync(next);
-  }, [motionPhotoPreloader, selection]);
+  }, [loading, motionPhotoPreloader, selection]);
 
   useEffect(
     () => () => {
@@ -151,7 +158,7 @@ export function PhotoSelectScreen() {
         </View>
 
         {permissionRequired ? (
-          <View className="flex-1 items-center justify-center gap-6 px-8 pb-24">
+          <View className="items-center justify-center flex-1 gap-6 px-8 pb-24">
             <View className="items-center gap-2">
               <Text className="text-center text-white text-body-02">사진 접근 권한이 필요해요</Text>
               <Text className="text-center text-gray-400 text-body-06">
@@ -183,7 +190,7 @@ export function PhotoSelectScreen() {
             </View>
 
             {permission?.accessPrivileges === 'limited' ? (
-              <View className="mx-6 mb-3 flex-row items-center gap-3 rounded-xl bg-gray-900 px-4 py-3">
+              <View className="flex-row items-center gap-3 px-4 py-3 mx-6 mb-3 bg-gray-900 rounded-xl">
                 <Text className="flex-1 text-gray-300 text-caption-01">
                   허용한 사진만 표시되고 있어요
                 </Text>
@@ -197,6 +204,7 @@ export function PhotoSelectScreen() {
               <PhotoGrid
                 bottomPadding={insets.bottom + 76}
                 grouped
+                hasNextPage={hasNextPage}
                 loading={loading}
                 onEndReached={() => void loadMore()}
                 onDragChange={setGroupExcludedCounts}
@@ -225,7 +233,7 @@ export function PhotoSelectScreen() {
                   >
                     {canSubmit
                       ? '이 사진으로 보드 만들기'
-                      : `최소 ${minSubmitUnits}장을 선택해 주세요`}{' '}
+                      : `최소 ${minSubmitUnits}장을 선택해 주세요 `}{' '}
                     <Text className={canSubmit ? 'text-blue-500' : 'text-red-300'}>
                       {selectedCount} / {TARGET_UNITS}
                     </Text>

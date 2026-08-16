@@ -10,6 +10,7 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { usePhotoSelection } from '@/features/photo-selection';
+import { groupPhotos } from '@/features/photo-selection/model/photo-group';
 import { dragRangeDelta } from '@/features/photo-selection/ui/PhotoGrid';
 
 import { PhotoSelectScreen } from './PhotoSelectScreen';
@@ -17,12 +18,14 @@ import { PhotoSelectScreen } from './PhotoSelectScreen';
 let mockSearchParams: { boardId: string; mode?: string } = { boardId: 'board-1' };
 const mockImageResize = jest.fn();
 const mockImageSave = jest.fn();
+const mockFetchLocalPhotoGroupPage = jest.fn();
+const mockFilterLocalAssetIds = jest.fn(async (ids: string[]) => ids);
 let mockImageSaveGate: Promise<void> | undefined;
 
 /**
  * 동작 범위 (2026-07-30 인터뷰, 2026-08-15 통일)
  *
- * 첫 업로드·이후 업로드 모두 갤러리 전체를 페이지네이션으로 불러와 그룹으로 묶는다.
+ * 첫 업로드·이후 업로드 모두 로컬 사진 100그룹까지 먼저 불러오고 이후 스크롤에서 덧붙인다.
  * 유일한 모드 차이는 초기 상태 — 첫 업로드는 최신 100그룹 자동선택, 이후 업로드는 전부 미선택.
  * 타일 누름은 대상에 따라 다르게 동작한다 — 1장 그룹은 제외, 여러 장 그룹은 다음 사진으로 승계.
  * 선택은 제출 상한(100)까지만 가능하고, 90(추가 업로드는 20) 미만이면 CTA만 비활성화한다.
@@ -43,7 +46,6 @@ let mockImageSaveGate: Promise<void> | undefined;
  */
 
 jest.mock('expo-media-library', () => ({
-  getAssetInfoAsync: jest.fn(),
   getAssetsAsync: jest.fn(),
   getPermissionsAsync: jest.fn(async () => ({
     accessPrivileges: 'all',
@@ -54,6 +56,9 @@ jest.mock('expo-media-library', () => ({
   presentPermissionsPickerAsync: jest.fn(),
   requestPermissionsAsync: jest.fn(),
   SortBy: { creationTime: 'creationTime' },
+}));
+jest.mock('../../../modules/local-photo-library', () => ({
+  fetchLocalPhotoGroupPage: (options: unknown) => mockFetchLocalPhotoGroupPage(options),
 }));
 
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'job-1') }));
@@ -104,10 +109,7 @@ jest.mock('@/entities/user/api/user-queries', () => ({
   useMeQuery: () => ({ data: { name: '뽀또' } }),
 }));
 
-const { getAssetInfoAsync, getAssetsAsync, getPermissionsAsync } = jest.requireMock(
-  'expo-media-library',
-) as {
-  getAssetInfoAsync: jest.Mock;
+const { getAssetsAsync, getPermissionsAsync } = jest.requireMock('expo-media-library') as {
   getAssetsAsync: jest.Mock;
   getPermissionsAsync: jest.Mock;
 };
@@ -145,6 +147,23 @@ function setGallery(assets: ReturnType<typeof asset>[]) {
       totalCount: assets.length,
     };
   });
+  mockFetchLocalPhotoGroupPage.mockImplementation(async ({ first, after }) => {
+    const start = after ? Number(after) : 0;
+    const remaining = assets.slice(start);
+    const localIds = new Set(await mockFilterLocalAssetIds(remaining.map((photo) => photo.id)));
+    const groups = groupPhotos(remaining.filter((photo) => localIds.has(photo.id)));
+    const pageGroups = groups.slice(0, first);
+    const nextAnchor = groups[first]?.photos.at(-1);
+    const nextOffset = nextAnchor
+      ? start + remaining.findIndex((photo) => photo.id === nextAnchor.id)
+      : assets.length;
+
+    return {
+      assets: pageGroups.flatMap((group) => group.photos),
+      endCursor: String(nextOffset),
+      hasNextPage: nextAnchor !== undefined,
+    };
+  });
 }
 
 /** 앱에서는 expo-router가 제공하는 값. 화면이 하단 인셋을 쓰므로 테스트에서도 채워준다. */
@@ -162,18 +181,29 @@ async function renderLoadedScreen() {
     </SafeAreaProvider>,
   );
   await screen.findAllByRole('checkbox');
+  await waitFor(() =>
+    expect(screen.getByTestId('photo-grid').props.accessibilityState).toEqual({ busy: false }),
+  );
 
   return { user };
 }
 
 const counter = (text: string) => screen.getByText(text);
 const cta = () => screen.getByRole('button', { name: /보드 만들기|선택해 주세요/ });
+const gridData = () => screen.getByTestId('photo-grid').props.data as { skeleton?: boolean }[];
+const gridPhotoCount = () => gridData().filter((item) => !item.skeleton).length;
+const gridSkeletonCount = () => gridData().filter((item) => item.skeleton).length;
 
 beforeEach(() => {
   mockSearchParams = { boardId: 'board-1' };
   mockImageSaveGate = undefined;
   jest.clearAllMocks();
-  getAssetInfoAsync.mockImplementation(async (photo) => ({ ...photo, isNetworkAsset: false }));
+  mockFilterLocalAssetIds.mockImplementation(async (ids) => ids);
+  mockFetchLocalPhotoGroupPage.mockResolvedValue({
+    assets: [],
+    endCursor: '0',
+    hasNextPage: false,
+  });
 });
 
 it('드래그가 원점으로 돌아오면 범위에서 빠진 타일을 복원한다', () => {
@@ -192,17 +222,64 @@ it('진입 시 불러온 그룹을 전체 선택 상태로 표시하고 카운�
 
 it('iCloud에만 있는 사진은 그리드에서 제외한다', async () => {
   setGallery([asset('local', BASE_TIME), asset('cloud', BASE_TIME - minutes(10))]);
-  getAssetInfoAsync.mockImplementation(async (photo) => ({
-    ...photo,
-    isNetworkAsset: photo.id === 'cloud',
-  }));
+  mockFilterLocalAssetIds.mockImplementation(async (ids: string[]) =>
+    ids.filter((id) => id !== 'cloud'),
+  );
 
   await renderLoadedScreen();
 
   expect(screen.getAllByRole('checkbox')).toHaveLength(1);
-  expect(getAssetInfoAsync).toHaveBeenCalledWith(expect.objectContaining({ id: 'cloud' }), {
-    shouldDownloadFromNetwork: false,
+  expect(mockFilterLocalAssetIds).toHaveBeenCalledWith(['local', 'cloud']);
+});
+
+it('24그룹 전에는 전체 스켈레톤을, 이후 로딩 중에는 하단 스켈레톤을 유지한다', async () => {
+  let releaseFirstPage!: () => void;
+  let releaseSecondPage!: () => void;
+  const firstPageGate = new Promise<void>((resolve) => {
+    releaseFirstPage = resolve;
   });
+  const secondPageGate = new Promise<void>((resolve) => {
+    releaseSecondPage = resolve;
+  });
+  setGallery(spacedAssets(100));
+  const fetchPage = mockFetchLocalPhotoGroupPage.getMockImplementation()!;
+  let pageCount = 0;
+  mockFetchLocalPhotoGroupPage.mockImplementation(async (options) => {
+    pageCount += 1;
+    if (pageCount === 1) await firstPageGate;
+    if (pageCount === 2) await secondPageGate;
+    return fetchPage(options);
+  });
+
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <PhotoSelectScreen />
+    </SafeAreaProvider>,
+  );
+
+  expect(screen.getByTestId('photo-grid-skeleton')).toBeOnTheScreen();
+  expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+  expect(mockImageSave).not.toHaveBeenCalled();
+  releaseFirstPage();
+  await waitFor(() => expect(gridPhotoCount()).toBe(24));
+  expect(gridSkeletonCount()).toBe(40);
+  releaseSecondPage();
+  await waitFor(() => expect(gridPhotoCount()).toBe(100));
+});
+
+it('첫 페이지의 로컬 사진이 부족하면 100그룹이 될 때까지 다음 페이지를 조회한다', async () => {
+  setGallery(spacedAssets(180));
+  mockFilterLocalAssetIds.mockImplementation(async (ids: string[]) =>
+    ids.filter((id) => {
+      const index = Number(id.slice(1));
+      return index >= 120 || index % 2 === 0;
+    }),
+  );
+
+  await renderLoadedScreen();
+
+  expect(await screen.findByText('100 / 100')).toBeOnTheScreen();
+  expect(mockFetchLocalPhotoGroupPage).toHaveBeenCalledTimes(3);
 });
 
 it('사진 권한을 거부하면 설정 이동 안내를 표시하고 갤러리를 조회하지 않는다', async () => {
@@ -221,7 +298,7 @@ it('사진 권한을 거부하면 설정 이동 안내를 표시하고 갤러리
 
   expect(await screen.findByText('사진 접근 권한이 필요해요')).toBeOnTheScreen();
   expect(screen.getByRole('button', { name: '설정에서 권한 허용하기' })).toBeOnTheScreen();
-  expect(getAssetsAsync).not.toHaveBeenCalled();
+  expect(mockFetchLocalPhotoGroupPage).not.toHaveBeenCalled();
 });
 
 it('단일 사진을 누르면 제외되고 다시 누르면 복구된다', async () => {
@@ -373,12 +450,12 @@ it('앨범을 바꾸면 새로 조회하고 선택이 초기화된다', async ()
   const { user } = await renderLoadedScreen();
   await user.press(screen.getAllByRole('checkbox')[0]!);
   expect(counter('99 / 100')).toBeOnTheScreen();
-  const callsBeforeSwitch = getAssetsAsync.mock.calls.length;
+  const callsBeforeSwitch = mockFetchLocalPhotoGroupPage.mock.calls.length;
 
   await user.press(screen.getByRole('button', { name: '앨범 선택' }));
   await user.press(screen.getByRole('button', { name: '즐겨찾기' }));
 
-  expect(getAssetsAsync.mock.calls.length).toBeGreaterThan(callsBeforeSwitch);
+  expect(mockFetchLocalPhotoGroupPage.mock.calls.length).toBeGreaterThan(callsBeforeSwitch);
   expect(await screen.findByText('100 / 100')).toBeOnTheScreen();
 });
 
@@ -429,21 +506,37 @@ describe('추가 업로드', () => {
     expect(cta()).toBeEnabled();
   });
 
-  it('스크롤 끝에 도달하면 다음 사진 페이지를 불러온다', async () => {
+  it('다음 페이지가 있으면 스켈레톤 40칸을 유지하며 사진 40그룹을 덧붙인다', async () => {
     setGallery(spacedAssets(350));
     await renderLoadedScreen();
+    expect(gridSkeletonCount()).toBe(40);
+    let releaseNextPage!: () => void;
+    const nextPageGate = new Promise<void>((resolve) => {
+      releaseNextPage = resolve;
+    });
+    const fetchPage = mockFetchLocalPhotoGroupPage.getMockImplementation()!;
+    mockFetchLocalPhotoGroupPage.mockImplementationOnce(async (options) => {
+      await nextPageGate;
+      return fetchPage(options);
+    });
 
     await act(async () => {
       fireEvent(screen.getByTestId('photo-grid'), 'onEndReached');
     });
 
-    await waitFor(() =>
-      expect(getAssetsAsync).toHaveBeenCalledWith({
-        first: 500,
-        after: '300',
-        sortBy: 'creationTime',
-      }),
-    );
+    expect(gridSkeletonCount()).toBe(40);
+    expect(gridPhotoCount()).toBe(100);
+    expect(mockFetchLocalPhotoGroupPage).toHaveBeenCalledWith({
+      first: 40,
+      after: '100',
+      album: 'RECENT',
+    });
+
+    releaseNextPage();
+    await waitFor(() => {
+      expect(gridSkeletonCount()).toBe(40);
+      expect(gridPhotoCount()).toBe(140);
+    });
   });
 
   it('연속 사진은 추가 업로드에서도 그룹으로 묶인다', async () => {
@@ -472,7 +565,9 @@ describe('추가 업로드', () => {
         targetUnits: 100,
       }),
     );
-    await waitFor(() => expect(result.current.photoUnits).toHaveLength(150));
+    await waitFor(() => expect(result.current.photoUnits).toHaveLength(100));
+    await act(async () => result.current.loadMore());
+    expect(result.current.photoUnits).toHaveLength(140);
 
     await act(() => result.current.toggleEverything());
     expect(result.current.selectedCount).toBe(100);
@@ -493,7 +588,9 @@ describe('추가 업로드', () => {
         targetUnits: 2,
       }),
     );
-    await waitFor(() => expect(result.current.photoUnits).toHaveLength(5));
+    await waitFor(() => expect(result.current.photoUnits).toHaveLength(2));
+    await act(async () => result.current.loadMore());
+    expect(result.current.photoUnits).toHaveLength(5);
     const groupIds = result.current.photoUnits.slice(0, 3).map((unit) => unit.groupId);
 
     await act(() =>
