@@ -35,6 +35,7 @@ export function RecapShareCard({ stickerId, data, options }: RecapShareCardProps
         <span className="text-body-01 text-center text-gray-50">{data.sticker.title}</span>
         {options.image && (
           <RecapStickerVisual
+            stickerId={stickerId}
             imageUrl={data.sticker.imageUrl ?? ''}
             floatComments={floatComments}
           />

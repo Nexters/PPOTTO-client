@@ -1,6 +1,10 @@
 import { useFlow } from '@stackflow/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
+import type { StickerCommentPosition, StickerRecap } from '@/entities/sticker/api/sticker-api';
+import { useUpdateStickerCommentPositionsMutation } from '@/entities/sticker/api/sticker-mutations';
+import { stickerQueryKeys } from '@/entities/sticker/api/sticker-query-keys';
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
@@ -27,18 +31,39 @@ type RecapPageProps = {
 export function RecapPage({ stickerId, boardId }: RecapPageProps) {
   const { data, refetch, isStale } = useStickerQuery(stickerId);
   const { markViewed } = useMarkStickerViewed(boardId);
+  const { mutateAsync: updateCommentPositions } = useUpdateStickerCommentPositionsMutation();
+  const queryClient = useQueryClient();
   const { pop } = useFlow();
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const markedViewedStickerIdRef = useRef<string | null>(null);
+  const positionedStickerIdRef = useRef<string | null>(null);
 
   useRefetchOnActive(refetch, isStale);
 
-  useEffect(() => {
-    if (data?.sticker.isNew && markedViewedStickerIdRef.current !== stickerId) {
-      markedViewedStickerIdRef.current = stickerId;
-      markViewed(stickerId);
-    }
-  }, [data?.sticker.isNew, markViewed, stickerId]);
+  const handleInitialCommentLayout = useCallback(
+    async (comments: StickerCommentPosition[]) => {
+      if (positionedStickerIdRef.current === stickerId) return;
+      positionedStickerIdRef.current = stickerId;
+
+      try {
+        await updateCommentPositions({ stickerId, comments });
+        queryClient.setQueryData<StickerRecap>(stickerQueryKeys.detail(stickerId), (current) =>
+          current
+            ? {
+                ...current,
+                comments: current.comments.map((comment) => {
+                  const position = comments.find(({ id }) => id === comment.id);
+                  return position ? { ...comment, ...position } : comment;
+                }),
+              }
+            : current,
+        );
+        markViewed(stickerId);
+      } catch {
+        positionedStickerIdRef.current = null;
+      }
+    },
+    [markViewed, queryClient, stickerId, updateCommentPositions],
+  );
 
   const tagContents = useMemo(
     () =>
@@ -100,8 +125,11 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
           <div className="flex w-full flex-col gap-6">
             <div className="flex w-full flex-col">
               <RecapStickerVisual
+                stickerId={stickerId}
                 imageUrl={data.sticker.imageUrl ?? ''}
                 floatComments={floatComments}
+                isNew={data.sticker.isNew}
+                onInitialLayout={handleInitialCommentLayout}
               />
               <RecapSummary content={data.summary} />
             </div>
