@@ -1,3 +1,4 @@
+import { CheckCircleEmpty } from '@ppotto/assets';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { type FlatList, type LayoutChangeEvent, useWindowDimensions, View } from 'react-native';
@@ -12,14 +13,18 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import type { PhotoSelectionChange, PhotoUnit } from '../model/photo-group';
+import { INITIAL_GROUP_PAGE_SIZE, PHOTO_GROUP_PAGE_SIZE } from '../model/photo-page';
 
 import { PhotoTile } from './PhotoTile';
 
 const COLUMNS = 4;
 const GAP = 2;
-const INITIAL_TILES = 24;
-const SKELETON_TILES = Array.from({ length: INITIAL_TILES }, (_, index) => index);
-const NEXT_PAGE_THRESHOLD = 2;
+const SKELETON_TILES = Array.from({ length: INITIAL_GROUP_PAGE_SIZE }, (_, index) => index);
+const NEXT_PAGE_SKELETONS = Array.from({ length: PHOTO_GROUP_PAGE_SIZE }, (_, index) => ({
+  id: `skeleton-${index}`,
+  skeleton: true as const,
+}));
+const NEXT_PAGE_THRESHOLD = 3;
 const AUTO_SCROLL_EDGE = 96;
 const AUTO_SCROLL_MAX_SPEED = 1_200;
 
@@ -53,6 +58,17 @@ function autoScrollSpeedAt(y: number, height: number) {
 }
 
 type IndexRange = readonly [start: number, end: number];
+type GridItem = PhotoUnit | (typeof NEXT_PAGE_SKELETONS)[number];
+
+function PhotoSkeletonTile({ width }: { width: number }) {
+  return (
+    <View className="aspect-square items-end justify-end bg-gray-800 p-2" style={{ width }}>
+      <View className="size-4 items-center justify-center">
+        <CheckCircleEmpty color="white" height={14.667} width={14.667} />
+      </View>
+    </View>
+  );
+}
 
 export function dragRangeDelta(anchor: number, previous: number, next: number) {
   const previousStart = Math.min(anchor, previous);
@@ -81,6 +97,7 @@ export function dragRangeDelta(anchor: number, previous: number, next: number) {
 interface PhotoGridProps {
   bottomPadding: number;
   grouped: boolean;
+  hasNextPage?: boolean;
   loading?: boolean;
   units: PhotoUnit[];
   onEndReached?: () => void;
@@ -126,6 +143,7 @@ const PhotoGridItem = memo(
 export function PhotoGrid({
   bottomPadding,
   grouped,
+  hasNextPage = false,
   loading = false,
   units,
   onEndReached,
@@ -135,8 +153,9 @@ export function PhotoGrid({
   const { width } = useWindowDimensions();
   const tileWidth = (width - GAP * (COLUMNS - 1)) / COLUMNS;
   const itemCount = units.length;
+  const data: GridItem[] = loading || hasNextPage ? [...units, ...NEXT_PAGE_SKELETONS] : units;
   const [dragging, setDragging] = useState(false);
-  const listRef = useAnimatedRef<FlatList<PhotoUnit>>();
+  const listRef = useAnimatedRef<FlatList<GridItem>>();
   const draggingRef = useRef(false);
   const desiredSelectedRef = useRef(false);
   const anchorIndexRef = useRef<number | undefined>(undefined);
@@ -263,18 +282,15 @@ export function PhotoGrid({
 
       scrollOffset.set(nextOffset);
       scrollTo(listRef, 0, nextOffset, false);
-      const index = Math.min(
-        itemCount - 1,
-        gridIndexAt(
-          pointerX.get(),
-          pointerY.get(),
-          nextOffset,
-          viewportWidth.get(),
-          viewportHeight.get(),
-          tileWidth,
-        ),
+      const index = gridIndexAt(
+        pointerX.get(),
+        pointerY.get(),
+        nextOffset,
+        viewportWidth.get(),
+        viewportHeight.get(),
+        tileWidth,
       );
-      if (index !== nativeIndex.get()) {
+      if (index >= 0 && index < itemCount && index !== nativeIndex.get()) {
         nativeIndex.set(index);
         scheduleOnRN(handleDragIndex, index);
       }
@@ -305,16 +321,13 @@ export function PhotoGrid({
         .activateAfterLongPress(500)
         .onStart(({ x, y }) => {
           'worklet';
-          const index = Math.min(
-            itemCount - 1,
-            gridIndexAt(
-              x,
-              y,
-              scrollOffset.get(),
-              viewportWidth.get(),
-              viewportHeight.get(),
-              tileWidth,
-            ),
+          const index = gridIndexAt(
+            x,
+            y,
+            scrollOffset.get(),
+            viewportWidth.get(),
+            viewportHeight.get(),
+            tileWidth,
           );
           if (index < 0 || index >= itemCount) return;
 
@@ -331,18 +344,15 @@ export function PhotoGrid({
           pointerY.set(y);
           autoScrollSpeed.set(autoScrollSpeedAt(y, viewportHeight.get()));
 
-          const index = Math.min(
-            itemCount - 1,
-            gridIndexAt(
-              x,
-              y,
-              scrollOffset.get(),
-              viewportWidth.get(),
-              viewportHeight.get(),
-              tileWidth,
-            ),
+          const index = gridIndexAt(
+            x,
+            y,
+            scrollOffset.get(),
+            viewportWidth.get(),
+            viewportHeight.get(),
+            tileWidth,
           );
-          if (index !== nativeIndex.get()) {
+          if (index >= 0 && index < itemCount && index !== nativeIndex.get()) {
             nativeIndex.set(index);
             scheduleOnRN(handleDragIndex, index);
           }
@@ -372,14 +382,15 @@ export function PhotoGrid({
   );
   /* eslint-enable react-hooks/refs */
 
-  if (loading) {
+  if (loading && units.length < INITIAL_GROUP_PAGE_SIZE) {
     return (
       <View
         className="flex-1 flex-row flex-wrap content-start overflow-hidden"
         style={{ gap: GAP }}
+        testID="photo-grid-skeleton"
       >
         {SKELETON_TILES.map((index) => (
-          <View className="aspect-square bg-gray-800" key={index} style={{ width: tileWidth }} />
+          <PhotoSkeletonTile key={index} width={tileWidth} />
         ))}
       </View>
     );
@@ -389,12 +400,14 @@ export function PhotoGrid({
     <GestureDetector gesture={dragGesture}>
       <View className="flex-1" onLayout={handleLayout}>
         <Animated.FlatList
+          accessibilityState={{ busy: loading }}
           className="flex-1"
           columnWrapperStyle={{ gap: GAP }}
           contentContainerStyle={{ gap: GAP, paddingBottom: bottomPadding }}
-          data={units}
-          initialNumToRender={INITIAL_TILES}
-          keyExtractor={(unit) => unit.groupId}
+          data={data}
+          initialNumToRender={INITIAL_GROUP_PAGE_SIZE}
+          keyExtractor={(item) => ('skeleton' in item ? item.id : item.groupId)}
+          maxToRenderPerBatch={PHOTO_GROUP_PAGE_SIZE}
           numColumns={COLUMNS}
           onContentSizeChange={(_, height) => {
             contentHeight.set(height);
@@ -403,12 +416,17 @@ export function PhotoGrid({
           onEndReachedThreshold={NEXT_PAGE_THRESHOLD}
           onScroll={handleScroll}
           ref={listRef}
-          renderItem={({ item }) => (
-            <PhotoGridItem grouped={grouped} item={item} onPress={onPress} width={tileWidth} />
-          )}
+          renderItem={({ item }) =>
+            'skeleton' in item ? (
+              <PhotoSkeletonTile width={tileWidth} />
+            ) : (
+              <PhotoGridItem grouped={grouped} item={item} onPress={onPress} width={tileWidth} />
+            )
+          }
           scrollEnabled={!dragging}
           scrollEventThrottle={16}
           testID="photo-grid"
+          updateCellsBatchingPeriod={16}
         />
       </View>
     </GestureDetector>

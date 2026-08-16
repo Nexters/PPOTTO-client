@@ -4,7 +4,6 @@ import { toCanvas } from 'html-to-image';
 import dynamic from 'next/dynamic';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
-import { cn } from '@/shared/lib/cn';
 import { bridge } from '@/shared/lib/bridge';
 
 import { sampleColorAt } from './model/eyedropper';
@@ -28,14 +27,7 @@ const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
 
 export function BoardPage() {
   useTermsGate();
-  const {
-    boardId,
-    canDeleteStickers,
-    deleteAllStickers,
-    isDeletingStickers,
-    isBoardListLoading,
-    openPhotoSelect,
-  } = useBoardPageState();
+  const { boardId, isBoardListLoading, openPhotoSelect } = useBoardPageState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_MIN);
@@ -176,17 +168,6 @@ export function BoardPage() {
           ) : (
             <BoardHeader />
           ))}
-        <button
-          type="button"
-          disabled={!canDeleteStickers || isDeletingStickers}
-          onClick={deleteAllStickers}
-          className={cn(
-            'absolute top-28 left-6 z-20 rounded-lg',
-            'bg-red-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40',
-          )}
-        >
-          {isDeletingStickers ? '삭제 중...' : '스티커 전체 삭제 (DEBUG)'}
-        </button>
         <BoardContent
           boardId={boardId}
           isLoading={isBoardListLoading}

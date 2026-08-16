@@ -5,7 +5,6 @@ import { useFlow } from '@stackflow/react';
 
 import { useBoardListQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
-import { markOnboardingAsSeen } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { hasCompletedFirstUpload } from '@/shared/lib/first-upload-storage';
 import { cn } from '@/shared/lib/cn';
@@ -26,8 +25,6 @@ export function OnboardingPage() {
 
   const handlePrimaryAction = () => {
     if (isLastSlide) {
-      // 마지막 슬라이드의 CTA를 누른 것을 '온보딩을 봤다'의 기준으로 기록한다
-      if (me) markOnboardingAsSeen(me.id);
       // 업로드 이력이 있으면(스티커를 전부 지우고 온보딩을 다시 본 경우) 추가 업로드로 연다
       const mode = me && hasCompletedFirstUpload(me.id) ? 'additional' : 'initial';
       if (boardId) bridge.send('OPEN_PHOTO_SELECT', { boardId, mode });

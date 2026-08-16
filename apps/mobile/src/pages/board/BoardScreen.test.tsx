@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, userEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, userEvent } from '@testing-library/react-native';
 
 import { BoardScreen } from './BoardScreen';
 
@@ -101,15 +101,15 @@ it('실패한 작업에는 재개 확인 모달 대신 업로드 실패 모달�
   expect(photoUploadService.hasPending).not.toHaveBeenCalled();
 });
 
-it('pending 확인 파라미터가 있으면 저장소를 다시 조회하지 않고 재개 준비부터 한다', async () => {
+it('재개 파라미터가 남아 있어도 실제 작업이 없으면 모달 없이 보드를 표시한다', async () => {
   mockSearchParams = { boardId: 'board-1', confirmResume: '1' };
 
   await render(<BoardScreen />);
 
-  await waitFor(() => expect(screen.getByText(/분석 중인 사진들이 있어요/)).toBeOnTheScreen());
-  expect(photoUploadService.hasPending).not.toHaveBeenCalled();
-  expect(photoUploadService.resume).toHaveBeenCalledTimes(1);
-  expect(photoUploadService.getMotionPhotosForWeb).toHaveBeenCalledTimes(1);
+  expect(await screen.findByText('보드 웹뷰')).toBeOnTheScreen();
+  expect(screen.queryByText(/분석 중인 사진들이 있어요/)).not.toBeOnTheScreen();
+  expect(photoUploadService.hasPending).toHaveBeenCalledTimes(1);
+  expect(photoUploadService.resume).not.toHaveBeenCalled();
 });
 
 it('실패 후 서버 분석이 이미 시작됐다면 로컬 작업을 보존하고 로딩 화면으로 돌아간다', async () => {

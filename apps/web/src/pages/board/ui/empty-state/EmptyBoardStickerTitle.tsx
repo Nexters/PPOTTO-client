@@ -18,7 +18,7 @@ export function EmptyBoardStickerTitle({
       >
         {title}
       </div>
-      {/* 빨간 점은 말풍선 우측 상단 고정 — 기본 제목 에셋(BigTitle)과 같은 자리 */}
+      {/* 빨간 점은 말풍선 우측 상단 고정 */}
       <span
         className={cn(
           'absolute -top-1 -right-0 size-3 rounded-full',

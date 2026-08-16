@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 import { useRenameSticker } from './use-rename-sticker';
 
@@ -22,8 +23,8 @@ export function useStickerQuickMenu(boardId: string) {
   };
 
   const startRename = () => {
-    setIsRenamingTitle(true);
-    // 클릭 핸들러 안에서 동기적으로 focus를 걸어야 iOS 웹뷰가 키보드를 띄움
+    // iOS 웹뷰는 readOnly input에 focus한 뒤 속성만 바꿔서는 키보드를 열지 않는다.
+    flushSync(() => setIsRenamingTitle(true));
     titleInputRef.current?.focus();
   };
 
