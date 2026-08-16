@@ -88,7 +88,15 @@
           "kotlinVersion": "2.0.21"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.ppotto.co.kr/",
+          "organization": "ppotto",
+          "project": "ppotto-mobile"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

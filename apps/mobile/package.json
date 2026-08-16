@@ -16,6 +16,7 @@
     "preset": "jest-expo",
     "testTimeout": 15000,
     "moduleNameMapper": {
+      "^@sentry/core$": "<rootDir>/node_modules/@sentry/core/build/cjs/index.js",
       "^@/assets/(.*)$": "<rootDir>/assets/$1",
       "^@/(.*)$": "<rootDir>/src/$1"
     }
@@ -28,6 +29,8 @@
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",
     "@react-navigation/native": "^7.1.33",
+    "@sentry/core": "10.69.0",
+    "@sentry/react-native": "8.23.0",
     "@tanstack/react-query": "^5.101.2",
     "clsx": "^2.1.1",
     "expo": "~55.0.27",

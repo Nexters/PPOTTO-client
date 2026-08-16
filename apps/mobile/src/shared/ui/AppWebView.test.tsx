@@ -28,6 +28,9 @@ jest.mock('expo-router', () => ({
   },
 }));
 jest.mock('@/shared/ui/Toast', () => ({ useToast: () => jest.fn() }));
+jest.mock('@/shared/lib/sentry-webview-trace', () => ({
+  buildWebViewTraceScript: jest.fn(() => ''),
+}));
 jest.mock('expo-file-system', () => ({
   File: jest.fn(() => ({
     uri: 'file:///cache/recap-instagram-story.png',
@@ -107,11 +110,15 @@ const share = (
     default: { isPackageInstalled: jest.Mock; shareSingle: jest.Mock };
   }
 ).default;
+const { buildWebViewTraceScript: mockBuildWebViewTraceScript } = jest.requireMock(
+  '@/shared/lib/sentry-webview-trace',
+) as { buildWebViewTraceScript: jest.Mock };
 const originalQaToolEnabled = process.env.EXPO_PUBLIC_QA_TOOL_ENABLED;
 
 beforeEach(() => {
   process.env.EXPO_PUBLIC_QA_TOOL_ENABLED = 'false';
   jest.clearAllMocks();
+  mockBuildWebViewTraceScript.mockReturnValue('');
   mockOnLoad = undefined;
   mockOnLoadEnd = undefined;
   mockOnMessage = undefined;
@@ -315,5 +322,29 @@ describe('WebView QA 진단', () => {
     const message = '__QA_DIAGNOSTIC__:{"type":"console"}';
     mockOnMessage?.({ nativeEvent: { data: message } });
     expect(mockPushMessage).toHaveBeenCalledWith(message);
+  });
+});
+
+describe('Sentry trace 전파', () => {
+  it('네이티브 trace 스크립트를 웹뷰 로드 전에 주입한다', async () => {
+    mockBuildWebViewTraceScript.mockReturnValue('window.__ppottoSentryTrace = {"a":1};');
+    await render(<AppWebView />);
+
+    expect(mockInjectedJavaScript).toContain('window.__ppottoSentryTrace');
+  });
+
+  it('QA 진단 스크립트와 함께 주입해도 둘 다 살아 있다', async () => {
+    process.env.EXPO_PUBLIC_QA_TOOL_ENABLED = 'true';
+    mockBuildWebViewTraceScript.mockReturnValue('window.__ppottoSentryTrace = {"a":1};');
+    await render(<AppWebView />);
+
+    expect(mockInjectedJavaScript).toContain('window.__ppottoSentryTrace');
+    expect(mockInjectedJavaScript).toContain('__qaDiagnosticsInstalled');
+  });
+
+  it('trace 정보가 없으면 아무것도 주입하지 않는다', async () => {
+    await render(<AppWebView />);
+
+    expect(mockInjectedJavaScript).toBeUndefined();
   });
 });

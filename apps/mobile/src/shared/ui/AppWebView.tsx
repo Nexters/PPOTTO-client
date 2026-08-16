@@ -24,6 +24,7 @@ import {
   WEB_QA_DIAGNOSTICS_SCRIPT,
 } from '@/shared/lib/qa-diagnostics';
 import { isQaToolEnabled } from '@/shared/lib/qa-tool';
+import { buildWebViewTraceScript } from '@/shared/lib/sentry-webview-trace';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
@@ -83,7 +84,12 @@ export function AppWebView({
   const toast = useToast();
   const [loaded, setLoaded] = useState(false);
   const [boardActive, setBoardActive] = useState(false);
+  const [traceScript] = useState(buildWebViewTraceScript);
   const markAppReady = useMarkAppReady();
+
+  const injectedScript =
+    [traceScript, qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : ''].filter(Boolean).join('\n') ||
+    undefined;
 
   // 웹뷰가 첫 화면을 그렸다 — 커버를 걷고, 앱 시작 화면도 같이 비켜준다
   const markLoaded = () => {
@@ -186,9 +192,7 @@ export function AppWebView({
         ref={ref}
         style={{ backgroundColor: '#000' }}
         source={{ uri: `${WEB_URL}${path}` }}
-        injectedJavaScriptBeforeContentLoaded={
-          qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : undefined
-        }
+        injectedJavaScriptBeforeContentLoaded={injectedScript}
         onMessage={(e) => {
           const data = e.nativeEvent.data;
           if (!recordWebQaDiagnosticMessage(data)) pushMessage(data);

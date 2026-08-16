@@ -1,6 +1,8 @@
+import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 const allowedDevOrigin = process.env.NEXT_ALLOWED_DEV_ORIGIN;
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@ppotto/api', '@ppotto/assets', '@ppotto/bridge'],
@@ -21,4 +23,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG ?? 'ppotto',
+  project: process.env.SENTRY_PROJECT ?? 'ppotto-web',
+  sentryUrl: process.env.SENTRY_URL ?? 'https://sentry.ppotto.co.kr/',
+  authToken: sentryAuthToken,
+  telemetry: false,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  sourcemaps: {
+    disable: !sentryAuthToken,
+    deleteSourcemapsAfterUpload: true,
+  },
+});
