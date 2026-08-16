@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 
+import { applyNativeTraceMetaTags } from '@/shared/lib/sentry-native-trace';
 import {
   SENTRY_DSN,
   SENTRY_ENABLED,
@@ -11,6 +12,8 @@ import {
 } from '@/shared/lib/sentry';
 
 if (SENTRY_ENABLED) {
+  applyNativeTraceMetaTags();
+
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: SENTRY_ENVIRONMENT,

@@ -53,6 +53,9 @@ importers:
       '@react-navigation/native':
         specifier: ^7.1.33
         version: 7.3.8(react-native@0.83.6(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.0))(react@19.2.0)
+      '@sentry/core':
+        specifier: 10.69.0
+        version: 10.69.0
       '@sentry/react-native':
         specifier: 8.23.0
         version: 8.23.0(@expo/env@2.4.1)(dotenv@17.4.2)(expo@55.0.27)(react-native@0.83.6(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.0))(react@19.2.0)(rollup@4.62.4)(webpack@5.109.2(postcss@8.5.19))
