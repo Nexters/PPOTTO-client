@@ -34,6 +34,8 @@ export function usePhotoSelection({
   const [selection, setSelection] = useState<PhotoSelection | null>(null);
   const [endCursor, setEndCursor] = useState<string>();
   const [hasNextPage, setHasNextPage] = useState(false);
+  const loadKey = `${album}:${mode}:${targetUnits}`;
+  const [loadedKey, setLoadedKey] = useState<string>();
   const loadGeneration = useRef(0);
   const reloading = useRef(false);
   const loadingMore = useRef(false);
@@ -102,7 +104,10 @@ export function usePhotoSelection({
         setEndCursor(page.endCursor);
         setHasNextPage(page.hasNextPage);
       } finally {
-        if (!cancelled && loadGeneration.current === generation) reloading.current = false;
+        if (!cancelled && loadGeneration.current === generation) {
+          reloading.current = false;
+          setLoadedKey(loadKey);
+        }
       }
     };
 
@@ -171,6 +176,7 @@ export function usePhotoSelection({
   return {
     canSubmit: selectedCount >= minSubmitUnits,
     everythingSelected,
+    loading: loadedKey !== loadKey,
     loadMore,
     photoUnits,
     selection,

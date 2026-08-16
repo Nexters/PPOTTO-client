@@ -43,6 +43,7 @@ export function PhotoSelectScreen() {
   const {
     canSubmit,
     everythingSelected,
+    loading,
     loadMore,
     photoUnits,
     selection,
@@ -93,7 +94,7 @@ export function PhotoSelectScreen() {
   };
 
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-black">
       <SafeAreaView className="flex-1" edges={['top']}>
         <View className="gap-8 px-6 pt-4 pb-8">
           <Header />
@@ -120,6 +121,7 @@ export function PhotoSelectScreen() {
           <PhotoGrid
             bottomPadding={insets.bottom + 76}
             grouped
+            loading={loading}
             onEndReached={() => void loadMore()}
             onPress={toggleUnit}
             units={photoUnits}

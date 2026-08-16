@@ -170,7 +170,7 @@ it('진입 시 불러온 그룹을 전체 선택 상태로 표시하고 카운�
 it('사진 권한을 거부하면 갤러리를 조회하지 않는다', async () => {
   requestPermissionsAsync.mockResolvedValueOnce({ granted: false });
 
-  render(
+  await render(
     <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
       <PhotoSelectScreen />
     </SafeAreaProvider>,

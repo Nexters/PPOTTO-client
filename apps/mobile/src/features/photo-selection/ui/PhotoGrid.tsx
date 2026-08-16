@@ -7,11 +7,13 @@ import { PhotoTile } from './PhotoTile';
 const COLUMNS = 4;
 const GAP = 2;
 const INITIAL_TILES = 24;
+const SKELETON_TILES = Array.from({ length: INITIAL_TILES }, (_, index) => index);
 const NEXT_PAGE_THRESHOLD = 2;
 
 interface PhotoGridProps {
   bottomPadding: number;
   grouped: boolean;
+  loading?: boolean;
   units: PhotoUnit[];
   onEndReached?: () => void;
   onPress: (unit: PhotoUnit) => void;
@@ -21,12 +23,26 @@ interface PhotoGridProps {
 export function PhotoGrid({
   bottomPadding,
   grouped,
+  loading = false,
   units,
   onEndReached,
   onPress,
 }: PhotoGridProps) {
   const { width } = useWindowDimensions();
   const tileWidth = (width - GAP * (COLUMNS - 1)) / COLUMNS;
+
+  if (loading) {
+    return (
+      <View
+        className="flex-1 flex-row flex-wrap content-start overflow-hidden"
+        style={{ gap: GAP }}
+      >
+        {SKELETON_TILES.map((index) => (
+          <View className="aspect-square bg-gray-800" key={index} style={{ width: tileWidth }} />
+        ))}
+      </View>
+    );
+  }
 
   return (
     <FlatList
