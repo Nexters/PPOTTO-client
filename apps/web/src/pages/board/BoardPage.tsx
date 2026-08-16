@@ -45,12 +45,12 @@ export function BoardPage() {
   const [cameraScale, setCameraScale] = useState(1);
   const [isDrawingSelected, setIsDrawingSelected] = useState(false);
   const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
-  const isDrawingUiHidden = toolbarMode === 'draw' && (isDrawingActive || isDrawingSelected);
+  const isDrawingUiHidden =
+    (toolbarMode === 'draw' && isDrawingActive) || (toolbarMode === 'move' && isDrawingSelected);
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLCanvasElement | null>(null);
   const previewColorRef = useRef<string | null>(null);
-  // 그림 드래그-삭제 드롭 판정을 위해 BoardCanvas에도 그대로 넘겨준다
   const trashButtonRef = useRef<HTMLButtonElement>(null);
 
   const [isPickingColor, setIsPickingColor] = useState(false);
@@ -237,7 +237,7 @@ export function BoardPage() {
             }
           />
         )}
-        {isDrawingSelected && (
+        {toolbarMode === 'move' && isDrawingSelected && (
           <DrawingDeleteBar trashButtonRef={trashButtonRef} isDragOver={isDrawingOverTrash} />
         )}
         {pickerPosition && (
