@@ -4,9 +4,7 @@ import { useRenameSticker } from './use-rename-sticker';
 
 export function useStickerQuickMenu(boardId: string) {
   const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
-  const [isRenamingTitle, setIsRenamingTitle] = useState(false);
   const [directEditStickerId, setDirectEditStickerId] = useState<string | null>(null);
-  const titleInputRef = useRef<HTMLInputElement>(null);
   const { rename } = useRenameSticker(boardId);
 
   const isEditingRef = useRef(false);
@@ -16,24 +14,16 @@ export function useStickerQuickMenu(boardId: string) {
 
   const openQuickMenu = (stickerId: string) => setQuickMenuStickerId(stickerId);
 
-  const closeQuickMenu = () => {
-    setQuickMenuStickerId(null);
-    setIsRenamingTitle(false);
-  };
-
-  const startRename = () => {
-    setIsRenamingTitle(true);
-    // 클릭 핸들러 안에서 동기적으로 focus를 걸어야 iOS 웹뷰가 키보드를 띄움
-    titleInputRef.current?.focus();
-  };
-
-  const submitRename = (title: string) => {
-    if (quickMenuStickerId) rename(quickMenuStickerId, title, closeQuickMenu);
-  };
-
-  const cancelRename = () => setIsRenamingTitle(false);
+  const closeQuickMenu = () => setQuickMenuStickerId(null);
 
   const startDirectEdit = setDirectEditStickerId;
+
+  // Dialog focus trap이 바깥 input의 focus를 뺏어가는 문제 회피용 — 퀵메뉴를 먼저 닫고 편집 시작
+  const startRenameFromQuickMenu = () => {
+    const stickerId = quickMenuStickerId;
+    closeQuickMenu();
+    if (stickerId) startDirectEdit(stickerId);
+  };
 
   const submitDirectEdit = (title: string) => {
     if (directEditStickerId) {
@@ -43,25 +33,18 @@ export function useStickerQuickMenu(boardId: string) {
 
   const cancelDirectEdit = () => setDirectEditStickerId(null);
 
-  const directEditInputRef = (node: HTMLInputElement | null) => {
-    titleInputRef.current = node;
-    // 클릭으로 새로 마운트되는 input이라 콜백 ref에서 마운트 즉시 focus
-    node?.focus();
-  };
+  // 클릭으로 새로 마운트되는 input이라 콜백 ref에서 마운트 즉시 focus해야 iOS 웹뷰가 키보드를 띄움
+  const directEditInputRef = (node: HTMLInputElement | null) => node?.focus();
 
   return {
     quickMenuStickerId,
     openQuickMenu,
     closeQuickMenu,
-    isRenamingTitle,
-    startRename,
-    submitRename,
-    cancelRename,
+    startRenameFromQuickMenu,
     directEditStickerId,
     startDirectEdit,
     submitDirectEdit,
     cancelDirectEdit,
-    titleInputRef,
     directEditInputRef,
     isEditingRef,
   };

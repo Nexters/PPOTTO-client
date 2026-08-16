@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { drawOutlinedSticker, useStickerImage } from '@/shared/lib/sticker-raster';
+import { useVisualViewportInset } from '@/shared/lib/use-visual-viewport-inset';
 
 import type { StickerData } from './Sticker';
 import { StickerBadge } from './StickerBadge';
@@ -37,6 +38,7 @@ export function StickerPreview({
   bottomReserveHeight = DEFAULT_BOTTOM_RESERVE_HEIGHT,
 }: StickerPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const keyboardInset = useVisualViewportInset();
 
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined, PREVIEW_MAX_WIDTH);
 
@@ -48,22 +50,25 @@ export function StickerPreview({
 
   if (!sticker.imageUrl) return null;
 
+  // 키보드 실측 전(0) 순간 하강 방지용 기본값
+  const bottom = isEditingTitle ? keyboardInset || bottomReserveHeight : bottomReserveHeight;
+
   return (
     <div
       className={cn(
         'fixed inset-x-0 z-55 flex flex-col items-center',
-        'justify-center gap-2',
+        'justify-center gap-2 transition-[bottom] duration-300 ease-out',
         isEditingTitle ? 'pointer-events-auto' : 'pointer-events-none',
       )}
-      style={{ top: HEADER_HEIGHT, bottom: bottomReserveHeight }}
+      style={{ top: HEADER_HEIGHT, bottom }}
     >
       <div
         ref={imageRef}
         className="relative"
         style={{
           width: PREVIEW_MAX_WIDTH,
-          // 헤더, bottomReserveHeight 제외 남는 공간이 280px 미만일 때의 이미지 높이 축소
-          height: `min(${PREVIEW_MAX_HEIGHT}px, calc(100dvh - ${HEADER_HEIGHT}px - ${bottomReserveHeight}px - ${BADGE_HEIGHT}px - ${CONTENT_GAP}px - ${BREATHING_ROOM}px))`,
+          // 헤더, bottom 제외 남는 공간이 280px 미만일 때의 이미지 높이 축소
+          height: `min(${PREVIEW_MAX_HEIGHT}px, calc(100dvh - ${HEADER_HEIGHT}px - ${bottom}px - ${BADGE_HEIGHT}px - ${CONTENT_GAP}px - ${BREATHING_ROOM}px))`,
         }}
       >
         <canvas

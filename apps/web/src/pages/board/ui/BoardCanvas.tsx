@@ -1317,11 +1317,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         sticker={quickMenuSticker}
         isOpen={quickMenu.quickMenuStickerId !== null}
         onClose={quickMenu.closeQuickMenu}
-        onRename={quickMenu.startRename}
-        isEditingTitle={quickMenu.isRenamingTitle}
-        onSubmitTitle={quickMenu.submitRename}
-        onCancelEditTitle={quickMenu.cancelRename}
-        titleInputRef={quickMenu.titleInputRef}
+        onRename={quickMenu.startRenameFromQuickMenu}
         onRegenerate={() => {
           if (quickMenu.quickMenuStickerId) {
             regenerate(quickMenu.quickMenuStickerId, quickMenu.closeQuickMenu);
