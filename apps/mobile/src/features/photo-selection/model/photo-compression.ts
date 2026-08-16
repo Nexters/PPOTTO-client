@@ -9,7 +9,7 @@ type CompressionProgress = (progress: {
   result: GalleryPhoto;
 }) => void;
 
-const CONCURRENCY = 5;
+const CONCURRENCY = 3;
 
 export function createPhotoCompressionQueue(compress: CompressPhoto) {
   let currentRunId = 0;

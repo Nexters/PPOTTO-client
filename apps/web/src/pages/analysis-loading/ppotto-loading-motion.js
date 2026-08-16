@@ -216,20 +216,53 @@ export function createLoadingMotion(opts) {
     return p;
   }
 
-  function makeTile() {
+  function makeTile(baseWidth, baseHeight) {
     const d = document.createElement('div');
     d.className = 'pm-tile';
+    const photo = document.createElement('div');
+    photo.className = 'pm-tile-photo';
+    const dim = document.createElement('div');
+    dim.className = 'pm-tile-dim';
+    d.append(photo, dim);
+    d._pmPhoto = photo;
+    d._pmDim = dim;
+    if (baseWidth && baseHeight) {
+      d._pmBaseWidth = baseWidth;
+      d._pmBaseHeight = baseHeight;
+      d.style.width = baseWidth + 'px';
+      d.style.height = baseHeight + 'px';
+      d.style.transformOrigin = '0 0';
+    }
     return d;
   }
+  function setTilePhoto(el, src) {
+    el._pmPhoto.style.backgroundImage = `url(${src})`;
+  }
+  function setTileBrightness(el, brightness) {
+    el._pmDim.style.opacity = (1 - clamp(brightness, 0, 1)).toFixed(3);
+  }
+  function setTileFrame(el, x, y, w, h, rot = 0, scale = 1) {
+    if (!el._pmBaseWidth || !el._pmBaseHeight) {
+      el._pmBaseWidth = w;
+      el._pmBaseHeight = h;
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+      el.style.transformOrigin = '0 0';
+    }
+    const sizeX = w / el._pmBaseWidth;
+    const sizeY = h / el._pmBaseHeight;
+    el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) rotate(${rot.toFixed(2)}deg) scale(${(sizeX * scale).toFixed(4)},${(sizeY * scale).toFixed(4)})`;
+    // 바깥 박스의 비균등 스케일만 상쇄해 사진 비율은 유지한다.
+    el._pmPhoto.style.transform = `scale(${(1 / sizeX).toFixed(4)},${(1 / sizeY).toFixed(4)})`;
+  }
   function setTile(el, p, w, h, x, y, opt = {}) {
-    el.style.backgroundImage = `url(${p.src})`;
+    setTilePhoto(el, p.src);
     el.style.width = w + 'px';
     el.style.height = h + 'px';
     const s = opt.scale ?? 1,
       rot = opt.rot ?? 0;
     el.style.transform = `translate3d(${x}px,${y}px,0) rotate(${rot}deg) scale(${s})`;
     el.style.opacity = opt.opacity ?? 1;
-    if (opt.filter !== undefined) el.style.filter = opt.filter;
   }
 
   const initialPhase = ACT[opts.phase] === undefined ? ACT.SCAN : ACT[opts.phase];
@@ -431,7 +464,7 @@ export function createLoadingMotion(opts) {
             (state.reduced ? '' : ` scale(${sc.toFixed(3)})`);
           if (!state.reduced) {
             tile.el.style.opacity = op.toFixed(3);
-            tile.el.style.filter = `brightness(${bright.toFixed(3)})`;
+            setTileBrightness(tile.el, bright);
           }
         }
       }
@@ -450,7 +483,7 @@ export function createLoadingMotion(opts) {
             const next = pool[(Math.random() * pool.length) | 0];
             setTimeout(() => {
               tile.p = next;
-              tile.el.style.backgroundImage = `url(${next.src})`;
+              setTilePhoto(tile.el, next.src);
               tile.el.style.opacity = '1';
             }, 450);
           }
@@ -524,8 +557,8 @@ export function createLoadingMotion(opts) {
       items = [];
       const pool = shuffle(state.photos).slice(0, n);
       for (const p of pool) {
-        const el = makeTile();
-        el.style.backgroundImage = `url(${p.src})`;
+        const el = makeTile(196, 250);
+        setTilePhoto(el, p.src);
         elTiles.appendChild(el);
         items.push({
           el,
@@ -548,8 +581,8 @@ export function createLoadingMotion(opts) {
       items = [];
       const used = new Set();
       for (const r of rects.slice(0, n)) {
-        const el = makeTile();
-        el.style.backgroundImage = `url(${r.p.src})`;
+        const el = makeTile(196, 250);
+        setTilePhoto(el, r.p.src);
         elTiles.appendChild(el);
         used.add(r.p.id);
         items.push({
@@ -565,8 +598,8 @@ export function createLoadingMotion(opts) {
       const rest = shuffle(state.photos.filter((p) => !used.has(p.id)));
       while (items.length < n && rest.length) {
         const p = rest.pop();
-        const el = makeTile();
-        el.style.backgroundImage = `url(${p.src})`;
+        const el = makeTile(196, 250);
+        setTilePhoto(el, p.src);
         elTiles.appendChild(el);
         items.push({
           el,
@@ -678,9 +711,7 @@ export function createLoadingMotion(opts) {
           c.s = lerp(f.s ?? 1, o.s ?? 1, e);
         }
         const c = it.cur;
-        it.el.style.width = c.w.toFixed(1) + 'px';
-        it.el.style.height = c.h.toFixed(1) + 'px';
-        it.el.style.transform = `translate3d(${c.x.toFixed(1)}px,${c.y.toFixed(1)}px,0) rotate(${c.r.toFixed(2)}deg) scale(${c.s.toFixed(3)})`;
+        setTileFrame(it.el, c.x, c.y, c.w, c.h, c.r, c.s);
         it.el.style.opacity = c.o.toFixed(3);
       }
     }
@@ -879,11 +910,9 @@ export function createLoadingMotion(opts) {
           bright = dimBright;
         }
 
-        it.el.style.width = w.toFixed(1) + 'px';
-        it.el.style.height = hh.toFixed(1) + 'px';
-        it.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+        setTileFrame(it.el, x, y, w, hh);
         it.el.style.opacity = o.toFixed(3);
-        it.el.style.filter = `brightness(${bright.toFixed(2)})`;
+        setTileBrightness(it.el, bright);
       }
     }
 
@@ -892,7 +921,7 @@ export function createLoadingMotion(opts) {
         if (it.home) it.cur = { ...it.home };
         it.el.style.zIndex = '1';
         it.el.style.opacity = state.reduced ? '0.450' : '0.200';
-        it.el.style.filter = 'brightness(0.30)';
+        setTileBrightness(it.el, 0.3);
         it.el.style.boxShadow = 'none';
       }
       picks = choose();
@@ -909,7 +938,7 @@ export function createLoadingMotion(opts) {
         handoff.push({ p: it.p, x: h.x, y: h.y, w: h.w, h: h.h });
       }
       for (const it of tiles.items) {
-        it.el.style.filter = 'none';
+        setTileBrightness(it.el, 1);
         it.el.style.zIndex = '';
         it.el.style.boxShadow = 'none';
       }
@@ -993,8 +1022,8 @@ export function createLoadingMotion(opts) {
       cards = [];
       extras = [];
       ordered.forEach((src, i) => {
-        const el = makeTile();
-        el.style.backgroundImage = `url(${src.p.src})`;
+        const el = makeTile(CARD_W, CARD_H);
+        setTilePhoto(el, src.p.src);
         elDeck.appendChild(el);
         const item = { el, p: src.p, from: { x: src.x, y: src.y, w: src.w, h: src.h } };
         if (i < COUNT) {
@@ -1056,9 +1085,7 @@ export function createLoadingMotion(opts) {
         const f = c.from;
         const x = lerp(f.x, HOME_X, e),
           y = lerp(f.y, HOME_Y, e);
-        c.el.style.width = lerp(f.w, CARD_W, e).toFixed(1) + 'px';
-        c.el.style.height = lerp(f.h, CARD_H, e).toFixed(1) + 'px';
-        c.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+        setTileFrame(c.el, x, y, lerp(f.w, CARD_W, e), lerp(f.h, CARD_H, e));
         c.el.style.opacity = (1 - clamp((k - 0.45) / 0.4, 0, 1)).toFixed(3);
       }
 
@@ -1114,9 +1141,7 @@ export function createLoadingMotion(opts) {
           s = 1 + Math.sin(((p - 0.96) / 0.04) * Math.PI) * 0.02;
         }
 
-        c.el.style.width = w.toFixed(1) + 'px';
-        c.el.style.height = h.toFixed(1) + 'px';
-        c.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) scale(${s.toFixed(3)})`;
+        setTileFrame(c.el, x, y, w, h, 0, s);
       }
     }
 
@@ -1197,9 +1222,6 @@ export function createLoadingMotion(opts) {
         if (!element) continue;
         const start = ORDER.indexOf(index) * STAGGER;
         element.style.opacity = clamp((time - start) / FADE_MS, 0, 1).toFixed(3);
-        element.style.width = sticker.w + 'px';
-        element.style.height = sticker.h + 'px';
-        element.style.transform = `translate3d(${sticker.x}px,${sticker.y}px,0)`;
       }
     }
 
@@ -1244,8 +1266,8 @@ export function createLoadingMotion(opts) {
       const cells = shuffle(buildCells());
       const srcs = sources(cells.length);
       cards = srcs.map((src, i) => {
-        const el = makeTile();
-        el.style.backgroundImage = `url(${src.p.src})`;
+        const el = makeTile(204, 140);
+        setTilePhoto(el, src.p.src);
         elReveal.appendChild(el);
         const cell = cells[i];
         const cx = cell.x + cell.w / 2,
@@ -1268,7 +1290,14 @@ export function createLoadingMotion(opts) {
 
       elBoard.style.opacity = '0';
       for (const c of cards) c.el.style.opacity = '1';
-      for (const sticker of elStickers) sticker.style.opacity = '0';
+      for (let index = 0; index < elStickers.length; index++) {
+        const element = elStickers[index];
+        const sticker = STICKERS[index];
+        element.style.width = sticker.w + 'px';
+        element.style.height = sticker.h + 'px';
+        element.style.transform = `translate3d(${sticker.x}px,${sticker.y}px,0)`;
+        element.style.opacity = '0';
+      }
       boardT = 0;
       ctaOn = false;
     }
@@ -1300,11 +1329,7 @@ export function createLoadingMotion(opts) {
           y = lerp(f.y, to.y, e);
         const w = lerp(f.w, to.w, e),
           h = lerp(f.h, to.h, e);
-        // 칸을 정확히 채워야 하므로 여기서도 width/height를 직접 트윈한다.
-        // scale로 대신하면 사진이 늘어나 보이고 이음매에 틈이 생긴다.
-        c.el.style.width = w.toFixed(1) + 'px';
-        c.el.style.height = h.toFixed(1) + 'px';
-        c.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+        setTileFrame(c.el, x, y, w, h);
         c.el.style.opacity = tileAlpha;
       }
 
