@@ -18,6 +18,7 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
+import { recordBridgeFailure } from '@/lib/observability';
 import { useMarkAppReady } from '@/shared/lib/app-ready';
 import {
   recordWebQaDiagnosticMessage,
@@ -94,9 +95,14 @@ export function AppWebView({
   const { bridge, pushMessage } = useNativeBridge(ref, contract, {
     APPLE_LOGIN: () => loginWithApple(),
     KAKAO_LOGIN: () => loginWithKakao(),
-    GET_ACCESS_TOKEN: async ({ forceRefresh }) => ({
-      accessToken: await getAccessToken({ forceRefresh }),
-    }),
+    GET_ACCESS_TOKEN: async ({ forceRefresh }) => {
+      try {
+        return { accessToken: await getAccessToken({ forceRefresh }) };
+      } catch (error) {
+        recordBridgeFailure('GET_ACCESS_TOKEN', error);
+        throw error;
+      }
+    },
     LOGOUT: async () => {
       await logout();
       toast('로그아웃이 성공했습니다.');
