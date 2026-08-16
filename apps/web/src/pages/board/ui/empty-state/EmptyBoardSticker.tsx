@@ -1,5 +1,6 @@
 import { BigLogo, BigTitle } from '@ppotto/assets';
 import type { PointerEvent } from 'react';
+import { useRef } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { useLongPress } from '@/shared/lib/use-long-press';
@@ -15,11 +16,13 @@ type EmptyBoardStickerProps = {
 export const EMPTY_BOARD_STICKER_DEFAULT_TITLE = 'PPOTTO를 3초간 꾹 눌러보세요 👆';
 
 export function EmptyBoardSticker({ title, isQuickMenuOpen, onLongPress }: EmptyBoardStickerProps) {
+  const stickerRef = useRef<HTMLDivElement>(null);
   const longPress = useLongPress({
     onLongPress: () => {
       console.warn('[empty-board-sticker] longpress');
       onLongPress();
     },
+    onPressEnd: () => stickerRef.current?.removeAttribute('data-pressed'),
   });
   const pointOf = (event: PointerEvent) => ({ x: event.clientX, y: event.clientY });
 
@@ -31,8 +34,10 @@ export function EmptyBoardSticker({ title, isQuickMenuOpen, onLongPress }: Empty
       )}
     >
       <div
+        ref={stickerRef}
         role="img"
         aria-label={title}
+        data-sticker-id="empty-board-sticker"
         className={cn(
           'relative h-34 w-72.75 transition-transform duration-250 ease-out',
           isQuickMenuOpen
@@ -52,6 +57,7 @@ export function EmptyBoardSticker({ title, isQuickMenuOpen, onLongPress }: Empty
             console.error('[empty-board-sticker] pointer capture failed', error);
           }
           longPress.start(pointOf(event), 'empty-board-sticker');
+          event.currentTarget.dataset.pressed = 'true';
         }}
         onPointerMove={(event) => {
           console.warn('[empty-board-sticker] pointermove', pointOf(event));
@@ -66,27 +72,29 @@ export function EmptyBoardSticker({ title, isQuickMenuOpen, onLongPress }: Empty
           longPress.cancel();
         }}
       >
-        <div
-          className={cn(
-            'absolute top-13.75 left-0 h-20.25 w-65.5',
-            'transition-transform duration-250 ease-out',
-            isQuickMenuOpen && 'translate-x-[14.5px] -translate-y-13.75',
-          )}
-        >
-          <BigLogo aria-hidden width={262} height={81} />
-        </div>
-        <div
-          className={cn(
-            'absolute top-0 right-0 h-12.75 w-47.75',
-            'transition-transform duration-250 ease-out',
-            isQuickMenuOpen && '-translate-x-12.5 translate-y-21.25 rotate-[-6.18deg]',
-          )}
-        >
-          {title === EMPTY_BOARD_STICKER_DEFAULT_TITLE ? (
-            <BigTitle aria-hidden width={191} height={51} />
-          ) : (
-            <EmptyBoardStickerTitle aria-hidden title={title} />
-          )}
+        <div className="sticker-long-press-visual relative h-full w-full">
+          <div
+            className={cn(
+              'absolute top-13.75 left-0 h-20.25 w-65.5',
+              'transition-transform duration-250 ease-out',
+              isQuickMenuOpen && 'translate-x-[14.5px] -translate-y-13.75',
+            )}
+          >
+            <BigLogo aria-hidden width={262} height={81} />
+          </div>
+          <div
+            className={cn(
+              'absolute top-0 right-0 h-12.75 w-47.75',
+              'transition-transform duration-250 ease-out',
+              isQuickMenuOpen && '-translate-x-12.5 translate-y-21.25 rotate-[-6.18deg]',
+            )}
+          >
+            {title === EMPTY_BOARD_STICKER_DEFAULT_TITLE ? (
+              <BigTitle aria-hidden width={191} height={51} />
+            ) : (
+              <EmptyBoardStickerTitle aria-hidden title={title} />
+            )}
+          </div>
         </div>
       </div>
     </div>
