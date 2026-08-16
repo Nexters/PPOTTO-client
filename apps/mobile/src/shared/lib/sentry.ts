@@ -27,12 +27,10 @@ export const SENTRY_RELEASE =
     ? `${applicationId}@${expoConfig.version}${SENTRY_DIST ? `+${SENTRY_DIST}` : ''}`
     : undefined;
 
-const isProductionEnvironment = SENTRY_ENVIRONMENT === 'production';
+export const SENTRY_TRACES_SAMPLE_RATE = 1;
 
-export const SENTRY_TRACES_SAMPLE_RATE = isProductionEnvironment ? 0.2 : 1;
+export const SENTRY_PROFILES_SAMPLE_RATE = 1;
 
-export const SENTRY_PROFILES_SAMPLE_RATE = isProductionEnvironment ? 0.1 : 1;
-
-export const SENTRY_REPLAYS_SESSION_SAMPLE_RATE = isProductionEnvironment ? 0 : 0.1;
+export const SENTRY_REPLAYS_SESSION_SAMPLE_RATE = 1;
 
 export const SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE = 1;
