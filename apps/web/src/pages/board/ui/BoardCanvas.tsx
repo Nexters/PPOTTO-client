@@ -22,6 +22,7 @@ import { hasSeenOnboarding } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
+import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
 
 import {
@@ -47,9 +48,9 @@ import {
   getDrawingBounds,
   hitTestDrawingId,
   isPointInDrawingBounds,
+  type ParsedDrawing,
   parseStrokePoints,
   parseStrokeZIndex,
-  toDrawingCreateInput,
   toDrawingMoveInput,
 } from '../model/board-drawing';
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
@@ -159,6 +160,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
+  const [draftDrawings, setDraftDrawings] = useState<ParsedDrawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [drawingDragOffset, setDrawingDragOffset] = useState<Point | null>(null);
   // 선택된 그림을 드래그하는 동안, 현재 휴지통 버튼 위에 있는지 — 놓기 전 시각 피드백(확대)에 사용
@@ -404,15 +406,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     return { ...sticker, zIndex: newZIndex };
   };
 
-  // 새 그림을 캐시에 낙관적으로 반영하고 저장 요청을 보냄
-  const saveDrawing = (input: DrawingCreateInput) => {
-    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
-      current ? { ...current, drawings: [...current.drawings, input] } : current,
-    );
-
-    saveLayout({ boardId, input: { drawings: { created: [input] } } });
-  };
-
   // 그림을 캐시에서 낙관적으로 제거하고 삭제 요청을 보냄
   const deleteDrawing = (id: string) => {
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
@@ -433,12 +426,30 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     saveLayout({ boardId, input: { drawings: { created: [input] } } });
   };
 
+  // draw 모드 세션에서 그린 draft 여러 개를 한 번에 캐시에 낙관적으로 반영하고 저장 요청을 보냄.
+  const confirmDraftDrawings = (drafts: ParsedDrawing[]) => {
+    const inputs = drafts.map((drawing) =>
+      toDrawingMoveInput(drawing.id, drawing.points, {
+        color: drawing.color,
+        strokeWidth: drawing.strokeWidth,
+        zIndex: drawing.zIndex,
+      }),
+    );
+
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current ? { ...current, drawings: [...current.drawings, ...inputs] } : current,
+    );
+
+    saveLayout({ boardId, input: { drawings: { created: inputs } } });
+  };
+
   const saveStickerLayoutRef = useRef(saveStickerLayout);
   const selectStickerRef = useRef(selectSticker);
-  const saveDrawingRef = useRef(saveDrawing);
   const deleteDrawingRef = useRef(deleteDrawing);
   const moveDrawingRef = useRef(moveDrawing);
+  const confirmDraftDrawingsRef = useRef(confirmDraftDrawings);
   const drawingsRef = useRef(drawings);
+  const draftDrawingsRef = useRef(draftDrawings);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
   const drawingLongPressRef = useRef(drawingLongPress);
@@ -459,20 +470,21 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawStrokeWidthRef.current = drawStrokeWidth;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
-    saveDrawingRef.current = saveDrawing;
     deleteDrawingRef.current = deleteDrawing;
     moveDrawingRef.current = moveDrawing;
+    confirmDraftDrawingsRef.current = confirmDraftDrawings;
     drawingsRef.current = drawings;
+    draftDrawingsRef.current = draftDrawings;
     pushRef.current = push;
     longPressRef.current = longPress;
     drawingLongPressRef.current = drawingLongPress;
     onDrawingActiveChangeRef.current = onDrawingActiveChange;
   });
 
-  // 실행취소할 그림이 있는지 여부를 부모에 알림
+  // 실행취소할 그림이 있는지 여부를 부모에 알림 — 이번 세션에 그린 draft 기준(이미 확정된 그림은 대상 아님)
   useEffect(() => {
-    onCanUndoChange?.(drawings.length > 0);
-  }, [drawings.length, onCanUndoChange]);
+    onCanUndoChange?.(draftDrawings.length > 0);
+  }, [draftDrawings.length, onCanUndoChange]);
 
   useEffect(() => {
     onCameraScaleChange?.(camera.scale);
@@ -508,13 +520,22 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawingBoxPinchPreviewRef.current = null;
   }, [isDrawMode]);
 
+  // draw 모드를 나가면(확정 버튼이든 다른 툴바 모드로 전환이든) 이번 세션에 그린 draft를 한 번에
+  // 저장하고 비운다.
+  useEffect(() => {
+    if (isDrawMode) return;
+    const drafts = draftDrawingsRef.current;
+    if (drafts.length === 0) return;
+    setDraftDrawings([]);
+    confirmDraftDrawingsRef.current(drafts);
+  }, [isDrawMode]);
+
   useImperativeHandle(
     ref,
     () => ({
+      // 이번 세션에 그린(아직 저장 안 된) 그림만 되돌린다 — 이미 확정된 그림은 여기서 지워지지 않는다
       undoLastStroke: () => {
-        const list = drawingsRef.current;
-        if (list.length === 0) return;
-        deleteDrawingRef.current(list[list.length - 1]!.id);
+        setDraftDrawings((prev) => prev.slice(0, -1));
       },
     }),
     [],
@@ -664,12 +685,16 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       }
 
       if (result.finalizedStroke && result.finalizedStroke.length > 0) {
-        saveDrawingRef.current(
-          toDrawingCreateInput(result.finalizedStroke, {
+        setDraftDrawings((prev) => [
+          ...prev,
+          {
+            id: uuidv7(),
+            points: result.finalizedStroke!,
             color: drawColorRef.current,
             strokeWidth: drawStrokeWidthRef.current,
-          }),
-        );
+            zIndex: 0,
+          },
+        ]);
       }
     };
 
@@ -1261,6 +1286,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               </g>
             );
           })}
+          {draftDrawings.map((drawing) => (
+            <DrawingStroke
+              key={drawing.id}
+              points={drawing.points}
+              color={drawing.color}
+              strokeWidth={drawing.strokeWidth}
+            />
+          ))}
           {drawingPoints && (
             <DrawingStroke points={drawingPoints} color={drawColor} strokeWidth={drawStrokeWidth} />
           )}
