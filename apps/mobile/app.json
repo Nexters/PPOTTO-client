@@ -94,8 +94,7 @@
         {
           "url": "https://sentry.ppotto.co.kr/",
           "organization": "ppotto",
-          "project": "ppotto-mobile",
-          "disableAutoUpload": true
+          "project": "ppotto-mobile"
         }
       ]
     ],
