@@ -15,6 +15,13 @@ type EmptyBoardStickerProps = {
 
 export const EMPTY_BOARD_STICKER_DEFAULT_TITLE = 'PPOTTO를 3초간 꾹 눌러보세요 👆';
 
+// 삭제 시 이번 세션 동안만 숨긴다 — 앱을 완전히 종료했다 다시 켜면(웹뷰 새 로드) 초기화
+let hiddenThisSession = false;
+export const isEmptyBoardStickerHidden = () => hiddenThisSession;
+export const hideEmptyBoardStickerForSession = () => {
+  hiddenThisSession = true;
+};
+
 export function EmptyBoardSticker({ title, isQuickMenuOpen, onLongPress }: EmptyBoardStickerProps) {
   const stickerRef = useRef<HTMLDivElement>(null);
   // 롱프레스가 성사되면 onPressEnd가 불리지 않아 data-pressed가 남는다. 속성이 남은 채로

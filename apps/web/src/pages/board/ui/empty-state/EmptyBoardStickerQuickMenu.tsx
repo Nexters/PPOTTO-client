@@ -7,6 +7,7 @@ type EmptyBoardStickerQuickMenuProps = {
   isOpen: boolean;
   onClose: () => void;
   onRename: (title: string) => void;
+  onDelete: () => void;
 };
 
 export function EmptyBoardStickerQuickMenu({
@@ -14,6 +15,7 @@ export function EmptyBoardStickerQuickMenu({
   isOpen,
   onClose,
   onRename,
+  onDelete,
 }: EmptyBoardStickerQuickMenuProps) {
   const menuItems = [
     {
@@ -27,7 +29,14 @@ export function EmptyBoardStickerQuickMenu({
       },
     },
     { label: '스티커 저장하기', Icon: Download, onClick: onClose },
-    { label: '삭제하기', Icon: Trash, onClick: onClose },
+    {
+      label: '삭제하기',
+      Icon: Trash,
+      onClick: () => {
+        onDelete();
+        onClose();
+      },
+    },
   ];
 
   return (
