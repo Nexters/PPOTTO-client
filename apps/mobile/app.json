@@ -10,11 +10,13 @@
     "ios": {
       "icon": "./assets/ppotto-icon.png",
       "usesAppleSignIn": true,
-      "bundleIdentifier": "com.ppotto.mobile"
+      "bundleIdentifier": "com.ppotto.mobile",
+      "buildNumber": "1"
     },
     "android": {
       "icon": "./assets/ppotto-icon.png",
       "package": "com.ppotto.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/ppotto-icon.png"
