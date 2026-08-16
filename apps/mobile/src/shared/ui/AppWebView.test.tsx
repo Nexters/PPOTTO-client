@@ -15,6 +15,7 @@ const mockPushMessage = jest.fn();
 const mockEmit = jest.fn();
 const mockFileWrite = jest.fn();
 
+jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('@/shared/lib/app-ready', () => ({ useMarkAppReady: () => jest.fn() }));
 jest.mock('@/lib/auth-session', () => ({
   getAccessToken: jest.fn(),

@@ -3,9 +3,10 @@ import { shareCustomTemplate } from '@react-native-kakao/share';
 import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
+import { useIsFocused } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Platform } from 'react-native';
+import { BackHandler, Linking, Platform } from 'react-native';
 import Share, { Social } from 'react-native-share';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -122,6 +123,10 @@ export function AppWebView({
     HAPTIC: ({ type }) => {
       void Haptics.impactAsync(HAPTIC_STYLES[type]);
     },
+    // 웹 스택이 루트라 더 뒤로 갈 곳이 없음 — 앱을 백그라운드로 보낸다(안드로이드 표준 동작)
+    EXIT_APP: () => {
+      BackHandler.exitApp();
+    },
     BOARD_READY: () => markLoaded(),
     ANALYSIS_LOADING_READY: () => {
       markLoaded();
@@ -195,6 +200,19 @@ export function AppWebView({
   useEffect(() => {
     if (showBoard) bridge.emit('SHOW_BOARD');
   }, [bridge, showBoard]);
+
+  // 안드로이드 하드웨어 뒤로가기를 웹으로 전달한다
+  // 네이티브 화면(사진 선택 등)이 위에 있을 땐 expo-router 기본 pop이 동작하게 한다
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !isFocused) return;
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      bridge.emit('NAVIGATE_BACK');
+      return true;
+    });
+    return () => subscription.remove();
+  }, [bridge, isFocused]);
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#000' }}>

@@ -66,7 +66,7 @@ export function SettingsPage() {
   };
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-10 bg-black px-6">
+    <main className="flex flex-col w-full min-h-full gap-10 px-6 bg-black">
       <header className="relative w-full h-6">
         <button
           type="button"
@@ -102,7 +102,6 @@ export function SettingsPage() {
           <MenuItem onClick={() => push('TermsDetail', { code: 'PRIVACY' })}>
             개인정보 처리방침
           </MenuItem>
-          <MenuItem>오픈소스</MenuItem>
         </Section>
 
         <Section label="고객지원">
