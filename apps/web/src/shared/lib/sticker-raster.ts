@@ -29,13 +29,17 @@ const stickerImageCache = new Map<string, HTMLImageElement>();
 
 // 요청 폭이 다르면 다른 비트맵이므로 키를 나눈다. 보드(160)와 리캡(176)은 보통 같은
 // 단계로 떨어져서 그대로 공유된다.
-function cacheKeyOf(src: string, width: number): string {
+function cacheKeyPrefixOf(src: string): string {
   try {
     const url = new URL(src, window.location.origin);
-    return `${url.origin}${url.pathname}@${width}`;
+    return `${url.origin}${url.pathname}@`;
   } catch {
-    return `${src}@${width}`;
+    return `${src}@`;
   }
+}
+
+function cacheKeyOf(src: string, width: number): string {
+  return `${cacheKeyPrefixOf(src)}${width}`;
 }
 
 function readCached(src: string | undefined, width: number): HTMLImageElement | null {
@@ -43,7 +47,41 @@ function readCached(src: string | undefined, width: number): HTMLImageElement | 
   return cached?.complete && cached.naturalWidth > 0 ? cached : null;
 }
 
-export function useStickerImage(src: string | undefined, displayedEdge: number) {
+// 원하는 폭의 이미지가 아직 없을 때, 같은 스티커를 다른 폭으로 이미 받아둔 게 있으면
+// 그거라도 반환한다. 화질을 위해 가장 큰 걸 고른다.
+function readAnyCached(src: string): HTMLImageElement | null {
+  const prefix = cacheKeyPrefixOf(src);
+  let best: HTMLImageElement | null = null;
+  for (const [key, img] of stickerImageCache) {
+    if (!key.startsWith(prefix)) continue;
+    if (!img.complete || img.naturalWidth === 0) continue;
+    if (!best || img.naturalWidth > best.naturalWidth) best = img;
+  }
+  return best;
+}
+
+function loadStickerImage(src: string, width: number): HTMLImageElement {
+  const key = cacheKeyOf(src, width);
+  let img = stickerImageCache.get(key);
+  // 로드에 실패했던 항목은 버리고 새로 시도한다
+  if (img?.complete && img.naturalWidth === 0) {
+    stickerImageCache.delete(key);
+    img = undefined;
+  }
+  if (!img) {
+    img = new window.Image();
+    img.src = toProxiedImageSrc(src, width);
+    img.addEventListener('error', () => stickerImageCache.delete(key));
+    stickerImageCache.set(key, img);
+  }
+  return img;
+}
+
+function useStickerImageInternal(
+  src: string | undefined,
+  displayedEdge: number,
+  withFallback: boolean,
+) {
   // 캐시는 렌더에서 직접 읽는다 — 이미 받아둔 이미지를 한 프레임도 비우지 않고 그리려고.
   // 항목은 null → 이미지로만 바뀌므로 렌더 중 읽어도 값이 뒤집히지 않는다
   const [, onSettled] = useReducer((count: number) => count + 1, 0);
@@ -52,31 +90,26 @@ export function useStickerImage(src: string | undefined, displayedEdge: number) 
   useEffect(() => {
     if (!src) return;
 
-    const key = cacheKeyOf(src, width);
-    let img = stickerImageCache.get(key);
-    // 로드에 실패했던 항목은 버리고 새로 시도한다
-    if (img?.complete && img.naturalWidth === 0) {
-      stickerImageCache.delete(key);
-      img = undefined;
-    }
-    if (!img) {
-      img = new window.Image();
-      img.src = toProxiedImageSrc(src, width);
-      stickerImageCache.set(key, img);
-    }
+    const img = loadStickerImage(src, width);
     if (img.complete && img.naturalWidth > 0) return;
 
-    const target = img;
-    const handleError = () => stickerImageCache.delete(key);
-    target.addEventListener('load', onSettled);
-    target.addEventListener('error', handleError);
+    img.addEventListener('load', onSettled);
     return () => {
-      target.removeEventListener('load', onSettled);
-      target.removeEventListener('error', handleError);
+      img.removeEventListener('load', onSettled);
     };
   }, [src, width]);
 
-  return readCached(src, width);
+  const exact = readCached(src, width);
+  if (exact || !withFallback || !src) return exact;
+  return readAnyCached(src);
+}
+
+export function useStickerImage(src: string | undefined, displayedEdge: number) {
+  return useStickerImageInternal(src, displayedEdge, false);
+}
+
+export function useStickerImageWithFallback(src: string | undefined, displayedEdge: number) {
+  return useStickerImageInternal(src, displayedEdge, true);
 }
 
 export function drawOutlinedSticker(
