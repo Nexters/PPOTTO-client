@@ -1,5 +1,6 @@
 import { contract, type BridgeContract } from '@ppotto/bridge';
 import { File, Paths } from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -18,6 +19,7 @@ import {
   withdraw,
 } from '@/lib/auth-session';
 import { recordBridgeFailure } from '@/lib/observability';
+import { useMarkAppReady } from '@/shared/lib/app-ready';
 import {
   recordWebQaDiagnosticMessage,
   WEB_QA_DIAGNOSTICS_SCRIPT,
@@ -27,6 +29,12 @@ import { AppBackground } from '@/shared/ui/AppBackground';
 import { useToast } from '@/shared/ui/Toast';
 
 const WEB_URL = __DEV__ ? process.env.EXPO_PUBLIC_WEB_URL : 'https://ppotto.co.kr';
+
+const HAPTIC_STYLES = {
+  light: Haptics.ImpactFeedbackStyle.Light,
+  medium: Haptics.ImpactFeedbackStyle.Medium,
+  heavy: Haptics.ImpactFeedbackStyle.Heavy,
+} as const;
 const INSTAGRAM_APP_ID = '1002723789453387';
 const INSTAGRAM_PACKAGE = 'com.instagram.android';
 
@@ -76,6 +84,13 @@ export function AppWebView({
   const toast = useToast();
   const [loaded, setLoaded] = useState(false);
   const [boardActive, setBoardActive] = useState(false);
+  const markAppReady = useMarkAppReady();
+
+  // 웹뷰가 첫 화면을 그렸다 — 커버를 걷고, 앱 시작 화면도 같이 비켜준다
+  const markLoaded = () => {
+    setLoaded(true);
+    markAppReady();
+  };
 
   const { bridge, pushMessage } = useNativeBridge(ref, contract, {
     APPLE_LOGIN: () => loginWithApple(),
@@ -102,9 +117,12 @@ export function AppWebView({
     OPEN_PHOTO_SELECT: ({ boardId, mode }) =>
       router.push({ pathname: '/photo-select', params: { boardId, mode } }),
     SET_BOARD_ACTIVE: ({ active }) => setBoardActive(active),
-    BOARD_READY: () => setLoaded(true),
+    HAPTIC: ({ type }) => {
+      void Haptics.impactAsync(HAPTIC_STYLES[type]);
+    },
+    BOARD_READY: () => markLoaded(),
     ANALYSIS_LOADING_READY: () => {
-      setLoaded(true);
+      markLoaded();
       return bridgeHandlers?.ANALYSIS_LOADING_READY?.();
     },
     GET_ANALYSIS_LOADING_STATE: () => {
@@ -193,7 +211,7 @@ export function AppWebView({
           );
         }}
         onLoadEnd={() => {
-          if (!waitForAnalysisReady && !waitForBoardReady) setLoaded(true);
+          if (!waitForAnalysisReady && !waitForBoardReady) markLoaded();
         }}
         allowsBackForwardNavigationGestures={false}
         webviewDebuggingEnabled={qaToolEnabled}

@@ -7,28 +7,39 @@ type Point = { x: number; y: number };
 
 type UseLongPressOptions = {
   onLongPress: (targetId: string) => void;
+  onPressEnd?: () => void;
 };
 
-export function useLongPress({ onLongPress }: UseLongPressOptions) {
+export function useLongPress({ onLongPress, onPressEnd }: UseLongPressOptions) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startPointRef = useRef<Point | null>(null);
 
   const cancel = () => {
+    const wasPending = timerRef.current !== null;
     if (timerRef.current !== null) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
     startPointRef.current = null;
+    if (wasPending) onPressEnd?.();
   };
 
-  useEffect(() => cancel, []);
+  useEffect(
+    () => () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+      timerRef.current = null;
+      startPointRef.current = null;
+    },
+    [],
+  );
 
   const start = (point: Point, targetId: string) => {
     cancel();
     startPointRef.current = point;
     timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      startPointRef.current = null;
       onLongPress(targetId);
-      cancel();
     }, LONG_PRESS_DELAY_MS);
   };
 

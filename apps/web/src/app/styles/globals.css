@@ -18,6 +18,7 @@
   --color-foreground: var(--foreground);
 }
 
+/* 스켈레톤 시머 — 하이라이트 밴드가 좌→우로 쓸고 지나간다 */
 @keyframes toast-up {
   from {
     transform: translateY(1.5rem);
@@ -27,6 +28,41 @@
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* iOS 홈 화면 아이콘 롱프레스 곡선. 딤 → 정지 → 선형 성장 → 오버슈트 정착 */
+@keyframes sticker-long-press-progress {
+  0%,
+  20% {
+    transform: scale(1);
+    filter: brightness(0.88);
+  }
+  78% {
+    transform: scale(1.09);
+    filter: brightness(1);
+  }
+  100% {
+    transform: scale(1.06);
+    filter: brightness(1);
+  }
+}
+
+.sticker-long-press-visual {
+  transform-origin: center;
+  transition:
+    transform 160ms ease-out,
+    filter 160ms ease-out;
+}
+
+/*
+ * 눌린 상태의 최종값을 정적으로도 선언하고 animation-fill-mode는 쓰지 않는다.
+ * forwards로 버틴 값은 애니메이션이 걷힐 때 기준 스타일이 없어 트랜지션 없이 튀는데,
+ * 이렇게 두면 data-pressed가 빠질 때 1.06 → 1로 위 트랜지션을 타고 되돌아온다.
+ */
+[data-sticker-id][data-pressed='true'] > .sticker-long-press-visual {
+  transform: scale(1.06);
+  filter: brightness(1);
+  animation: sticker-long-press-progress 500ms linear;
 }
 
 @keyframes toast-fade-out {
@@ -103,10 +139,31 @@
   animation: sheet-content-out 250ms ease-in;
 }
 
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+.skeleton {
+  background-color: #313131;
+  background-image: linear-gradient(90deg, transparent 0%, #484848 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  [data-sticker-id][data-pressed='true'] > .sticker-long-press-visual {
+    animation-duration: 1ms;
+  }
+
   .modal-overlay,
   .modal-content,
-  .sheet-content {
+  .sheet-content,
+  .skeleton {
     animation-duration: 1ms;
   }
 }

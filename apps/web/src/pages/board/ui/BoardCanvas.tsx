@@ -22,7 +22,6 @@ import { hasSeenOnboarding } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
-import { StickerOutlineFilter } from '@/shared/ui/StickerOutlineFilter';
 
 import {
   type CameraState,
@@ -127,10 +126,10 @@ function easeOutCubic(progress: number): number {
   return 1 - (1 - progress) ** 3;
 }
 
-function hitTestStickerId(target: EventTarget | null): string | null {
+function hitTestSticker(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Element)) return null;
   const el = target.closest('[data-sticker-id]');
-  return el instanceof HTMLElement ? (el.dataset.stickerId ?? null) : null;
+  return el instanceof HTMLElement ? el : null;
 }
 
 export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(function BoardCanvas(
@@ -287,15 +286,40 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     stickerId: string | null;
     startClient: Point;
   } | null>(null);
+  const pressedStickerRef = useRef<HTMLElement | null>(null);
   // 더블탭 감지용 — 직전에 빈 배경을 탭한 시각·위치
   const lastBackgroundTapRef = useRef<{ time: number; point: Point } | null>(null);
 
+  // 롱프레스가 성사된 순간부터 퀵메뉴가 닫힐 때까지 눌린 연출을 잠근다. 이 사이에
+  // 포인터 업·취소 등 여러 경로가 clearPressedSticker를 부르는데, 그걸 그대로 두면
+  // 메뉴가 뜨기도 전에 스티커가 원래 크기로 줄어드는 게 보인다
+  const isPressedStickerLockedRef = useRef(false);
+
+  const releasePressedSticker = () => {
+    isPressedStickerLockedRef.current = false;
+    pressedStickerRef.current?.removeAttribute('data-pressed');
+    pressedStickerRef.current = null;
+  };
+
+  const clearPressedSticker = () => {
+    if (isPressedStickerLockedRef.current) return;
+    releasePressedSticker();
+  };
+
+  // 퀵메뉴가 닫히는 순간에 맞춰 원래 크기로 되돌린다
+  useEffect(() => {
+    if (quickMenu.quickMenuStickerId === null) releasePressedSticker();
+  }, [quickMenu.quickMenuStickerId]);
+
   const longPress = useLongPress({
     onLongPress: (stickerId) => {
+      isPressedStickerLockedRef.current = true;
+      bridge.send('HAPTIC', { type: 'heavy' });
       quickMenu.openQuickMenu(stickerId);
       // 리캡 이동과 안 겹치게 탭 후보 제거
       tapCandidateRef.current = null;
     },
+    onPressEnd: clearPressedSticker,
   });
 
   // draw 모드에서 기존 그림을 롱프레스하면 선택(삭제 대상)한다. 스티커 롱프레스와는
@@ -721,14 +745,22 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         return;
       }
 
-      if (pointersRef.current.size !== 1) return;
+      if (pointersRef.current.size !== 1) {
+        tapCandidateRef.current = null;
+        longPressRef.current.cancel();
+        return;
+      }
 
-      const stickerId = hitTestStickerId(e.target);
+      const stickerElement = hitTestSticker(e.target);
+      const stickerId = stickerElement?.dataset.stickerId ?? null;
       tapCandidateRef.current = { pointerId: e.pointerId, stickerId, startClient: point };
 
       // 편집 모드에선 pointerdown이 바로 드래그로 이어지므로 롱프레스는 기본 뷰 모드에서만
-      if (stickerId && !isEditModeRef.current) {
+      if (stickerId && stickerElement && !isEditModeRef.current) {
+        releasePressedSticker();
         longPressRef.current.start(point, stickerId);
+        stickerElement.dataset.pressed = 'true';
+        pressedStickerRef.current = stickerElement;
       }
 
       // 스티커를 처음 선택하는 순간이면 맨 위로 올리는 부수효과를 먼저 실행하고,
@@ -882,6 +914,16 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             },
             current,
           );
+          // 회전이 수평·수직(90° 배수) 스냅에 걸리는 순간에만 1회 햅틱 — 스냅 값은 정확히
+          // 90의 배수로 떨어지므로 직전 프레임과의 상태 전환으로 감지한다
+          const previousRotation = dragTransformRef.current?.rotation;
+          if (
+            result.rotation % 90 === 0 &&
+            previousRotation !== undefined &&
+            previousRotation % 90 !== 0
+          ) {
+            bridge.send('HAPTIC', { type: 'light' });
+          }
           setLiveTransform({ id: gestureRef.current.sticker.id, ...result });
         }
         return;
@@ -1115,6 +1157,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     container.addEventListener('gestureend', blockGesture);
 
     return () => {
+      releasePressedSticker();
       container.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
@@ -1160,12 +1203,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         backgroundPosition: `${camera.x}px ${camera.y}px`,
       }}
     >
-      <StickerOutlineFilter />
       {stickers.length === 0 && (
         <EmptyBoardSticker
           title={emptyBoardStickerTitle}
           isQuickMenuOpen={isEmptyBoardQuickMenuOpen}
           onLongPress={() => {
+            bridge.send('HAPTIC', { type: 'heavy' });
             // 온보딩을 끝까지 본 적('사진 업로드 하러가기' CTA를 누른 적) 없으면 온보딩으로,
             // 본 적 있으면 이름 변경 바텀시트를 연다
             if (me && hasSeenOnboarding(me.id)) setIsEmptyBoardQuickMenuOpen(true);
