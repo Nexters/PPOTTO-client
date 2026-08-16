@@ -1,3 +1,4 @@
+import { replayCanvasIntegration } from '@sentry/browser';
 import * as Sentry from '@sentry/nextjs';
 
 import { applyNativeTraceMetaTags } from '@/shared/lib/sentry-native-trace';
@@ -35,6 +36,7 @@ if (SENTRY_ENABLED) {
       Sentry.browserTracingIntegration({ instrumentNavigation: false }),
       Sentry.browserProfilingIntegration(),
       Sentry.consoleLoggingIntegration(),
+      replayCanvasIntegration(),
       Sentry.replayIntegration({
         maskAllText: false,
         maskAllInputs: false,
