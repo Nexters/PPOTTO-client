@@ -59,7 +59,7 @@
  * forwards로 버틴 값은 애니메이션이 걷힐 때 기준 스타일이 없어 트랜지션 없이 튀는데,
  * 이렇게 두면 data-pressed가 빠질 때 1.06 → 1로 위 트랜지션을 타고 되돌아온다.
  */
-[data-sticker-id][data-pressed='true'] > .sticker-long-press-visual {
+[data-pressed='true'] > .sticker-long-press-visual {
   transform: scale(1.06);
   filter: brightness(1);
   animation: sticker-long-press-progress 500ms linear;
@@ -156,7 +156,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-sticker-id][data-pressed='true'] > .sticker-long-press-visual {
+  [data-pressed='true'] > .sticker-long-press-visual {
     animation-duration: 1ms;
   }
 

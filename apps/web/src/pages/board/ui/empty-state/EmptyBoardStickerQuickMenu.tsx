@@ -20,7 +20,8 @@ export function EmptyBoardStickerQuickMenu({
       label: '이름 변경하기',
       Icon: Edit,
       onClick: () => {
-        const nextTitle = window.prompt('스티커 이름을 입력해주세요.', title)?.trim();
+        // 제목은 1자 이상 15자 이하 — 빈 입력은 무시하고 초과분은 잘라낸다
+        const nextTitle = window.prompt('스티커 이름을 입력해주세요.', title)?.trim().slice(0, 15);
         if (nextTitle) onRename(nextTitle);
         onClose();
       },
@@ -35,11 +36,11 @@ export function EmptyBoardStickerQuickMenu({
         <button
           key={label}
           type="button"
-          className="flex w-full items-center gap-2 text-white"
+          className="flex items-center w-full gap-2 text-white"
           onClick={onClick}
         >
           <Icon color="white" />
-          <span className="text-body-04 font-medium">{label}</span>
+          <span className="font-medium text-body-04">{label}</span>
         </button>
       ))}
     </BottomSheet>

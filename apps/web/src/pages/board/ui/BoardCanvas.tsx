@@ -751,6 +751,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         return;
       }
 
+      // data-sticker-id는 보드의 실제 스티커만 단다 — 빈 보드 PPOTTO 같은 유사 스티커는
+      // 자체 핸들러로만 동작하고, 프레스 연출은 data-pressed 셀렉터를 따로 쓴다
       const stickerElement = hitTestSticker(e.target);
       const stickerId = stickerElement?.dataset.stickerId ?? null;
       tapCandidateRef.current = { pointerId: e.pointerId, stickerId, startClient: point };

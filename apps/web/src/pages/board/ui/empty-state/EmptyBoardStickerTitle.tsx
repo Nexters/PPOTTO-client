@@ -1,45 +1,30 @@
-import Svg, { Rect, Text } from 'react-native-svg';
-import type { SvgProps } from 'react-native-svg';
+import type { ComponentProps } from 'react';
 
-type EmptyBoardStickerTitleProps = SvgProps & {
-  title: string;
-};
+import { cn } from '@/shared/lib/cn';
 
-export function EmptyBoardStickerTitle({ title, ...props }: EmptyBoardStickerTitleProps) {
+/** 빈 보드 스티커의 제목 말풍선. 텍스트 길이에 맞춰 가로로 늘고 준다. */
+export function EmptyBoardStickerTitle({
+  title,
+  className,
+  ...props
+}: ComponentProps<'div'> & { title: string }) {
   return (
-    <Svg width={191} height={51} viewBox="0 0 191 51" {...props}>
-      <Rect
-        width={188}
-        height={30}
-        x={3.229}
-        fill="white"
-        rx={15}
-        transform="rotate(6.18 3.229 0)"
-      />
-      <Text
-        x={97.229}
-        y={19.5}
-        fill="#181818"
-        fontFamily="Pretendard"
-        fontSize={12}
-        fontWeight={500}
-        letterSpacing={-0.36}
-        textAnchor="middle"
-        transform="rotate(6.18 3.229 0)"
+    <div className={cn('relative inline-block rotate-[6.18deg]', className)} {...props}>
+      <div
+        className={cn(
+          'flex h-[30px] items-center justify-center rounded-full bg-white px-4',
+          'text-[12px] font-medium tracking-[-0.36px] whitespace-nowrap text-gray-900',
+        )}
       >
         {title}
-      </Text>
-      <Rect
-        width={10}
-        height={10}
-        x={179.224}
-        y={18.049}
-        fill="#FF3F4B"
-        stroke="white"
-        strokeWidth={2}
-        rx={5}
-        transform="rotate(6.18 179.224 18.049)"
+      </div>
+      {/* 빨간 점은 말풍선 우측 상단 고정 — 기본 제목 에셋(BigTitle)과 같은 자리 */}
+      <span
+        className={cn(
+          'absolute -top-1 -right-0 size-3 rounded-full',
+          'border-2 border-white bg-[#FF3F4B]',
+        )}
       />
-    </Svg>
+    </div>
   );
 }
