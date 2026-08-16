@@ -10,7 +10,7 @@ import type { StickerData } from './Sticker';
 import { StickerBadge } from './StickerBadge';
 
 const HEADER_HEIGHT = 72;
-const BOTTOM_RESERVE_HEIGHT = 320;
+const DEFAULT_BOTTOM_RESERVE_HEIGHT = 320;
 const PREVIEW_MAX_HEIGHT = 280;
 const PREVIEW_MAX_WIDTH = 280;
 const BADGE_HEIGHT = 30;
@@ -24,6 +24,7 @@ type StickerPreviewProps = {
   onCancelEditTitle?: () => void;
   titleInputRef?: Ref<HTMLInputElement>;
   imageRef?: Ref<HTMLDivElement>;
+  bottomReserveHeight?: number;
 };
 
 export function StickerPreview({
@@ -33,6 +34,7 @@ export function StickerPreview({
   onCancelEditTitle,
   titleInputRef,
   imageRef,
+  bottomReserveHeight = DEFAULT_BOTTOM_RESERVE_HEIGHT,
 }: StickerPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -53,15 +55,15 @@ export function StickerPreview({
         'justify-center gap-2',
         isEditingTitle ? 'pointer-events-auto' : 'pointer-events-none',
       )}
-      style={{ top: HEADER_HEIGHT, bottom: BOTTOM_RESERVE_HEIGHT }}
+      style={{ top: HEADER_HEIGHT, bottom: bottomReserveHeight }}
     >
       <div
         ref={imageRef}
         className="relative"
         style={{
           width: PREVIEW_MAX_WIDTH,
-          // 헤더, BOTTOM_RESERVE_HEIGHT 제외 남는 공간이 280px 미만일 때의 이미지 높이 축소
-          height: `min(${PREVIEW_MAX_HEIGHT}px, calc(100dvh - ${HEADER_HEIGHT}px - ${BOTTOM_RESERVE_HEIGHT}px - ${BADGE_HEIGHT}px - ${CONTENT_GAP}px - ${BREATHING_ROOM}px))`,
+          // 헤더, bottomReserveHeight 제외 남는 공간이 280px 미만일 때의 이미지 높이 축소
+          height: `min(${PREVIEW_MAX_HEIGHT}px, calc(100dvh - ${HEADER_HEIGHT}px - ${bottomReserveHeight}px - ${BADGE_HEIGHT}px - ${CONTENT_GAP}px - ${BREATHING_ROOM}px))`,
         }}
       >
         <canvas

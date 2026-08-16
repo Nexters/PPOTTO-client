@@ -81,6 +81,7 @@ export function StickerQuickMenu({
             isEditingTitle={isEditingTitle}
             onSubmitTitle={onSubmitTitle}
             onCancelEditTitle={onCancelEditTitle}
+            bottomReserveHeight={198}
           />
         )}
         <span className="text-body-01 w-full text-white">스티커 메뉴</span>
