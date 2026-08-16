@@ -1,6 +1,6 @@
 import type { UploadMotionPhoto } from '../photo-upload-service';
 
-const MAX_MOTION_PHOTOS = 25;
+export const MAX_MOTION_PHOTOS = 25;
 
 /** 한 로딩 세션에서 끝까지 사용할 사진 풀을 한 번만 고정한다. */
 export function sampleMotionPhotos<T extends UploadMotionPhoto>(

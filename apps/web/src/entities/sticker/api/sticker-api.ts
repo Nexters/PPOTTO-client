@@ -8,6 +8,8 @@ export type StickerRecap = NonNullable<
   paths['/stickers/{stickerId}']['get']['responses']['200']['content']['application/json']['data']
 >;
 export type StickerComment = StickerRecap['comments'][number];
+export type StickerCommentPosition =
+  paths['/stickers/{stickerId}/comments']['patch']['requestBody']['content']['application/json']['comments'][number];
 export type StickerPhoto = StickerRecap['photos'][number];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
@@ -35,6 +37,15 @@ export const stickerApi = {
     if (USE_MOCK) return Promise.resolve({ id: stickerId, title });
     return unwrapData(
       api.PATCH('/stickers/{stickerId}', { params: { path: { stickerId } }, body: { title } }),
+    );
+  },
+  updateCommentPositions: (stickerId: string, comments: StickerCommentPosition[]) => {
+    if (USE_MOCK) return Promise.resolve();
+    return unwrapVoid(
+      api.PATCH('/stickers/{stickerId}/comments', {
+        params: { path: { stickerId } },
+        body: { comments },
+      }),
     );
   },
 };

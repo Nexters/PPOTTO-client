@@ -3,8 +3,10 @@ import { Download, Filter, Instagram, Kakaotalk } from '@ppotto/assets';
 type RecapShareListProps = {
   isSaving: boolean;
   isSharingInstagram: boolean;
+  isSharingKakao: boolean;
   onSaveImage: () => void;
   onInstagramShare: () => void;
+  onKakaoShare: () => void;
   onOptionsClick: () => void;
 };
 
@@ -13,22 +15,29 @@ type RecapShareListProps = {
 export function RecapShareList({
   isSaving,
   isSharingInstagram,
+  isSharingKakao,
   onSaveImage,
   onInstagramShare,
+  onKakaoShare,
   onOptionsClick,
 }: RecapShareListProps) {
   return (
     <>
       <span className="text-body-01 text-white">공유하기</span>
       <div className="flex w-full items-start justify-between">
-        <button type="button" className="flex w-[72px] flex-col items-center gap-2 text-white">
+        <button
+          type="button"
+          disabled={isSharingKakao}
+          className="flex w-18 flex-col items-center gap-2 text-white disabled:opacity-50"
+          onClick={onKakaoShare}
+        >
           <Kakaotalk width={48} height={48} />
           <span className="text-caption-01 w-full text-center">카카오톡</span>
         </button>
         <button
           type="button"
           disabled={isSharingInstagram}
-          className="flex w-[72px] flex-col items-center gap-2 text-white disabled:opacity-50"
+          className="flex w-18 flex-col items-center gap-2 text-white disabled:opacity-50"
           onClick={onInstagramShare}
         >
           <Instagram width={48} height={48} />
@@ -37,7 +46,7 @@ export function RecapShareList({
         <button
           type="button"
           disabled={isSaving}
-          className="flex w-[72px] flex-col items-center gap-2 text-white disabled:opacity-50"
+          className="flex w-18 flex-col items-center gap-2 text-white disabled:opacity-50"
           onClick={onSaveImage}
         >
           <span className="flex size-12 items-center justify-center rounded-full bg-gray-800">
@@ -49,7 +58,7 @@ export function RecapShareList({
         </button>
         <button
           type="button"
-          className="flex w-[72px] flex-col items-center gap-2 text-white"
+          className="flex w-18 flex-col items-center gap-2 text-white"
           onClick={onOptionsClick}
         >
           <span className="flex size-12 items-center justify-center rounded-full bg-gray-800">

@@ -10,12 +10,14 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { usePhotoSelection } from '@/features/photo-selection';
+import { dragRangeDelta } from '@/features/photo-selection/ui/PhotoGrid';
 
 import { PhotoSelectScreen } from './PhotoSelectScreen';
 
 let mockSearchParams: { boardId: string; mode?: string } = { boardId: 'board-1' };
 const mockImageResize = jest.fn();
 const mockImageSave = jest.fn();
+let mockImageSaveGate: Promise<void> | undefined;
 
 /**
  * 동작 범위 (2026-07-30 인터뷰, 2026-08-15 통일)
@@ -32,24 +34,33 @@ const mockImageSave = jest.fn();
  *   그룹화·대표 선정·승계·소진·복구 규칙       → photo-group.test.ts
  *   드롭다운 열림·닫힘·선택 콜백              → AlbumDropdown.test.tsx
  *   제외된 타일의 체크 해제 표시               → 아래 2번이 간접 검증
- *   카운터 경고 색상, 타일 dim, chevron 방향   → 스타일이라 시안 대조 항목
+ *   카운터 경고 색상, chevron 방향             → 스타일이라 시안 대조 항목
  *
  * 제외: 진입 시 갤러리 전체에 100그룹 미만 → 생성 불가 안내 화면 — 별도 작업, Unable 시안 없음
- * 제외: 권한 거부 안내·설정 이동 — 별도 시안 필요
- * 제외: 백그라운드 중 설정에서 권한 회수 후 복귀 — 드묾, 실제 문제 시 추가
  * CTA는 업로드 서비스 시작과 로딩 화면 이동만 검증하고 업로드 내부 동작은 feature 테스트가 담당
  * 제외: 로딩 중 타일 표현 — 시안의 회색 타일은 샘플 필러이지 플레이스홀더가 아님
  *
- * [팀확인] 700:7641 시안의 dim 누락 — 디자이너 확인, 구현은 dim 적용
  */
 
 jest.mock('expo-media-library', () => ({
   getAssetsAsync: jest.fn(),
-  requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  getPermissionsAsync: jest.fn(async () => ({
+    accessPrivileges: 'all',
+    canAskAgain: true,
+    granted: true,
+    status: 'granted',
+  })),
+  presentPermissionsPickerAsync: jest.fn(),
+  requestPermissionsAsync: jest.fn(),
   SortBy: { creationTime: 'creationTime' },
 }));
 
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'job-1') }));
+jest.mock('react-native-reanimated', () => ({
+  ...jest.requireActual('react-native-reanimated/mock'),
+  useFrameCallback: jest.fn(),
+}));
+jest.mock('react-native-worklets', () => jest.requireActual('react-native-worklets/src/mock'));
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: jest.fn(() => mockSearchParams),
@@ -61,6 +72,7 @@ jest.mock('expo-image-manipulator', () => ({
         renderAsync: jest.fn(async () => ({
           saveAsync: jest.fn(async (options) => {
             mockImageSave(options);
+            await mockImageSaveGate;
             return {
               uri: uri.replace('file:///', 'file:///compressed/'),
               width: 512,
@@ -83,6 +95,7 @@ jest.mock('expo-image-manipulator', () => ({
   SaveFormat: { JPEG: 'jpeg', WEBP: 'webp' },
 }));
 jest.mock('@/features/photo-upload', () => ({
+  MAX_MOTION_PHOTOS: 25,
   photoUploadService: { start: jest.fn() },
   sampleMotionPhotos: <T,>(photos: T[]) => photos.slice(0, 25),
 }));
@@ -90,9 +103,9 @@ jest.mock('@/entities/user/api/user-queries', () => ({
   useMeQuery: () => ({ data: { name: '뽀또' } }),
 }));
 
-const { getAssetsAsync, requestPermissionsAsync } = jest.requireMock('expo-media-library') as {
+const { getAssetsAsync, getPermissionsAsync } = jest.requireMock('expo-media-library') as {
   getAssetsAsync: jest.Mock;
-  requestPermissionsAsync: jest.Mock;
+  getPermissionsAsync: jest.Mock;
 };
 const { router } = jest.requireMock('expo-router') as { router: { replace: jest.Mock } };
 const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
@@ -154,7 +167,12 @@ const cta = () => screen.getByRole('button', { name: /보드 만들기|선택해
 
 beforeEach(() => {
   mockSearchParams = { boardId: 'board-1' };
+  mockImageSaveGate = undefined;
   jest.clearAllMocks();
+});
+
+it('드래그가 원점으로 돌아오면 범위에서 빠진 타일을 복원한다', () => {
+  expect(dragRangeDelta(10, 20, 10)).toEqual({ entered: [], exited: [[11, 20]] });
 });
 
 it('진입 시 불러온 그룹을 전체 선택 상태로 표시하고 카운터를 보여준다', async () => {
@@ -167,16 +185,22 @@ it('진입 시 불러온 그룹을 전체 선택 상태로 표시하고 카운�
   expect(screen.getAllByRole('checkbox')[0]).toBeChecked();
 });
 
-it('사진 권한을 거부하면 갤러리를 조회하지 않는다', async () => {
-  requestPermissionsAsync.mockResolvedValueOnce({ granted: false });
+it('사진 권한을 거부하면 설정 이동 안내를 표시하고 갤러리를 조회하지 않는다', async () => {
+  getPermissionsAsync.mockResolvedValueOnce({
+    accessPrivileges: 'none',
+    canAskAgain: false,
+    granted: false,
+    status: 'denied',
+  });
 
-  render(
+  await render(
     <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
       <PhotoSelectScreen />
     </SafeAreaProvider>,
   );
 
-  await waitFor(() => expect(requestPermissionsAsync).toHaveBeenCalledTimes(1));
+  expect(await screen.findByText('사진 접근 권한이 필요해요')).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '설정에서 권한 허용하기' })).toBeOnTheScreen();
   expect(getAssetsAsync).not.toHaveBeenCalled();
 });
 
@@ -252,18 +276,19 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
   setGallery(spacedAssets(100).map((photo) => ({ ...photo, width: 1200, height: 800 })));
   const { user } = await renderLoadedScreen();
 
-  expect(mockImageSave).not.toHaveBeenCalled();
-
-  await user.press(cta());
-
-  expect(photoUploadService.start).toHaveBeenCalledTimes(1);
   await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(25));
   expect(mockImageResize).toHaveBeenCalledWith({ width: 768, height: 512 });
   expect(mockImageSave.mock.calls.every(([options]) => options.format === 'jpeg')).toBe(true);
+
+  await user.press(cta());
+
+  await waitFor(() => expect(photoUploadService.start).toHaveBeenCalledTimes(1));
   const startOptions = photoUploadService.start.mock.calls[0]![0];
   expect(startOptions.photoCount).toBe(100);
   await expect(startOptions.motionPhotos).resolves.toEqual(
-    expect.arrayContaining([expect.objectContaining({ contentType: 'image/jpeg' })]),
+    expect.arrayContaining([
+      expect.objectContaining({ contentType: 'image/jpeg', uri: expect.stringMatching(/^data:/) }),
+    ]),
   );
 
   const uploadJob = await startOptions.prepareJob();
@@ -275,6 +300,37 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
     pathname: '/analysis-loading',
     params: { boardId: 'board-1' },
   });
+});
+
+it('캐시된 대표사진을 해제하면 선택된 미캐시 대표사진 하나만 준비한다', async () => {
+  setGallery(spacedAssets(100).map((photo) => ({ ...photo, width: 1200, height: 800 })));
+  const { user } = await renderLoadedScreen();
+  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(25));
+
+  await user.press(screen.getAllByRole('checkbox')[0]!);
+
+  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(26));
+});
+
+it('선처리가 진행 중이어도 CTA는 즉시 로딩 화면으로 이동한다', async () => {
+  let releaseImageSaves!: () => void;
+  mockImageSaveGate = new Promise((resolve) => {
+    releaseImageSaves = resolve;
+  });
+  setGallery(spacedAssets(100).map((photo) => ({ ...photo, width: 1200, height: 800 })));
+  const { user } = await renderLoadedScreen();
+  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(2));
+
+  await user.press(cta());
+
+  expect(photoUploadService.start).toHaveBeenCalledTimes(1);
+  expect(router.replace).toHaveBeenCalledWith({
+    pathname: '/analysis-loading',
+    params: { boardId: 'board-1' },
+  });
+
+  releaseImageSaves();
+  await expect(photoUploadService.start.mock.calls[0]![0].motionPhotos).resolves.toHaveLength(25);
 });
 
 it('전체 취소를 누르면 0이 되고 자동 선택을 누르면 다시 전부 선택된다', async () => {
@@ -405,5 +461,33 @@ describe('추가 업로드', () => {
 
     expect(result.current.selectedCount).toBe(100);
     expect(result.current.photoUnits[100]).toMatchObject({ excluded: true });
+  });
+
+  it('드래그 선택 변경을 묶어서 적용하고 선택 상한을 지킨다', async () => {
+    setGallery(spacedAssets(5));
+    const { result } = await renderHook(() =>
+      usePhotoSelection({
+        album: 'RECENT',
+        minSubmitUnits: 1,
+        mode: 'additional',
+        targetUnits: 2,
+      }),
+    );
+    await waitFor(() => expect(result.current.photoUnits).toHaveLength(5));
+    const groupIds = result.current.photoUnits.slice(0, 3).map((unit) => unit.groupId);
+
+    await act(() =>
+      result.current.setGroupExcludedCounts(
+        groupIds.map((groupId) => ({ groupId, excludedCount: 0 })),
+      ),
+    );
+    expect(result.current.selectedCount).toBe(2);
+
+    await act(() =>
+      result.current.setGroupExcludedCounts(
+        groupIds.map((groupId) => ({ groupId, excludedCount: 1 })),
+      ),
+    );
+    expect(result.current.selectedCount).toBe(0);
   });
 });

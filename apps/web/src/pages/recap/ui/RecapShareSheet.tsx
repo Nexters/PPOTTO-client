@@ -1,11 +1,16 @@
+import Script from 'next/script';
 import { useRef, useState } from 'react';
 
 import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
+import { useMeQuery } from '@/entities/user/api/user-queries';
 import { saveImageToDevice } from '@/features/save-image-to-device';
 import { blobToBase64 } from '@/shared/lib/blob-to-base64';
 import { bridge } from '@/shared/lib/bridge';
-import { captureElementAsBlob } from '@/shared/lib/capture-element-as-blob';
+import { canvasToBlob } from '@/shared/lib/canvas-to-blob';
+import { captureElementAsBlob, captureElementAsCanvas } from '@/shared/lib/capture-element-as-blob';
 import { composeInstagramStoryImage } from '@/shared/lib/compose-instagram-story-image';
+import { cropCanvasToSquare } from '@/shared/lib/crop-canvas-to-square';
+import { initKakao } from '@/shared/lib/kakao';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 import { useToast } from '@/shared/ui/common/Toast';
 
@@ -22,6 +27,7 @@ type RecapShareSheetProps = {
 
 export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShareSheetProps) {
   const toast = useToast();
+  const { data: me } = useMeQuery();
   const [screen, setScreen] = useState<'list' | 'options'>('list');
   const [options, setOptions] = useState<Record<ShareOptionKey, boolean>>({
     image: true,
@@ -33,6 +39,7 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
   // 시트 내용물은 닫힐 때 언마운트되므로, 거기 두면 다시 열었을 때 초기화돼 보인다
   const [isSaving, setIsSaving] = useState(false);
   const [isSharingInstagram, setIsSharingInstagram] = useState(false);
+  const [isSharingKakao, setIsSharingKakao] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleClose = () => {
@@ -79,17 +86,60 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
     }
   };
 
-  const isCapturing = isSaving || isSharingInstagram;
+  const handleKakaoShare = async () => {
+    if (!cardRef.current || !window.Kakao || isSharingKakao) return;
+    setIsSharingKakao(true);
+    try {
+      const canvas = await captureElementAsCanvas(cardRef.current, {
+        skipFonts: true,
+        pixelRatio: 3,
+      });
+      const cropped = cropCanvasToSquare(canvas);
+      const blob = await canvasToBlob(cropped);
+      const file = new File([blob], 'ppotto-recap.png', { type: blob.type || 'image/png' });
+      const { infos } = await window.Kakao.Share.uploadImage({ file: [file] });
+
+      const tags = data.comments
+        .filter((comment) => comment.posX == null)
+        .map((comment) => comment.content);
+
+      const { success } = await bridge.request('SHARE_KAKAO', {
+        templateArgs: {
+          IMAGE_URL: infos.original.url,
+          USER_NAME: me?.name ?? '',
+          STICKER_NAME: data.sticker.title,
+          KEYWORDS: tags.join(', '),
+        },
+      });
+      if (success) handleClose();
+      else toast('카카오톡 공유에 실패했습니다');
+    } catch (error) {
+      console.error('카카오톡 공유 실패', error);
+      toast('카카오톡 공유에 실패했습니다');
+    } finally {
+      setIsSharingKakao(false);
+    }
+  };
+
+  const isCapturing = isSaving || isSharingInstagram || isSharingKakao;
 
   return (
     <>
+      <Script
+        src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.2/kakao.min.js"
+        strategy="lazyOnload"
+        crossOrigin="anonymous"
+        onLoad={initKakao}
+      />
       <BottomSheet isOpen={isOpen} onClose={handleClose} overlayClassName="bg-black/50">
         {screen === 'list' ? (
           <RecapShareList
             isSaving={isSaving}
             isSharingInstagram={isSharingInstagram}
+            isSharingKakao={isSharingKakao}
             onSaveImage={() => void handleSaveImage()}
             onInstagramShare={() => void handleInstagramShare()}
+            onKakaoShare={() => void handleKakaoShare()}
             onOptionsClick={() => setScreen('options')}
           />
         ) : (

@@ -22,6 +22,7 @@ import { hasSeenOnboarding } from '@/features/onboarding';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
+import { useToast } from '@/shared/ui/common/Toast';
 
 import {
   type CameraState,
@@ -74,6 +75,8 @@ import { DrawingStroke } from './DrawingStroke';
 import {
   EmptyBoardSticker,
   EMPTY_BOARD_STICKER_DEFAULT_TITLE,
+  hideEmptyBoardStickerForSession,
+  isEmptyBoardStickerHidden,
 } from './empty-state/EmptyBoardSticker';
 import { EmptyBoardStickerQuickMenu } from './empty-state/EmptyBoardStickerQuickMenu';
 import { SelectBox } from './SelectBox';
@@ -177,6 +180,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     null,
   );
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
+  // 삭제된 빈 스티커는 이번 세션 동안 숨긴다 — 앱 재시작 시 다시 보임
+  const [isEmptyStickerHidden, setIsEmptyStickerHidden] = useState(isEmptyBoardStickerHidden);
   const [emptyBoardStickerTitle, setEmptyBoardStickerTitle] = useState(
     EMPTY_BOARD_STICKER_DEFAULT_TITLE,
   );
@@ -188,6 +193,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
   const quickMenu = useStickerQuickMenu(boardId);
+  const toast = useToast();
   const isEditMode = mode === 'move';
   const isDrawMode = mode === 'draw';
   // 편집 모드를 벗어나면 선택도 같이 해제된 것으로 취급
@@ -751,6 +757,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         return;
       }
 
+      // data-sticker-id는 보드의 실제 스티커만 단다 — 빈 보드 PPOTTO 같은 유사 스티커는
+      // 자체 핸들러로만 동작하고, 프레스 연출은 data-pressed 셀렉터를 따로 쓴다
       const stickerElement = hitTestSticker(e.target);
       const stickerId = stickerElement?.dataset.stickerId ?? null;
       tapCandidateRef.current = { pointerId: e.pointerId, stickerId, startClient: point };
@@ -1203,7 +1211,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         backgroundPosition: `${camera.x}px ${camera.y}px`,
       }}
     >
-      {stickers.length === 0 && (
+      {stickers.length === 0 && !isEmptyStickerHidden && (
         <EmptyBoardSticker
           title={emptyBoardStickerTitle}
           isQuickMenuOpen={isEmptyBoardQuickMenuOpen}
@@ -1332,6 +1340,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         isOpen={isEmptyBoardQuickMenuOpen}
         onClose={() => setIsEmptyBoardQuickMenuOpen(false)}
         onRename={setEmptyBoardStickerTitle}
+        onDelete={() => {
+          hideEmptyBoardStickerForSession();
+          setIsEmptyStickerHidden(true);
+          toast('삭제가 완료되었어요');
+        }}
       />
     </div>
   );

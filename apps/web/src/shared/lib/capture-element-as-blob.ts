@@ -8,10 +8,10 @@ import { canvasToBlob } from './canvas-to-blob';
 // ponytail: 고정 3회 — 그래도 빠지는 기기가 나오면 결과 픽셀 검증 루프로 업그레이드
 const CAPTURE_ATTEMPTS = 3;
 
-export async function captureElementAsBlob(
+export async function captureElementAsCanvas(
   element: HTMLElement,
   options?: Parameters<typeof toCanvas>[1],
-): Promise<Blob> {
+): Promise<HTMLCanvasElement> {
   await Promise.all(
     Array.from(element.querySelectorAll('img'), (image) => {
       image.loading = 'eager';
@@ -23,5 +23,13 @@ export async function captureElementAsBlob(
   for (let attempt = 1; attempt < CAPTURE_ATTEMPTS; attempt += 1) {
     canvas = await toCanvas(element, { includeQueryParams: true, ...options });
   }
+  return canvas;
+}
+
+export async function captureElementAsBlob(
+  element: HTMLElement,
+  options?: Parameters<typeof toCanvas>[1],
+): Promise<Blob> {
+  const canvas = await captureElementAsCanvas(element, options);
   return canvasToBlob(canvas);
 }

@@ -5,7 +5,8 @@ import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { isRunningInExpoGo } from 'expo';
 import { Stack } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { QaRecorderProbe } from '@/features/qa-report';
 import { AppReadyProvider } from '@/shared/lib/app-ready';
@@ -48,7 +49,7 @@ function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppReadyProvider>
-        <View style={styles.root}>
+        <GestureHandlerRootView style={styles.root}>
           <AppBackground />
           <ThemeProvider value={appTheme}>
             <ToastProvider>
@@ -69,7 +70,7 @@ function RootLayout() {
             </ToastProvider>
           </ThemeProvider>
           <AppLaunchScreen />
-        </View>
+        </GestureHandlerRootView>
       </AppReadyProvider>
     </QueryClientProvider>
   );

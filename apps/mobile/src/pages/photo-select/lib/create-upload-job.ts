@@ -1,8 +1,5 @@
-import {
-  type GalleryPhoto,
-  type PhotoSelection,
-  selectedPhotoGroups,
-} from '@/features/photo-selection';
+import type { GalleryPhoto, PhotoSelection } from '@/features/photo-selection';
+import { selectedPhotoGroups } from '@/features/photo-selection/model/photo-group';
 import type { UploadJobPhoto, UploadJobSnapshot } from '@/features/photo-upload';
 
 interface PreparedPhoto {

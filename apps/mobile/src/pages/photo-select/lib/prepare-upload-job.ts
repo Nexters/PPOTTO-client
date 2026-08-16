@@ -1,10 +1,7 @@
 import * as MediaLibrary from 'expo-media-library';
 
-import {
-  type GalleryPhoto,
-  type PhotoSelection,
-  selectedPhotoGroups,
-} from '@/features/photo-selection';
+import type { GalleryPhoto, PhotoSelection } from '@/features/photo-selection';
+import { selectedPhotoGroups } from '@/features/photo-selection/model/photo-group';
 
 import { createUploadJob } from './create-upload-job';
 
