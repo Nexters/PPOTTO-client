@@ -37,22 +37,22 @@ export function StickerBadge({
     if (nextTitle && nextTitle !== title) onSubmit?.(nextTitle);
     else onCancel?.();
   };
+  const displayedTitle = isEditing ? value : title;
 
   return (
-    <div
-      className={cn(
-        'relative flex items-center justify-center gap-2',
-        'rounded-full bg-white px-3 py-1.5',
-      )}
-    >
+    <div className={cn('relative inline-block', 'rounded-full bg-white px-3 py-1.5')}>
+      <span aria-hidden className="invisible whitespace-pre text-caption-01 text-gray-900">
+        {displayedTitle || '\u00a0'}
+      </span>
       {/* 조건부 마운트 시 동기 focus() 호출이 불가능해 항상 마운트함 */}
       <input
         ref={ref}
         readOnly={!isEditing}
-        value={isEditing ? value : title}
+        value={displayedTitle}
         maxLength={TITLE_MAX_LENGTH}
         className={cn(
-          'text-caption-01 text-nowrap field-sizing-content bg-transparent',
+          'absolute inset-y-1.5 right-3 left-3 min-w-0',
+          'bg-transparent text-caption-01 text-nowrap',
           'text-gray-900 outline-none',
           !isEditing && 'pointer-events-none',
         )}
