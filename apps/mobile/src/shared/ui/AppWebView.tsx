@@ -20,7 +20,6 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
-import { useMarkAppReady } from '@/shared/lib/app-ready';
 import {
   recordWebQaDiagnosticMessage,
   WEB_QA_DIAGNOSTICS_SCRIPT,
@@ -88,17 +87,12 @@ export function AppWebView({
   const [loaded, setLoaded] = useState(false);
   const [boardActive, setBoardActive] = useState(false);
   const [traceScript] = useState(buildWebViewTraceScript);
-  const markAppReady = useMarkAppReady();
 
   const injectedScript =
     [traceScript, qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : ''].filter(Boolean).join('\n') ||
     undefined;
 
-  // 웹뷰가 첫 화면을 그렸다 — 커버를 걷고, 앱 시작 화면도 같이 비켜준다
-  const markLoaded = () => {
-    setLoaded(true);
-    markAppReady();
-  };
+  const markLoaded = () => setLoaded(true);
 
   const { bridge, pushMessage } = useNativeBridge(ref, contract, {
     APPLE_LOGIN: () => loginWithApple(),

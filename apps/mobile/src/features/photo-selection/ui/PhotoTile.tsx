@@ -35,6 +35,9 @@ export function PhotoTile({ uri, selected, onPress, grouped, photoCount = 1 }: P
         source={{ uri }}
         style={StyleSheet.absoluteFill}
       />
+      {!selected && (
+        <View className="bg-black/60" pointerEvents="none" style={StyleSheet.absoluteFill} />
+      )}
       {displayedUri !== uri && (
         <View className="bg-gray-800" pointerEvents="none" style={StyleSheet.absoluteFill} />
       )}

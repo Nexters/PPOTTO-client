@@ -1,7 +1,13 @@
 import { CheckCircleEmpty } from '@ppotto/assets';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { type FlatList, type LayoutChangeEvent, useWindowDimensions, View } from 'react-native';
+import {
+  type FlatList,
+  type LayoutChangeEvent,
+  Platform,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Animated, {
   type FrameInfo,
   scrollTo,
@@ -28,6 +34,7 @@ const NEXT_PAGE_THRESHOLD = 3;
 const AUTO_SCROLL_EDGE = 96;
 const AUTO_SCROLL_MAX_SPEED = 1_200;
 const DRAG_DIRECTION_THRESHOLD = 8;
+const BACK_GESTURE_EDGE = Platform.OS === 'ios' ? 20 : -1;
 
 function gridIndexAt(
   x: number,
@@ -340,6 +347,11 @@ export function PhotoGrid({
         .onTouchesMove(({ allTouches }, stateManager) => {
           'worklet';
           if (dragDirectionResolved.get()) return;
+          if (dragStartX.get() <= BACK_GESTURE_EDGE) {
+            dragDirectionResolved.set(true);
+            stateManager.fail();
+            return;
+          }
           const touch = allTouches[0];
           if (!touch) return;
 
