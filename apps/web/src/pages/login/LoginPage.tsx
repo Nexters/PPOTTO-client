@@ -11,7 +11,7 @@ export function LoginPage() {
 
   const login = async (channel: 'APPLE_LOGIN' | 'KAKAO_LOGIN') => {
     try {
-      const result = await bridge.request(channel);
+      const result = await bridge.request(channel, undefined, { timeout: 'none' });
       if (!result) return;
       // 약관 미동의 여부는 보드 진입 시 useTermsGate가 GET /terms로 판단한다
       replace('Board', {});
