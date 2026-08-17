@@ -23,6 +23,7 @@ type StickerPreviewProps = {
   isEditingTitle?: boolean;
   onSubmitTitle?: (title: string) => void;
   onCancelEditTitle?: () => void;
+  onTitleChange?: (title: string) => void;
   titleInputRef?: Ref<HTMLInputElement>;
   imageRef?: Ref<HTMLDivElement>;
   bottomReserveHeight?: number;
@@ -33,6 +34,7 @@ export function StickerPreview({
   isEditingTitle,
   onSubmitTitle,
   onCancelEditTitle,
+  onTitleChange,
   titleInputRef,
   imageRef,
   bottomReserveHeight = DEFAULT_BOTTOM_RESERVE_HEIGHT,
@@ -51,14 +53,15 @@ export function StickerPreview({
   if (!sticker.imageUrl) return null;
 
   // 키보드 실측 전(0) 순간 하강 방지용 기본값
-  const bottom = isEditingTitle ? keyboardInset || bottomReserveHeight : bottomReserveHeight;
+  const bottom = isEditingTitle
+    ? Math.max(keyboardInset, bottomReserveHeight)
+    : bottomReserveHeight;
 
   return (
     <div
       className={cn(
-        'fixed inset-x-0 z-55 flex flex-col items-center',
+        'pointer-events-none fixed inset-x-0 z-55 flex flex-col items-center',
         'justify-center gap-2 transition-[bottom] duration-300 ease-out',
-        isEditingTitle ? 'pointer-events-auto' : 'pointer-events-none',
       )}
       style={{ top: HEADER_HEIGHT, bottom }}
     >
@@ -90,6 +93,7 @@ export function StickerPreview({
         isEditing={isEditingTitle}
         onSubmit={onSubmitTitle}
         onCancel={onCancelEditTitle}
+        onValueChange={onTitleChange}
       />
     </div>
   );
