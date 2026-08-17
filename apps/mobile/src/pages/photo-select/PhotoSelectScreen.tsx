@@ -215,7 +215,7 @@ export function PhotoSelectScreen() {
               />
               <View
                 className="absolute left-[18px] right-[18px]"
-                style={{ bottom: insets.bottom + 12 }}
+                style={{ bottom: insets.bottom + 48 }}
               >
                 <Button disabled={!canSubmit || !boardId} onPress={handleSubmit} size="large">
                   <Text

@@ -87,7 +87,7 @@ export function OnboardingPage() {
         <OnboardingIndicator currentIndex={selectedIndex} className="pt-6 mx-auto shrink-0" />
       </div>
 
-      <footer className="px-6 pt-10 text-black shrink-0">
+      <footer className="shrink-0 px-6 pt-10 pb-12 text-black">
         <Button onClick={handlePrimaryAction}>
           {isLastSlide ? '사진 업로드 하러가기' : '다음'}
         </Button>
