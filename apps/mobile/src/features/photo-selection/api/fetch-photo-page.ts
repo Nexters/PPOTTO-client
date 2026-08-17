@@ -13,9 +13,10 @@ const toGalleryPhoto = (asset: MediaLibrary.Asset): GalleryPhoto => ({
   height: asset.height,
 });
 
-export const getPhotoLibraryPermission = () => MediaLibrary.getPermissionsAsync();
+export const getPhotoLibraryPermission = () => MediaLibrary.getPermissionsAsync(false, ['photo']);
 
-export const requestPhotoLibraryPermission = () => MediaLibrary.requestPermissionsAsync();
+export const requestPhotoLibraryPermission = () =>
+  MediaLibrary.requestPermissionsAsync(false, ['photo']);
 
 export const presentPhotoLibraryPermissionPicker = () =>
   MediaLibrary.presentPermissionsPickerAsync(['photo']);

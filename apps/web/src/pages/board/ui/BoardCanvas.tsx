@@ -1517,7 +1517,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           <div
             aria-hidden
             className="modal-overlay fixed inset-0 z-50 backdrop-blur-[30px]"
-            onClick={quickMenu.cancelDirectEdit}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
+            }}
           />
           <StickerPreview
             sticker={directEditSticker}
@@ -1525,6 +1528,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             isEditingTitle
             onSubmitTitle={quickMenu.submitDirectEdit}
             onCancelEditTitle={quickMenu.cancelDirectEdit}
+            onTitleChange={quickMenu.setDirectEditTitle}
           />
         </>
       )}
@@ -1532,11 +1536,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         sticker={quickMenuSticker}
         isOpen={quickMenu.quickMenuStickerId !== null}
         onClose={quickMenu.closeQuickMenu}
-        onRename={quickMenu.startRename}
-        isEditingTitle={quickMenu.isRenamingTitle}
-        onSubmitTitle={quickMenu.submitRename}
-        onCancelEditTitle={quickMenu.cancelRename}
-        titleInputRef={quickMenu.titleInputRef}
+        openedFromEdit={quickMenu.quickMenuOpenedFromEdit}
+        isKeyboardSettling={quickMenu.isQuickMenuKeyboardSettling}
+        onRename={quickMenu.startRenameFromQuickMenu}
         onRegenerate={() => {
           if (quickMenu.quickMenuStickerId) {
             regenerate(quickMenu.quickMenuStickerId, quickMenu.closeQuickMenu);

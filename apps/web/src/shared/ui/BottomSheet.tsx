@@ -9,6 +9,7 @@ type BottomSheetProps = {
   onClose: () => void;
   children: React.ReactNode;
   overlayClassName?: string;
+  animateOverlay?: boolean;
 };
 
 export function BottomSheet({
@@ -16,10 +17,13 @@ export function BottomSheet({
   onClose,
   children,
   overlayClassName = 'backdrop-blur-[30px]',
+  animateOverlay = true,
 }: BottomSheetProps) {
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <Dialog.Overlay className={cn('modal-overlay fixed inset-0 z-50', overlayClassName)} />
+      <Dialog.Overlay
+        className={cn(animateOverlay && 'modal-overlay', 'fixed inset-0 z-50', overlayClassName)}
+      />
       <Dialog.Content
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => e.preventDefault()}
