@@ -103,6 +103,8 @@ type BoardCanvasProps = {
   onDrawingActiveChange?: (active: boolean) => void;
   // 실행취소할 그림이 있는지 여부가 바뀔 때마다 호출
   onCanUndoChange?: (canUndo: boolean) => void;
+  // 다시실행할 그림이 있는지 여부가 바뀔 때마다 호출
+  onCanRedoChange?: (canRedo: boolean) => void;
   // 카메라 줌 배율이 바뀔 때마다 호출
   onCameraScaleChange?: (scale: number) => void;
   // move 모드에서 그림이 선택됐는지 여부가 바뀔 때마다 호출
@@ -114,8 +116,8 @@ type BoardCanvasProps = {
 };
 
 export type BoardCanvasHandle = {
-  // 가장 최근에 그린 선을 삭제한다
   undoLastStroke: () => void;
+  redoLastStroke: () => void;
 };
 
 // 탭과 드래그를 구분하는 이동 허용 오차(px)
@@ -157,6 +159,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     isPointerInputSuspended = false,
     onDrawingActiveChange,
     onCanUndoChange,
+    onCanRedoChange,
     onCameraScaleChange,
     onDrawingSelectionChange,
     onDrawingDragOverTrashChange,
@@ -172,6 +175,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
   const [draftDrawings, setDraftDrawings] = useState<ParsedDrawing[]>([]);
+  const [redoDrawings, setRedoDrawings] = useState<ParsedDrawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [drawingDragOffset, setDrawingDragOffset] = useState<Point | null>(null);
   // 선택된 그림을 드래그하는 동안, 현재 휴지통 버튼 위에 있는지 — 놓기 전 시각 피드백(확대)에 사용
@@ -491,6 +495,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const confirmDraftDrawingsRef = useRef(confirmDraftDrawings);
   const drawingsRef = useRef(drawings);
   const draftDrawingsRef = useRef(draftDrawings);
+  const redoDrawingsRef = useRef(redoDrawings);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
   const drawingLongPressRef = useRef(drawingLongPress);
@@ -517,6 +522,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     confirmDraftDrawingsRef.current = confirmDraftDrawings;
     drawingsRef.current = drawings;
     draftDrawingsRef.current = draftDrawings;
+    redoDrawingsRef.current = redoDrawings;
     pushRef.current = push;
     longPressRef.current = longPress;
     drawingLongPressRef.current = drawingLongPress;
@@ -527,6 +533,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   useEffect(() => {
     onCanUndoChange?.(draftDrawings.length > 0);
   }, [draftDrawings.length, onCanUndoChange]);
+
+  useEffect(() => {
+    onCanRedoChange?.(redoDrawings.length > 0);
+  }, [redoDrawings.length, onCanRedoChange]);
 
   useEffect(() => {
     onCameraScaleChange?.(camera.scale);
@@ -563,9 +573,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   }, [isEditMode]);
 
   // draw 모드를 나가면(확정 버튼이든 다른 툴바 모드로 전환이든) 이번 세션에 그린 draft를 한 번에
-  // 저장하고 비운다.
+  // 저장하고 비운다. 되돌리기/다시실행 이력도 이번 세션 것이니 같이 비운다
   useEffect(() => {
     if (isDrawMode) return;
+    setRedoDrawings([]);
     const drafts = draftDrawingsRef.current;
     if (drafts.length === 0) return;
     setDraftDrawings([]);
@@ -575,9 +586,19 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   useImperativeHandle(
     ref,
     () => ({
-      // 이번 세션에 그린(아직 저장 안 된) 그림만 되돌린다 — 이미 확정된 그림은 여기서 지워지지 않는다
       undoLastStroke: () => {
-        setDraftDrawings((prev) => prev.slice(0, -1));
+        const current = draftDrawingsRef.current;
+        if (current.length === 0) return;
+        const popped = current[current.length - 1]!;
+        setDraftDrawings(current.slice(0, -1));
+        setRedoDrawings((prev) => [...prev, popped]);
+      },
+      redoLastStroke: () => {
+        const current = redoDrawingsRef.current;
+        if (current.length === 0) return;
+        const restored = current[current.length - 1]!;
+        setRedoDrawings(current.slice(0, -1));
+        setDraftDrawings((prev) => [...prev, restored]);
       },
     }),
     [],
@@ -765,6 +786,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             zIndex: computeTopZIndex([...combinedZIndexPool(), ...prev]),
           },
         ]);
+        setRedoDrawings([]);
       }
     };
 
@@ -1495,7 +1517,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           <div
             aria-hidden
             className="modal-overlay fixed inset-0 z-50 backdrop-blur-[30px]"
-            onClick={quickMenu.cancelDirectEdit}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
+            }}
           />
           <StickerPreview
             sticker={directEditSticker}
@@ -1503,6 +1528,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             isEditingTitle
             onSubmitTitle={quickMenu.submitDirectEdit}
             onCancelEditTitle={quickMenu.cancelDirectEdit}
+            onTitleChange={quickMenu.setDirectEditTitle}
           />
         </>
       )}
@@ -1510,11 +1536,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         sticker={quickMenuSticker}
         isOpen={quickMenu.quickMenuStickerId !== null}
         onClose={quickMenu.closeQuickMenu}
-        onRename={quickMenu.startRename}
-        isEditingTitle={quickMenu.isRenamingTitle}
-        onSubmitTitle={quickMenu.submitRename}
-        onCancelEditTitle={quickMenu.cancelRename}
-        titleInputRef={quickMenu.titleInputRef}
+        openedFromEdit={quickMenu.quickMenuOpenedFromEdit}
+        isKeyboardSettling={quickMenu.isQuickMenuKeyboardSettling}
+        onRename={quickMenu.startRenameFromQuickMenu}
         onRegenerate={() => {
           if (quickMenu.quickMenuStickerId) {
             regenerate(quickMenu.quickMenuStickerId, quickMenu.closeQuickMenu);

@@ -24,6 +24,7 @@ const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.B
 });
 
 const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
+const BOARD_BACKGROUND_COLOR = '#000';
 
 export function BoardPage() {
   useTermsGate();
@@ -34,6 +35,7 @@ export function BoardPage() {
   const [isDrawingActive, setIsDrawingActive] = useState(false);
   const [isAdjustingStrokeWidth, setIsAdjustingStrokeWidth] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   const [cameraScale, setCameraScale] = useState(1);
   const [isDrawingSelected, setIsDrawingSelected] = useState(false);
   const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
@@ -50,6 +52,7 @@ export function BoardPage() {
   const [previewColor, setPreviewColor] = useState<string | null>(null);
   const [eyedropperColor, setEyedropperColor] = useState(DEFAULT_EYEDROPPER_COLOR);
   const [colorSource, setColorSource] = useState<'palette' | 'eyedropper'>('palette');
+  const pickerPositionRef = useRef<{ x: number; y: number } | null>(null);
 
   const isEyedropperActive = isPickingColor || colorSource === 'eyedropper';
   const isEyedropperColorApplied = colorSource === 'eyedropper';
@@ -59,6 +62,7 @@ export function BoardPage() {
 
   // 화면 좌표 위치의 마커를 그리고, 그 지점의 캡처된 픽셀 색을 미리보기로 반영한다
   const sampleAtClientPoint = (clientX: number, clientY: number) => {
+    pickerPositionRef.current = { x: clientX, y: clientY };
     setPickerPosition({ x: clientX, y: clientY });
 
     const canvas = captureRef.current;
@@ -73,14 +77,21 @@ export function BoardPage() {
 
   const startPicking = async () => {
     if (!pageRef.current) return;
+    const element = pageRef.current;
+    const rect = element.getBoundingClientRect();
+
+    setIsPickingColor(true);
+    sampleAtClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
     try {
       // 첫 캡처는 워밍업으로 버리고 두 번째 결과를 쓴다
-      await captureBoard(pageRef.current);
-      captureRef.current = await captureBoard(pageRef.current);
-      setIsPickingColor(true);
-      // 아직 드래그하지 않아도 화면 중앙의 색을 먼저 미리보기로 보여준다
-      const rect = pageRef.current.getBoundingClientRect();
-      sampleAtClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      await captureBoard(element);
+      captureRef.current = await captureBoard(element);
+      // 캡처가 끝난 시점의 최신 포인터 위치로 색을 다시 계산한다
+      const latestPosition = pickerPositionRef.current;
+      if (latestPosition) {
+        sampleAtClientPoint(latestPosition.x, latestPosition.y);
+      }
     } catch (error) {
       console.error('[eyedropper] 보드 캡처 실패', error);
     }
@@ -94,6 +105,7 @@ export function BoardPage() {
     const stopPicking = () => {
       setIsPickingColor(false);
       setPickerPosition(null);
+      pickerPositionRef.current = null;
       setPreviewColor(null);
       captureRef.current = null;
 
@@ -153,7 +165,7 @@ export function BoardPage() {
         ref={pageRef}
         className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden"
         style={{
-          backgroundColor: '#000',
+          backgroundColor: BOARD_BACKGROUND_COLOR,
           backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
           backgroundSize: '18px 18px',
         }}
@@ -163,6 +175,8 @@ export function BoardPage() {
             <DrawingHeader
               canUndo={canUndo}
               onUndo={() => canvasRef.current?.undoLastStroke()}
+              canRedo={canRedo}
+              onRedo={() => canvasRef.current?.redoLastStroke()}
               onConfirm={() => setToolbarMode('default')}
             />
           ) : (
@@ -177,6 +191,7 @@ export function BoardPage() {
           isPointerInputSuspended={isPickingColor}
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
+          onCanRedoChange={setCanRedo}
           onCameraScaleChange={setCameraScale}
           onDrawingSelectionChange={setIsDrawingSelected}
           onDrawingDragOverTrashChange={setIsDrawingOverTrash}
@@ -226,7 +241,7 @@ export function BoardPage() {
             className="pointer-events-none fixed z-70 -translate-x-1/2 -translate-y-full"
             style={{ left: pickerPosition.x, top: pickerPosition.y }}
           >
-            <EyedropperMarker color={previewColor ?? drawColor} />
+            <EyedropperMarker color={previewColor ?? BOARD_BACKGROUND_COLOR} />
           </div>
         )}
       </div>
@@ -243,6 +258,7 @@ function BoardContent({
   isPointerInputSuspended,
   onDrawingActiveChange,
   onCanUndoChange,
+  onCanRedoChange,
   onCameraScaleChange,
   onDrawingSelectionChange,
   onDrawingDragOverTrashChange,
@@ -257,6 +273,7 @@ function BoardContent({
   isPointerInputSuspended: boolean;
   onDrawingActiveChange: (active: boolean) => void;
   onCanUndoChange: (canUndo: boolean) => void;
+  onCanRedoChange: (canRedo: boolean) => void;
   onCameraScaleChange: (scale: number) => void;
   onDrawingSelectionChange: (selected: boolean) => void;
   onDrawingDragOverTrashChange: (isOver: boolean) => void;
@@ -274,6 +291,7 @@ function BoardContent({
         isPointerInputSuspended={isPointerInputSuspended}
         onDrawingActiveChange={onDrawingActiveChange}
         onCanUndoChange={onCanUndoChange}
+        onCanRedoChange={onCanRedoChange}
         onCameraScaleChange={onCameraScaleChange}
         onDrawingSelectionChange={onDrawingSelectionChange}
         onDrawingDragOverTrashChange={onDrawingDragOverTrashChange}

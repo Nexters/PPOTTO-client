@@ -4,11 +4,16 @@ const BOX_COLOR = '#009fff';
 const TICK_SIZE = 7;
 const BORDER_WIDTH = 1.5;
 
-const TICK_POSITIONS: { top?: number; bottom?: number; left?: number; right?: number }[] = [
-  { top: -TICK_SIZE / 2, left: -TICK_SIZE / 2 },
-  { top: -TICK_SIZE / 2, right: -TICK_SIZE / 2 },
-  { bottom: -TICK_SIZE / 2, left: -TICK_SIZE / 2 },
-  { bottom: -TICK_SIZE / 2, right: -TICK_SIZE / 2 },
+const scaled = (px: number) => `calc(var(--inv-camera-scale, 1) * ${px}px)`;
+
+const BORDER = scaled(BORDER_WIDTH);
+const TICK_OFFSET = scaled(-TICK_SIZE / 2);
+
+const TICK_POSITIONS: { top?: string; bottom?: string; left?: string; right?: string }[] = [
+  { top: TICK_OFFSET, left: TICK_OFFSET },
+  { top: TICK_OFFSET, right: TICK_OFFSET },
+  { bottom: TICK_OFFSET, left: TICK_OFFSET },
+  { bottom: TICK_OFFSET, right: TICK_OFFSET },
 ];
 
 type SelectionBoxFrameProps = {
@@ -37,7 +42,7 @@ export function SelectionBoxFrame({
         width,
         height,
         transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-        border: `${BORDER_WIDTH}px solid ${BOX_COLOR}`,
+        border: `${BORDER} solid ${BOX_COLOR}`,
         boxSizing: 'border-box',
         pointerEvents: 'none',
         zIndex,
@@ -48,10 +53,10 @@ export function SelectionBoxFrame({
           key={index}
           style={{
             position: 'absolute',
-            width: TICK_SIZE,
-            height: TICK_SIZE,
+            width: scaled(TICK_SIZE),
+            height: scaled(TICK_SIZE),
             background: '#fff',
-            border: `${BORDER_WIDTH}px solid ${BOX_COLOR}`,
+            border: `${BORDER} solid ${BOX_COLOR}`,
             boxSizing: 'border-box',
             ...position,
           }}

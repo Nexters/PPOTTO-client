@@ -20,8 +20,7 @@
  * - 기존 스티커가 있을 땐 각도를 오른쪽 반원(-90~90도)으로 제한해, 새 무리가 기존 스티커 쪽으로
  *   다시 넘어가지 않게 한다. 시작 각도에 매번 한 스텝 폭만큼 무작위 지터를 줘서, 배치마다 항상
  *   똑같은 모양으로 나열되지 않게 한다.
- * - badgeOffsetX/Y는 스티커 타입과 무관하게 위/아래 x 왼쪽/가운데/오른쪽 6방향 프리셋 중 하나를
- *   난수로 골라 배정한다(스티커를 너무 가리지 않으면서도 위치에 변화를 줌)
+ * - badgeOffsetX/Y는 스티커 타입과 무관하게 아래쪽 가운데(모서리에 반쯤 걸치는 위치)로 고정 배정한다
  * - 나선형 탐색의 세로 반지름에 뷰포트 세로/가로 비율을 (완화해서) 곱해서, 뷰포트가 세로로 길수록
  *   무리도 세로로 더 퍼지게 한다(안 그러면 원형으로만 퍼져서 가로 폭에 막혀 위아래가 여백으로 남음).
  *   비율을 그대로 다 반영하면 반대로 거의 세로 한 줄처럼 늘어서길래 절반만 반영한다
@@ -279,35 +278,17 @@ describe('computeInitialLayout', () => {
     expect(result.map((sticker) => sticker.zIndex)).toEqual([8, 9]);
   });
 
-  it('badgeOffsetX/Y는 스티커 타입과 무관하게 위/아래 x 왼쪽/가운데/오른쪽 6방향 중 하나로 배정된다', () => {
+  it('badgeOffsetX/Y는 스티커 타입과 무관하게 아래쪽 가운데로 고정 배정된다', () => {
     const newStickers = [
       fakeSticker({ id: 'a', type: 'IMAGE' }),
       fakeSticker({ id: 'b', type: 'TEXT' }),
-    ];
-    const presets = [
-      { x: 0, y: 60 },
-      { x: -45, y: 55 },
-      { x: 45, y: 55 },
-      { x: 0, y: -60 },
-      { x: -45, y: -55 },
-      { x: 45, y: -55 },
     ];
 
     const result = computeInitialLayout(newStickers, [], viewport);
 
     result.forEach((sticker) => {
-      expect(presets).toContainEqual({ x: sticker.badgeOffsetX, y: sticker.badgeOffsetY });
+      expect(sticker).toMatchObject({ badgeOffsetX: 0, badgeOffsetY: 60 });
     });
-  });
-
-  it('random() 값에 따라 badgeOffsetX/Y로 골라지는 방향이 달라진다', () => {
-    const newStickers = [fakeSticker({ id: 'a' })];
-
-    const first = computeInitialLayout(newStickers, [], viewport, () => 0);
-    const last = computeInitialLayout(newStickers, [], viewport, () => 5 / 6);
-
-    expect(first[0]).toMatchObject({ badgeOffsetX: 0, badgeOffsetY: 60 });
-    expect(last[0]).toMatchObject({ badgeOffsetX: 45, badgeOffsetY: -55 });
   });
 
   it('뷰포트가 세로로 길수록 세로 방향 간격이 (완화된 비율만큼) 더 벌어진다', () => {
