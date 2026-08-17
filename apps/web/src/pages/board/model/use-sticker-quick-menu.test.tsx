@@ -8,14 +8,25 @@ vi.mock('./use-rename-sticker', () => ({
 }));
 
 function QuickMenuHarness() {
-  const { titleInputRef, isRenamingTitle, startRename } = useStickerQuickMenu('board-1');
+  const {
+    quickMenuStickerId,
+    openQuickMenu,
+    startRenameFromQuickMenu,
+    directEditStickerId,
+    directEditInputRef,
+  } = useStickerQuickMenu('board-1');
 
   return (
     <>
-      <input ref={titleInputRef} readOnly={!isRenamingTitle} />
-      <button type="button" onClick={startRename}>
-        이름 변경하기
+      <button type="button" onClick={() => openQuickMenu('sticker-1')}>
+        퀵메뉴 열기
       </button>
+      {quickMenuStickerId && (
+        <button type="button" onClick={startRenameFromQuickMenu}>
+          이름 변경하기
+        </button>
+      )}
+      {directEditStickerId && <input ref={directEditInputRef} />}
     </>
   );
 }
@@ -23,7 +34,7 @@ function QuickMenuHarness() {
 describe('useStickerQuickMenu', () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it('이름 변경 클릭 시 readOnly를 해제한 뒤 input에 focus한다', () => {
+  it('퀵메뉴에서 이름 변경을 누르면 새로 마운트된 편집 input에 포커스한다', () => {
     let wasReadOnlyOnFocus = true;
     vi.spyOn(HTMLInputElement.prototype, 'focus').mockImplementation(function (
       this: HTMLInputElement,
@@ -32,6 +43,7 @@ describe('useStickerQuickMenu', () => {
     });
     render(<QuickMenuHarness />);
 
+    fireEvent.click(screen.getByRole('button', { name: '퀵메뉴 열기' }));
     fireEvent.click(screen.getByRole('button', { name: '이름 변경하기' }));
 
     expect(wasReadOnlyOnFocus).toBe(false);
