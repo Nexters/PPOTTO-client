@@ -2,10 +2,12 @@
 
 import { memo } from 'react';
 
+import { useStickerImageWithFallback } from '@/shared/lib/sticker-raster';
+
 import { rotatePoint } from '../model/geometry';
 
 import { StickerBadge } from './StickerBadge';
-import { badgeZIndex, type StickerData } from './Sticker';
+import { badgeZIndex, getPhotoSize, stickerDisplayedEdge, type StickerData } from './Sticker';
 
 type StickerBadgeMarkProps = {
   sticker: StickerData;
@@ -16,10 +18,15 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
   sticker,
   onNameClick,
 }: StickerBadgeMarkProps) {
-  const offset = rotatePoint(
-    { x: sticker.badgeOffsetX, y: sticker.badgeOffsetY },
-    sticker.rotation,
+  const photoImage = useStickerImageWithFallback(
+    sticker.imageUrl ?? undefined,
+    stickerDisplayedEdge(sticker.scale),
   );
+  const { height } = getPhotoSize(photoImage, sticker.scale);
+
+  if (height <= 0) return null;
+
+  const offset = rotatePoint({ x: 0, y: height / 2 }, sticker.rotation);
 
   return (
     <div

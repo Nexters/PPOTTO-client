@@ -19,17 +19,8 @@ import { Header } from '@/shared/ui/Header';
 
 import { createMotionPhotoPreloader } from './lib/motion-photo-preloader';
 import { prepareUploadJob } from './lib/prepare-upload-job';
-import { AlbumDropdown } from './ui/AlbumDropdown';
 
 const TARGET_UNITS = 100;
-
-const ALBUM_OPTIONS = [
-  { value: 'RECENT', label: '최근 항목' },
-  { value: 'FAVORITES', label: '즐겨찾기' },
-  { value: 'SCREENSHOTS', label: '스크린샷' },
-] as const;
-
-type AlbumKey = (typeof ALBUM_OPTIONS)[number]['value'];
 
 function retainMotionPhotos(
   previous: readonly GalleryPhoto[],
@@ -54,7 +45,6 @@ export function PhotoSelectScreen() {
   }>();
   const mode = modeParam === 'additional' ? 'additional' : 'initial';
   const minSubmitUnits = mode === 'additional' ? 20 : 90;
-  const [album, setAlbum] = useState<AlbumKey>('RECENT');
   const [motionPhotoPreloader] = useState(createMotionPhotoPreloader);
   const motionPhotosRef = useRef<GalleryPhoto[]>([]);
   const submittedRef = useRef(false);
@@ -64,6 +54,7 @@ export function PhotoSelectScreen() {
   const {
     canSubmit,
     everythingSelected,
+    hasNextPage,
     loading,
     loadMore,
     permission,
@@ -76,7 +67,7 @@ export function PhotoSelectScreen() {
     toggleEverything,
     toggleUnit,
   } = usePhotoSelection({
-    album,
+    album: 'RECENT',
     targetUnits: TARGET_UNITS,
     minSubmitUnits,
     mode,
@@ -84,13 +75,19 @@ export function PhotoSelectScreen() {
   const permissionRequired = permission !== null && !permission.granted;
 
   useEffect(() => {
+    if (loading) {
+      motionPhotosRef.current = [];
+      motionPhotoPreloader.sync([]);
+      return;
+    }
+
     const representatives = selection
       ? selectedPhotoGroups(selection).map((group) => group.photos[0]!)
       : [];
     const next = retainMotionPhotos(motionPhotosRef.current, representatives);
     motionPhotosRef.current = next;
     motionPhotoPreloader.sync(next);
-  }, [motionPhotoPreloader, selection]);
+  }, [loading, motionPhotoPreloader, selection]);
 
   useEffect(
     () => () => {
@@ -145,13 +142,13 @@ export function PhotoSelectScreen() {
             <Text className="text-gray-400 text-body-06 opacity-[0.85]">
               {permissionRequired
                 ? '최근 사진으로 보드를 만들려면 권한이 필요해요'
-                : '연속 사진은 한 묶음으로 표시돼요'}
+                : '전체 취소를 눌러 원하는 사진을 다시 선택할 수 있어요.'}
             </Text>
           </View>
         </View>
 
         {permissionRequired ? (
-          <View className="flex-1 items-center justify-center gap-6 px-8 pb-24">
+          <View className="items-center justify-center flex-1 gap-6 px-8 pb-24">
             <View className="items-center gap-2">
               <Text className="text-center text-white text-body-02">사진 접근 권한이 필요해요</Text>
               <Text className="text-center text-gray-400 text-body-06">
@@ -173,8 +170,8 @@ export function PhotoSelectScreen() {
           </View>
         ) : (
           <>
-            <View className="flex-row items-start justify-between px-6 pb-4">
-              <AlbumDropdown options={ALBUM_OPTIONS} onSelect={setAlbum} selected={album} />
+            {/* 앨범 전환 기능 미구현으로 드롭다운 임시 숨김 — 기능 붙일 때 justify-between으로 복구 */}
+            <View className="flex-row items-start justify-end px-6 pb-4">
               <Button onPress={toggleEverything} size="small">
                 <Text className="text-white text-caption-01">
                   {everythingSelected ? '전체 취소' : '자동 선택'}
@@ -183,7 +180,7 @@ export function PhotoSelectScreen() {
             </View>
 
             {permission?.accessPrivileges === 'limited' ? (
-              <View className="mx-6 mb-3 flex-row items-center gap-3 rounded-xl bg-gray-900 px-4 py-3">
+              <View className="flex-row items-center gap-3 px-4 py-3 mx-6 mb-3 bg-gray-900 rounded-xl">
                 <Text className="flex-1 text-gray-300 text-caption-01">
                   허용한 사진만 표시되고 있어요
                 </Text>
@@ -197,6 +194,7 @@ export function PhotoSelectScreen() {
               <PhotoGrid
                 bottomPadding={insets.bottom + 76}
                 grouped
+                hasNextPage={hasNextPage}
                 loading={loading}
                 onEndReached={() => void loadMore()}
                 onDragChange={setGroupExcludedCounts}
@@ -225,7 +223,7 @@ export function PhotoSelectScreen() {
                   >
                     {canSubmit
                       ? '이 사진으로 보드 만들기'
-                      : `최소 ${minSubmitUnits}장을 선택해 주세요`}{' '}
+                      : `최소 ${minSubmitUnits}장을 선택해 주세요 `}{' '}
                     <Text className={canSubmit ? 'text-blue-500' : 'text-red-300'}>
                       {selectedCount} / {TARGET_UNITS}
                     </Text>

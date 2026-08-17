@@ -8,7 +8,6 @@ import { blobToBase64 } from '@/shared/lib/blob-to-base64';
 import { bridge } from '@/shared/lib/bridge';
 import { canvasToBlob } from '@/shared/lib/canvas-to-blob';
 import { captureElementAsBlob, captureElementAsCanvas } from '@/shared/lib/capture-element-as-blob';
-import { composeInstagramStoryImage } from '@/shared/lib/compose-instagram-story-image';
 import { cropCanvasToSquare } from '@/shared/lib/crop-canvas-to-square';
 import { initKakao } from '@/shared/lib/kakao';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
@@ -72,9 +71,7 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
     setIsSharingInstagram(true);
     try {
       const blob = await captureElementAsBlob(cardRef.current, { skipFonts: true, pixelRatio: 3 });
-      // 스토리 배경은 화면 채우기로 스케일되므로 9:16으로 미리 맞춰야 세로가 잘리지 않는다
-      const storyBlob = await composeInstagramStoryImage(blob);
-      const base64 = await blobToBase64(storyBlob);
+      const base64 = await blobToBase64(blob);
       const { success } = await bridge.request('SHARE_INSTAGRAM_STORY', { base64 });
       if (success) handleClose();
       else toast('인스타그램 공유에 실패했습니다');

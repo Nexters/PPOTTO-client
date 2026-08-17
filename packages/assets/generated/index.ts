@@ -28,4 +28,5 @@ export { default as OnboardingArrow } from './OnboardingArrow';
 export { default as Reload } from './Reload';
 export { default as Share } from './Share';
 export { default as Trash } from './Trash';
+export { default as Undo } from './Undo';
 export { default as X } from './X';
