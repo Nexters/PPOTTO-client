@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useVisualViewportInset } from '@/shared/lib/use-visual-viewport-inset';
 
@@ -9,7 +9,8 @@ export function useStickerQuickMenu(boardId: string) {
   const [directEditStickerId, setDirectEditStickerId] = useState<string | null>(null);
   const [directEditTitle, setDirectEditTitle] = useState('');
   const [returnToQuickMenu, setReturnToQuickMenu] = useState(false);
-  const [isReturningToQuickMenu, setIsReturningToQuickMenu] = useState(false);
+  const [quickMenuOpenedFromEdit, setQuickMenuOpenedFromEdit] = useState(false);
+  const [isQuickMenuKeyboardSettling, setIsQuickMenuKeyboardSettling] = useState(false);
   const { rename } = useRenameSticker(boardId);
   const keyboardInset = useVisualViewportInset();
   const directEditInputElementRef = useRef<HTMLInputElement | null>(null);
@@ -20,36 +21,37 @@ export function useStickerQuickMenu(boardId: string) {
   });
 
   useEffect(() => {
-    if (!isReturningToQuickMenu || keyboardInset > 0) return;
+    if (!isQuickMenuKeyboardSettling || keyboardInset > 0) return;
 
-    const frame = requestAnimationFrame(() => {
-      const stickerId = directEditStickerId;
-      setDirectEditStickerId(null);
-      setDirectEditTitle('');
-      if (stickerId) setQuickMenuStickerId(stickerId);
-      setReturnToQuickMenu(false);
-      setIsReturningToQuickMenu(false);
-    });
+    const timeout = window.setTimeout(() => setIsQuickMenuKeyboardSettling(false), 350);
 
-    return () => cancelAnimationFrame(frame);
-  }, [directEditStickerId, isReturningToQuickMenu, keyboardInset]);
+    return () => window.clearTimeout(timeout);
+  }, [isQuickMenuKeyboardSettling, keyboardInset]);
 
   const openQuickMenu = (stickerId: string) => setQuickMenuStickerId(stickerId);
 
-  const closeQuickMenu = () => setQuickMenuStickerId(null);
+  const closeQuickMenu = () => {
+    setQuickMenuStickerId(null);
+    setQuickMenuOpenedFromEdit(false);
+    setIsQuickMenuKeyboardSettling(false);
+  };
 
   const resetDirectEdit = () => {
     const stickerId = directEditStickerId;
     setDirectEditStickerId(null);
     setDirectEditTitle('');
-    if (returnToQuickMenu && stickerId) setQuickMenuStickerId(stickerId);
+    if (returnToQuickMenu && stickerId) {
+      setQuickMenuStickerId(stickerId);
+      setQuickMenuOpenedFromEdit(true);
+      setIsQuickMenuKeyboardSettling(true);
+    }
     setReturnToQuickMenu(false);
-    setIsReturningToQuickMenu(false);
   };
 
   const startDirectEdit = (stickerId: string) => {
     setReturnToQuickMenu(false);
-    setIsReturningToQuickMenu(false);
+    setQuickMenuOpenedFromEdit(false);
+    setIsQuickMenuKeyboardSettling(false);
     setDirectEditTitle('');
     setDirectEditStickerId(stickerId);
   };
@@ -60,7 +62,8 @@ export function useStickerQuickMenu(boardId: string) {
 
     setQuickMenuStickerId(null);
     setReturnToQuickMenu(true);
-    setIsReturningToQuickMenu(false);
+    setQuickMenuOpenedFromEdit(false);
+    setIsQuickMenuKeyboardSettling(false);
     setDirectEditTitle('');
     setDirectEditStickerId(stickerId);
   };
@@ -71,18 +74,13 @@ export function useStickerQuickMenu(boardId: string) {
         setDirectEditStickerId(null);
         setDirectEditTitle('');
         setReturnToQuickMenu(false);
-        setIsReturningToQuickMenu(false);
+        setQuickMenuOpenedFromEdit(false);
+        setIsQuickMenuKeyboardSettling(false);
       });
     }
   };
 
   const cancelDirectEdit = () => {
-    if (returnToQuickMenu && directEditStickerId) {
-      setIsReturningToQuickMenu(true);
-      directEditInputElementRef.current?.blur();
-      return;
-    }
-
     resetDirectEdit();
   };
 
@@ -92,10 +90,10 @@ export function useStickerQuickMenu(boardId: string) {
     else cancelDirectEdit();
   };
 
-  const directEditInputRef = (node: HTMLInputElement | null) => {
+  const directEditInputRef = useCallback((node: HTMLInputElement | null) => {
     directEditInputElementRef.current = node;
     node?.focus();
-  };
+  }, []);
 
   return {
     quickMenuStickerId,
@@ -108,7 +106,8 @@ export function useStickerQuickMenu(boardId: string) {
     cancelDirectEdit,
     finishDirectEditFromBackdrop,
     setDirectEditTitle,
-    isQuickMenuEdit: returnToQuickMenu,
+    quickMenuOpenedFromEdit,
+    isQuickMenuKeyboardSettling,
     directEditInputRef,
     isEditingRef,
   };
