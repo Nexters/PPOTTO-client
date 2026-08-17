@@ -1,16 +1,18 @@
 'use client';
 
-import { Check, Reload } from '@ppotto/assets';
+import { Check, Undo } from '@ppotto/assets';
 
 import { cn } from '@/shared/lib/cn';
 
 type DrawingHeaderProps = {
   canUndo: boolean;
   onUndo: () => void;
+  canRedo: boolean;
+  onRedo: () => void;
   onConfirm: () => void;
 };
 
-export function DrawingHeader({ canUndo, onUndo, onConfirm }: DrawingHeaderProps) {
+export function DrawingHeader({ canUndo, onUndo, canRedo, onRedo, onConfirm }: DrawingHeaderProps) {
   return (
     <div
       className={cn(
@@ -20,20 +22,34 @@ export function DrawingHeader({ canUndo, onUndo, onConfirm }: DrawingHeaderProps
       style={{ backgroundImage: 'linear-gradient(to bottom, black 29px, transparent)' }}
     >
       <div className="flex items-center justify-between w-full">
-        <button
-          type="button"
-          aria-label="실행취소"
-          disabled={!canUndo}
-          onClick={onUndo}
-          className={cn(
-            'pointer-events-auto flex size-8 items-center justify-center rounded-full',
-            'bg-gray-800 disabled:opacity-40',
-          )}
-        >
-          <span className="flex -scale-x-100">
-            <Reload color="white" />
-          </span>
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            aria-label="실행취소"
+            disabled={!canUndo}
+            onClick={onUndo}
+            className={cn(
+              'pointer-events-auto flex size-8 items-center justify-center rounded-full',
+              'bg-gray-800 disabled:opacity-40',
+            )}
+          >
+            <Undo color="white" />
+          </button>
+          <button
+            type="button"
+            aria-label="다시실행"
+            disabled={!canRedo}
+            onClick={onRedo}
+            className={cn(
+              'pointer-events-auto flex size-8 items-center justify-center rounded-full',
+              'bg-gray-800 disabled:opacity-40',
+            )}
+          >
+            <span className="flex -scale-x-100">
+              <Undo color="white" />
+            </span>
+          </button>
+        </div>
         <button
           type="button"
           aria-label="확정"

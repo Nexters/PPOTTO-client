@@ -34,6 +34,7 @@ export function BoardPage() {
   const [isDrawingActive, setIsDrawingActive] = useState(false);
   const [isAdjustingStrokeWidth, setIsAdjustingStrokeWidth] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   const [cameraScale, setCameraScale] = useState(1);
   const [isDrawingSelected, setIsDrawingSelected] = useState(false);
   const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
@@ -163,6 +164,8 @@ export function BoardPage() {
             <DrawingHeader
               canUndo={canUndo}
               onUndo={() => canvasRef.current?.undoLastStroke()}
+              canRedo={canRedo}
+              onRedo={() => canvasRef.current?.redoLastStroke()}
               onConfirm={() => setToolbarMode('default')}
             />
           ) : (
@@ -177,6 +180,7 @@ export function BoardPage() {
           isPointerInputSuspended={isPickingColor}
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
+          onCanRedoChange={setCanRedo}
           onCameraScaleChange={setCameraScale}
           onDrawingSelectionChange={setIsDrawingSelected}
           onDrawingDragOverTrashChange={setIsDrawingOverTrash}
@@ -243,6 +247,7 @@ function BoardContent({
   isPointerInputSuspended,
   onDrawingActiveChange,
   onCanUndoChange,
+  onCanRedoChange,
   onCameraScaleChange,
   onDrawingSelectionChange,
   onDrawingDragOverTrashChange,
@@ -257,6 +262,7 @@ function BoardContent({
   isPointerInputSuspended: boolean;
   onDrawingActiveChange: (active: boolean) => void;
   onCanUndoChange: (canUndo: boolean) => void;
+  onCanRedoChange: (canRedo: boolean) => void;
   onCameraScaleChange: (scale: number) => void;
   onDrawingSelectionChange: (selected: boolean) => void;
   onDrawingDragOverTrashChange: (isOver: boolean) => void;
@@ -274,6 +280,7 @@ function BoardContent({
         isPointerInputSuspended={isPointerInputSuspended}
         onDrawingActiveChange={onDrawingActiveChange}
         onCanUndoChange={onCanUndoChange}
+        onCanRedoChange={onCanRedoChange}
         onCameraScaleChange={onCameraScaleChange}
         onDrawingSelectionChange={onDrawingSelectionChange}
         onDrawingDragOverTrashChange={onDrawingDragOverTrashChange}
