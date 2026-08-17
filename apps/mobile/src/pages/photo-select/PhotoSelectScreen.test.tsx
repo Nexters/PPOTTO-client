@@ -11,7 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { usePhotoSelection } from '@/features/photo-selection';
 import { groupPhotos } from '@/features/photo-selection/model/photo-group';
-import { dragRangeDelta } from '@/features/photo-selection/ui/PhotoGrid';
+import { dragIntentAt, dragRangeDelta } from '@/features/photo-selection/ui/PhotoGrid';
 
 import { PhotoSelectScreen } from './PhotoSelectScreen';
 
@@ -208,6 +208,13 @@ beforeEach(() => {
 
 it('드래그가 원점으로 돌아오면 범위에서 빠진 타일을 복원한다', () => {
   expect(dragRangeDelta(10, 20, 10)).toEqual({ entered: [], exited: [[11, 20]] });
+});
+
+it('8pt를 넘긴 최초 우세 방향으로 드래그 동작을 고정한다', () => {
+  expect(dragIntentAt(7, 0)).toBe('pending');
+  expect(dragIntentAt(9, 4)).toBe('select');
+  expect(dragIntentAt(4, 9)).toBe('scroll');
+  expect(dragIntentAt(9, 9)).toBe('scroll');
 });
 
 it('진입 시 불러온 그룹을 전체 선택 상태로 표시하고 카운터를 보여준다', async () => {

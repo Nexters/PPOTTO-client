@@ -55,7 +55,10 @@ function RootLayout() {
             <ToastProvider>
               <Stack screenOptions={{ headerShown: false, contentStyle: styles.transparent }}>
                 <Stack.Screen name="(auth)/index" />
-                <Stack.Screen name="photo-select" options={{ animationTypeForReplace: 'pop' }} />
+                <Stack.Screen
+                  name="photo-select"
+                  options={{ animationTypeForReplace: 'pop', gestureEnabled: false }}
+                />
                 <Stack.Screen
                   name="analysis-loading"
                   options={{
