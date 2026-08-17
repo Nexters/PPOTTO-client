@@ -147,7 +147,7 @@ export function AppWebView({
     ANALYSIS_LOADING_REVEAL_FINISHED: () => bridgeHandlers?.ANALYSIS_LOADING_REVEAL_FINISHED?.(),
     SAVE_IMAGE: async ({ base64 }) => {
       try {
-        const { status } = await MediaLibrary.requestPermissionsAsync(true);
+        const { status } = await MediaLibrary.requestPermissionsAsync(true, ['photo']);
         if (status !== 'granted') return { success: false };
 
         const file = new File(Paths.cache, `recap-${Date.now()}.png`);

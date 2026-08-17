@@ -105,7 +105,16 @@ export function SettingsPage() {
         </Section>
 
         <Section label="고객지원">
-          <MenuItem>문의하기</MenuItem>
+          <Row>
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSdNjLlef3peD-8xicPWH1HU7rwHtJEKkKeeOH2MYHtqhY3TSQ/viewform"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full text-left text-white text-body-03"
+            >
+              문의하기
+            </a>
+          </Row>
         </Section>
 
         <Section label="앱 정보">

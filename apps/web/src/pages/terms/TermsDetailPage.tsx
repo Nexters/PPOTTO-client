@@ -42,7 +42,7 @@ export function TermsDetailPage({ code }: TermsDetailPageProps) {
               {section.articles.map((article) => (
                 <div key={article.title} className="flex flex-col gap-2">
                   <p className="text-body-06 text-gray-100">{article.title}</p>
-                  <p className="text-body-06 text-gray-500">{article.body}</p>
+                  <p className="text-body-06 whitespace-pre-line text-gray-500">{article.body}</p>
                 </div>
               ))}
             </div>

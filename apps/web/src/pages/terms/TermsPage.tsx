@@ -78,10 +78,9 @@ export function TermsPage() {
           {'서비스 이용을 위해\n약관에 동의가 필요해요'}
         </h1>
         <p className="text-body-06 text-gray-500">
-          제공하시는 정보는 암호화되어 안전하게 저장되며,
+          서비스 제공에 필요한 정보만 수집하며,
           <br />
-          <span className="font-semibold text-[#e0e0e0]">서비스 이용을 위해서만 사용</span>
-          됩니다.
+          자세한 내용은 아래에서 확인할 수 있어요.
         </p>
       </div>
 
