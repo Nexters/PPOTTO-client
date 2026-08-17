@@ -3,7 +3,6 @@ import { render, screen, userEvent, waitFor } from '@testing-library/react-nativ
 
 import { AuthScreen } from './AuthScreen';
 
-jest.mock('@/shared/lib/app-ready', () => ({ useMarkAppReady: () => jest.fn() }));
 jest.mock('@/lib/auth-session', () => ({ getAccessToken: jest.fn() }));
 jest.mock('@/shared/ui/AppWebView', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');

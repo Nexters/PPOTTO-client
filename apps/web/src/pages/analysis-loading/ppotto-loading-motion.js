@@ -369,12 +369,8 @@ export function createLoadingMotion(opts) {
 
       const nCols = columnsForCount(state.photos.length);
       const gap = 8;
-      // 화면 폭에 맞춘 값보다 20% 크게 — 뒤따르는 GROUP 그리드(약 61px)와
-      // 확실히 구분되어야 한다. 넘치는 만큼은 좌우로 잘려 나가게 두는데,
-      // 필름스트립이 화면보다 넓게 흐르는 편이 오히려 자연스럽다.
-      const colW = ((W - PAD * 2 - gap * (nCols - 1)) / nCols) * 1.2;
-      const spanW = colW * nCols + gap * (nCols - 1);
-      const originX = (W - spanW) / 2; // 음수 = 양 끝이 잘린다
+      const colW = (W - PAD * 2 - gap * (nCols - 1)) / nCols;
+      const originX = PAD;
       const pool = state.noMeta ? shuffle(state.photos) : state.photos; // 시간순 정렬 or 셔플 폴백
 
       cols = [];

@@ -1,7 +1,13 @@
 import { CheckCircleEmpty } from '@ppotto/assets';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { type FlatList, type LayoutChangeEvent, useWindowDimensions, View } from 'react-native';
+import {
+  type FlatList,
+  type LayoutChangeEvent,
+  Platform,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Animated, {
   type FrameInfo,
   scrollTo,
@@ -27,6 +33,8 @@ const NEXT_PAGE_SKELETONS = Array.from({ length: PHOTO_GROUP_PAGE_SIZE }, (_, in
 const NEXT_PAGE_THRESHOLD = 3;
 const AUTO_SCROLL_EDGE = 96;
 const AUTO_SCROLL_MAX_SPEED = 1_200;
+const DRAG_DIRECTION_THRESHOLD = 8;
+const BACK_GESTURE_EDGE = Platform.OS === 'ios' ? 20 : -1;
 
 function gridIndexAt(
   x: number,
@@ -92,6 +100,14 @@ export function dragRangeDelta(anchor: number, previous: number, next: number) {
   }
 
   return { entered, exited };
+}
+
+export function dragIntentAt(deltaX: number, deltaY: number) {
+  'worklet';
+  const horizontal = Math.abs(deltaX);
+  const vertical = Math.abs(deltaY);
+  if (Math.max(horizontal, vertical) < DRAG_DIRECTION_THRESHOLD) return 'pending';
+  return horizontal > vertical ? 'select' : 'scroll';
 }
 
 interface PhotoGridProps {
@@ -167,6 +183,9 @@ export function PhotoGrid({
   const dragActive = useSharedValue(false);
   const pointerX = useSharedValue(0);
   const pointerY = useSharedValue(0);
+  const dragStartX = useSharedValue(0);
+  const dragStartY = useSharedValue(0);
+  const dragDirectionResolved = useSharedValue(false);
   const scrollOffset = useSharedValue(0);
   const contentHeight = useSharedValue(0);
   const viewportWidth = useSharedValue(width);
@@ -318,12 +337,36 @@ export function PhotoGrid({
   const dragGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activateAfterLongPress(500)
+        .manualActivation(true)
+        .onBegin(({ x, y }) => {
+          'worklet';
+          dragStartX.set(x);
+          dragStartY.set(y);
+          dragDirectionResolved.set(false);
+        })
+        .onTouchesMove(({ allTouches }, stateManager) => {
+          'worklet';
+          if (dragDirectionResolved.get()) return;
+          if (dragStartX.get() <= BACK_GESTURE_EDGE) {
+            dragDirectionResolved.set(true);
+            stateManager.fail();
+            return;
+          }
+          const touch = allTouches[0];
+          if (!touch) return;
+
+          const intent = dragIntentAt(touch.x - dragStartX.get(), touch.y - dragStartY.get());
+          if (intent === 'pending') return;
+
+          dragDirectionResolved.set(true);
+          if (intent === 'select') stateManager.activate();
+          else stateManager.fail();
+        })
         .onStart(({ x, y }) => {
           'worklet';
           const index = gridIndexAt(
-            x,
-            y,
+            dragStartX.get(),
+            dragStartY.get(),
             scrollOffset.get(),
             viewportWidth.get(),
             viewportHeight.get(),
@@ -367,6 +410,9 @@ export function PhotoGrid({
     [
       autoScrollSpeed,
       dragActive,
+      dragDirectionResolved,
+      dragStartX,
+      dragStartY,
       handleDragEnd,
       handleDragIndex,
       handleDragStart,

@@ -33,7 +33,7 @@ const ThemeRecap = (
     width={1440}
     height={1304}
     // 이미지(1440×1304)가 슬라이드 박스(460×385)보다 세로로 길어 contain으로 박스 안에 맞춘다
-    className="absolute inset-0 m-auto h-full w-full object-contain"
+    className="absolute inset-0 object-contain w-full h-full m-auto"
   />
 );
 
@@ -44,8 +44,7 @@ const LongPress = (
       alt=""
       width={1046}
       height={321}
-      // ponytail: 에셋이 검은 글자라 배경에 묻힌다. 흰색으로 다시 export하면 invert를 지운다.
-      className="absolute top-[52%] left-[16%] h-auto w-[68%] invert"
+      className="absolute top-[52%] left-[16%] h-auto w-[68%]"
     />
     <Image
       src="/onboarding/3-1.png"
@@ -63,7 +62,7 @@ const DecorateBoard = (
     alt=""
     width={1440}
     height={1304}
-    className="absolute inset-0 m-auto h-full w-full object-contain"
+    className="absolute inset-0 object-contain w-full h-full m-auto"
   />
 );
 

@@ -42,7 +42,7 @@ export function Modal({ open, onOpenChange, title, description, children }: Moda
   );
 }
 
-const actionClassName = 'text-body-04 flex-1 rounded-full px-7 py-2';
+const actionClassName = 'text-body-03 flex-1 rounded-full px-7 py-2';
 
 function ModalCancel({ className, ...props }: ComponentProps<'button'>) {
   return (
