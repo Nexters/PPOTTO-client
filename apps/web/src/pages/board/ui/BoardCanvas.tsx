@@ -120,6 +120,10 @@ export type BoardCanvasHandle = {
   redoLastStroke: () => void;
 };
 
+export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
+  return isError && !data;
+}
+
 // 탭과 드래그를 구분하는 이동 허용 오차(px)
 const TAP_MOVE_THRESHOLD = 6;
 // 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
@@ -1334,7 +1338,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     );
   }
 
-  if (isError || !data) {
+  if (shouldShowBoardLoadError(isError, data)) {
     return (
       <div className="flex items-center justify-center w-full h-full">
         <p className="text-gray-400 text-body-04">보드를 불러오지 못했어요</p>
