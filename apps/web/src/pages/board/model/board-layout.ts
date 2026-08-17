@@ -36,15 +36,8 @@ const ROTATION_RANGE_DEG = 15;
 // 뷰포트 세로/가로 비율을 세로 방향 퍼짐에 얼마나 반영할지 (1=비율 그대로, 0=반영 안 함/원형)
 const VERTICAL_STRETCH_DAMPING = 0.5;
 
-// 뱃지가 스티커를 너무 가리지 않으면서 위치에 변화를 주도록 6방향 중 하나를 랜덤으로 고름
-const BADGE_OFFSET_PRESETS: { x: number; y: number }[] = [
-  { x: 0, y: 60 }, // 아래 가운데
-  { x: -45, y: 55 }, // 아래 왼쪽
-  { x: 45, y: 55 }, // 아래 오른쪽
-  { x: 0, y: -60 }, // 위 가운데
-  { x: -45, y: -55 }, // 위 왼쪽
-  { x: 45, y: -55 }, // 위 오른쪽
-];
+// 뱃지는 스티커 아래쪽 가운데, 모서리에 반쯤 걸치는 위치로 고정한다
+const BADGE_OFFSET = { x: 0, y: 60 };
 
 // 좌표/순서가 null이거나 없으면 아직 배치를 정하지 않은 스티커로 본다
 export function needsInitialLayout(sticker: UnplacedCheckSticker): boolean {
@@ -137,15 +130,13 @@ export function computeInitialLayout<T extends { id: string; type: string }>(
     placedPoints.push(point);
     newPoints.push(point);
 
-    const badgeOffset = BADGE_OFFSET_PRESETS[Math.floor(random() * BADGE_OFFSET_PRESETS.length)]!;
-
     return {
       ...sticker,
       posX: point.x,
       posY: point.y,
       rotation: (random() * 2 - 1) * ROTATION_RANGE_DEG,
-      badgeOffsetX: badgeOffset.x,
-      badgeOffsetY: badgeOffset.y,
+      badgeOffsetX: BADGE_OFFSET.x,
+      badgeOffsetY: BADGE_OFFSET.y,
       zIndex: maxExistingZIndex + index + 1,
     };
   });
