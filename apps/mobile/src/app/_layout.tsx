@@ -5,6 +5,8 @@ import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { isRunningInExpoGo } from 'expo';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -19,6 +21,9 @@ import {
 } from '@/shared/lib/sentry';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { ToastProvider } from '@/shared/ui/Toast';
+
+SplashScreen.setOptions({ duration: 200, fade: true });
+void SplashScreen.preventAutoHideAsync();
 
 if (SENTRY_ENABLED) {
   Sentry.init({
@@ -44,6 +49,11 @@ const appTheme = {
 };
 
 function RootLayout() {
+  useEffect(() => {
+    const timer = setTimeout(() => void SplashScreen.hideAsync(), 700);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={styles.root}>
