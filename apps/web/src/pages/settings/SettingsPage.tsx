@@ -1,6 +1,6 @@
 'use client';
 
-import { AppleLogo, ChevronLeftSmall, KakaoBadge } from '@ppotto/assets';
+import { AppleLogo, ChevronLeft, KakaoBadge } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -74,23 +74,28 @@ export function SettingsPage() {
           onClick={() => pop()}
           className="absolute left-0"
         >
-          <ChevronLeftSmall />
+          <ChevronLeft />
         </button>
         <h1 className="w-full text-center text-white text-body-01">설정</h1>
       </header>
 
       <div className="flex flex-col w-full gap-8">
         <Section label="내 계정">
-          <Row className="justify-between">
-            <div className="flex items-center h-full gap-2">
+          <Row className="justify-between gap-3">
+            <div className="flex h-full min-w-0 flex-1 items-center gap-2">
               {me?.provider === 'KAKAO' && <KakaoBadge />}
               {me?.provider === 'APPLE' && <AppleLogo width={16} height={19} color="white" />}
-              <span className="text-white text-body-04">{me?.email ?? '이메일이 없어요'}</span>
+              <span className="min-w-0 truncate text-body-04 text-white">
+                {me?.email ?? '이메일이 없어요'}
+              </span>
             </div>
             <button
               type="button"
               onClick={() => openModal('logout')}
-              className="px-2.5 py-1 text-gray-600 border border-gray-700 rounded-full text-caption-01"
+              className={cn(
+                'shrink-0 whitespace-nowrap rounded-full border border-gray-700',
+                'px-2.5 py-1 text-caption-01 text-gray-600',
+              )}
             >
               로그아웃
             </button>
