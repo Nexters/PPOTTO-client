@@ -20,7 +20,7 @@ import {
   unitCount,
   units,
 } from './photo-group';
-import { PAGE_SIZES } from './photo-page';
+import { INITIAL_GROUP_PAGE_SIZE, PHOTO_GROUP_PAGE_SIZE } from './photo-page';
 
 interface UsePhotoSelectionOptions {
   album: string;
@@ -31,6 +31,41 @@ interface UsePhotoSelectionOptions {
 
 /** 첫 업로드(initial)와 이후 업로드(additional)의 차이는 초기 자동선택 여부뿐이다. */
 type PhotoSelectionMode = 'initial' | 'additional';
+
+async function fetchGroupBatch({
+  after,
+  album,
+  first,
+  hasNextPage,
+  photos,
+}: {
+  after?: string;
+  album: string;
+  first: number;
+  hasNextPage: boolean;
+  photos: GalleryPhoto[];
+}) {
+  const baseGroupCount = groupPhotos(photos).length;
+  const assets: GalleryPhoto[] = [];
+  let cursor = after;
+  let hasMore = hasNextPage;
+
+  while (hasMore) {
+    const addedGroupCount = groupPhotos([...photos, ...assets]).length - baseGroupCount;
+    if (addedGroupCount >= first) break;
+
+    const page = await fetchPhotoPage({
+      album,
+      first: first - addedGroupCount,
+      after: cursor,
+    });
+    assets.push(...page.assets);
+    cursor = page.endCursor;
+    hasMore = page.hasNextPage;
+  }
+
+  return { assets, endCursor: cursor, hasNextPage: hasMore };
+}
 
 export function usePhotoSelection({
   album,
@@ -49,10 +84,9 @@ export function usePhotoSelection({
   const [loadedKey, setLoadedKey] = useState<string>();
   const loadGeneration = useRef(0);
   const reloading = useRef(false);
-  const loadingMore = useRef(false);
+  const loadingMoreRef = useRef(false);
   const loadedPhotosRef = useRef<GalleryPhoto[]>([]);
   const loadedIdsRef = useRef(new Set<string>());
-  const pageIndexRef = useRef(0);
 
   /**
    * 페이지를 덧붙일 때마다 누적 전체를 다시 그룹화한다. 마지막 그룹은 다음 페이지의 오래된
@@ -98,10 +132,12 @@ export function usePhotoSelection({
     const generation = ++loadGeneration.current;
     let cancelled = false;
     reloading.current = true;
-    loadingMore.current = false;
+    loadingMoreRef.current = false;
     loadedPhotosRef.current = [];
     loadedIdsRef.current = new Set();
-    pageIndexRef.current = 0;
+    // 앨범 전환 시 이전 앨범 타일을 새 로컬 검사 결과와 섞지 않는다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelection(null);
 
     const load = async () => {
       try {
@@ -110,13 +146,33 @@ export function usePhotoSelection({
         setPermission(nextPermission);
         if (!nextPermission.granted) return;
 
-        const page = await fetchPhotoPage({ first: PAGE_SIZES[0] });
-        if (cancelled) return;
+        const initialPhotos: GalleryPhoto[] = [];
+        let after: string | undefined;
+        let hasMore = true;
 
-        pageIndexRef.current = 1;
-        setSelection(appendPhotos(page.assets, null));
-        setEndCursor(page.endCursor);
-        setHasNextPage(page.hasNextPage);
+        while (hasMore && groupPhotos(initialPhotos).length < targetUnits) {
+          const loadedGroupCount = groupPhotos(initialPhotos).length;
+          const page = await fetchGroupBatch({
+            album,
+            first: Math.min(
+              loadedGroupCount === 0 ? INITIAL_GROUP_PAGE_SIZE : PHOTO_GROUP_PAGE_SIZE,
+              targetUnits - loadedGroupCount,
+            ),
+            after,
+            hasNextPage: hasMore,
+            photos: initialPhotos,
+          });
+          if (cancelled || loadGeneration.current !== generation) return;
+          initialPhotos.push(...page.assets);
+          if (page.assets.length) {
+            setSelection((previous) => appendPhotos(page.assets, previous));
+          }
+          after = page.endCursor;
+          hasMore = page.hasNextPage;
+        }
+
+        setEndCursor(after);
+        setHasNextPage(hasMore);
       } finally {
         if (!cancelled && loadGeneration.current === generation) {
           reloading.current = false;
@@ -225,27 +281,35 @@ export function usePhotoSelection({
   );
 
   const loadMore = async () => {
-    if (reloading.current || !hasNextPage || !endCursor || loadingMore.current) return;
+    if (reloading.current || !hasNextPage || !endCursor || loadingMoreRef.current) return;
 
     const generation = loadGeneration.current;
-    loadingMore.current = true;
+    loadingMoreRef.current = true;
     try {
-      const size = PAGE_SIZES[Math.min(pageIndexRef.current, PAGE_SIZES.length - 1)]!;
-      const page = await fetchPhotoPage({ first: size, after: endCursor });
+      const page = await fetchGroupBatch({
+        album,
+        first: PHOTO_GROUP_PAGE_SIZE,
+        after: endCursor,
+        hasNextPage,
+        photos: loadedPhotosRef.current,
+      });
       if (generation !== loadGeneration.current) return;
-
-      pageIndexRef.current += 1;
-      setSelection((previous) => appendPhotos(page.assets, previous));
+      if (page.assets.length) {
+        setSelection((previous) => appendPhotos(page.assets, previous));
+      }
       setEndCursor(page.endCursor);
       setHasNextPage(page.hasNextPage);
     } finally {
-      if (generation === loadGeneration.current) loadingMore.current = false;
+      if (generation === loadGeneration.current) {
+        loadingMoreRef.current = false;
+      }
     }
   };
 
   return {
     canSubmit: selectedCount >= minSubmitUnits,
     everythingSelected,
+    hasNextPage,
     loading: loadedKey !== loadKey,
     loadMore,
     permission,

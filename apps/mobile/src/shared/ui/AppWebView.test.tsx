@@ -15,6 +15,7 @@ const mockPushMessage = jest.fn();
 const mockEmit = jest.fn();
 const mockFileWrite = jest.fn();
 
+jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('@/shared/lib/app-ready', () => ({ useMarkAppReady: () => jest.fn() }));
 jest.mock('@/lib/auth-session', () => ({
   getAccessToken: jest.fn(),
@@ -175,7 +176,7 @@ describe('인스타그램 스토리 공유', () => {
     expect(share.shareSingle).toHaveBeenCalledWith({
       social: 'instagramstories',
       appId: '1002723789453387',
-      backgroundImage: 'file:///cache/recap-instagram-story.png',
+      stickerImage: 'file:///cache/recap-instagram-story.png',
     });
   });
 

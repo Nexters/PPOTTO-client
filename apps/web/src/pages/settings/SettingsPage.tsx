@@ -12,11 +12,6 @@ import { Modal } from '@/shared/ui/common/Modal';
 import { useToast } from '@/shared/ui/common/Toast';
 
 const APP_VERSION = '1.0.0';
-const TERMS_URL =
-  'https://onyx-pick-058.notion.site/3b4145d1840e80358e69c80240cc6290?source=copy_link';
-const PRIVACY_POLICY_URL =
-  'https://onyx-pick-058.notion.site/3b4145d1840e805a9704cebc76c3f4d4?source=copy_link';
-
 type ConfirmAction = 'logout' | 'withdraw';
 
 const CONFIRM: Record<
@@ -49,7 +44,7 @@ const CONFIRM: Record<
 };
 
 export function SettingsPage() {
-  const { pop } = useFlow();
+  const { push, pop } = useFlow();
   const { data: me } = useMeQuery();
   const toast = useToast();
   const [confirming, setConfirming] = useState<ConfirmAction>('logout');
@@ -71,7 +66,7 @@ export function SettingsPage() {
   };
 
   return (
-    <main className="flex min-h-full w-full flex-col gap-10 bg-black px-6">
+    <main className="flex flex-col w-full min-h-full gap-10 px-6 bg-black">
       <header className="relative w-full h-6">
         <button
           type="button"
@@ -103,13 +98,23 @@ export function SettingsPage() {
         </Section>
 
         <Section label="보안">
-          <ExternalLinkItem href={TERMS_URL}>이용약관</ExternalLinkItem>
-          <ExternalLinkItem href={PRIVACY_POLICY_URL}>개인정보 처리방침</ExternalLinkItem>
-          <MenuItem>오픈소스</MenuItem>
+          <MenuItem onClick={() => push('TermsDetail', { code: 'TOS' })}>이용약관</MenuItem>
+          <MenuItem onClick={() => push('TermsDetail', { code: 'PRIVACY' })}>
+            개인정보 처리방침
+          </MenuItem>
         </Section>
 
         <Section label="고객지원">
-          <MenuItem>문의하기</MenuItem>
+          <Row>
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSdNjLlef3peD-8xicPWH1HU7rwHtJEKkKeeOH2MYHtqhY3TSQ/viewform"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full text-left text-white text-body-03"
+            >
+              문의하기
+            </a>
+          </Row>
         </Section>
 
         <Section label="앱 정보">
@@ -153,21 +158,6 @@ function MenuItem({ children, onClick }: { children: ReactNode; onClick?: () => 
       <button type="button" onClick={onClick} className="w-full text-left text-white text-body-03">
         {children}
       </button>
-    </Row>
-  );
-}
-
-function ExternalLinkItem({ children, href }: { children: ReactNode; href: string }) {
-  return (
-    <Row>
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="w-full text-left text-white text-body-03"
-      >
-        {children}
-      </a>
     </Row>
   );
 }

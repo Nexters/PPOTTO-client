@@ -16,6 +16,7 @@ import { RecapPage } from '@/pages/recap';
 import { SettingsPage } from '@/pages/settings';
 import { TermsDetailPage, TermsPage } from '@/pages/terms';
 
+import { androidBackPlugin, registerAndroidBackHandler } from './android-back';
 import { config } from './config';
 import { sentryPlugin } from './sentry-plugin';
 
@@ -77,7 +78,7 @@ const AnalysisLoadingActivity: ActivityComponentType<'AnalysisLoading'> = () => 
   </AppScreen>
 );
 
-export const { Stack } = stackflow({
+export const { Stack, actions } = stackflow({
   config,
   components: {
     Login: LoginActivity,
@@ -99,5 +100,9 @@ export const { Stack } = stackflow({
     }),
     historySyncPlugin({ config, fallbackActivity: () => 'Login' }),
     sentryPlugin,
+    androidBackPlugin(),
   ],
 });
+
+// 안드로이드 하드웨어 뒤로가기(NAVIGATE_BACK) 수신 — 시트 닫기/스택 pop/앱 이탈 위임
+if (typeof window !== 'undefined') registerAndroidBackHandler(actions);

@@ -23,12 +23,8 @@ function logPendingUpload(message: string, details?: unknown) {
 export function BoardScreen() {
   const navigation = useNavigation();
   const allowPendingNavigation = useRef(false);
-  const { boardId, confirmResume } = useLocalSearchParams<{
-    boardId?: string;
-    confirmResume?: string;
-  }>();
+  const { boardId } = useLocalSearchParams<{ boardId?: string }>();
   const [screenState, setScreenState] = useState<BoardScreenState>(() => {
-    if (confirmResume === '1') return { status: 'PENDING' };
     if (photoUploadService.getCurrent() && photoUploadService.getViewState().status === 'FAILED') {
       return { status: 'FAILED' };
     }

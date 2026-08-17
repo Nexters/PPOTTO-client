@@ -3,9 +3,10 @@ import { shareCustomTemplate } from '@react-native-kakao/share';
 import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
+import { useIsFocused } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Platform } from 'react-native';
+import { BackHandler, Linking, Platform } from 'react-native';
 import Share, { Social } from 'react-native-share';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -122,6 +123,10 @@ export function AppWebView({
     HAPTIC: ({ type }) => {
       void Haptics.impactAsync(HAPTIC_STYLES[type]);
     },
+    // 웹 스택이 루트라 더 뒤로 갈 곳이 없음 — 앱을 백그라운드로 보낸다(안드로이드 표준 동작)
+    EXIT_APP: () => {
+      BackHandler.exitApp();
+    },
     BOARD_READY: () => markLoaded(),
     ANALYSIS_LOADING_READY: () => {
       markLoaded();
@@ -142,7 +147,7 @@ export function AppWebView({
     ANALYSIS_LOADING_REVEAL_FINISHED: () => bridgeHandlers?.ANALYSIS_LOADING_REVEAL_FINISHED?.(),
     SAVE_IMAGE: async ({ base64 }) => {
       try {
-        const { status } = await MediaLibrary.requestPermissionsAsync(true);
+        const { status } = await MediaLibrary.requestPermissionsAsync(true, ['photo']);
         if (status !== 'granted') return { success: false };
 
         const file = new File(Paths.cache, `recap-${Date.now()}.png`);
@@ -170,13 +175,12 @@ export function AppWebView({
 
         const file = new File(Paths.cache, 'recap-instagram-story.png');
         file.write(base64, { encoding: 'base64' });
-        const result = await Share.shareSingle({
+        await Share.shareSingle({
           social: Social.InstagramStories,
           appId: INSTAGRAM_APP_ID,
-          backgroundImage: file.uri,
+          stickerImage: file.uri,
         });
-
-        return { success: result.success };
+        return { success: true };
       } catch (error) {
         console.warn('인스타그램 스토리 공유 실패', error);
         return { success: false };
@@ -197,12 +201,26 @@ export function AppWebView({
     if (showBoard) bridge.emit('SHOW_BOARD');
   }, [bridge, showBoard]);
 
+  // 안드로이드 하드웨어 뒤로가기를 웹으로 전달한다
+  // 네이티브 화면(사진 선택 등)이 위에 있을 땐 expo-router 기본 pop이 동작하게 한다
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !isFocused) return;
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      bridge.emit('NAVIGATE_BACK');
+      return true;
+    });
+    return () => subscription.remove();
+  }, [bridge, isFocused]);
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#000' }}>
       <WebView
         ref={ref}
         style={{ backgroundColor: '#000' }}
         source={{ uri: `${WEB_URL}${path}` }}
+        keyboardDisplayRequiresUserAction={false}
         injectedJavaScriptBeforeContentLoaded={injectedScript}
         onMessage={(e) => {
           const data = e.nativeEvent.data;

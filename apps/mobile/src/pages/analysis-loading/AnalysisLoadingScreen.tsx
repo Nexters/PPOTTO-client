@@ -134,7 +134,7 @@ export function AnalysisLoadingScreen() {
       }
       router.replace({
         pathname: '/board',
-        params: { ...(boardId ? { boardId } : {}), confirmResume: '1' },
+        params: boardId ? { boardId } : undefined,
       });
     });
   }, [boardId, toast]);
