@@ -36,7 +36,7 @@ describe('useStickerQuickMenu', () => {
 
   it('퀵메뉴에서 이름 변경을 누르면 새로 마운트된 편집 input에 포커스한다', () => {
     let wasReadOnlyOnFocus = true;
-    vi.spyOn(HTMLInputElement.prototype, 'focus').mockImplementation(function (
+    const focus = vi.spyOn(HTMLInputElement.prototype, 'focus').mockImplementation(function (
       this: HTMLInputElement,
     ) {
       wasReadOnlyOnFocus = this.readOnly;
@@ -47,5 +47,6 @@ describe('useStickerQuickMenu', () => {
     fireEvent.click(screen.getByRole('button', { name: '이름 변경하기' }));
 
     expect(wasReadOnlyOnFocus).toBe(false);
+    expect(focus).toHaveBeenCalled();
   });
 });
