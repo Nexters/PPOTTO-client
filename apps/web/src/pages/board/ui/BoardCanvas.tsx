@@ -12,7 +12,7 @@ import {
   useState,
 } from 'react';
 
-import type { BoardDetail } from '@/entities/board/api/board-api';
+import type { BoardDetail, UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
@@ -179,6 +179,25 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     () => loadSavedCamera(boardId) ?? { scale: 1, x: 0, y: 0 },
   );
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
+  // 이동 모드 세션 동안의 스티커/그림 변경분 — 서버엔 확정(체크) 시점에 한 번에 저장하고,
+  // 취소(X)하면 그대로 버린다. 그림 삭제도 이 세션 동안은 로컬에서만 숨기고 실제 삭제 요청은 미룬다
+  const [stickerSessionOverrides, setStickerSessionOverrides] = useState<
+    Record<
+      string,
+      Partial<
+        Pick<
+          StickerData,
+          'posX' | 'posY' | 'rotation' | 'scale' | 'badgeOffsetX' | 'badgeOffsetY' | 'zIndex'
+        >
+      >
+    >
+  >({});
+  const [drawingSessionOverrides, setDrawingSessionOverrides] = useState<
+    Record<string, Partial<{ points: Point[]; strokeWidth: number; zIndex: number }>>
+  >({});
+  const [drawingSessionDeletedIds, setDrawingSessionDeletedIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
   const [draftDrawings, setDraftDrawings] = useState<ParsedDrawing[]>([]);
@@ -262,10 +281,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           posX: sticker.posX ?? 0,
           posY: sticker.posY ?? 0,
           zIndex: sticker.zIndex ?? 0,
+          ...stickerSessionOverrides[sticker.id],
         }))
         .sort((a, b) => a.zIndex - b.zIndex),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data?.stickers],
+    [data?.stickers, stickerSessionOverrides],
   );
   const emptyBoardSticker = useMemo<StickerData>(
     () => ({
@@ -288,14 +308,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
   const drawings = useMemo(
     () =>
-      (data?.drawings ?? []).map((drawing) => ({
-        id: drawing.id,
-        points: parseStrokePoints(drawing.stroke),
-        color: drawing.color,
-        strokeWidth: drawing.strokeWidth,
-        zIndex: parseStrokeZIndex(drawing.stroke),
-      })),
-    [data?.drawings],
+      (data?.drawings ?? [])
+        .filter((drawing) => !drawingSessionDeletedIds.has(drawing.id))
+        .map((drawing) => ({
+          id: drawing.id,
+          points: parseStrokePoints(drawing.stroke),
+          color: drawing.color,
+          strokeWidth: drawing.strokeWidth,
+          zIndex: parseStrokeZIndex(drawing.stroke),
+          ...drawingSessionOverrides[drawing.id],
+        })),
+    [data?.drawings, drawingSessionOverrides, drawingSessionDeletedIds],
   );
 
   const cameraRef = useRef(camera);
@@ -394,9 +417,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     return () => bridge.send('SET_BOARD_ACTIVE', { active: false });
   }, []);
 
-  // 캐시에 변경분을 바로 반영하고 저장 요청을 보냄
-  const saveStickerLayout = (
-    sticker: StickerData,
+  // 스티커는 이동 모드에서만 바뀌므로 항상 세션 로컬 변경분에만 반영한다 — 서버 저장은
+  // 세션이 끝날 때(확정/자동 확정) 한 번에 나간다
+  const applyStickerSessionChange = (
+    stickerId: string,
     overrides: Partial<
       Pick<
         StickerData,
@@ -404,34 +428,26 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       >
     >,
   ) => {
-    const updated = { ...sticker, ...overrides };
+    setStickerSessionOverrides((prev) => ({
+      ...prev,
+      [stickerId]: { ...prev[stickerId], ...overrides },
+    }));
+  };
 
-    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
-      current
-        ? {
-            ...current,
-            stickers: current.stickers.map((s) =>
-              s.id === sticker.id ? { ...s, ...overrides } : s,
-            ),
-          }
-        : current,
-    );
+  // 그림은 이동 모드/기본 모드 둘 다에서 바뀔 수 있다. 이동 모드는 세션 로컬 변경분에만
+  // 반영하고, 기본 모드는(세션 개념이 없으므로) 즉시 저장하는 moveDrawing/deleteDrawing을 그대로 쓴다
+  const applyDrawingSessionChange = (
+    drawingId: string,
+    overrides: Partial<{ points: Point[]; strokeWidth: number; zIndex: number }>,
+  ) => {
+    setDrawingSessionOverrides((prev) => ({
+      ...prev,
+      [drawingId]: { ...prev[drawingId], ...overrides },
+    }));
+  };
 
-    saveLayout({
-      boardId,
-      input: toLayoutInput([
-        {
-          id: updated.id,
-          posX: updated.posX ?? 0,
-          posY: updated.posY ?? 0,
-          rotation: updated.rotation,
-          scale: updated.scale,
-          zIndex: updated.zIndex ?? 0,
-          badgeOffsetX: updated.badgeOffsetX,
-          badgeOffsetY: updated.badgeOffsetY,
-        },
-      ]),
-    });
+  const markDrawingSessionDeleted = (drawingId: string) => {
+    setDrawingSessionDeletedIds((prev) => new Set(prev).add(drawingId));
   };
 
   // 스티커의 zIndex와 그림의 zIndex(stroke.zIndex)는 같은 숫자 공간을 공유한다 —
@@ -441,17 +457,18 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     ...drawingsRef.current.map((d) => ({ id: d.id, zIndex: d.zIndex })),
   ];
 
-  // 스티커를 선택하면 스티커+그림 통틀어 맨 위로 보이도록 zIndex를 올림
+  // 스티커를 선택하면 스티커+그림 통틀어 맨 위로 보이도록 zIndex를 올림(세션 로컬 변경분)
   const selectSticker = (sticker: StickerData): StickerData => {
     setSelectedStickerId(sticker.id);
     const newZIndex = computeBringToFrontZIndex(combinedZIndexPool(), sticker.id);
     if (newZIndex === null) return sticker;
-    saveStickerLayout(sticker, { zIndex: newZIndex });
+    applyStickerSessionChange(sticker.id, { zIndex: newZIndex });
     return { ...sticker, zIndex: newZIndex };
   };
 
   // 그림을 선택하면(탭 또는 롱프레스 시작) 스티커 선택은 해제하고, 스티커+그림 통틀어
-  // 맨 위로 보이도록 zIndex를 올린다. 삭제 가능 상태로의 승격은 별도(drawingLongPress)로 처리한다
+  // 맨 위로 보이도록 zIndex를 올린다. 삭제 가능 상태로의 승격은 별도(drawingLongPress)로 처리한다.
+  // 이동 모드는 세션 로컬 변경분에 반영하고, 기본 모드는(세션 개념이 없으므로) 바로 저장한다
   const selectDrawing = (drawingId: string) => {
     setSelectedStickerId(null);
     setSelectedDrawingId(drawingId);
@@ -465,13 +482,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     if (drawing) {
       const newZIndex = computeBringToFrontZIndex(combinedZIndexPool(), drawingId);
       if (newZIndex !== null) {
-        moveDrawingRef.current(
-          toDrawingMoveInput(drawing.id, drawing.points, {
-            color: drawing.color,
-            strokeWidth: drawing.strokeWidth,
-            zIndex: newZIndex,
-          }),
-        );
+        if (isEditModeRef.current) {
+          applyDrawingSessionChange(drawingId, { zIndex: newZIndex });
+        } else {
+          moveDrawingRef.current(
+            toDrawingMoveInput(drawing.id, drawing.points, {
+              color: drawing.color,
+              strokeWidth: drawing.strokeWidth,
+              zIndex: newZIndex,
+            }),
+          );
+        }
       }
     }
   };
@@ -513,13 +534,66 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     saveLayout({ boardId, input: { drawings: { created: inputs } } });
   };
 
-  const saveStickerLayoutRef = useRef(saveStickerLayout);
+  // 이동 모드 세션 동안 쌓인 스티커/그림 변경분을 하나의 요청으로 저장하고 비운다
+  const confirmMoveSession = () => {
+    const stickerOverrides = stickerSessionOverridesRef.current;
+    const drawingOverrides = drawingSessionOverridesRef.current;
+    const deletedIds = drawingSessionDeletedIdsRef.current;
+    const changedDrawingIds = Object.keys(drawingOverrides).filter((id) => !deletedIds.has(id));
+
+    if (
+      Object.keys(stickerOverrides).length === 0 &&
+      changedDrawingIds.length === 0 &&
+      deletedIds.size === 0
+    ) {
+      return;
+    }
+
+    const input: UpdateBoardLayoutInput = {};
+
+    const changedStickers = Object.keys(stickerOverrides)
+      .map((id) => stickersRef.current.find((s) => s.id === id))
+      .filter((s): s is StickerData => !!s);
+    if (changedStickers.length > 0) {
+      input.stickers = toLayoutInput(changedStickers).stickers;
+    }
+
+    const changedDrawings = changedDrawingIds
+      .map((id) => drawingsRef.current.find((d) => d.id === id))
+      .filter((d): d is (typeof drawingsRef)['current'][number] => !!d)
+      .map((d) =>
+        toDrawingMoveInput(d.id, d.points, {
+          color: d.color,
+          strokeWidth: d.strokeWidth,
+          zIndex: d.zIndex,
+        }),
+      );
+    if (changedDrawings.length > 0 || deletedIds.size > 0) {
+      input.drawings = {
+        ...(changedDrawings.length > 0 && { created: changedDrawings }),
+        ...(deletedIds.size > 0 && { deletedIds: [...deletedIds] }),
+      };
+    }
+
+    saveLayout({ boardId, input });
+    setStickerSessionOverrides({});
+    setDrawingSessionOverrides({});
+    setDrawingSessionDeletedIds(new Set());
+  };
+
+  const applyStickerSessionChangeRef = useRef(applyStickerSessionChange);
+  const applyDrawingSessionChangeRef = useRef(applyDrawingSessionChange);
+  const markDrawingSessionDeletedRef = useRef(markDrawingSessionDeleted);
   const selectStickerRef = useRef(selectSticker);
   const selectDrawingRef = useRef(selectDrawing);
   const deleteDrawingRef = useRef(deleteDrawing);
   const moveDrawingRef = useRef(moveDrawing);
   const confirmDraftDrawingsRef = useRef(confirmDraftDrawings);
+  const confirmMoveSessionRef = useRef(confirmMoveSession);
   const drawingsRef = useRef(drawings);
+  const stickerSessionOverridesRef = useRef(stickerSessionOverrides);
+  const drawingSessionOverridesRef = useRef(drawingSessionOverrides);
+  const drawingSessionDeletedIdsRef = useRef(drawingSessionDeletedIds);
   const draftDrawingsRef = useRef(draftDrawings);
   const redoDrawingsRef = useRef(redoDrawings);
   const pushRef = useRef(push);
@@ -541,13 +615,19 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     isPointerInputSuspendedRef.current = isPointerInputSuspended;
     drawColorRef.current = drawColor;
     drawStrokeWidthRef.current = drawStrokeWidth;
-    saveStickerLayoutRef.current = saveStickerLayout;
+    applyStickerSessionChangeRef.current = applyStickerSessionChange;
+    applyDrawingSessionChangeRef.current = applyDrawingSessionChange;
+    markDrawingSessionDeletedRef.current = markDrawingSessionDeleted;
     selectStickerRef.current = selectSticker;
     selectDrawingRef.current = selectDrawing;
     deleteDrawingRef.current = deleteDrawing;
     moveDrawingRef.current = moveDrawing;
     confirmDraftDrawingsRef.current = confirmDraftDrawings;
+    confirmMoveSessionRef.current = confirmMoveSession;
     drawingsRef.current = drawings;
+    stickerSessionOverridesRef.current = stickerSessionOverrides;
+    drawingSessionOverridesRef.current = drawingSessionOverrides;
+    drawingSessionDeletedIdsRef.current = drawingSessionDeletedIds;
     draftDrawingsRef.current = draftDrawings;
     redoDrawingsRef.current = redoDrawings;
     pushRef.current = push;
@@ -597,6 +677,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     selectedDrawingBoxTransformRef.current = null;
     drawingBoxPinchStartRef.current = null;
     drawingBoxPinchPreviewRef.current = null;
+  }, [isEditMode]);
+
+  // 이동 모드를 나가면 이번 세션의 변경분을 저장하고 비운다. 명시적으로 취소(X)한 경우가
+  // 아닌 모든 종료 경로(확정 버튼, 다른 툴바 모드로 전환 등)는 그리기 모드와 동일하게 자동 확정된다
+  useEffect(() => {
+    if (isEditMode) return;
+    confirmMoveSessionRef.current();
   }, [isEditMode]);
 
   // draw 모드를 나가면(확정 버튼이든 다른 툴바 모드로 전환이든) 이번 세션에 그린 draft를 한 번에
@@ -1201,7 +1288,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           setLiveDrawingBoxPinchPreview(null);
 
           if (dragStart && dragStart.pointerId === e.pointerId && isOverTrash(e)) {
-            deleteDrawingRef.current(selectedDrawingIdRef.current);
+            if (isEditModeRef.current) {
+              markDrawingSessionDeletedRef.current(selectedDrawingIdRef.current);
+            } else {
+              deleteDrawingRef.current(selectedDrawingIdRef.current);
+            }
             setSelectedDrawingId(null);
             setSelectedDrawingBaseSize(null);
             setSelectedDrawingBoxTransform(null);
@@ -1223,13 +1314,20 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               isMoved && offset
                 ? basePoints.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y }))
                 : basePoints;
-            moveDrawingRef.current(
-              toDrawingMoveInput(drawing.id, finalPoints, {
-                color: drawing.color,
+            if (isEditModeRef.current) {
+              applyDrawingSessionChangeRef.current(drawing.id, {
+                points: finalPoints,
                 strokeWidth: baseStrokeWidth,
-                zIndex: drawing.zIndex,
-              }),
-            );
+              });
+            } else {
+              moveDrawingRef.current(
+                toDrawingMoveInput(drawing.id, finalPoints, {
+                  color: drawing.color,
+                  strokeWidth: baseStrokeWidth,
+                  zIndex: drawing.zIndex,
+                }),
+              );
+            }
           }
 
           // 선택 박스의 회전/배율/중심도 같이 확정해서, 다음 제스처가 이 값을 기준으로 이어지게 한다
@@ -1298,7 +1396,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               finalTransform.scale,
               gesture.sticker.scale,
             );
-            saveStickerLayoutRef.current(gesture.sticker, {
+            applyStickerSessionChangeRef.current(gesture.sticker.id, {
               posX: finalTransform.x,
               posY: finalTransform.y,
               rotation: finalTransform.rotation,
