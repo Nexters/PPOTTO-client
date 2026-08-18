@@ -2,12 +2,12 @@
 
 import { memo } from 'react';
 
-import { useStickerImageWithFallback } from '@/shared/lib/sticker-raster';
+import { useStickerImage } from '@/shared/lib/sticker-raster';
 
 import { rotatePoint } from '../model/geometry';
 
 import { StickerBadge } from './StickerBadge';
-import { badgeZIndex, getPhotoSize, stickerDisplayedEdge, type StickerData } from './Sticker';
+import { badgeZIndex, getPhotoSize, type StickerData } from './Sticker';
 
 type StickerBadgeMarkProps = {
   sticker: StickerData;
@@ -18,10 +18,7 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
   sticker,
   onNameClick,
 }: StickerBadgeMarkProps) {
-  const photoImage = useStickerImageWithFallback(
-    sticker.imageUrl ?? undefined,
-    stickerDisplayedEdge(sticker.scale),
-  );
+  const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const { height } = getPhotoSize(photoImage, sticker.scale);
 
   if (height <= 0) return null;

@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    unoptimized: true,
     remotePatterns: [
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-bucket-dev/stickers/**' },
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-bucket-dev/photos/**' },

@@ -44,7 +44,7 @@ export function StickerPreview({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keyboardInset = useVisualViewportInset();
 
-  const photoImage = useCachedStickerImage(sticker.imageUrl ?? undefined, PREVIEW_MAX_WIDTH);
+  const photoImage = useCachedStickerImage(sticker.imageUrl ?? undefined);
 
   useLayoutEffect(() => {
     if (canvasRef.current && photoImage) {

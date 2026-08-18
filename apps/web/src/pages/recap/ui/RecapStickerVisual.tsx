@@ -94,7 +94,7 @@ export function RecapStickerVisual({
   isNew = false,
   onInitialLayout,
 }: RecapStickerVisualProps) {
-  const image = useStickerImage(imageUrl, STICKER_MAX_EDGE);
+  const image = useStickerImage(imageUrl);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bubbleRefs = useRef(new Map<string, HTMLDivElement>());
   const [initialLayout, setInitialLayout] = useState<{
