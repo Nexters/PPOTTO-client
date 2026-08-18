@@ -312,6 +312,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const drawingDragStartRef = useRef<{ pointerId: number; startWorldPoint: Point } | null>(null);
   // handlePointerUp에서 최종 이동량을 읽어야 해서 state와 별도로 ref에도 최신값을 들고 있는다
   const drawingDragOffsetRef = useRef<Point | null>(null);
+  // 휴지통 호버 진입 순간에만 햅틱을 울리기 위해 직전 프레임의 호버 여부를 들고 있는다
+  const wasOverTrashRef = useRef(false);
   // 선택된 그림을 두 손가락으로 회전+확대하는 동안의 시작 상태(원본 점/굵기 + 시작 시점 손가락 샘플)
   const drawingPinchStartRef = useRef<{
     points: Point[];
@@ -375,6 +377,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   // 휴지통 위에서 놓으면 삭제된다
   const drawingLongPress = useLongPress({
     onLongPress: () => {
+      bridge.send('HAPTIC', { type: 'heavy' });
       setIsDrawingDeleteArmed(true);
     },
   });
@@ -852,6 +855,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             if (bounds && isPointInDrawingBounds(worldPoint, bounds)) {
               drawingDragStartRef.current = { pointerId: e.pointerId, startWorldPoint: worldPoint };
               setLiveDrawingDragOffset({ x: 0, y: 0 });
+              wasOverTrashRef.current = false;
               // 이미 선택된 그림을 다시 눌러도, 계속 누르고 있으면 삭제 가능 상태로 승격될 수 있다
               drawingLongPressRef.current.start(point, selectedDrawingIdRef.current);
             } else {
@@ -870,6 +874,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               selectDrawingRef.current(hitDrawingId);
               drawingDragStartRef.current = { pointerId: e.pointerId, startWorldPoint: worldPoint };
               setLiveDrawingDragOffset({ x: 0, y: 0 });
+              wasOverTrashRef.current = false;
               drawingLongPressRef.current.start(point, hitDrawingId);
               return;
             }
@@ -880,6 +885,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           drawingDragStartRef.current = null;
           setLiveDrawingDragOffset(null);
           setIsDrawingOverTrash(false);
+          wasOverTrashRef.current = false;
 
           const selected = drawingsRef.current.find(
             (drawing) => drawing.id === selectedDrawingIdRef.current,
@@ -989,6 +995,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             drawingDragStartRef.current = null;
             setLiveDrawingDragOffset(null);
             setIsDrawingOverTrash(false);
+            wasOverTrashRef.current = false;
           }
 
           if (drawingPinchStartRef.current) {
@@ -1025,7 +1032,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             x: worldPoint.x - dragStart.startWorldPoint.x,
             y: worldPoint.y - dragStart.startWorldPoint.y,
           });
-          setIsDrawingOverTrash(isOverTrash(e));
+          const overTrash = isOverTrash(e);
+          // 휴지통 위로 막 넘어온 순간(rising edge)에만 햅틱 — 계속 위에 머물러도 반복 발동하지 않는다
+          if (overTrash && !wasOverTrashRef.current) {
+            bridge.send('HAPTIC', { type: 'medium' });
+          }
+          wasOverTrashRef.current = overTrash;
+          setIsDrawingOverTrash(overTrash);
           return;
         } else {
           // 롱프레스로 그림을 고르는 중이면(아직 선택 확정 전), 너무 많이 움직이면 취소되게 계속 알려준다
@@ -1170,7 +1183,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           drawingDragStartRef.current = null;
           setLiveDrawingDragOffset(null);
           setIsDrawingOverTrash(false);
-          // 삭제 가능 상태는 제스처 하나에만 유효 — 놓으면(삭제되지 않는 한) 이동 가능 상태로 되돌아간다
+          wasOverTrashRef.current = false;
           setIsDrawingDeleteArmed(false);
           drawingPinchStartRef.current = null;
           setLiveDrawingPinchPreview(null);
