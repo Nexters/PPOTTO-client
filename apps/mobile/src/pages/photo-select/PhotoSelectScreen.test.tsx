@@ -239,6 +239,20 @@ it('iCloud에만 있는 사진은 그리드에서 제외한다', async () => {
   expect(mockFilterLocalAssetIds).toHaveBeenCalledWith(['local', 'cloud']);
 });
 
+it('사용할 수 있는 로컬 사진이 없으면 빈 상태를 안내한다', async () => {
+  setGallery([]);
+
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <PhotoSelectScreen />
+    </SafeAreaProvider>,
+  );
+
+  expect(await screen.findByText('사용할 수 있는 사진이 없어요')).toBeOnTheScreen();
+  expect(screen.getByText(/사진 앱에서 사진을 기기에 저장한 후/)).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: '자동 선택' })).not.toBeOnTheScreen();
+});
+
 it('24그룹 전에는 전체 스켈레톤을, 이후 로딩 중에는 하단 스켈레톤을 유지한다', async () => {
   let releaseFirstPage!: () => void;
   let releaseSecondPage!: () => void;

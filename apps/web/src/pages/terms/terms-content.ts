@@ -141,7 +141,7 @@ export const TERMS_CONTENT: Record<TermCode, { heading: string; sections: TermSe
           },
           {
             title: '6. 개인정보 처리업무의 위탁',
-            body: '운영자는 원활한 서비스 제공을 위해 다음 업무를 외부 서비스에 맡길 수 있습니다.\n• Google Cloud Platform: 서버 인프라 운영, 이용자가 선택한 사진과 서비스 데이터의 저장\n• Google Forms: 고객 문의 접수 및 제출 내용 보관\n운영자는 위탁계약과 서비스 설정을 통해 개인정보가 목적 외로 처리되지 않도록 관리합니다. 위탁업체나 업무 내용이 변경되면 이 처리방침을 통해 안내합니다.',
+            body: '운영자는 원활한 서비스 제공을 위해 다음 업무를 외부 서비스에 맡길 수 있습니다.\n• Google Cloud Platform(Google Cloud Storage, Vertex AI Gemini): 서버 인프라 운영, 이용자가 선택한 사진과 서비스 데이터의 저장, 사진 분석·분류 및 스티커·리캡 생성\n• Pixian.AI: 생성된 스티커 이미지의 배경 제거(이용자가 선택한 원본 사진 전체는 전송하지 않음)\n• Google Forms: 고객 문의 접수 및 제출 내용 보관\n운영자는 위탁계약과 서비스 설정을 통해 개인정보가 목적 외로 처리되지 않도록 관리합니다. 위탁업체나 업무 내용이 변경되면 이 처리방침을 통해 안내합니다.',
           },
         ],
       },

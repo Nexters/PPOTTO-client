@@ -1,3 +1,4 @@
+import { ImageMultiple } from '@ppotto/assets';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -74,6 +75,7 @@ export function PhotoSelectScreen() {
     mode,
   });
   const permissionRequired = permission !== null && !permission.granted;
+  const galleryEmpty = !loading && !permissionRequired && photoUnits.length === 0;
 
   useEffect(() => {
     if (loading) {
@@ -134,22 +136,24 @@ export function PhotoSelectScreen() {
       <SafeAreaView className="flex-1" edges={['top']}>
         <View className="gap-8 px-6 pt-4 pb-8">
           <Header />
-          <View className="gap-1">
-            <Text className="text-white text-body-01">
-              {permissionRequired
-                ? '사진 접근을 허용해 주세요'
-                : mode === 'additional'
-                  ? '추억할 사진을 최소 20장 선택해주세요'
-                  : `${me ? `${me.name}님의 ` : ''}최근 사진 100장을 골랐어요`}
-            </Text>
-            <Text className="text-gray-400 text-body-06 opacity-[0.85]">
-              {permissionRequired
-                ? '최근 사진으로 보드를 만들려면 권한이 필요해요'
-                : mode === 'additional'
-                  ? '비슷한 시간대의 사진은 한 묶음으로 인식돼요'
-                  : '전체 취소를 눌러 원하는 사진을 다시 선택할 수 있어요.'}
-            </Text>
-          </View>
+          {!galleryEmpty && (
+            <View className="gap-1">
+              <Text className="text-white text-body-01">
+                {permissionRequired
+                  ? '사진 접근을 허용해 주세요'
+                  : mode === 'additional'
+                    ? '추억할 사진을 최소 20장 선택해주세요'
+                    : `${me ? `${me.name}님의 ` : ''}최근 사진 100장을 골랐어요`}
+              </Text>
+              <Text className="text-gray-400 text-body-06 opacity-[0.85]">
+                {permissionRequired
+                  ? '최근 사진으로 보드를 만들려면 권한이 필요해요'
+                  : mode === 'additional'
+                    ? '비슷한 시간대의 사진은 한 묶음으로 인식돼요'
+                    : '전체 취소를 눌러 원하는 사진을 다시 선택할 수 있어요.'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {permissionRequired ? (
@@ -176,13 +180,15 @@ export function PhotoSelectScreen() {
         ) : (
           <>
             {/* 앨범 전환 기능 미구현으로 드롭다운 임시 숨김 — 기능 붙일 때 justify-between으로 복구 */}
-            <View className="flex-row items-start justify-end px-6 pb-4">
-              <Button onPress={toggleEverything} size="small">
-                <Text className="text-white text-caption-01">
-                  {everythingSelected ? '전체 취소' : '자동 선택'}
-                </Text>
-              </Button>
-            </View>
+            {!galleryEmpty && (
+              <View className="flex-row items-start justify-end px-6 pb-4">
+                <Button onPress={toggleEverything} size="small">
+                  <Text className="text-white text-caption-01">
+                    {everythingSelected ? '전체 취소' : '자동 선택'}
+                  </Text>
+                </Button>
+              </View>
+            )}
 
             {permission?.accessPrivileges === 'limited' ? (
               <View className="flex-row items-center gap-3 px-4 py-3 mx-6 mb-3 bg-gray-900 rounded-xl">
@@ -196,16 +202,30 @@ export function PhotoSelectScreen() {
             ) : null}
 
             <View className="flex-1">
-              <PhotoGrid
-                bottomPadding={insets.bottom + 76}
-                grouped
-                hasNextPage={hasNextPage}
-                loading={loading}
-                onEndReached={() => void loadMore()}
-                onDragChange={setGroupExcludedCounts}
-                onPress={toggleUnit}
-                units={photoUnits}
-              />
+              {galleryEmpty ? (
+                <View className="items-center justify-center flex-1 gap-4 px-8 pb-32">
+                  <ImageMultiple color="#737373" height={52} width={48} />
+                  <View className="items-center gap-1">
+                    <Text className="text-center text-white text-body-02">
+                      사용할 수 있는 사진이 없어요
+                    </Text>
+                    <Text className="text-center text-gray-400 text-body-06">
+                      사진 앱에서 사진을 기기에 저장한 후{`\n`}이 화면에 다시 들어와 주세요.
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <PhotoGrid
+                  bottomPadding={insets.bottom + 76}
+                  grouped
+                  hasNextPage={hasNextPage}
+                  loading={loading}
+                  onEndReached={() => void loadMore()}
+                  onDragChange={setGroupExcludedCounts}
+                  onPress={toggleUnit}
+                  units={photoUnits}
+                />
+              )}
 
               <LinearGradient
                 colors={['transparent', '#000000']}
