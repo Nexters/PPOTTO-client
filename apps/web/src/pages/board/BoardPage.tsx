@@ -18,6 +18,7 @@ import { DrawingHeader } from './ui/DrawingHeader';
 import { DRAW_STROKE_WIDTH_DEFAULT, DrawingSizeSlider } from './ui/DrawingSizeSlider';
 import { DrawingSizePreview } from './ui/DrawingSizePreview';
 import { EyedropperMarker } from './ui/EyedropperMarker';
+import { MoveHeader } from './ui/MoveHeader';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
@@ -178,6 +179,14 @@ export function BoardPage() {
               onUndo={() => canvasRef.current?.undoLastStroke()}
               canRedo={canRedo}
               onRedo={() => canvasRef.current?.redoLastStroke()}
+              onConfirm={() => setToolbarMode('default')}
+            />
+          ) : toolbarMode === 'move' ? (
+            <MoveHeader
+              onCancel={() => {
+                canvasRef.current?.cancelMoveSession();
+                setToolbarMode('default');
+              }}
               onConfirm={() => setToolbarMode('default')}
             />
           ) : (

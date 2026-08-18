@@ -70,6 +70,7 @@ import {
 } from '../model/board-transform';
 import { angleBetween, centroid, distance, type Point } from '../model/geometry';
 import { useDeleteSticker } from '../model/use-delete-sticker';
+import { useMoveSession } from '../model/use-move-session';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
@@ -121,6 +122,7 @@ type BoardCanvasProps = {
 export type BoardCanvasHandle = {
   undoLastStroke: () => void;
   redoLastStroke: () => void;
+  cancelMoveSession: () => void;
 };
 
 export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
@@ -254,16 +256,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     .filter((sticker) => !needsInitialLayout(sticker))
     .map((sticker) => ({ posX: sticker.posX!, posY: sticker.posY!, zIndex: sticker.zIndex! }));
 
-  const stickers: StickerData[] = useMemo(
+  const baseStickers: StickerData[] = useMemo(
     () =>
-      [...rawStickers]
-        .map((sticker) => ({
-          ...sticker,
-          posX: sticker.posX ?? 0,
-          posY: sticker.posY ?? 0,
-          zIndex: sticker.zIndex ?? 0,
-        }))
-        .sort((a, b) => a.zIndex - b.zIndex),
+      [...rawStickers].map((sticker) => ({
+        ...sticker,
+        posX: sticker.posX ?? 0,
+        posY: sticker.posY ?? 0,
+        zIndex: sticker.zIndex ?? 0,
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data?.stickers],
   );
@@ -286,7 +286,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     [emptyBoardStickerTitle, emptyBoardStickerTransform],
   );
 
-  const drawings = useMemo(
+  const baseDrawings: ParsedDrawing[] = useMemo(
     () =>
       (data?.drawings ?? []).map((drawing) => ({
         id: drawing.id,
@@ -296,6 +296,21 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         zIndex: parseStrokeZIndex(drawing.stroke),
       })),
     [data?.drawings],
+  );
+
+  const {
+    stickers: sessionStickers,
+    drawings,
+    applyStickerChange,
+    applyDrawingChange,
+    markDrawingDeleted,
+    confirm: confirmMoveSession,
+    discard: discardMoveSession,
+  } = useMoveSession(boardId, baseStickers, baseDrawings);
+  // 선택 시 zIndex가 올라간 스티커가 바로 맨 위로 그려지도록, 세션 반영분 기준으로 정렬한다
+  const stickers = useMemo(
+    () => [...sessionStickers].sort((a, b) => a.zIndex - b.zIndex),
+    [sessionStickers],
   );
 
   const cameraRef = useRef(camera);
@@ -394,46 +409,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     return () => bridge.send('SET_BOARD_ACTIVE', { active: false });
   }, []);
 
-  // 캐시에 변경분을 바로 반영하고 저장 요청을 보냄
-  const saveStickerLayout = (
-    sticker: StickerData,
-    overrides: Partial<
-      Pick<
-        StickerData,
-        'posX' | 'posY' | 'rotation' | 'scale' | 'badgeOffsetX' | 'badgeOffsetY' | 'zIndex'
-      >
-    >,
-  ) => {
-    const updated = { ...sticker, ...overrides };
-
-    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
-      current
-        ? {
-            ...current,
-            stickers: current.stickers.map((s) =>
-              s.id === sticker.id ? { ...s, ...overrides } : s,
-            ),
-          }
-        : current,
-    );
-
-    saveLayout({
-      boardId,
-      input: toLayoutInput([
-        {
-          id: updated.id,
-          posX: updated.posX ?? 0,
-          posY: updated.posY ?? 0,
-          rotation: updated.rotation,
-          scale: updated.scale,
-          zIndex: updated.zIndex ?? 0,
-          badgeOffsetX: updated.badgeOffsetX,
-          badgeOffsetY: updated.badgeOffsetY,
-        },
-      ]),
-    });
-  };
-
   // 스티커의 zIndex와 그림의 zIndex(stroke.zIndex)는 같은 숫자 공간을 공유한다 —
   // "맨 위로 올리기"는 항상 이 둘을 합친 풀 기준으로 계산해야 스티커·그림이 실제로 섞여 쌓인다
   const combinedZIndexPool = () => [
@@ -441,17 +416,18 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     ...drawingsRef.current.map((d) => ({ id: d.id, zIndex: d.zIndex })),
   ];
 
-  // 스티커를 선택하면 스티커+그림 통틀어 맨 위로 보이도록 zIndex를 올림
+  // 스티커를 선택하면 스티커+그림 통틀어 맨 위로 보이도록 zIndex를 올림(세션 로컬 변경분)
   const selectSticker = (sticker: StickerData): StickerData => {
     setSelectedStickerId(sticker.id);
     const newZIndex = computeBringToFrontZIndex(combinedZIndexPool(), sticker.id);
     if (newZIndex === null) return sticker;
-    saveStickerLayout(sticker, { zIndex: newZIndex });
+    applyStickerChangeRef.current(sticker.id, { zIndex: newZIndex });
     return { ...sticker, zIndex: newZIndex };
   };
 
   // 그림을 선택하면(탭 또는 롱프레스 시작) 스티커 선택은 해제하고, 스티커+그림 통틀어
-  // 맨 위로 보이도록 zIndex를 올린다. 삭제 가능 상태로의 승격은 별도(drawingLongPress)로 처리한다
+  // 맨 위로 보이도록 zIndex를 올린다. 삭제 가능 상태로의 승격은 별도(drawingLongPress)로 처리한다.
+  // 이동 모드는 세션 로컬 변경분에 반영하고, 기본 모드는(세션 개념이 없으므로) 바로 저장한다
   const selectDrawing = (drawingId: string) => {
     setSelectedStickerId(null);
     setSelectedDrawingId(drawingId);
@@ -465,13 +441,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     if (drawing) {
       const newZIndex = computeBringToFrontZIndex(combinedZIndexPool(), drawingId);
       if (newZIndex !== null) {
-        moveDrawingRef.current(
-          toDrawingMoveInput(drawing.id, drawing.points, {
-            color: drawing.color,
-            strokeWidth: drawing.strokeWidth,
-            zIndex: newZIndex,
-          }),
-        );
+        if (isEditModeRef.current) {
+          applyDrawingChangeRef.current(drawingId, { zIndex: newZIndex });
+        } else {
+          moveDrawingRef.current(
+            toDrawingMoveInput(drawing.id, drawing.points, {
+              color: drawing.color,
+              strokeWidth: drawing.strokeWidth,
+              zIndex: newZIndex,
+            }),
+          );
+        }
       }
     }
   };
@@ -513,7 +493,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     saveLayout({ boardId, input: { drawings: { created: inputs } } });
   };
 
-  const saveStickerLayoutRef = useRef(saveStickerLayout);
+  const applyStickerChangeRef = useRef(applyStickerChange);
+  const applyDrawingChangeRef = useRef(applyDrawingChange);
+  const markDrawingDeletedRef = useRef(markDrawingDeleted);
+  const confirmMoveSessionRef = useRef(confirmMoveSession);
+  const discardMoveSessionRef = useRef(discardMoveSession);
   const selectStickerRef = useRef(selectSticker);
   const selectDrawingRef = useRef(selectDrawing);
   const deleteDrawingRef = useRef(deleteDrawing);
@@ -541,7 +525,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     isPointerInputSuspendedRef.current = isPointerInputSuspended;
     drawColorRef.current = drawColor;
     drawStrokeWidthRef.current = drawStrokeWidth;
-    saveStickerLayoutRef.current = saveStickerLayout;
+    applyStickerChangeRef.current = applyStickerChange;
+    applyDrawingChangeRef.current = applyDrawingChange;
+    markDrawingDeletedRef.current = markDrawingDeleted;
+    confirmMoveSessionRef.current = confirmMoveSession;
+    discardMoveSessionRef.current = discardMoveSession;
     selectStickerRef.current = selectSticker;
     selectDrawingRef.current = selectDrawing;
     deleteDrawingRef.current = deleteDrawing;
@@ -599,6 +587,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawingBoxPinchPreviewRef.current = null;
   }, [isEditMode]);
 
+  // 이동 모드를 나가면 이번 세션의 변경분을 저장하고 비운다. 명시적으로 취소(X)한 경우가
+  // 아닌 모든 종료 경로(확정 버튼, 다른 툴바 모드로 전환 등)는 그리기 모드와 동일하게 자동 확정된다
+  useEffect(() => {
+    if (isEditMode) return;
+    confirmMoveSessionRef.current();
+  }, [isEditMode]);
+
   // draw 모드를 나가면(확정 버튼이든 다른 툴바 모드로 전환이든) 이번 세션에 그린 draft를 한 번에
   // 저장하고 비운다. 되돌리기/다시실행 이력도 이번 세션 것이니 같이 비운다
   useEffect(() => {
@@ -626,6 +621,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         const restored = current[current.length - 1]!;
         setRedoDrawings(current.slice(0, -1));
         setDraftDrawings((prev) => [...prev, restored]);
+      },
+      // 이동 모드 세션의 변경분을 버린다
+      cancelMoveSession: () => {
+        discardMoveSessionRef.current();
       },
     }),
     [],
@@ -1201,7 +1200,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           setLiveDrawingBoxPinchPreview(null);
 
           if (dragStart && dragStart.pointerId === e.pointerId && isOverTrash(e)) {
-            deleteDrawingRef.current(selectedDrawingIdRef.current);
+            if (isEditModeRef.current) {
+              markDrawingDeletedRef.current(selectedDrawingIdRef.current);
+            } else {
+              deleteDrawingRef.current(selectedDrawingIdRef.current);
+            }
             setSelectedDrawingId(null);
             setSelectedDrawingBaseSize(null);
             setSelectedDrawingBoxTransform(null);
@@ -1223,13 +1226,20 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               isMoved && offset
                 ? basePoints.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y }))
                 : basePoints;
-            moveDrawingRef.current(
-              toDrawingMoveInput(drawing.id, finalPoints, {
-                color: drawing.color,
+            if (isEditModeRef.current) {
+              applyDrawingChangeRef.current(drawing.id, {
+                points: finalPoints,
                 strokeWidth: baseStrokeWidth,
-                zIndex: drawing.zIndex,
-              }),
-            );
+              });
+            } else {
+              moveDrawingRef.current(
+                toDrawingMoveInput(drawing.id, finalPoints, {
+                  color: drawing.color,
+                  strokeWidth: baseStrokeWidth,
+                  zIndex: drawing.zIndex,
+                }),
+              );
+            }
           }
 
           // 선택 박스의 회전/배율/중심도 같이 확정해서, 다음 제스처가 이 값을 기준으로 이어지게 한다
@@ -1298,7 +1308,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               finalTransform.scale,
               gesture.sticker.scale,
             );
-            saveStickerLayoutRef.current(gesture.sticker, {
+            applyStickerChangeRef.current(gesture.sticker.id, {
               posX: finalTransform.x,
               posY: finalTransform.y,
               rotation: finalTransform.rotation,
@@ -1564,6 +1574,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             <StickerBadgeMark
               key={sticker.id}
               sticker={sticker}
+              isEditMode={isEditMode}
               onNameClick={quickMenu.startDirectEdit}
             />
           ))}
