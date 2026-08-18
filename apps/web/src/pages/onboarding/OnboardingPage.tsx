@@ -63,7 +63,6 @@ export function OnboardingPage() {
         <div className="relative z-10">
           <Logo width={105} height={32} />
         </div>
-        <span className="relative z-10 size-6" aria-hidden />
       </header>
 
       <div className="flex flex-col justify-center flex-1 min-h-0">

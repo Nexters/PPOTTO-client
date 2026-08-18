@@ -42,7 +42,7 @@ export function LoginPage() {
           onClick={() => login('KAKAO_LOGIN')}
           className={cn(
             'flex h-12 w-full items-center justify-center gap-2',
-            'rounded-full bg-[#FEE500] px-7 py-3 text-body-03 text-[#29303A]',
+            'rounded-full bg-[#FEE500] px-7 py-3 text-body-03 text-black',
           )}
         >
           <KakaoLogo />
