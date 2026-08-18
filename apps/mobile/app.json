@@ -16,7 +16,7 @@
     "android": {
       "icon": "./assets/ppotto-icon.png",
       "package": "com.ppotto.mobile",
-      "versionCode": 1,
+      "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/ppotto-adaptive-icon.png"
