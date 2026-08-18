@@ -24,6 +24,7 @@ import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
 
 import {
+  BOARD_ZOOM_MIN,
   type CameraState,
   computeBoardPinchZoom,
   computeFocusTarget,
@@ -90,6 +91,8 @@ import { Sticker, type StickerData } from './Sticker';
 import { StickerBadgeMark } from './StickerBadgeMark';
 import { StickerPreview } from './StickerPreview';
 import { StickerQuickMenu } from './StickerQuickMenu';
+
+const DOT_SPACING_AT_MIN_ZOOM = 18;
 
 type BoardCanvasProps = {
   boardId: string;
@@ -1367,7 +1370,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       style={{
         backgroundColor: '#000',
         backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
-        backgroundSize: `${18 * camera.scale}px ${18 * camera.scale}px`,
+        backgroundSize: `${(DOT_SPACING_AT_MIN_ZOOM * camera.scale) / BOARD_ZOOM_MIN}px ${(DOT_SPACING_AT_MIN_ZOOM * camera.scale) / BOARD_ZOOM_MIN}px`,
         backgroundPosition: `${camera.x}px ${camera.y}px`,
       }}
     >

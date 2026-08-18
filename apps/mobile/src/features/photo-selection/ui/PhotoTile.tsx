@@ -48,7 +48,7 @@ export function PhotoTile({ uri, selected, onPress, grouped, photoCount = 1 }: P
       )}
 
       {/* Figma는 16 박스 안에 14.67 글리프를 중앙 정렬한다. 16으로 늘리면 선이 굵어진다. */}
-      <View className="size-4 items-center justify-center">
+      <View className="size-4 items-center justify-center shadow-[0px_2px_8px_0px_rgba(0,0,0,0.5)]">
         {selected ? (
           <CheckCircle height={14.667} width={14.667} />
         ) : (
