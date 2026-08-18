@@ -19,7 +19,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#000000",
-        "foregroundImage": "./assets/ppotto-icon.png"
+        "foregroundImage": "./assets/ppotto-adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
