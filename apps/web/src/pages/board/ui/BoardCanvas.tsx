@@ -1523,7 +1523,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         <>
           <div
             aria-hidden
-            className="modal-overlay fixed inset-0 z-50 backdrop-blur-[30px]"
+            className="modal-overlay fixed inset-0 z-50 transform-gpu bg-black/[0.01] backdrop-blur-[30px]"
             onPointerDown={(event) => {
               event.preventDefault();
               quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
