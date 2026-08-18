@@ -11,11 +11,13 @@ import { badgeZIndex, getPhotoSize, stickerDisplayedEdge, type StickerData } fro
 
 type StickerBadgeMarkProps = {
   sticker: StickerData;
+  isEditMode: boolean;
   onNameClick: (stickerId: string) => void;
 };
 
 export const StickerBadgeMark = memo(function StickerBadgeMark({
   sticker,
+  isEditMode,
   onNameClick,
 }: StickerBadgeMarkProps) {
   const photoImage = useStickerImageWithFallback(
@@ -36,10 +38,10 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
         top: (sticker.posY ?? 0) + offset.y,
         zIndex: badgeZIndex(sticker),
         transform: 'translate(-50%, -50%) scale(var(--inv-camera-scale, 1))',
-        pointerEvents: 'auto',
+        pointerEvents: isEditMode ? 'none' : 'auto',
       }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onClick={() => onNameClick(sticker.id)}
+      onPointerDown={isEditMode ? undefined : (event) => event.stopPropagation()}
+      onClick={isEditMode ? undefined : () => onNameClick(sticker.id)}
     >
       <StickerBadge title={sticker.title} isNew={sticker.isNew} />
     </div>

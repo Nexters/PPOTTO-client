@@ -1574,6 +1574,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             <StickerBadgeMark
               key={sticker.id}
               sticker={sticker}
+              isEditMode={isEditMode}
               onNameClick={quickMenu.startDirectEdit}
             />
           ))}
