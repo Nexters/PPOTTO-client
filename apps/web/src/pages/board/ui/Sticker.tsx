@@ -6,7 +6,7 @@ import { memo, useLayoutEffect, useRef } from 'react';
 import {
   drawOutlinedSticker,
   STICKER_OUTLINE_WIDTH,
-  useStickerImageWithFallback,
+  useStickerImage,
 } from '@/shared/lib/sticker-raster';
 
 import type { StickerTransform } from '../model/board-transform';
@@ -47,10 +47,6 @@ export function getPhotoSize(
   };
 }
 
-export function stickerDisplayedEdge(scale: number): number {
-  return STICKER_MAX_EDGE * scale;
-}
-
 type StickerProps = {
   sticker: StickerData;
   selected?: boolean;
@@ -63,10 +59,7 @@ export const Sticker = memo(function Sticker({
   transformOverride,
 }: StickerProps) {
   const scale = transformOverride?.scale ?? sticker.scale;
-  const photoImage = useStickerImageWithFallback(
-    sticker.imageUrl ?? undefined,
-    stickerDisplayedEdge(scale),
-  );
+  const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { width, height } = getPhotoSize(photoImage, scale);
 

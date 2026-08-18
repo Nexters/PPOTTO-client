@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@ppotto/api', '@ppotto/assets', '@ppotto/bridge'],
   allowedDevOrigins: ['10.0.2.2', ...(allowedDevOrigin ? [allowedDevOrigin] : [])],
   images: {
+    unoptimized: true,
     remotePatterns: [
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-bucket-dev/stickers/**' },
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-bucket-dev/photos/**' },
