@@ -122,6 +122,7 @@ type BoardCanvasProps = {
 export type BoardCanvasHandle = {
   undoLastStroke: () => void;
   redoLastStroke: () => void;
+  cancelMoveSession: () => void;
 };
 
 export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
@@ -620,6 +621,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         const restored = current[current.length - 1]!;
         setRedoDrawings(current.slice(0, -1));
         setDraftDrawings((prev) => [...prev, restored]);
+      },
+      // 이동 모드 세션의 변경분을 버린다
+      cancelMoveSession: () => {
+        discardMoveSessionRef.current();
       },
     }),
     [],
