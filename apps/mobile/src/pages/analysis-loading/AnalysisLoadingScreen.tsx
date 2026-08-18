@@ -156,7 +156,7 @@ export function AnalysisLoadingScreen() {
       {!showingBoard && (
         <View
           className="absolute right-[18px] bottom-0 left-[18px]"
-          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+          style={{ paddingBottom: insets.bottom + 48 }}
         >
           <Button disabled={!sequence.revealFinished} onPress={showBoard} size="large">
             <Text

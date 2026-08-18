@@ -486,31 +486,33 @@ describe('추가 업로드', () => {
     setGallery(spacedAssets(30));
     const { user } = await renderLoadedScreen();
 
-    expect(counter('0 / 100')).toBeOnTheScreen();
+    expect(screen.getByText('추억할 사진을 최소 20장 선택해주세요')).toBeOnTheScreen();
+    expect(screen.getByText('비슷한 시간대의 사진은 한 묶음으로 인식돼요')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: '이 사진으로 보드 만들기 0/100' })).toBeOnTheScreen();
+    expect(counter('0/100')).toBeOnTheScreen();
     expect(cta()).toBeDisabled();
 
     await user.press(screen.getAllByRole('checkbox')[0]!);
 
-    expect(counter('1 / 100')).toBeOnTheScreen();
-    expect(screen.getByText(/최소 20장을 선택해 주세요/)).toBeOnTheScreen();
+    expect(counter('1/100')).toBeOnTheScreen();
     expect(cta()).toBeDisabled();
 
     for (let index = 1; index < 20; index += 1) {
       await user.press(screen.getAllByRole('checkbox')[index]!);
     }
 
-    expect(counter('20 / 100')).toBeOnTheScreen();
+    expect(counter('20/100')).toBeOnTheScreen();
     expect(cta()).toBeEnabled();
     // userEvent.press는 press당 ~130ms를 소모해 20번 누르면 기본 5초를 넘길 수 있다
   }, 15_000);
 
-  it('자동 선택은 최신 사진 100장을 선택한다', async () => {
+  it('자동 선택은 최신 사진 20장을 선택한다', async () => {
     setGallery(spacedAssets(150));
     const { user } = await renderLoadedScreen();
 
     await user.press(screen.getByRole('button', { name: '자동 선택' }));
 
-    expect(counter('100 / 100')).toBeOnTheScreen();
+    expect(counter('20/100')).toBeOnTheScreen();
     expect(cta()).toBeEnabled();
   });
 

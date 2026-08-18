@@ -63,7 +63,6 @@ export function OnboardingPage() {
         <div className="relative z-10">
           <Logo width={105} height={32} />
         </div>
-        <span className="relative z-10 size-6" aria-hidden />
       </header>
 
       <div className="flex flex-col justify-center flex-1 min-h-0">
@@ -87,7 +86,7 @@ export function OnboardingPage() {
         <OnboardingIndicator currentIndex={selectedIndex} className="pt-6 mx-auto shrink-0" />
       </div>
 
-      <footer className="px-6 pt-10 text-black shrink-0">
+      <footer className="shrink-0 px-6 pt-10 pb-12 text-black">
         <Button onClick={handlePrimaryAction}>
           {isLastSlide ? '사진 업로드 하러가기' : '다음'}
         </Button>

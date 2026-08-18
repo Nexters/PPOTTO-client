@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 import { useVisualViewportInset } from '@/shared/lib/use-visual-viewport-inset';
 
@@ -30,6 +31,10 @@ export function useStickerQuickMenu(boardId: string) {
 
   const openQuickMenu = (stickerId: string) => setQuickMenuStickerId(stickerId);
 
+  const focusDirectEditInput = () => {
+    directEditInputElementRef.current?.focus();
+  };
+
   const closeQuickMenu = () => {
     setQuickMenuStickerId(null);
     setQuickMenuOpenedFromEdit(false);
@@ -49,23 +54,29 @@ export function useStickerQuickMenu(boardId: string) {
   };
 
   const startDirectEdit = (stickerId: string) => {
-    setReturnToQuickMenu(false);
-    setQuickMenuOpenedFromEdit(false);
-    setIsQuickMenuKeyboardSettling(false);
-    setDirectEditTitle('');
-    setDirectEditStickerId(stickerId);
+    flushSync(() => {
+      setReturnToQuickMenu(false);
+      setQuickMenuOpenedFromEdit(false);
+      setIsQuickMenuKeyboardSettling(false);
+      setDirectEditTitle('');
+      setDirectEditStickerId(stickerId);
+    });
+    focusDirectEditInput();
   };
 
   const startRenameFromQuickMenu = () => {
     const stickerId = quickMenuStickerId;
     if (!stickerId) return;
 
-    setQuickMenuStickerId(null);
-    setReturnToQuickMenu(true);
-    setQuickMenuOpenedFromEdit(false);
-    setIsQuickMenuKeyboardSettling(false);
-    setDirectEditTitle('');
-    setDirectEditStickerId(stickerId);
+    flushSync(() => {
+      setQuickMenuStickerId(null);
+      setReturnToQuickMenu(true);
+      setQuickMenuOpenedFromEdit(false);
+      setIsQuickMenuKeyboardSettling(false);
+      setDirectEditTitle('');
+      setDirectEditStickerId(stickerId);
+    });
+    focusDirectEditInput();
   };
 
   const submitDirectEdit = (title: string) => {
