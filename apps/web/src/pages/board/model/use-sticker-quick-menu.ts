@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
-import { useVisualViewportInset } from '@/shared/lib/use-visual-viewport-inset';
-
 import { useRenameSticker } from './use-rename-sticker';
 
 export function useStickerQuickMenu(boardId: string) {
@@ -11,23 +9,13 @@ export function useStickerQuickMenu(boardId: string) {
   const [directEditTitle, setDirectEditTitle] = useState('');
   const [returnToQuickMenu, setReturnToQuickMenu] = useState(false);
   const [quickMenuOpenedFromEdit, setQuickMenuOpenedFromEdit] = useState(false);
-  const [isQuickMenuKeyboardSettling, setIsQuickMenuKeyboardSettling] = useState(false);
   const { rename } = useRenameSticker(boardId);
-  const keyboardInset = useVisualViewportInset();
   const directEditInputElementRef = useRef<HTMLInputElement | null>(null);
 
   const isEditingRef = useRef(false);
   useEffect(() => {
     isEditingRef.current = quickMenuStickerId !== null || directEditStickerId !== null;
   });
-
-  useEffect(() => {
-    if (!isQuickMenuKeyboardSettling || keyboardInset > 0) return;
-
-    const timeout = window.setTimeout(() => setIsQuickMenuKeyboardSettling(false), 350);
-
-    return () => window.clearTimeout(timeout);
-  }, [isQuickMenuKeyboardSettling, keyboardInset]);
 
   const openQuickMenu = (stickerId: string) => setQuickMenuStickerId(stickerId);
 
@@ -38,7 +26,6 @@ export function useStickerQuickMenu(boardId: string) {
   const closeQuickMenu = () => {
     setQuickMenuStickerId(null);
     setQuickMenuOpenedFromEdit(false);
-    setIsQuickMenuKeyboardSettling(false);
   };
 
   const resetDirectEdit = () => {
@@ -48,7 +35,6 @@ export function useStickerQuickMenu(boardId: string) {
     if (returnToQuickMenu && stickerId) {
       setQuickMenuStickerId(stickerId);
       setQuickMenuOpenedFromEdit(true);
-      setIsQuickMenuKeyboardSettling(true);
     }
     setReturnToQuickMenu(false);
   };
@@ -57,7 +43,6 @@ export function useStickerQuickMenu(boardId: string) {
     flushSync(() => {
       setReturnToQuickMenu(false);
       setQuickMenuOpenedFromEdit(false);
-      setIsQuickMenuKeyboardSettling(false);
       setDirectEditTitle('');
       setDirectEditStickerId(stickerId);
     });
@@ -72,7 +57,6 @@ export function useStickerQuickMenu(boardId: string) {
       setQuickMenuStickerId(null);
       setReturnToQuickMenu(true);
       setQuickMenuOpenedFromEdit(false);
-      setIsQuickMenuKeyboardSettling(false);
       setDirectEditTitle('');
       setDirectEditStickerId(stickerId);
     });
@@ -86,7 +70,6 @@ export function useStickerQuickMenu(boardId: string) {
         setDirectEditTitle('');
         setReturnToQuickMenu(false);
         setQuickMenuOpenedFromEdit(false);
-        setIsQuickMenuKeyboardSettling(false);
       });
     }
   };
@@ -118,7 +101,6 @@ export function useStickerQuickMenu(boardId: string) {
     finishDirectEditFromBackdrop,
     setDirectEditTitle,
     quickMenuOpenedFromEdit,
-    isQuickMenuKeyboardSettling,
     directEditInputRef,
     isEditingRef,
   };

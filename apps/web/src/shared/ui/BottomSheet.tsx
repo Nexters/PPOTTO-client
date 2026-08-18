@@ -10,6 +10,7 @@ type BottomSheetProps = {
   children: React.ReactNode;
   overlayClassName?: string;
   animateOverlay?: boolean;
+  animateContent?: boolean;
 };
 
 export function BottomSheet({
@@ -18,6 +19,7 @@ export function BottomSheet({
   children,
   overlayClassName = 'backdrop-blur-[30px]',
   animateOverlay = true,
+  animateContent = true,
 }: BottomSheetProps) {
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -28,7 +30,8 @@ export function BottomSheet({
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => e.preventDefault()}
         className={cn(
-          'sheet-content fixed inset-x-0 bottom-0 z-50',
+          animateContent && 'sheet-content',
+          'fixed inset-x-0 bottom-0 z-50',
           'flex flex-col gap-5 rounded-t-3xl bg-gray-900 pt-4',
           'pr-6 pb-10 pl-6',
         )}

@@ -1544,7 +1544,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         isOpen={quickMenu.quickMenuStickerId !== null}
         onClose={quickMenu.closeQuickMenu}
         openedFromEdit={quickMenu.quickMenuOpenedFromEdit}
-        isKeyboardSettling={quickMenu.isQuickMenuKeyboardSettling}
         onRename={quickMenu.startRenameFromQuickMenu}
         onRegenerate={() => {
           if (quickMenu.quickMenuStickerId) {
