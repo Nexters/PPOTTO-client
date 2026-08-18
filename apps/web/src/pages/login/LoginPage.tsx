@@ -8,6 +8,9 @@ import { cn } from '@/shared/lib/cn';
 
 export function LoginPage() {
   const { replace } = useFlow();
+  const isAndroid =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('nativePlatform') === 'android';
 
   const login = async (channel: 'APPLE_LOGIN' | 'KAKAO_LOGIN') => {
     try {
@@ -25,17 +28,19 @@ export function LoginPage() {
       <Logo width={261} height={80} />
 
       <div className="flex flex-col w-full gap-4 mt-auto">
-        <button
-          type="button"
-          onClick={() => login('APPLE_LOGIN')}
-          className={cn(
-            'flex h-12 w-full items-center justify-center gap-2',
-            'rounded-full bg-white px-7 py-3 text-body-03 text-black',
-          )}
-        >
-          <AppleLogo />
-          <span className="flex-1 text-center">Apple로 로그인</span>
-        </button>
+        {!isAndroid && (
+          <button
+            type="button"
+            onClick={() => login('APPLE_LOGIN')}
+            className={cn(
+              'flex h-12 w-full items-center justify-center gap-2',
+              'rounded-full bg-white px-7 py-3 text-body-03 text-black',
+            )}
+          >
+            <AppleLogo />
+            <span className="flex-1 text-center">Apple로 로그인</span>
+          </button>
+        )}
 
         <button
           type="button"

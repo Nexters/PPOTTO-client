@@ -81,6 +81,7 @@ function useStickerImageInternal(
   src: string | undefined,
   displayedEdge: number,
   withFallback: boolean,
+  loadExact: boolean,
 ) {
   // 캐시는 렌더에서 직접 읽는다 — 이미 받아둔 이미지를 한 프레임도 비우지 않고 그리려고.
   // 항목은 null → 이미지로만 바뀌므로 렌더 중 읽어도 값이 뒤집히지 않는다
@@ -90,14 +91,16 @@ function useStickerImageInternal(
   useEffect(() => {
     if (!src) return;
 
-    const img = loadStickerImage(src, width);
-    if (img.complete && img.naturalWidth > 0) return;
+    const img = loadExact
+      ? loadStickerImage(src, width)
+      : stickerImageCache.get(cacheKeyOf(src, width));
+    if (!img || (img.complete && img.naturalWidth > 0)) return;
 
     img.addEventListener('load', onSettled);
     return () => {
       img.removeEventListener('load', onSettled);
     };
-  }, [src, width]);
+  }, [loadExact, src, width]);
 
   const exact = readCached(src, width);
   if (exact || !withFallback || !src) return exact;
@@ -105,11 +108,15 @@ function useStickerImageInternal(
 }
 
 export function useStickerImage(src: string | undefined, displayedEdge: number) {
-  return useStickerImageInternal(src, displayedEdge, false);
+  return useStickerImageInternal(src, displayedEdge, false, true);
 }
 
 export function useStickerImageWithFallback(src: string | undefined, displayedEdge: number) {
-  return useStickerImageInternal(src, displayedEdge, true);
+  return useStickerImageInternal(src, displayedEdge, true, true);
+}
+
+export function useCachedStickerImage(src: string | undefined, displayedEdge: number) {
+  return useStickerImageInternal(src, displayedEdge, true, false);
 }
 
 export function drawOutlinedSticker(

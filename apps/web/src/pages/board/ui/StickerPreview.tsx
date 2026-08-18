@@ -4,7 +4,7 @@ import type { Ref } from 'react';
 import { useLayoutEffect, useRef } from 'react';
 
 import { cn } from '@/shared/lib/cn';
-import { drawOutlinedSticker, useStickerImage } from '@/shared/lib/sticker-raster';
+import { drawOutlinedSticker, useCachedStickerImage } from '@/shared/lib/sticker-raster';
 import { useVisualViewportInset } from '@/shared/lib/use-visual-viewport-inset';
 
 import type { StickerData } from './Sticker';
@@ -44,7 +44,7 @@ export function StickerPreview({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keyboardInset = useVisualViewportInset();
 
-  const photoImage = useStickerImage(sticker.imageUrl ?? undefined, PREVIEW_MAX_WIDTH);
+  const photoImage = useCachedStickerImage(sticker.imageUrl ?? undefined, PREVIEW_MAX_WIDTH);
 
   useLayoutEffect(() => {
     if (canvasRef.current && photoImage) {

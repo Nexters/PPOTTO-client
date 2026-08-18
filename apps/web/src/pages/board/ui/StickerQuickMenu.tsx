@@ -14,7 +14,6 @@ type StickerQuickMenuProps = {
   isOpen: boolean;
   onClose: () => void;
   openedFromEdit: boolean;
-  isKeyboardSettling: boolean;
   onRename: () => void;
   onRegenerate: () => void;
   isRegenerating: boolean;
@@ -50,7 +49,6 @@ export function StickerQuickMenu({
   isOpen,
   onClose,
   openedFromEdit,
-  isKeyboardSettling,
   onRename,
   onRegenerate,
   isRegenerating,
@@ -68,14 +66,14 @@ export function StickerQuickMenu({
   return (
     <>
       {isOpen && sticker && (
-        <StickerPreview
-          sticker={sticker}
-          imageRef={previewImageRef}
-          bottomReserveHeight={198}
-          followKeyboard={isKeyboardSettling}
-        />
+        <StickerPreview sticker={sticker} imageRef={previewImageRef} bottomReserveHeight={198} />
       )}
-      <BottomSheet isOpen={isOpen} onClose={onClose} animateOverlay={!openedFromEdit}>
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        animateOverlay={!openedFromEdit}
+        animateContent={!openedFromEdit}
+      >
         <span className="text-body-01 w-full text-white">스티커 메뉴</span>
         <div className="flex w-full items-start justify-between">
           <QuickMenuButton Icon={Edit} label="이름 변경하기" onClick={onRename} />

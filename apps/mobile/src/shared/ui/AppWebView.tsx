@@ -40,6 +40,11 @@ const INSTAGRAM_APP_ID = '1002723789453387';
 const INSTAGRAM_PACKAGE = 'com.instagram.android';
 const KAKAO_SHARE_TEMPLATE_ID = 136185;
 
+export function buildWebViewUri(uri: string, platform: string) {
+  const separator = uri.includes('?') ? '&' : '?';
+  return `${uri}${separator}nativePlatform=${encodeURIComponent(platform)}`;
+}
+
 async function openInstagramStore() {
   if (Platform.OS !== 'android') {
     await Linking.openURL('https://apps.apple.com/app/instagram/id389801252');
@@ -213,7 +218,7 @@ export function AppWebView({
       <WebView
         ref={ref}
         style={{ backgroundColor: '#000' }}
-        source={{ uri: `${WEB_URL}${path}` }}
+        source={{ uri: buildWebViewUri(`${WEB_URL}${path}`, Platform.OS) }}
         keyboardDisplayRequiresUserAction={false}
         injectedJavaScriptBeforeContentLoaded={injectedScript}
         onMessage={(e) => {
