@@ -15,7 +15,7 @@ import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { DrawingColorPalette } from './ui/DrawingColorPalette';
 import { DrawingDeleteBar } from './ui/DrawingDeleteBar';
 import { DrawingHeader } from './ui/DrawingHeader';
-import { DRAW_STROKE_WIDTH_MIN, DrawingSizeSlider } from './ui/DrawingSizeSlider';
+import { DRAW_STROKE_WIDTH_DEFAULT, DrawingSizeSlider } from './ui/DrawingSizeSlider';
 import { DrawingSizePreview } from './ui/DrawingSizePreview';
 import { EyedropperMarker } from './ui/EyedropperMarker';
 
@@ -31,7 +31,7 @@ export function BoardPage() {
   const { boardId, isBoardListLoading, openPhotoSelect } = useBoardPageState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
-  const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_MIN);
+  const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
   const [isDrawingActive, setIsDrawingActive] = useState(false);
   const [isAdjustingStrokeWidth, setIsAdjustingStrokeWidth] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
