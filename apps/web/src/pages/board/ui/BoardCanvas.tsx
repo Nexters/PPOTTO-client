@@ -25,6 +25,7 @@ import { useToast } from '@/shared/ui/common/Toast';
 
 import {
   BOARD_ZOOM_MIN,
+  DOT_FADE_START_ZOOM,
   type CameraState,
   computeBoardPinchZoom,
   computeFocusTarget,
@@ -1428,14 +1429,20 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     setIsEmptyBoardQuickMenuOpen(true);
   };
 
+  // DOT_FADE_START_ZOOM 밑으로는 간격 계산을 그 시점 값으로 고정해, 옅어지는 동안
+  // 간격이 계속 좁아져 보이지 않고 이미 맞춰둔 간격 그대로 서서히 사라지게 한다.
+  const dotSpacingScale = Math.max(camera.scale, DOT_FADE_START_ZOOM);
+  const dotFadeProgress = (camera.scale - BOARD_ZOOM_MIN) / (DOT_FADE_START_ZOOM - BOARD_ZOOM_MIN);
+  const dotOpacity = 0.16 * Math.min(1, Math.max(0, dotFadeProgress));
+
   return (
     <div
       ref={setContainer}
       className="relative w-full h-full overflow-hidden touch-none"
       style={{
         backgroundColor: '#000',
-        backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
-        backgroundSize: `${(DOT_SPACING_AT_MIN_ZOOM * camera.scale) / BOARD_ZOOM_MIN}px ${(DOT_SPACING_AT_MIN_ZOOM * camera.scale) / BOARD_ZOOM_MIN}px`,
+        backgroundImage: `radial-gradient(rgba(255,255,255,${dotOpacity}) 1px, transparent 1px)`,
+        backgroundSize: `${(DOT_SPACING_AT_MIN_ZOOM * dotSpacingScale) / DOT_FADE_START_ZOOM}px ${(DOT_SPACING_AT_MIN_ZOOM * dotSpacingScale) / DOT_FADE_START_ZOOM}px`,
         backgroundPosition: `${camera.x}px ${camera.y}px`,
       }}
     >
@@ -1589,7 +1596,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         <>
           <div
             aria-hidden
-            className="modal-overlay fixed inset-0 z-50 transform-gpu bg-black/[0.01] backdrop-blur-[30px]"
+            className="modal-overlay fixed inset-0 z-50 transform-gpu bg-black/1 backdrop-blur-[30px]"
             onPointerDown={(event) => {
               event.preventDefault();
               quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
