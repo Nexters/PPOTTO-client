@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 import { useRenameSticker } from './use-rename-sticker';
 
 export function useStickerQuickMenu(boardId: string) {
   const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
-  const [isRenamingTitle, setIsRenamingTitle] = useState(false);
   const [directEditStickerId, setDirectEditStickerId] = useState<string | null>(null);
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const [directEditTitle, setDirectEditTitle] = useState('');
+  const [returnToQuickMenu, setReturnToQuickMenu] = useState(false);
+  const [quickMenuOpenedFromEdit, setQuickMenuOpenedFromEdit] = useState(false);
   const { rename } = useRenameSticker(boardId);
+  const directEditInputElementRef = useRef<HTMLInputElement | null>(null);
 
   const isEditingRef = useRef(false);
   useEffect(() => {
@@ -17,52 +19,88 @@ export function useStickerQuickMenu(boardId: string) {
 
   const openQuickMenu = (stickerId: string) => setQuickMenuStickerId(stickerId);
 
+  const focusDirectEditInput = () => {
+    directEditInputElementRef.current?.focus();
+  };
+
   const closeQuickMenu = () => {
     setQuickMenuStickerId(null);
-    setIsRenamingTitle(false);
+    setQuickMenuOpenedFromEdit(false);
   };
 
-  const startRename = () => {
-    // iOS 웹뷰는 readOnly input에 focus한 뒤 속성만 바꿔서는 키보드를 열지 않는다.
-    flushSync(() => setIsRenamingTitle(true));
-    titleInputRef.current?.focus();
+  const resetDirectEdit = () => {
+    const stickerId = directEditStickerId;
+    setDirectEditStickerId(null);
+    setDirectEditTitle('');
+    if (returnToQuickMenu && stickerId) {
+      setQuickMenuStickerId(stickerId);
+      setQuickMenuOpenedFromEdit(true);
+    }
+    setReturnToQuickMenu(false);
   };
 
-  const submitRename = (title: string) => {
-    if (quickMenuStickerId) rename(quickMenuStickerId, title, closeQuickMenu);
+  const startDirectEdit = (stickerId: string) => {
+    flushSync(() => {
+      setReturnToQuickMenu(false);
+      setQuickMenuOpenedFromEdit(false);
+      setDirectEditTitle('');
+      setDirectEditStickerId(stickerId);
+    });
+    focusDirectEditInput();
   };
 
-  const cancelRename = () => setIsRenamingTitle(false);
+  const startRenameFromQuickMenu = () => {
+    const stickerId = quickMenuStickerId;
+    if (!stickerId) return;
 
-  const startDirectEdit = setDirectEditStickerId;
+    flushSync(() => {
+      setQuickMenuStickerId(null);
+      setReturnToQuickMenu(true);
+      setQuickMenuOpenedFromEdit(false);
+      setDirectEditTitle('');
+      setDirectEditStickerId(stickerId);
+    });
+    focusDirectEditInput();
+  };
 
   const submitDirectEdit = (title: string) => {
     if (directEditStickerId) {
-      rename(directEditStickerId, title, () => setDirectEditStickerId(null));
+      rename(directEditStickerId, title, () => {
+        setDirectEditStickerId(null);
+        setDirectEditTitle('');
+        setReturnToQuickMenu(false);
+        setQuickMenuOpenedFromEdit(false);
+      });
     }
   };
 
-  const cancelDirectEdit = () => setDirectEditStickerId(null);
-
-  const directEditInputRef = (node: HTMLInputElement | null) => {
-    titleInputRef.current = node;
-    // 클릭으로 새로 마운트되는 input이라 콜백 ref에서 마운트 즉시 focus
-    node?.focus();
+  const cancelDirectEdit = () => {
+    resetDirectEdit();
   };
+
+  const finishDirectEditFromBackdrop = (originalTitle: string) => {
+    const nextTitle = directEditTitle.trim();
+    if (nextTitle && nextTitle !== originalTitle) submitDirectEdit(nextTitle);
+    else cancelDirectEdit();
+  };
+
+  const directEditInputRef = useCallback((node: HTMLInputElement | null) => {
+    directEditInputElementRef.current = node;
+    node?.focus();
+  }, []);
 
   return {
     quickMenuStickerId,
     openQuickMenu,
     closeQuickMenu,
-    isRenamingTitle,
-    startRename,
-    submitRename,
-    cancelRename,
+    startRenameFromQuickMenu,
     directEditStickerId,
     startDirectEdit,
     submitDirectEdit,
     cancelDirectEdit,
-    titleInputRef,
+    finishDirectEditFromBackdrop,
+    setDirectEditTitle,
+    quickMenuOpenedFromEdit,
     directEditInputRef,
     isEditingRef,
   };

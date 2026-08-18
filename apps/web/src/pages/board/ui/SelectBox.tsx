@@ -1,6 +1,6 @@
 'use client';
 
-import { useStickerImage } from '@/shared/lib/sticker-raster';
+import { STICKER_OUTLINE_WIDTH, useStickerImage } from '@/shared/lib/sticker-raster';
 
 import type { StickerTransform } from '../model/board-transform';
 
@@ -22,13 +22,14 @@ export function SelectBox({ sticker, transformOverride }: SelectBoxProps) {
   const x = transformOverride?.x ?? sticker.posX ?? 0;
   const y = transformOverride?.y ?? sticker.posY ?? 0;
   const rotation = transformOverride?.rotation ?? sticker.rotation;
+  const outline = STICKER_OUTLINE_WIDTH * scale;
 
   return (
     <SelectionBoxFrame
       x={x}
       y={y}
-      width={width}
-      height={height}
+      width={width + outline * 2}
+      height={height + outline * 2}
       rotation={rotation}
       zIndex={stickerZIndex(sticker) + 2}
     />

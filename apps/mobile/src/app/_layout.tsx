@@ -13,9 +13,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QaRecorderProbe } from '@/features/qa-report';
 import { isQaToolEnabled } from '@/shared/lib/qa-tool';
 import {
+  SENTRY_DIST,
   SENTRY_DSN,
   SENTRY_ENABLED,
   SENTRY_ENVIRONMENT,
+  SENTRY_PROFILES_SAMPLE_RATE,
+  SENTRY_RELEASE,
+  SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE,
+  SENTRY_REPLAYS_SESSION_SAMPLE_RATE,
   SENTRY_TRACES_SAMPLE_RATE,
   SENTRY_TRACE_PROPAGATION_TARGETS,
 } from '@/shared/lib/sentry';
@@ -29,11 +34,29 @@ if (SENTRY_ENABLED) {
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: SENTRY_ENVIRONMENT,
+    release: SENTRY_RELEASE,
+    dist: SENTRY_DIST,
+    sendDefaultPii: true,
+    attachStacktrace: true,
+    enableLogs: true,
     tracesSampleRate: SENTRY_TRACES_SAMPLE_RATE,
     tracePropagationTargets: SENTRY_TRACE_PROPAGATION_TARGETS,
+    profilesSampleRate: SENTRY_PROFILES_SAMPLE_RATE,
+    replaysSessionSampleRate: SENTRY_REPLAYS_SESSION_SAMPLE_RATE,
+    replaysOnErrorSampleRate: SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE,
     enableNativeFramesTracking: !isRunningInExpoGo(),
+    enableUserInteractionTracing: true,
+    enableCaptureFailedRequests: true,
+    attachScreenshot: true,
+    attachViewHierarchy: true,
+    screenshot: { maskAllText: false, maskAllImages: true },
     integrations: [
       Sentry.expoRouterIntegration({ enableTimeToInitialDisplay: !isRunningInExpoGo() }),
+      Sentry.mobileReplayIntegration({
+        maskAllText: false,
+        maskAllImages: true,
+        maskAllVectors: false,
+      }),
     ],
   });
 }

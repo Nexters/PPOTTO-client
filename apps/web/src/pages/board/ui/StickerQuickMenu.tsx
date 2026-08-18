@@ -1,5 +1,5 @@
 import { Download, Edit, Reload, Trash } from '@ppotto/assets';
-import { useRef, useState, type ComponentType, type Ref } from 'react';
+import { useRef, useState, type ComponentType } from 'react';
 
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 import { Modal } from '@/shared/ui/common/Modal';
@@ -13,11 +13,8 @@ type StickerQuickMenuProps = {
   sticker: StickerData | undefined;
   isOpen: boolean;
   onClose: () => void;
+  openedFromEdit: boolean;
   onRename: () => void;
-  isEditingTitle: boolean;
-  onSubmitTitle: (title: string) => void;
-  onCancelEditTitle: () => void;
-  titleInputRef: Ref<HTMLInputElement>;
   onRegenerate: () => void;
   isRegenerating: boolean;
   onDelete: () => void;
@@ -25,7 +22,7 @@ type StickerQuickMenuProps = {
 };
 
 type QuickMenuButtonProps = {
-  Icon: ComponentType<{ color?: string }>;
+  Icon: ComponentType<{ color?: string; width?: number; height?: number }>;
   label: string;
   onClick: () => void;
   disabled?: boolean;
@@ -36,11 +33,13 @@ function QuickMenuButton({ Icon, label, onClick, disabled }: QuickMenuButtonProp
     <button
       type="button"
       disabled={disabled}
-      className="flex items-center gap-2 text-white disabled:opacity-50"
+      className="flex w-18 flex-col items-center gap-2 disabled:opacity-50"
       onClick={onClick}
     >
-      <Icon color="white" />
-      <span className="text-body-04 font-medium">{label}</span>
+      <span className="flex size-12 items-center justify-center rounded-full bg-gray-800">
+        <Icon color="white" width={28} height={28} />
+      </span>
+      <span className="text-caption-01 w-full text-center font-medium text-white">{label}</span>
     </button>
   );
 }
@@ -49,11 +48,8 @@ export function StickerQuickMenu({
   sticker,
   isOpen,
   onClose,
+  openedFromEdit,
   onRename,
-  isEditingTitle,
-  onSubmitTitle,
-  onCancelEditTitle,
-  titleInputRef,
   onRegenerate,
   isRegenerating,
   onDelete,
@@ -69,37 +65,37 @@ export function StickerQuickMenu({
 
   return (
     <>
-      <BottomSheet isOpen={isOpen} onClose={onClose}>
-        {/* BottomSheet 안에 렌더링해야 편집 중 클릭해도 시트가 안 닫힘 */}
-        {sticker && (
-          <StickerPreview
-            sticker={sticker}
-            titleInputRef={titleInputRef}
-            imageRef={previewImageRef}
-            isEditingTitle={isEditingTitle}
-            onSubmitTitle={onSubmitTitle}
-            onCancelEditTitle={onCancelEditTitle}
+      {isOpen && sticker && (
+        <StickerPreview sticker={sticker} imageRef={previewImageRef} bottomReserveHeight={198} />
+      )}
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        animateOverlay={!openedFromEdit}
+        animateContent={!openedFromEdit}
+      >
+        <span className="text-body-01 w-full text-white">스티커 메뉴</span>
+        <div className="flex w-full items-start justify-between">
+          <QuickMenuButton Icon={Edit} label="이름 변경하기" onClick={onRename} />
+          <QuickMenuButton
+            Icon={Download}
+            label={isSaving ? '저장하는 중...' : '스티커 저장'}
+            onClick={handleSave}
+            disabled={isSaving}
           />
-        )}
-        <QuickMenuButton Icon={Edit} label="이름 변경하기" onClick={onRename} />
-        <QuickMenuButton
-          Icon={Download}
-          label={isSaving ? '스티커 저장하는 중...' : '스티커 저장하기'}
-          onClick={handleSave}
-          disabled={isSaving}
-        />
-        <QuickMenuButton
-          Icon={Reload}
-          label={isRegenerating ? '스티커 다시 만드는 중...' : '스티커 다시 만들기'}
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        />
-        <QuickMenuButton
-          Icon={Trash}
-          label="삭제하기"
-          onClick={() => setIsDeleteConfirmOpen(true)}
-          disabled={isDeleting}
-        />
+          <QuickMenuButton
+            Icon={Reload}
+            label={isRegenerating ? '재생성 중...' : '스티커 재생성'}
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          />
+          <QuickMenuButton
+            Icon={Trash}
+            label="삭제하기"
+            onClick={() => setIsDeleteConfirmOpen(true)}
+            disabled={isDeleting}
+          />
+        </div>
       </BottomSheet>
       <Modal
         open={isDeleteConfirmOpen}

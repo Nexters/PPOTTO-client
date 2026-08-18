@@ -43,7 +43,7 @@ function loadStickerImage(src: string): HTMLImageElement {
   return img;
 }
 
-function useStickerImageInternal(src: string | undefined) {
+function useStickerImageInternal(src: string | undefined, load: boolean) {
   // 캐시는 렌더에서 직접 읽는다 — 이미 받아둔 이미지를 한 프레임도 비우지 않고 그리려고.
   // 항목은 null → 이미지로만 바뀌므로 렌더 중 읽어도 값이 뒤집히지 않는다
   const [, onSettled] = useReducer((count: number) => count + 1, 0);
@@ -51,20 +51,24 @@ function useStickerImageInternal(src: string | undefined) {
   useEffect(() => {
     if (!src) return;
 
-    const img = loadStickerImage(src);
-    if (img.complete && img.naturalWidth > 0) return;
+    const img = load ? loadStickerImage(src) : stickerImageCache.get(cacheKeyOf(src));
+    if (!img || (img.complete && img.naturalWidth > 0)) return;
 
     img.addEventListener('load', onSettled);
     return () => {
       img.removeEventListener('load', onSettled);
     };
-  }, [src]);
+  }, [load, src]);
 
   return readCached(src);
 }
 
 export function useStickerImage(src: string | undefined) {
-  return useStickerImageInternal(src);
+  return useStickerImageInternal(src, true);
+}
+
+export function useCachedStickerImage(src: string | undefined) {
+  return useStickerImageInternal(src, false);
 }
 
 export function drawOutlinedSticker(

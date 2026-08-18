@@ -12,6 +12,7 @@ type StickerBadgeProps = {
   isEditing?: boolean;
   onSubmit?: (title: string) => void;
   onCancel?: () => void;
+  onValueChange?: (title: string) => void;
   ref?: Ref<HTMLInputElement>;
 };
 
@@ -21,6 +22,7 @@ export function StickerBadge({
   isEditing,
   onSubmit,
   onCancel,
+  onValueChange,
   ref,
 }: StickerBadgeProps) {
   const [value, setValue] = useState(title);
@@ -57,8 +59,11 @@ export function StickerBadge({
           !isEditing && 'pointer-events-none',
         )}
         // IME 조합 중엔 브라우저가 maxLength를 강제하지 않아 직접 자름
-        onChange={(event) => setValue(event.target.value.slice(0, TITLE_MAX_LENGTH))}
-        onBlur={submit}
+        onChange={(event) => {
+          const nextValue = event.target.value.slice(0, TITLE_MAX_LENGTH);
+          setValue(nextValue);
+          onValueChange?.(nextValue);
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') submit();
           if (event.key === 'Escape') onCancel?.();

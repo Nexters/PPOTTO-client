@@ -51,6 +51,7 @@ function RecapPhotoTile({ stickerId, photo, eager, onClick }: RecapPhotoTileProp
           width={20}
           height={20}
           viewBox="9 7 20 20"
+          color="#fff"
           style={{
             position: 'absolute',
             top: 7,

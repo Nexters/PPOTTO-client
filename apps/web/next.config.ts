@@ -3,10 +3,24 @@ import type { NextConfig } from 'next';
 
 const allowedDevOrigin = process.env.NEXT_ALLOWED_DEV_ORIGIN;
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
+const sentryRelease = process.env.SENTRY_RELEASE ?? process.env.VERCEL_GIT_COMMIT_SHA;
+const sentryDist = process.env.SENTRY_DIST ?? process.env.VERCEL_DEPLOYMENT_ID;
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@ppotto/api', '@ppotto/assets', '@ppotto/bridge'],
   allowedDevOrigins: ['10.0.2.2', ...(allowedDevOrigin ? [allowedDevOrigin] : [])],
+  env: {
+    ...(sentryRelease ? { NEXT_PUBLIC_SENTRY_RELEASE: sentryRelease } : {}),
+    ...(sentryDist ? { NEXT_PUBLIC_SENTRY_DIST: sentryDist } : {}),
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [{ key: 'Document-Policy', value: 'js-profiling' }],
+      },
+    ];
+  },
   images: {
     unoptimized: true,
     remotePatterns: [
@@ -32,6 +46,12 @@ export default withSentryConfig(nextConfig, {
   telemetry: false,
   silent: !process.env.CI,
   widenClientFileUpload: true,
+  release: {
+    name: sentryRelease,
+    dist: sentryDist,
+    create: Boolean(sentryAuthToken),
+    finalize: Boolean(sentryAuthToken),
+  },
   sourcemaps: {
     disable: !sentryAuthToken,
     deleteSourcemapsAfterUpload: true,

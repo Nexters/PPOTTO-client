@@ -68,6 +68,7 @@ export function PhotoSelectScreen() {
     toggleUnit,
   } = usePhotoSelection({
     album: 'RECENT',
+    autoSelectUnits: mode === 'additional' ? minSubmitUnits : TARGET_UNITS,
     targetUnits: TARGET_UNITS,
     minSubmitUnits,
     mode,
@@ -137,12 +138,16 @@ export function PhotoSelectScreen() {
             <Text className="text-white text-body-01">
               {permissionRequired
                 ? '사진 접근을 허용해 주세요'
-                : `${me ? `${me.name}님의 ` : ''}최근 사진 100장을 골랐어요`}
+                : mode === 'additional'
+                  ? '추억할 사진을 최소 20장 선택해주세요'
+                  : `${me ? `${me.name}님의 ` : ''}최근 사진 100장을 골랐어요`}
             </Text>
             <Text className="text-gray-400 text-body-06 opacity-[0.85]">
               {permissionRequired
                 ? '최근 사진으로 보드를 만들려면 권한이 필요해요'
-                : '전체 취소를 눌러 원하는 사진을 다시 선택할 수 있어요.'}
+                : mode === 'additional'
+                  ? '비슷한 시간대의 사진은 한 묶음으로 인식돼요'
+                  : '전체 취소를 눌러 원하는 사진을 다시 선택할 수 있어요.'}
             </Text>
           </View>
         </View>
@@ -215,17 +220,19 @@ export function PhotoSelectScreen() {
               />
               <View
                 className="absolute left-[18px] right-[18px]"
-                style={{ bottom: insets.bottom + 12 }}
+                style={{ bottom: insets.bottom + 48 }}
               >
                 <Button disabled={!canSubmit || !boardId} onPress={handleSubmit} size="large">
                   <Text
                     className={canSubmit ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'}
                   >
-                    {canSubmit
+                    {canSubmit || mode === 'additional'
                       ? '이 사진으로 보드 만들기'
                       : `최소 ${minSubmitUnits}장을 선택해 주세요 `}{' '}
                     <Text className={canSubmit ? 'text-blue-500' : 'text-red-300'}>
-                      {selectedCount} / {TARGET_UNITS}
+                      {mode === 'additional'
+                        ? `${selectedCount}/${TARGET_UNITS}`
+                        : `${selectedCount} / ${TARGET_UNITS}`}
                     </Text>
                   </Text>
                 </Button>

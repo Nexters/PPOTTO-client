@@ -4,6 +4,7 @@ import { useRef } from 'react';
 
 export const DRAW_STROKE_WIDTH_MIN = 2;
 export const DRAW_STROKE_WIDTH_MAX = 16;
+export const DRAW_STROKE_WIDTH_DEFAULT = (DRAW_STROKE_WIDTH_MIN + DRAW_STROKE_WIDTH_MAX) / 2;
 
 const TRACK_HEIGHT = 240;
 const HANDLE_SIZE = 24;

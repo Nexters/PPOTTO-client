@@ -24,6 +24,7 @@ import { INITIAL_GROUP_PAGE_SIZE, PHOTO_GROUP_PAGE_SIZE } from './photo-page';
 
 interface UsePhotoSelectionOptions {
   album: string;
+  autoSelectUnits?: number;
   targetUnits: number;
   minSubmitUnits: number;
   mode: PhotoSelectionMode;
@@ -70,6 +71,7 @@ async function fetchGroupBatch({
 export function usePhotoSelection({
   album,
   targetUnits,
+  autoSelectUnits = targetUnits,
   minSubmitUnits,
   mode,
 }: UsePhotoSelectionOptions) {
@@ -217,7 +219,8 @@ export function usePhotoSelection({
   const everythingSelected =
     selection !== null &&
     selectedCount > 0 &&
-    (selectedCount === targetUnits || (!hasNextPage && selectedCount === selection.groups.length));
+    (selectedCount === autoSelectUnits ||
+      (!hasNextPage && selectedCount === selection.groups.length));
 
   const toggleUnit = useCallback(
     (unit: PhotoUnit) => {
@@ -237,12 +240,12 @@ export function usePhotoSelection({
       if (!previous) return previous;
       if (everythingSelected) return excludeAllGroups(previous);
 
-      // 최신 그룹부터 targetUnits개까지 선택한다
+      // 최신 그룹부터 autoSelectUnits개까지 선택한다
       return {
         groups: previous.groups,
         excludedCounts: Object.fromEntries(
           previous.groups.flatMap((group, index) =>
-            index < targetUnits ? [] : [[group.id, group.photos.length] as const],
+            index < autoSelectUnits ? [] : [[group.id, group.photos.length] as const],
           ),
         ),
       };

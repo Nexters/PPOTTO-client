@@ -138,7 +138,7 @@ const PhotoGridItem = memo(
         <PhotoTile
           grouped={grouped}
           onPress={() => onPress(item)}
-          photoCount={item.photoCount}
+          photoCount={item.excluded ? item.excludedCount : item.photoCount}
           selected={!item.excluded}
           uri={item.photo.uri}
         />
@@ -148,6 +148,7 @@ const PhotoGridItem = memo(
   (previous, next) =>
     previous.grouped === next.grouped &&
     previous.item.excluded === next.item.excluded &&
+    previous.item.excludedCount === next.item.excludedCount &&
     previous.item.groupId === next.item.groupId &&
     previous.item.photo.uri === next.item.photo.uri &&
     previous.item.photoCount === next.item.photoCount &&
