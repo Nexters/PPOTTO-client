@@ -226,7 +226,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const isEditMode = mode === 'move';
   const isDrawMode = mode === 'draw';
   const selectedId = isEditMode ? selectedStickerId : null;
-  const activeSelectedDrawingId = isEditMode ? selectedDrawingId : null;
+  // 그림 선택은 이동 모드(이동 가능 상태)뿐 아니라 기본 모드(삭제 가능 상태)에서도 일어난다
+  const activeSelectedDrawingId = selectedDrawingId;
 
   // 편집 모드를 벗어났다가 다시 들어와도 이전 선택이 되살아나지 않도록 상태 자체를 지움.
   // useEffect 대신 렌더 중 비교 후 setState하는 방식(React 공식 권장 패턴)으로 처리해 커밋 사이클을 하나 아낀다
@@ -376,8 +377,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   // 발동해 삭제 가능 상태로 승격한다(휴지통 바 노출) — 손을 떼지 않고 그대로 끌면 드래그가 이어져
   // 휴지통 위에서 놓으면 삭제된다
   const drawingLongPress = useLongPress({
-    onLongPress: () => {
+    onLongPress: (drawingId) => {
       bridge.send('HAPTIC', { type: 'heavy' });
+      if (!isEditModeRef.current) {
+        selectDrawingRef.current(drawingId);
+      }
       setIsDrawingDeleteArmed(true);
     },
   });
@@ -842,11 +846,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         return;
       }
 
-      if (isEditModeRef.current) {
+      // 이동 모드: 그림 탭=이동 가능 상태, 롱프레스=삭제 가능 상태로 승격.
+      // 기본 모드: 이동 없이 롱프레스로 삭제 가능 상태 진입만 지원(스티커가 기본 모드에서 못 옮기는 것과 동일)
+      if (isEditModeRef.current || !isDrawModeRef.current) {
         if (pointersRef.current.size === 1) {
           const worldPoint = toWorldPoint(cameraRef.current, point);
 
-          if (selectedDrawingIdRef.current) {
+          if (isEditModeRef.current && selectedDrawingIdRef.current) {
             const selected = drawingsRef.current.find(
               (drawing) => drawing.id === selectedDrawingIdRef.current,
             );
@@ -869,9 +875,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           if (!hitTestSticker(e.target)) {
             const hitDrawingId = hitTestDrawingId(worldPoint, drawingsRef.current);
             if (hitDrawingId) {
-              // 탭하면 선택(이동 가능 상태)되고, 손을 떼지 않고 유지하면 삭제 가능 상태로 승격된다.
-              // 기존 그림을 선택하는 중엔 스티커 팬/선택을 시작하지 않는다
-              selectDrawingRef.current(hitDrawingId);
+              // 이동 모드는 탭하면 바로 선택(이동 가능 상태)되고, 기본 모드는 롱프레스가
+              // 발동하는 순간에만 선택된다(delete-armed와 동시에) — 기존 그림을 선택하는
+              // 중엔 스티커 팬/선택을 시작하지 않는다
+              if (isEditModeRef.current) {
+                selectDrawingRef.current(hitDrawingId);
+              }
               drawingDragStartRef.current = { pointerId: e.pointerId, startWorldPoint: worldPoint };
               setLiveDrawingDragOffset({ x: 0, y: 0 });
               wasOverTrashRef.current = false;
@@ -909,6 +918,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       if (pointersRef.current.size !== 1) {
         tapCandidateRef.current = null;
         longPressRef.current.cancel();
+        drawingLongPressRef.current.cancel();
         return;
       }
 
@@ -987,7 +997,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         return;
       }
 
-      if (isEditModeRef.current) {
+      if (isEditModeRef.current || !isDrawModeRef.current) {
         if (pointersRef.current.size >= 2) {
           drawingLongPressRef.current.cancel();
           if (drawingDragStartRef.current) {
@@ -1155,7 +1165,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         return;
       }
 
-      if (isEditModeRef.current) {
+      if (isEditModeRef.current || !isDrawModeRef.current) {
         // 손을 뗐는데 롱프레스 타이머가 아직 안 끝났으면(=탭이었으면) 취소 —
         // 안 그러면 손을 뗀 뒤에도 타이머가 계속 돌다가 뒤늦게 선택돼버린다
         drawingLongPressRef.current.cancel();
@@ -1235,6 +1245,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 : baseBoxTransform;
             selectedDrawingBoxTransformRef.current = finalBoxTransform;
             setSelectedDrawingBoxTransform(finalBoxTransform);
+          }
+
+          // 기본 모드는 이동 가능 상태 없이 롱프레스로만 들어오므로, 제스처가 끝나면
+          // (휴지통에 놓지 않았어도) 선택을 유지하지 않고 매번 새로 롱프레스해야 한다
+          if (!isEditModeRef.current) {
+            setSelectedDrawingId(null);
+            setSelectedDrawingBaseSize(null);
+            setSelectedDrawingBoxTransform(null);
           }
           return;
         }

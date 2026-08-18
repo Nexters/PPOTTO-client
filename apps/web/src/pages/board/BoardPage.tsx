@@ -40,7 +40,8 @@ export function BoardPage() {
   const [isDrawingDeleteArmed, setIsDrawingDeleteArmed] = useState(false);
   const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
   const isDrawingUiHidden =
-    (toolbarMode === 'draw' && isDrawingActive) || (toolbarMode === 'move' && isDrawingDeleteArmed);
+    (toolbarMode === 'draw' && isDrawingActive) ||
+    ((toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed);
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLCanvasElement | null>(null);
@@ -233,7 +234,7 @@ export function BoardPage() {
             }
           />
         )}
-        {toolbarMode === 'move' && isDrawingDeleteArmed && (
+        {(toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed && (
           <DrawingDeleteBar trashButtonRef={trashButtonRef} isDragOver={isDrawingOverTrash} />
         )}
         {pickerPosition && (
