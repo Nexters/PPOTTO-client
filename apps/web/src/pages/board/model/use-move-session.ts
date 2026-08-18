@@ -1,7 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
+import type { BoardDetail, UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
+import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 
 import type { StickerData } from '../ui/Sticker';
 
@@ -24,6 +26,7 @@ export function useMoveSession(
   rawDrawings: ParsedDrawing[],
 ) {
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
+  const queryClient = useQueryClient();
 
   const [stickerOverrides, setStickerOverrides] = useState<Record<string, StickerOverride>>({});
   const [drawingOverrides, setDrawingOverrides] = useState<Record<string, DrawingOverride>>({});
@@ -120,6 +123,23 @@ export function useMoveSession(
         ...(deletedIds.size > 0 && { deletedIds: [...deletedIds] }),
       };
     }
+
+    // 캐시(서버 데이터)에 확정된 값을 먼저 반영한다 — 이 mutation엔 onSuccess가 없어서,
+    // 로컬 변경분을 지우기 전에 직접 반영해두지 않으면 확정 순간 화면이 저장 전으로 돌아가 보인다
+    const changedDrawingsById = new Map(changedDrawings.map((drawing) => [drawing.id, drawing]));
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current
+        ? {
+            ...current,
+            stickers: current.stickers.map((sticker) =>
+              overrides[sticker.id] ? { ...sticker, ...overrides[sticker.id] } : sticker,
+            ),
+            drawings: current.drawings
+              .filter((drawing) => !deletedIds.has(drawing.id))
+              .map((drawing) => changedDrawingsById.get(drawing.id) ?? drawing),
+          }
+        : current,
+    );
 
     saveLayout({ boardId, input });
     discard();
