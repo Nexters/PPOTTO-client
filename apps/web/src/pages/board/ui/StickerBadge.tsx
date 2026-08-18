@@ -56,7 +56,7 @@ export function StickerBadge({
           'absolute inset-y-1.5 right-3 left-3 min-w-0',
           'bg-transparent text-caption-01 text-nowrap',
           'text-gray-900 outline-none',
-          !isEditing && 'pointer-events-none',
+          isEditing ? 'pointer-events-auto' : 'pointer-events-none',
         )}
         // IME 조합 중엔 브라우저가 maxLength를 강제하지 않아 직접 자름
         onChange={(event) => {
@@ -68,6 +68,7 @@ export function StickerBadge({
           if (event.key === 'Enter') submit();
           if (event.key === 'Escape') onCancel?.();
         }}
+        onBlur={isEditing ? submit : undefined}
       />
       {isNew && (
         <div
