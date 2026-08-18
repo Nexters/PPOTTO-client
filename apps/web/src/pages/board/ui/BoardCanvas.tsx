@@ -110,8 +110,8 @@ type BoardCanvasProps = {
   onCanRedoChange?: (canRedo: boolean) => void;
   // 카메라 줌 배율이 바뀔 때마다 호출
   onCameraScaleChange?: (scale: number) => void;
-  // move 모드에서 그림이 선택됐는지 여부가 바뀔 때마다 호출
-  onDrawingSelectionChange?: (selected: boolean) => void;
+  // 그림이 삭제 가능 상태(꾹 눌러 승격됨)인지 여부가 바뀔 때마다 호출
+  onDrawingDeleteArmedChange?: (isArmed: boolean) => void;
   // 그림을 드래그하는 동안 휴지통 버튼 위에 있는지 여부가 바뀔 때마다 호출 — 놓기 전 확대 피드백에 사용
   onDrawingDragOverTrashChange?: (isOver: boolean) => void;
   // 그림 드래그-삭제 드롭 판정에 쓰는 휴지통 버튼의 DOM ref
@@ -168,7 +168,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onCanUndoChange,
     onCanRedoChange,
     onCameraScaleChange,
-    onDrawingSelectionChange,
+    onDrawingDeleteArmedChange,
     onDrawingDragOverTrashChange,
     trashButtonRef,
   },
@@ -185,6 +185,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [redoDrawings, setRedoDrawings] = useState<ParsedDrawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [drawingDragOffset, setDrawingDragOffset] = useState<Point | null>(null);
+  // 선택된 그림을 꾹 눌러 삭제 가능 상태로 승격했는지
+  const [isDrawingDeleteArmed, setIsDrawingDeleteArmed] = useState(false);
   // 선택된 그림을 드래그하는 동안, 현재 휴지통 버튼 위에 있는지 — 놓기 전 시각 피드백(확대)에 사용
   const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
   // 선택된 그림을 두 손가락으로 회전+확대하는 동안의 실시간 미리보기(점/굵기). 아니면 null
@@ -236,6 +238,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       setSelectedDrawingId(null);
       setDrawingDragOffset(null);
       setIsDrawingOverTrash(false);
+      setIsDrawingDeleteArmed(false);
       setDrawingPinchPreview(null);
       setSelectedDrawingBaseSize(null);
       setSelectedDrawingBoxTransform(null);
@@ -367,30 +370,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onPressEnd: clearPressedSticker,
   });
 
+  // 그림은 pointerdown 즉시 선택(selectDrawing)되고, 계속 누른 채 유지하면 이 롱프레스가
+  // 발동해 삭제 가능 상태로 승격한다(휴지통 바 노출) — 손을 떼지 않고 그대로 끌면 드래그가 이어져
+  // 휴지통 위에서 놓으면 삭제된다
   const drawingLongPress = useLongPress({
-    onLongPress: (drawingId) => {
-      setSelectedStickerId(null);
-      setSelectedDrawingId(drawingId);
-      const drawing = drawingsRef.current.find((d) => d.id === drawingId);
-      const bounds = drawing && getDrawingBounds(drawing.points, drawing.strokeWidth);
-      if (bounds) {
-        setSelectedDrawingBaseSize({ width: bounds.width, height: bounds.height });
-        setSelectedDrawingBoxTransform({ x: bounds.x, y: bounds.y, rotation: 0, scale: 1 });
-      }
-
-      // 스티커를 선택할 때와 마찬가지로, 스티커+그림 통틀어 맨 위로 보이도록 zIndex를 올림
-      if (drawing) {
-        const newZIndex = computeBringToFrontZIndex(combinedZIndexPool(), drawingId);
-        if (newZIndex !== null) {
-          moveDrawingRef.current(
-            toDrawingMoveInput(drawing.id, drawing.points, {
-              color: drawing.color,
-              strokeWidth: drawing.strokeWidth,
-              zIndex: newZIndex,
-            }),
-          );
-        }
-      }
+    onLongPress: () => {
+      setIsDrawingDeleteArmed(true);
     },
   });
 
@@ -458,6 +443,32 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     return { ...sticker, zIndex: newZIndex };
   };
 
+  // 그림을 선택하면(탭 또는 롱프레스 시작) 스티커 선택은 해제하고, 스티커+그림 통틀어
+  // 맨 위로 보이도록 zIndex를 올린다. 삭제 가능 상태로의 승격은 별도(drawingLongPress)로 처리한다
+  const selectDrawing = (drawingId: string) => {
+    setSelectedStickerId(null);
+    setSelectedDrawingId(drawingId);
+    const drawing = drawingsRef.current.find((d) => d.id === drawingId);
+    const bounds = drawing && getDrawingBounds(drawing.points, drawing.strokeWidth);
+    if (bounds) {
+      setSelectedDrawingBaseSize({ width: bounds.width, height: bounds.height });
+      setSelectedDrawingBoxTransform({ x: bounds.x, y: bounds.y, rotation: 0, scale: 1 });
+    }
+
+    if (drawing) {
+      const newZIndex = computeBringToFrontZIndex(combinedZIndexPool(), drawingId);
+      if (newZIndex !== null) {
+        moveDrawingRef.current(
+          toDrawingMoveInput(drawing.id, drawing.points, {
+            color: drawing.color,
+            strokeWidth: drawing.strokeWidth,
+            zIndex: newZIndex,
+          }),
+        );
+      }
+    }
+  };
+
   // 그림을 캐시에서 낙관적으로 제거하고 삭제 요청을 보냄
   const deleteDrawing = (id: string) => {
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
@@ -497,6 +508,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
   const saveStickerLayoutRef = useRef(saveStickerLayout);
   const selectStickerRef = useRef(selectSticker);
+  const selectDrawingRef = useRef(selectDrawing);
   const deleteDrawingRef = useRef(deleteDrawing);
   const moveDrawingRef = useRef(moveDrawing);
   const confirmDraftDrawingsRef = useRef(confirmDraftDrawings);
@@ -524,6 +536,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawStrokeWidthRef.current = drawStrokeWidth;
     saveStickerLayoutRef.current = saveStickerLayout;
     selectStickerRef.current = selectSticker;
+    selectDrawingRef.current = selectDrawing;
     deleteDrawingRef.current = deleteDrawing;
     moveDrawingRef.current = moveDrawing;
     confirmDraftDrawingsRef.current = confirmDraftDrawings;
@@ -558,10 +571,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     return () => saveCamera(boardId, cameraRef.current);
   }, [boardId]);
 
-  // 그림 선택(삭제 대상) 여부를 부모에 알림 — 상단 UI 숨김/하단 삭제 바 전환에 사용
+  // 그림이 삭제 가능 상태인지를 부모에 알림 — 상단 UI 숨김/하단 삭제 바 전환에 사용
   useEffect(() => {
-    onDrawingSelectionChange?.(activeSelectedDrawingId !== null);
-  }, [activeSelectedDrawingId, onDrawingSelectionChange]);
+    onDrawingDeleteArmedChange?.(isDrawingDeleteArmed);
+  }, [isDrawingDeleteArmed, onDrawingDeleteArmedChange]);
 
   useEffect(() => {
     onDrawingDragOverTrashChange?.(isDrawingOverTrash);
@@ -839,6 +852,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             if (bounds && isPointInDrawingBounds(worldPoint, bounds)) {
               drawingDragStartRef.current = { pointerId: e.pointerId, startWorldPoint: worldPoint };
               setLiveDrawingDragOffset({ x: 0, y: 0 });
+              // 이미 선택된 그림을 다시 눌러도, 계속 누르고 있으면 삭제 가능 상태로 승격될 수 있다
+              drawingLongPressRef.current.start(point, selectedDrawingIdRef.current);
             } else {
               setSelectedDrawingId(null);
               setSelectedDrawingBaseSize(null);
@@ -850,7 +865,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           if (!hitTestSticker(e.target)) {
             const hitDrawingId = hitTestDrawingId(worldPoint, drawingsRef.current);
             if (hitDrawingId) {
-              // 기존 그림을 롱프레스로 선택하는 중엔 스티커 팬/선택을 시작하지 않는다
+              // 탭하면 선택(이동 가능 상태)되고, 손을 떼지 않고 유지하면 삭제 가능 상태로 승격된다.
+              // 기존 그림을 선택하는 중엔 스티커 팬/선택을 시작하지 않는다
+              selectDrawingRef.current(hitDrawingId);
+              drawingDragStartRef.current = { pointerId: e.pointerId, startWorldPoint: worldPoint };
+              setLiveDrawingDragOffset({ x: 0, y: 0 });
               drawingLongPressRef.current.start(point, hitDrawingId);
               return;
             }
@@ -998,6 +1017,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         } else if (selectedDrawingIdRef.current) {
           const dragStart = drawingDragStartRef.current;
           if (!dragStart || dragStart.pointerId !== e.pointerId) return;
+          // 너무 많이 움직이면 삭제 가능 상태로의 승격이 취소되고(제자리에서 계속 누르고 있어야
+          // 승격됨), 이미 승격된 뒤라면 이 호출은 아무 효과가 없다
+          drawingLongPressRef.current.move(point);
           const worldPoint = toWorldPoint(cameraRef.current, point);
           setLiveDrawingDragOffset({
             x: worldPoint.x - dragStart.startWorldPoint.x,
@@ -1148,6 +1170,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           drawingDragStartRef.current = null;
           setLiveDrawingDragOffset(null);
           setIsDrawingOverTrash(false);
+          // 삭제 가능 상태는 제스처 하나에만 유효 — 놓으면(삭제되지 않는 한) 이동 가능 상태로 되돌아간다
+          setIsDrawingDeleteArmed(false);
           drawingPinchStartRef.current = null;
           setLiveDrawingPinchPreview(null);
           drawingBoxPinchStartRef.current = null;

@@ -37,10 +37,10 @@ export function BoardPage() {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [cameraScale, setCameraScale] = useState(1);
-  const [isDrawingSelected, setIsDrawingSelected] = useState(false);
+  const [isDrawingDeleteArmed, setIsDrawingDeleteArmed] = useState(false);
   const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
   const isDrawingUiHidden =
-    (toolbarMode === 'draw' && isDrawingActive) || (toolbarMode === 'move' && isDrawingSelected);
+    (toolbarMode === 'draw' && isDrawingActive) || (toolbarMode === 'move' && isDrawingDeleteArmed);
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLCanvasElement | null>(null);
@@ -193,7 +193,7 @@ export function BoardPage() {
           onCanUndoChange={setCanUndo}
           onCanRedoChange={setCanRedo}
           onCameraScaleChange={setCameraScale}
-          onDrawingSelectionChange={setIsDrawingSelected}
+          onDrawingDeleteArmedChange={setIsDrawingDeleteArmed}
           onDrawingDragOverTrashChange={setIsDrawingOverTrash}
           canvasRef={canvasRef}
           trashButtonRef={trashButtonRef}
@@ -233,7 +233,7 @@ export function BoardPage() {
             }
           />
         )}
-        {toolbarMode === 'move' && isDrawingSelected && (
+        {toolbarMode === 'move' && isDrawingDeleteArmed && (
           <DrawingDeleteBar trashButtonRef={trashButtonRef} isDragOver={isDrawingOverTrash} />
         )}
         {pickerPosition && (
@@ -260,7 +260,7 @@ function BoardContent({
   onCanUndoChange,
   onCanRedoChange,
   onCameraScaleChange,
-  onDrawingSelectionChange,
+  onDrawingDeleteArmedChange,
   onDrawingDragOverTrashChange,
   canvasRef,
   trashButtonRef,
@@ -275,7 +275,7 @@ function BoardContent({
   onCanUndoChange: (canUndo: boolean) => void;
   onCanRedoChange: (canRedo: boolean) => void;
   onCameraScaleChange: (scale: number) => void;
-  onDrawingSelectionChange: (selected: boolean) => void;
+  onDrawingDeleteArmedChange: (isArmed: boolean) => void;
   onDrawingDragOverTrashChange: (isOver: boolean) => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
   trashButtonRef: RefObject<HTMLButtonElement | null>;
@@ -293,7 +293,7 @@ function BoardContent({
         onCanUndoChange={onCanUndoChange}
         onCanRedoChange={onCanRedoChange}
         onCameraScaleChange={onCameraScaleChange}
-        onDrawingSelectionChange={onDrawingSelectionChange}
+        onDrawingDeleteArmedChange={onDrawingDeleteArmedChange}
         onDrawingDragOverTrashChange={onDrawingDragOverTrashChange}
         trashButtonRef={trashButtonRef}
       />
