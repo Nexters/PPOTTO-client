@@ -71,6 +71,7 @@ export function StickerQuickMenu({
       <BottomSheet
         isOpen={isOpen}
         onClose={onClose}
+        overlayClassName="bg-transparent"
         animateOverlay={!openedFromEdit}
         animateContent={!openedFromEdit}
       >
