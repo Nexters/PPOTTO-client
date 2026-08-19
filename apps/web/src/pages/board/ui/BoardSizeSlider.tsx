@@ -49,7 +49,7 @@ export function BoardSizeSlider({
 
   return (
     <div
-      className="absolute top-1/2 left-6 -translate-y-1/2 touch-none"
+      className="pointer-events-auto absolute top-1/2 left-6 -translate-y-1/2 touch-none"
       style={{ height: TRACK_HEIGHT, width: HANDLE_SIZE }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}

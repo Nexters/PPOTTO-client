@@ -179,6 +179,13 @@ export function BoardPage() {
     return bridge.on('KEYBOARD_HEIGHT_CHANGED', (payload) => setKeyboardHeight(payload.height));
   }, [toolbarMode]);
 
+  const finishTextMode = () => {
+    const trimmed = textDraft.trim();
+    if (trimmed) canvasRef.current?.createText(trimmed, textFontSize);
+    setTextDraft('');
+    setToolbarMode('default');
+  };
+
   // 헤더·툴바·배경은 보드 데이터와 무관하게 이미 그려져 있다. 스티커를 기다리지 않고
   // 셸이 페인트되는 즉시 커버를 걷는다 — 스티커는 그 뒤에 채워진다
   useEffect(() => {
@@ -226,12 +233,7 @@ export function BoardPage() {
                 setTextDraft('');
                 setToolbarMode('default');
               }}
-              onConfirm={() => {
-                const trimmed = textDraft.trim();
-                if (trimmed) canvasRef.current?.createText(trimmed, textFontSize);
-                setTextDraft('');
-                setToolbarMode('default');
-              }}
+              onConfirm={finishTextMode}
             />
           ) : (
             <BoardHeader />
@@ -268,7 +270,16 @@ export function BoardPage() {
         )}
         {toolbarMode === 'text' && (
           <div
-            className="fixed inset-x-0 z-55 transition-[bottom] duration-300 ease-out"
+            className="fixed inset-0 z-50"
+            onPointerDown={(event) => {
+              if (event.target !== event.currentTarget) return;
+              finishTextMode();
+            }}
+          />
+        )}
+        {toolbarMode === 'text' && (
+          <div
+            className="pointer-events-none fixed inset-x-0 z-55 transition-[bottom] duration-300 ease-out"
             style={{ top: TEXT_MODE_HEADER_HEIGHT, bottom: keyboardHeight ?? 0 }}
           >
             <TextInputOverlay value={textDraft} onChange={setTextDraft} fontSize={textFontSize} />
