@@ -300,7 +300,7 @@ export function createLoadingMotion(opts) {
     progressDuration = Math.max(duration, 1);
   }
 
-  function paintProgress(dt) {
+  function paintProgress(dt, render = true) {
     progressElapsed += dt;
     if (tl.actIndex === LAST_ACT) {
       progressShown = Math.max(
@@ -313,8 +313,10 @@ export function createLoadingMotion(opts) {
         lerp(progressFrom, progressTarget, clamp(progressElapsed / progressDuration, 0, 1)),
       );
     }
-    elProgress.style.opacity = progressFading ? '0' : '1';
-    elProgressFill.style.transform = `scaleX(${progressShown.toFixed(4)})`;
+    if (render) {
+      elProgress.style.opacity = progressFading ? '0' : '1';
+      elProgressFill.style.transform = `scaleX(${progressShown.toFixed(4)})`;
+    }
   }
 
   /* 막 사이에 넘겨주는 타일 위치 — 컷이 튀지 않도록 다음 막이 이 자리에서 이어받는다 */
@@ -351,8 +353,14 @@ export function createLoadingMotion(opts) {
   const scan = (() => {
     let cols = []; // { el, tiles:[{el,p,h,y}], speed, dir, totalH, offset }
     let bandY = 0,
-      swapTimer = 0;
+      swapTimer = 0,
+      tintTimer = 0,
+      frameReal = 0,
+      frameMotion = 0,
+      elBand = null;
     const tintCur = { r: 0, g: 0, b: 0 };
+    const FRAME_MS = 1000 / 60;
+    const BAND_RADIUS = 145;
 
     // 1열은 쓰지 않는다 — 사진이 화면 폭을 다 먹어 콜라주 리듬이 사라진다
     function columnsForCount(n) {
@@ -376,7 +384,8 @@ export function createLoadingMotion(opts) {
       cols = [];
       for (let c = 0; c < nCols; c++) {
         const wrap = document.createElement('div');
-        wrap.style.cssText = `position:absolute;left:${originX + c * (colW + gap)}px;top:0;width:${colW}px;height:${H}px;`;
+        wrap.className = 'pm-scan-col';
+        wrap.style.cssText = `left:${originX + c * (colW + gap)}px;width:${colW}px;`;
         elScan.appendChild(wrap);
 
         const tiles = [];
@@ -389,23 +398,38 @@ export function createLoadingMotion(opts) {
           const el = makeTile();
           wrap.appendChild(el);
           setTile(el, p, colW, th, 0, y);
-          tiles.push({ el, p, h: th, y });
+          tiles.push({ els: [el], p, h: th, y });
           y += th + 6;
           guard++;
         }
+        // 스트립을 한 벌 더 이어 붙여 열 하나의 transform만으로 무한 스크롤한다.
+        for (const tile of tiles) {
+          const duplicate = makeTile();
+          wrap.appendChild(duplicate);
+          setTile(duplicate, tile.p, colW, tile.h, 0, tile.y + y);
+          tile.els.push(duplicate);
+        }
+        const offset = -rand(0, y);
+        wrap.style.transform = `translate3d(0,${offset.toFixed(1)}px,0)`;
         cols.push({
           el: wrap,
           tiles,
           totalH: y,
-          offset: -rand(0, y),
+          offset,
           left: originX + c * (colW + gap), // handoff 좌표가 여기서 나온다 — wrap의 left와 반드시 같아야 한다
           speed: [230, 185, 265][c % 3] * rand(0.9, 1.12),
           dir: c % 2 === 0 ? -1 : 1,
           colW,
         });
       }
-      bandY = -80;
+      elBand = mk('pm-scan-band', elScan);
+      bandY = H * 0.14;
+      elBand.style.transform = `translate3d(0,${(bandY - BAND_RADIUS).toFixed(1)}px,0)`;
+      elBand.style.opacity = '0';
       swapTimer = 0;
+      tintTimer = 0;
+      frameReal = 0;
+      frameMotion = 0;
       tintCur.r = tintCur.g = tintCur.b = 0;
     }
 
@@ -413,7 +437,14 @@ export function createLoadingMotion(opts) {
       return TIMING.scan.min;
     }
 
-    function update(t, dt) {
+    function update(t, dt, dtReal) {
+      frameReal += dtReal;
+      frameMotion += dt;
+      if (frameReal + 0.1 < FRAME_MS) return false;
+      frameReal %= FRAME_MS;
+      dt = frameMotion;
+      frameMotion = 0;
+
       const p = clamp(t / dur(), 0, 1);
 
       // 포커스 밴드: 위쪽에서 시작해 아래로 훑고 중앙(45%)에 안착.
@@ -429,40 +460,17 @@ export function createLoadingMotion(opts) {
       const decel = p > 0.86 ? 1 - easeOutCubic((p - 0.86) / 0.14) : 1;
       const speedMul = state.reduced ? 0 : decel;
 
-      const bandH = 145;
-      let nearest = null,
-        nearestD = Infinity;
       for (const col of cols) {
         col.offset += col.dir * col.speed * speedMul * (dt / 1000);
         // wrap
         if (col.offset < -col.totalH) col.offset += col.totalH;
         if (col.offset > 0) col.offset -= col.totalH;
+        if (!state.reduced) col.el.style.transform = `translate3d(0,${col.offset.toFixed(1)}px,0)`;
+      }
 
-        for (const tile of col.tiles) {
-          let y = tile.y + col.offset;
-          if (y < -tile.h) y += col.totalH;
-          if (y > H) y -= col.totalH;
-          const center = y + tile.h / 2;
-          const d = Math.abs(center - bandY);
-          if (d < nearestD) {
-            nearestD = d;
-            nearest = tile.p;
-          }
-          const inBand = clamp(1 - d / bandH, 0, 1);
-          const e = easeOutCubic(inBand);
-          // contrast=0이면 전부 평평하게 보이고, 1이면 밴드 안만 살아난다
-          const bright = lerp(1, lerp(0.3, 1.1, e), contrast);
-          const op = lerp(1, lerp(0.4, 1, e), contrast);
-          const sc = lerp(1, lerp(0.94, 1.02, e), contrast);
-          tile.lastY = y; // 다음 막에 넘겨줄 실제 위치
-          tile.el.style.transform =
-            `translate3d(0,${y.toFixed(1)}px,0)` +
-            (state.reduced ? '' : ` scale(${sc.toFixed(3)})`);
-          if (!state.reduced) {
-            tile.el.style.opacity = op.toFixed(3);
-            setTileBrightness(tile.el, bright);
-          }
-        }
+      if (!state.reduced && elBand) {
+        elBand.style.transform = `translate3d(0,${(bandY - BAND_RADIUS).toFixed(1)}px,0)`;
+        elBand.style.opacity = contrast.toFixed(3);
       }
 
       // reduced motion: 스크롤 대신 몇 장씩 크로스페이드로 교체한다.
@@ -474,29 +482,51 @@ export function createLoadingMotion(opts) {
           const pool = state.photos;
           for (const col of cols) {
             const tile = pick(col.tiles);
-            tile.el.style.transition = 'opacity .45s ease';
-            tile.el.style.opacity = '0';
+            for (const el of tile.els) {
+              el.style.transition = 'opacity .45s ease';
+              el.style.opacity = '0';
+            }
             const next = pool[(Math.random() * pool.length) | 0];
             setTimeout(() => {
               tile.p = next;
-              setTilePhoto(tile.el, next.src);
-              tile.el.style.opacity = '1';
+              for (const el of tile.els) {
+                setTilePhoto(el, next.src);
+                el.style.opacity = '1';
+              }
             }, 450);
           }
         }
       }
 
       // 밴드 한가운데 사진의 색이 배경에 옅게 번진다 — 막 2의 예고.
-      // 사진이 빠르게 지나가므로 색은 곧장 갈아타지 않고 부드럽게 따라간다.
-      if (nearest) {
-        const k = clamp((dt / 1000) * 3.2, 0, 1);
+      // 색 탐색과 배경 paint는 100ms마다만 하고 CSS transition으로 이어 붙인다.
+      tintTimer += dt;
+      if (tintTimer >= 100) {
+        let nearest = null,
+          nearestD = Infinity;
+        for (const col of cols) {
+          for (const tile of col.tiles) {
+            let y = tile.y + col.offset;
+            if (y < -tile.h) y += col.totalH;
+            if (y > H) y -= col.totalH;
+            const d = Math.abs(y + tile.h / 2 - bandY);
+            if (d < nearestD) {
+              nearestD = d;
+              nearest = tile.p;
+            }
+          }
+        }
+        const elapsed = tintTimer;
+        tintTimer = 0;
+        const k = clamp((elapsed / 1000) * 3.2, 0, 1);
         tintCur.r = lerp(tintCur.r, nearest.color.r, k);
         tintCur.g = lerp(tintCur.g, nearest.color.g, k);
         tintCur.b = lerp(tintCur.b, nearest.color.b, k);
         const amt = clamp((p - 0.3) / 0.7, 0, 1) * 0.3; // 최대 30%까지만 — 아직 주인공은 사진
-        elTint.style.transition = 'none';
+        elTint.style.transition = state.reduced ? 'none' : 'background 120ms linear';
         elTint.style.background = `rgb(${(tintCur.r * amt) | 0},${(tintCur.g * amt) | 0},${(tintCur.b * amt) | 0})`;
       }
+      return true;
     }
 
     // 막 1이 끝날 때 화면에 남아 있던 타일의 위치를 넘겨준다.
@@ -505,8 +535,10 @@ export function createLoadingMotion(opts) {
       handoff.length = 0;
       for (const col of cols) {
         for (const tile of col.tiles) {
-          const y = tile.lastY;
-          if (y === undefined || y <= -tile.h || y >= H) continue;
+          let y = tile.y + col.offset;
+          if (y < -tile.h) y += col.totalH;
+          if (y > H) y -= col.totalH;
+          if (y <= -tile.h || y >= H) continue;
           handoff.push({ p: tile.p, x: col.left, y, w: col.colW, h: tile.h });
         }
       }
@@ -515,6 +547,7 @@ export function createLoadingMotion(opts) {
       elScan.classList.add('hidden');
       elScan.innerHTML = '';
       cols = [];
+      elBand = null;
     }
     return { id: 'scan', enter, update, exit, dur };
   })();
@@ -1473,15 +1506,16 @@ export function createLoadingMotion(opts) {
     }
 
     const act = acts[tl.actIndex];
+    let rendered = true;
 
     if (tl.actIndex === ACT.SCAN) {
       tl.actT += dt;
       if (tl.exiting) {
         tl.exitT += dt;
-        act.update(SCAN_MAIN_END + tl.exitT, dt);
+        rendered = act.update(SCAN_MAIN_END + tl.exitT, dt, dtReal) !== false;
         if (tl.exitT >= SCAN_EXIT_DURATION) advanceTo(tl.nextState);
       } else {
-        act.update(Math.min(tl.actT, SCAN_MAIN_END), dt);
+        rendered = act.update(Math.min(tl.actT, SCAN_MAIN_END), dt, dtReal) !== false;
         if (tl.actT >= tl.nextCheckAt) void checkPhase();
       }
     } else if (tl.actIndex === ACT.GROUP) {
@@ -1502,7 +1536,7 @@ export function createLoadingMotion(opts) {
       if (tl.actT >= tl.nextCheckAt) void checkPhase();
     }
 
-    paintProgress(dt);
+    paintProgress(dt, rendered);
   }
 
   /* ============================================================
