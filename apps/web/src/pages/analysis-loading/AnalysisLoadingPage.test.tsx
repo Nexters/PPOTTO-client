@@ -47,6 +47,7 @@ const mocks = vi.hoisted(() => {
       ],
     }),
   );
+  const preloadStickerImages = vi.fn(() => Promise.resolve());
   const fetchQuery = vi.fn(({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn());
   const eventHandlers = new Map<string, () => void>();
   const on = vi.fn((message: string, handler: () => void) => {
@@ -64,6 +65,7 @@ const mocks = vi.hoisted(() => {
     fetchQuery,
     nextState,
     on,
+    preloadStickerImages,
     replace,
     request,
     send,
@@ -81,6 +83,9 @@ vi.mock('@/entities/board/api/board-api', () => ({
 }));
 vi.mock('@/shared/lib/bridge', () => ({
   bridge: { on: mocks.on, request: mocks.request, send: mocks.send },
+}));
+vi.mock('@/shared/lib/sticker-raster', () => ({
+  preloadStickerImages: mocks.preloadStickerImages,
 }));
 vi.mock('./ppotto-loading-motion', () => ({ createLoadingMotion: mocks.createLoadingMotion }));
 
@@ -120,7 +125,13 @@ describe('AnalysisLoadingPage', () => {
     options.onPhaseStarted('SCAN');
     expect(mocks.boardList).not.toHaveBeenCalled();
     options.onPhaseStarted('REVEAL');
-    await waitFor(() => expect(mocks.decode).toHaveBeenCalledTimes(33));
+    await waitFor(() =>
+      expect(mocks.preloadStickerImages).toHaveBeenCalledWith([
+        'https://storage.example.com/sticker-1.png',
+        'https://storage.example.com/sticker-2.png',
+        'https://storage.example.com/sticker-3.png',
+      ]),
+    );
     await expect(options.onPhaseFinished('SCAN')).resolves.toEqual(mocks.nextState);
     options.onRevealFinished();
     await waitFor(() =>

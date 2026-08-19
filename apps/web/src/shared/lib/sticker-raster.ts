@@ -1,15 +1,19 @@
 import { useEffect, useReducer } from 'react';
 
 const STICKER_BITMAP_MAX_EDGE = 750;
+const STICKER_CACHE_NAME = 'ppotto-stickers-v1';
 
 export const STICKER_OUTLINE_WIDTH = 3;
 
 /**
- * 세션 동안 로드한 스티커 이미지 보관함. GCS 서명 URL은 응답마다 서명이 달라져
- * 브라우저 캐시가 매번 빗나가므로, 서명 쿼리를 뗀 객체 경로를 키로 디코딩된
- * 이미지를 재사용한다 — 보드에서 로드한 이미지를 리캡이 즉시 쓸 수 있다.
+ * GCS 서명 쿼리를 뗀 객체 경로를 공통 키로 사용한다. 같은 세션에서는 디코딩된
+ * 이미지를 재사용하고, 다음 실행에서는 Cache API에 저장한 응답을 복원한다.
  */
-const stickerImageCache = new Map<string, HTMLImageElement>();
+type StickerImageEntry = { image: HTMLImageElement; ready: Promise<void> };
+
+const stickerImageCache = new Map<string, StickerImageEntry>();
+const pendingCacheWrites = new Set<Promise<void>>();
+let cacheGeneration = 0;
 
 function cacheKeyOf(src: string): string {
   try {
@@ -21,42 +25,97 @@ function cacheKeyOf(src: string): string {
 }
 
 function readCached(src: string | undefined): HTMLImageElement | null {
-  const cached = src ? stickerImageCache.get(cacheKeyOf(src)) : undefined;
-  return cached?.complete && cached.naturalWidth > 0 ? cached : null;
+  const image = src ? stickerImageCache.get(cacheKeyOf(src))?.image : undefined;
+  return image?.complete && image.naturalWidth > 0 ? image : null;
 }
 
-function loadStickerImage(src: string): HTMLImageElement {
+async function resolveStickerImageSource(src: string): Promise<string> {
+  if (!('caches' in window)) return src;
+
+  try {
+    const generation = cacheGeneration;
+    const cache = await window.caches.open(STICKER_CACHE_NAME);
+    const key = new Request(cacheKeyOf(src));
+    const cached = await cache.match(key);
+    if (cached?.ok) return URL.createObjectURL(await cached.blob());
+
+    const response = await fetch(src, { mode: 'cors' });
+    if (!response.ok) return src;
+
+    if (generation === cacheGeneration) {
+      const write = cache.put(key, response.clone()).catch(() => undefined);
+      pendingCacheWrites.add(write);
+      void write.finally(() => pendingCacheWrites.delete(write));
+    }
+    return URL.createObjectURL(await response.blob());
+  } catch {
+    return src;
+  }
+}
+
+function setImageSource(image: HTMLImageElement, src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = src.startsWith('blob:') ? src : undefined;
+    const settle = (callback: () => void) => {
+      image.removeEventListener('load', onLoad);
+      image.removeEventListener('error', onError);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      callback();
+    };
+    const onLoad = () => settle(resolve);
+    const onError = () => settle(reject);
+
+    image.addEventListener('load', onLoad);
+    image.addEventListener('error', onError);
+    image.src = src;
+  });
+}
+
+function loadStickerImage(src: string): StickerImageEntry {
   const key = cacheKeyOf(src);
-  let img = stickerImageCache.get(key);
-  // 로드에 실패했던 항목은 버리고 새로 시도한다
-  if (img?.complete && img.naturalWidth === 0) {
-    stickerImageCache.delete(key);
-    img = undefined;
-  }
-  if (!img) {
-    img = new window.Image();
-    img.crossOrigin = 'anonymous';
-    img.src = src;
-    img.addEventListener('error', () => stickerImageCache.delete(key));
-    stickerImageCache.set(key, img);
-  }
-  return img;
+  const cached = stickerImageCache.get(key);
+  if (cached) return cached;
+
+  const image = new window.Image();
+  image.crossOrigin = 'anonymous';
+  const ready = resolveStickerImageSource(src).then((resolvedSrc) =>
+    setImageSource(image, resolvedSrc).catch(() => {
+      if (resolvedSrc === src) throw new Error('스티커 이미지를 불러오지 못했습니다.');
+      return setImageSource(image, src);
+    }),
+  );
+  const entry = { image, ready };
+  stickerImageCache.set(key, entry);
+  void ready.catch(() => {
+    if (stickerImageCache.get(key) === entry) stickerImageCache.delete(key);
+  });
+  return entry;
 }
 
 export async function preloadStickerImages(sources: Array<string | null | undefined>) {
-  const queue = [...new Set(sources.filter((src): src is string => !!src))];
+  const queue = [
+    ...new Map(
+      sources.filter((src): src is string => !!src).map((src) => [cacheKeyOf(src), src]),
+    ).values(),
+  ];
   let next = 0;
 
   await Promise.all(
     Array.from({ length: Math.min(2, queue.length) }, async () => {
       while (next < queue.length) {
         const src = queue[next++]!;
-        await loadStickerImage(src)
-          .decode()
-          .catch(() => undefined);
+        await loadStickerImage(src).ready.catch(() => undefined);
       }
     }),
   );
+}
+
+export async function clearStickerImageCache() {
+  cacheGeneration += 1;
+  stickerImageCache.clear();
+  if (!('caches' in window)) return;
+  await Promise.allSettled([...pendingCacheWrites]);
+  await window.caches.delete(STICKER_CACHE_NAME).catch(() => undefined);
 }
 
 function useStickerImageInternal(src: string | undefined, load: boolean) {
@@ -67,7 +126,7 @@ function useStickerImageInternal(src: string | undefined, load: boolean) {
   useEffect(() => {
     if (!src) return;
 
-    const img = load ? loadStickerImage(src) : stickerImageCache.get(cacheKeyOf(src));
+    const img = load ? loadStickerImage(src).image : stickerImageCache.get(cacheKeyOf(src))?.image;
     if (!img || (img.complete && img.naturalWidth > 0)) return;
 
     img.addEventListener('load', onSettled);
