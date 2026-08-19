@@ -133,7 +133,10 @@ export function PhotoSelectScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <SafeAreaView className="flex-1" edges={['top']}>
+      <SafeAreaView
+        className="flex-1"
+        edges={Platform.OS === 'android' ? ['top', 'bottom'] : ['top']}
+      >
         <View className="gap-8 px-6 pt-4 pb-8">
           <Header />
           {!galleryEmpty && (
@@ -238,10 +241,7 @@ export function PhotoSelectScreen() {
                   height: insets.bottom + 160,
                 }}
               />
-              <View
-                className="absolute left-[18px] right-[18px]"
-                style={{ bottom: Platform.OS === 'android' ? insets.bottom + 48 : 48 }}
-              >
+              <View className="absolute bottom-12 left-[18px] right-[18px]">
                 <Button disabled={!canSubmit || !boardId} onPress={handleSubmit} size="large">
                   <Text
                     className={canSubmit ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'}
