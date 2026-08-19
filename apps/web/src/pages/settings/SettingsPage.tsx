@@ -74,7 +74,10 @@ export function SettingsPage() {
 
   return (
     <main className="flex flex-col w-full min-h-full gap-10 px-6 bg-black">
-      <header className="relative w-full h-6">
+      <header
+        className="relative w-full min-h-6"
+        style={{ paddingTop: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))' }}
+      >
         <button
           type="button"
           aria-label="뒤로 가기"

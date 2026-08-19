@@ -21,7 +21,10 @@ export function TermsDetailPage({ code }: TermsDetailPageProps) {
     <main
       className={cn('relative flex h-dvh flex-col overflow-hidden bg-black px-6', 'text-white')}
     >
-      <header className="relative flex h-18 shrink-0 items-center justify-center">
+      <header
+        className="relative flex min-h-18 shrink-0 items-center justify-center"
+        style={{ paddingTop: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))' }}
+      >
         <button
           type="button"
           aria-label="뒤로 가기"
@@ -33,7 +36,7 @@ export function TermsDetailPage({ code }: TermsDetailPageProps) {
         <h1 className="text-body-01 text-white">{detailTitle}</h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto pt-2 pb-40">
+      <div className="flex-1 overflow-y-auto pt-8 pb-40">
         <article className="flex flex-col gap-6 rounded-2xl bg-gray-900 px-4 py-5">
           <h2 className="text-body-01 text-gray-100">{heading}</h2>
           {sections.map((section) => (
