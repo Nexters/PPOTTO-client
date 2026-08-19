@@ -36,6 +36,7 @@
     "react-native-svg": "15.15.3",
     "react-native-web": "0.21.2",
     "tailwind-merge": "^3.6.0",
+    "vaul": "^1.1.2",
     "webview-bridge-kit": "^0.2.0"
   },
   "devDependencies": {
