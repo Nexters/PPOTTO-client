@@ -32,7 +32,12 @@ export function StickerBadge({
   };
 
   return (
-    <div className={cn('relative inline-block', 'rounded-full bg-white px-3 py-1.5')}>
+    <div
+      className={cn(
+        'relative inline-flex items-center justify-center',
+        'rounded-full bg-white px-3 py-1.5',
+      )}
+    >
       <span
         ref={measureRef}
         aria-hidden={isEditing || undefined}

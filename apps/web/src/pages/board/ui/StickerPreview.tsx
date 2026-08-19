@@ -87,7 +87,7 @@ export function StickerPreview({
           }}
         />
       </div>
-      <div className="flex w-full shrink-0 justify-center" style={{ height: BADGE_HEIGHT }}>
+      <div className="flex w-full shrink-0 justify-center">
         <StickerBadge
           ref={titleInputRef}
           title={sticker.title}
