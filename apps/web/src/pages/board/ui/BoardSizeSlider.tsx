@@ -2,24 +2,24 @@
 
 import { useRef } from 'react';
 
-export const DRAW_STROKE_WIDTH_MIN = 2;
-export const DRAW_STROKE_WIDTH_MAX = 16;
-export const DRAW_STROKE_WIDTH_DEFAULT = (DRAW_STROKE_WIDTH_MIN + DRAW_STROKE_WIDTH_MAX) / 2;
-
 const TRACK_HEIGHT = 240;
 const HANDLE_SIZE = 24;
 
-type DrawingSizeSliderProps = {
-  strokeWidth: number;
-  onStrokeWidthChange: (strokeWidth: number) => void;
+type BoardSizeSliderProps = {
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
   onDraggingChange?: (isDragging: boolean) => void;
 };
 
-export function DrawingSizeSlider({
-  strokeWidth,
-  onStrokeWidthChange,
+export function BoardSizeSlider({
+  value,
+  min,
+  max,
+  onChange,
   onDraggingChange,
-}: DrawingSizeSliderProps) {
+}: BoardSizeSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   const updateFromClientY = (clientY: number) => {
@@ -28,8 +28,7 @@ export function DrawingSizeSlider({
     const rect = track.getBoundingClientRect();
     const ratio = 1 - (clientY - rect.top) / rect.height;
     const clamped = Math.min(Math.max(ratio, 0), 1);
-    const value = DRAW_STROKE_WIDTH_MIN + clamped * (DRAW_STROKE_WIDTH_MAX - DRAW_STROKE_WIDTH_MIN);
-    onStrokeWidthChange(Math.round(value));
+    onChange(Math.round(min + clamped * (max - min)));
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -45,8 +44,7 @@ export function DrawingSizeSlider({
 
   const handlePointerEnd = () => onDraggingChange?.(false);
 
-  const ratio =
-    (strokeWidth - DRAW_STROKE_WIDTH_MIN) / (DRAW_STROKE_WIDTH_MAX - DRAW_STROKE_WIDTH_MIN);
+  const ratio = (value - min) / (max - min);
   const handleBottom = ratio * (TRACK_HEIGHT - HANDLE_SIZE);
 
   return (

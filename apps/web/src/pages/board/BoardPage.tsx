@@ -3,26 +3,36 @@
 import { toCanvas } from 'html-to-image';
 import dynamic from 'next/dynamic';
 import { type RefObject, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 import { bridge } from '@/shared/lib/bridge';
 
 import { sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
 import { useTermsGate } from './model/use-terms-gate';
-import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
+import type { BoardCanvasHandle } from './ui/BoardCanvas';
+import { BoardSizeSlider } from './ui/BoardSizeSlider';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
+import { ConfirmCancelHeader } from './ui/ConfirmCancelHeader';
 import { DrawingColorPalette } from './ui/DrawingColorPalette';
 import { DrawingDeleteBar } from './ui/DrawingDeleteBar';
 import { DrawingHeader } from './ui/DrawingHeader';
-import { DRAW_STROKE_WIDTH_DEFAULT, DrawingSizeSlider } from './ui/DrawingSizeSlider';
 import { DrawingSizePreview } from './ui/DrawingSizePreview';
 import { EyedropperMarker } from './ui/EyedropperMarker';
-import { MoveHeader } from './ui/MoveHeader';
+import { TextInputOverlay } from './ui/TextInputOverlay';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
 });
+
+const DRAW_STROKE_WIDTH_MIN = 2;
+const DRAW_STROKE_WIDTH_MAX = 16;
+const DRAW_STROKE_WIDTH_DEFAULT = (DRAW_STROKE_WIDTH_MIN + DRAW_STROKE_WIDTH_MAX) / 2;
+
+const TEXT_FONT_SIZE_MIN = 12;
+const TEXT_FONT_SIZE_MAX = 40;
+const TEXT_FONT_SIZE_DEFAULT = (TEXT_FONT_SIZE_MIN + TEXT_FONT_SIZE_MAX) / 2;
 
 const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
 const BOARD_BACKGROUND_COLOR = '#000';
@@ -35,6 +45,8 @@ export function BoardPage() {
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
   const [isDrawingActive, setIsDrawingActive] = useState(false);
   const [isAdjustingStrokeWidth, setIsAdjustingStrokeWidth] = useState(false);
+  const [textDraft, setTextDraft] = useState('');
+  const [textFontSize, setTextFontSize] = useState(TEXT_FONT_SIZE_DEFAULT);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [cameraScale, setCameraScale] = useState(1);
@@ -148,6 +160,14 @@ export function BoardPage() {
     previewColorRef.current = null;
   }, [toolbarMode]);
 
+  const handleToolbarModeChange = (next: ToolbarMode) => {
+    if (next === 'text') {
+      flushSync(() => setToolbarMode(next));
+      return;
+    }
+    setToolbarMode(next);
+  };
+
   // 헤더·툴바·배경은 보드 데이터와 무관하게 이미 그려져 있다. 스티커를 기다리지 않고
   // 셸이 페인트되는 즉시 커버를 걷는다 — 스티커는 그 뒤에 채워진다
   useEffect(() => {
@@ -182,12 +202,23 @@ export function BoardPage() {
               onConfirm={() => setToolbarMode('default')}
             />
           ) : toolbarMode === 'move' ? (
-            <MoveHeader
+            <ConfirmCancelHeader
               onCancel={() => {
                 canvasRef.current?.cancelMoveSession();
                 setToolbarMode('default');
               }}
               onConfirm={() => setToolbarMode('default')}
+            />
+          ) : toolbarMode === 'text' ? (
+            <ConfirmCancelHeader
+              onCancel={() => {
+                setTextDraft('');
+                setToolbarMode('default');
+              }}
+              onConfirm={() => {
+                setTextDraft('');
+                setToolbarMode('default');
+              }}
             />
           ) : (
             <BoardHeader />
@@ -198,7 +229,7 @@ export function BoardPage() {
           mode={toolbarMode}
           drawColor={drawColor}
           drawStrokeWidth={drawStrokeWidth}
-          isPointerInputSuspended={isPickingColor}
+          isPointerInputSuspended={isPickingColor || toolbarMode === 'text'}
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
           onCanRedoChange={setCanRedo}
@@ -209,9 +240,11 @@ export function BoardPage() {
           trashButtonRef={trashButtonRef}
         />
         {toolbarMode === 'draw' && !isDrawingUiHidden && (
-          <DrawingSizeSlider
-            strokeWidth={drawStrokeWidth}
-            onStrokeWidthChange={setDrawStrokeWidth}
+          <BoardSizeSlider
+            value={drawStrokeWidth}
+            min={DRAW_STROKE_WIDTH_MIN}
+            max={DRAW_STROKE_WIDTH_MAX}
+            onChange={setDrawStrokeWidth}
             onDraggingChange={setIsAdjustingStrokeWidth}
           />
         )}
@@ -220,10 +253,21 @@ export function BoardPage() {
             <DrawingSizePreview strokeWidth={drawStrokeWidth * cameraScale} />
           </div>
         )}
-        {!isDrawingUiHidden && (
+        {toolbarMode === 'text' && (
+          <>
+            <TextInputOverlay value={textDraft} onChange={setTextDraft} fontSize={textFontSize} />
+            <BoardSizeSlider
+              value={textFontSize}
+              min={TEXT_FONT_SIZE_MIN}
+              max={TEXT_FONT_SIZE_MAX}
+              onChange={setTextFontSize}
+            />
+          </>
+        )}
+        {!isDrawingUiHidden && toolbarMode !== 'text' && (
           <BoardToolbar
             mode={toolbarMode}
-            onModeChange={setToolbarMode}
+            onModeChange={handleToolbarModeChange}
             onAddSticker={openPhotoSelect}
             aboveModeSwitcher={
               toolbarMode === 'draw' ? (
