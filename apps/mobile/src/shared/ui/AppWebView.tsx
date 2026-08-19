@@ -224,9 +224,10 @@ export function AppWebView({
   }, [bridge, isFocused]);
 
   return (
-    // 상하단 모두 웹뷰가 세이프에리아까지 확장해서 그리고(엣지투엣지), 실제 콘텐츠는 웹 쪽
-    // env(safe-area-inset-*) padding으로 안전하게 배치한다
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: '#000' }}>
+    <SafeAreaView
+      edges={Platform.OS === 'android' ? ['bottom'] : []}
+      style={{ flex: 1, backgroundColor: '#000' }}
+    >
       <WebView
         ref={ref}
         style={{ backgroundColor: '#000' }}

@@ -3,7 +3,7 @@ import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Text, View } from 'react-native';
+import { Linking, Platform, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMeQuery } from '@/entities/user/api/user-queries';
@@ -238,7 +238,10 @@ export function PhotoSelectScreen() {
                   height: insets.bottom + 160,
                 }}
               />
-              <View className="absolute bottom-12 left-[18px] right-[18px]">
+              <View
+                className="absolute left-[18px] right-[18px]"
+                style={{ bottom: Platform.OS === 'android' ? insets.bottom + 48 : 48 }}
+              >
                 <Button disabled={!canSubmit || !boardId} onPress={handleSubmit} size="large">
                   <Text
                     className={canSubmit ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'}

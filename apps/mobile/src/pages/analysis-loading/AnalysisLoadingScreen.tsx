@@ -1,7 +1,8 @@
 import type { AnalysisLoadingBridgeState, AnalysisLoadingPhaseState } from '@ppotto/bridge';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { photoUploadService, type UploadMotionPhoto } from '@/features/photo-upload';
 import { AppWebView } from '@/shared/ui/AppWebView';
@@ -20,6 +21,7 @@ const PRE_ANALYSIS_PROGRESS_INTERVAL_MS = 1_000;
 
 export function AnalysisLoadingScreen() {
   const { boardId } = useLocalSearchParams<{ boardId?: string }>();
+  const insets = useSafeAreaInsets();
   const toast = useToast();
   const upload = useSyncExternalStore(
     photoUploadService.subscribe,
@@ -167,7 +169,10 @@ export function AnalysisLoadingScreen() {
       />
 
       {!showingBoard && (
-        <View className="absolute right-[18px] bottom-0 left-[18px] pb-12">
+        <View
+          className="absolute right-[18px] bottom-0 left-[18px] pb-12"
+          style={Platform.OS === 'android' ? { paddingBottom: insets.bottom + 48 } : undefined}
+        >
           <Button disabled={!sequence.revealFinished} onPress={showBoard} size="large">
             <Text
               className={
