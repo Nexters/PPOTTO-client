@@ -43,6 +43,9 @@ export function BoardPage() {
   const isDrawingUiHidden =
     (toolbarMode === 'draw' && isDrawingActive) ||
     ((toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed);
+  const isBottomBarVisible =
+    !isDrawingUiHidden ||
+    ((toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed);
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLCanvasElement | null>(null);
@@ -179,6 +182,15 @@ export function BoardPage() {
             backgroundColor: BOARD_BACKGROUND_COLOR,
           }}
         />
+        {!isBottomBarVisible && (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-60"
+            style={{
+              height: 'var(--rn-safe-area-inset-bottom, env(safe-area-inset-bottom))',
+              backgroundColor: BOARD_BACKGROUND_COLOR,
+            }}
+          />
+        )}
         {!isDrawingUiHidden &&
           (toolbarMode === 'draw' ? (
             <DrawingHeader
