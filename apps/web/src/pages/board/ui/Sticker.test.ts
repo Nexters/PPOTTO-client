@@ -1,9 +1,11 @@
+import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   clearStickerImageCache,
   drawOutlinedSticker,
   preloadStickerImages,
+  useStickerImage,
 } from '@/shared/lib/sticker-raster';
 
 afterEach(async () => {
@@ -107,5 +109,45 @@ describe('drawOutlinedSticker', () => {
 
     await clearStickerImageCache();
     expect(deleteCache).toHaveBeenCalledWith('ppotto-stickers-v1');
+  });
+
+  it('렌더와 effect 사이에 로드된 이미지도 놓치지 않는다', async () => {
+    let loaded = false;
+
+    class TestImage extends EventTarget {
+      static current: TestImage | undefined;
+
+      complete = false;
+      crossOrigin: string | null = null;
+      naturalHeight = 0;
+      naturalWidth = 0;
+      src = '';
+
+      constructor() {
+        super();
+        TestImage.current = this;
+      }
+    }
+    vi.stubGlobal('Image', TestImage);
+
+    const src = 'https://storage.googleapis.com/ppotto/stickers/race.png';
+    const preload = preloadStickerImages([src]);
+    await waitFor(() => expect(TestImage.current?.src).toBe(src));
+
+    const { result } = renderHook(() => {
+      const image = useStickerImage(src);
+      const current = TestImage.current;
+      if (!image && !loaded && current) {
+        loaded = true;
+        current.complete = true;
+        current.naturalHeight = 100;
+        current.naturalWidth = 100;
+        current.dispatchEvent(new Event('load'));
+      }
+      return image;
+    });
+
+    await waitFor(() => expect(result.current).toBe(TestImage.current));
+    await preload;
   });
 });
