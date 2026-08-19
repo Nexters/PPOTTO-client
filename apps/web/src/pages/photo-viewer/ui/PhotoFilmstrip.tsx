@@ -24,8 +24,12 @@ export function PhotoFilmstrip({
       ref={containerRef}
       className={cn(
         'flex w-full items-center snap-x snap-mandatory overflow-x-auto scrollbar-none',
-        'px-[calc(50%-24px)] py-3',
+        'px-[calc(50%-24px)] pt-3',
       )}
+      style={{
+        paddingBottom:
+          'calc(var(--rn-safe-area-inset-bottom, env(safe-area-inset-bottom)) + 0.75rem)',
+      }}
     >
       {/* TODO: 그룹 접힘/펼침 전환 애니메이션 */}
       {photos.map((photo, index) => {

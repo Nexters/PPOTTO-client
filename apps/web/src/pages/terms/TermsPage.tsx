@@ -61,7 +61,10 @@ export function TermsPage() {
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-black px-6 text-white">
-      <header className="relative flex h-18 shrink-0 items-center justify-center">
+      <header
+        className="relative flex min-h-18 shrink-0 items-center justify-center"
+        style={{ paddingTop: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))' }}
+      >
         <button
           type="button"
           aria-label="뒤로 가기"

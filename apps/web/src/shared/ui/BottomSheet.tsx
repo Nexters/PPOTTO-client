@@ -33,8 +33,12 @@ export function BottomSheet({
           animateContent && 'sheet-content',
           'fixed inset-x-0 bottom-0 z-50',
           'flex flex-col gap-5 rounded-t-3xl bg-gray-900 pt-4',
-          'pr-6 pb-10 pl-6',
+          'pr-6 pl-6',
         )}
+        style={{
+          paddingBottom:
+            'calc(var(--rn-safe-area-inset-bottom, env(safe-area-inset-bottom)) + 2.5rem)',
+        }}
       >
         <Dialog.Title className="sr-only">스티커 퀵메뉴</Dialog.Title>
         <div className="mx-auto h-1 w-14 shrink-0 rounded-full bg-gray-700" />

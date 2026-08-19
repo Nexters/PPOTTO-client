@@ -15,9 +15,12 @@ export function DrawingDeleteBar({ trashButtonRef, isDragOver }: DrawingDeleteBa
     <div
       className={cn(
         'pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col',
-        'items-center gap-4 px-6 pt-16 pb-12',
+        'items-center gap-4 px-6 pt-16',
       )}
-      style={{ backgroundImage: 'linear-gradient(to top, black, transparent)' }}
+      style={{
+        paddingBottom: 'calc(var(--rn-safe-area-inset-bottom, env(safe-area-inset-bottom)) + 3rem)',
+        backgroundImage: 'linear-gradient(to top, black, transparent)',
+      }}
     >
       <p className="text-body-06 text-gray-300">삭제하려면 끌어다 놓으세요</p>
       <button
