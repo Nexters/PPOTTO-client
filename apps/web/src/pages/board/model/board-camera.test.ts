@@ -3,13 +3,14 @@
  *
  * `computeBoardPinchZoom`는 시작 거리 대비 지금 거리의 '비율'을 배율에 직접 곱해서, 핀치 중
  * pointermove 이벤트 발생 횟수와 무관하게 손가락이 움직인 만큼만 정확히 줌되게 한다. 줌 배율은
- * 0.4~3.0으로 클램프한다(디자인 확정값).
+ * 0.25~3.0으로 클램프한다(디자인 확정값).
  *
  * 카메라 상태(배율·위치)는 서버에 저장하지 않고 화면을 나갔다 들어오면 초기화되므로 별도 테스트 없음.
  */
 import { describe, expect, it } from 'vitest';
 
 import {
+  BOARD_ZOOM_MIN,
   computeBoardPinchZoom,
   computeFocusTarget,
   panCamera,
@@ -115,14 +116,14 @@ describe('computeBoardPinchZoom', () => {
     expect(result.scale).toBe(3);
   });
 
-  it('배율이 하한(0.4배) 밑으로 내려가면 하한으로 고정된다', () => {
+  it('배율이 하한 밑으로 내려가면 하한으로 고정된다', () => {
     const base = { scale: 1, x: 0, y: 0 };
     const start = { centroid: { x: 0, y: 0 }, distance: 1000 };
     const current = { centroid: { x: 0, y: 0 }, distance: 10 };
 
     const result = computeBoardPinchZoom(base, start, current);
 
-    expect(result.scale).toBe(0.4);
+    expect(result.scale).toBe(BOARD_ZOOM_MIN);
   });
 
   it('시작 거리가 0이면(손가락이 겹친 상태) 나눗셈 대신 base를 그대로 반환한다', () => {
