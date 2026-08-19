@@ -16,6 +16,9 @@ import {
   type LoadingSequenceState,
 } from './model/loading-sequence';
 
+const PRE_ANALYSIS_PROGRESS_MAX = 10;
+const PRE_ANALYSIS_PROGRESS_INTERVAL_MS = 1_000;
+
 export function AnalysisLoadingScreen() {
   const { boardId } = useLocalSearchParams<{ boardId?: string }>();
   const insets = useSafeAreaInsets();
@@ -114,6 +117,18 @@ export function AnalysisLoadingScreen() {
   useEffect(() => {
     if (motionReady) photoUploadService.beginUpload();
   }, [motionReady]);
+
+  useEffect(() => {
+    if (!motionReady || upload.status !== 'UPLOADING' || upload.progress > 0) return;
+
+    const timer = setInterval(() => {
+      const progress = Math.min(PRE_ANALYSIS_PROGRESS_MAX, sequenceRef.current.serverProgress + 1);
+      updateSequence({ type: 'SERVER_PROGRESS_UPDATED', progress });
+      if (progress === PRE_ANALYSIS_PROGRESS_MAX) clearInterval(timer);
+    }, PRE_ANALYSIS_PROGRESS_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [motionReady, updateSequence, upload.progress, upload.status]);
 
   useEffect(() => {
     const current = photoUploadService.getCurrent();

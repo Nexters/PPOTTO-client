@@ -158,3 +158,26 @@ it('재접속하면 저장된 마지막 막부터 다시 시작한다', async ()
   });
   expect(state?.visiblePhase).toBe('ASSEMBLE');
 });
+
+it('서버 progress가 오기 전에는 10까지 올리고 멈춘다', async () => {
+  jest.useFakeTimers();
+  photoUploadService.getViewState.mockReturnValue({ progress: 0, status: 'UPLOADING' });
+
+  const view = await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  await act(async () => void loadingBridgeHandlers!.ANALYSIS_LOADING_READY());
+  act(() => jest.advanceTimersByTime(20_000));
+
+  let state: AnalysisLoadingPhaseState | undefined;
+  act(() => {
+    state = loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_FINISHED({ phase: 'SCAN' });
+  });
+
+  expect(state?.visualProgress).toBe(10);
+  view.unmount();
+  jest.useRealTimers();
+});
