@@ -1598,15 +1598,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         )}
       </div>
       {directEditSticker && (
-        <>
-          <div
-            aria-hidden
-            className="modal-overlay fixed inset-0 z-50 transform-gpu bg-black/1 backdrop-blur-[30px]"
-            onPointerDown={(event) => {
-              event.preventDefault();
-              quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
-            }}
-          />
+        <div
+          className="modal-overlay fixed inset-0 z-50 bg-black/1 backdrop-blur-[30px]"
+          onPointerDown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            event.preventDefault();
+            quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
+          }}
+        >
           <StickerPreview
             sticker={directEditSticker}
             titleInputRef={quickMenu.directEditInputRef}
@@ -1615,7 +1614,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             onCancelEditTitle={quickMenu.cancelDirectEdit}
             onTitleChange={quickMenu.setDirectEditTitle}
           />
-        </>
+        </div>
       )}
       <StickerQuickMenu
         sticker={quickMenuSticker}
