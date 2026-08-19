@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
+import { clearStickerImageCache } from '@/shared/lib/sticker-raster';
 import { Modal } from '@/shared/ui/common/Modal';
 import { useToast } from '@/shared/ui/common/Toast';
 
@@ -27,7 +28,10 @@ const CONFIRM: Record<
     title: '뽀또에서 로그아웃하시겠습니까?',
     description: '현재 계정에서 로그아웃됩니다.',
     failure: '로그아웃에 실패했습니다.',
-    run: () => bridge.request('LOGOUT'),
+    run: async () => {
+      await clearStickerImageCache();
+      await bridge.request('LOGOUT');
+    },
   },
   withdraw: {
     title: '뽀또를 탈퇴하시겠습니까?',
@@ -39,7 +43,10 @@ const CONFIRM: Record<
       </>
     ),
     failure: '탈퇴에 실패했습니다.',
-    run: () => bridge.request('WITHDRAW'),
+    run: async () => {
+      await clearStickerImageCache();
+      await bridge.request('WITHDRAW');
+    },
   },
 };
 
