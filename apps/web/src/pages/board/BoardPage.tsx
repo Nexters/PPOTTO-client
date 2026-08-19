@@ -216,6 +216,8 @@ export function BoardPage() {
                 setToolbarMode('default');
               }}
               onConfirm={() => {
+                const trimmed = textDraft.trim();
+                if (trimmed) canvasRef.current?.createText(trimmed, textFontSize);
                 setTextDraft('');
                 setToolbarMode('default');
               }}
