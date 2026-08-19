@@ -1,18 +1,25 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { Profiler } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { StickerBadge } from './StickerBadge';
 
 describe('StickerBadge', () => {
-  it('입력 중에는 원래 폭을 유지하고 blur 시 DOM 값을 제출한다', () => {
+  it('재렌더 없이 입력 폭을 늘리고 blur 시 DOM 값을 제출한다', () => {
     const onSubmit = vi.fn();
-    render(<StickerBadge title="원래 제목" isEditing onSubmit={onSubmit} />);
+    const onRender = vi.fn();
+    const { container } = render(
+      <Profiler id="sticker-badge" onRender={onRender}>
+        <StickerBadge title="원래 제목" isEditing onSubmit={onSubmit} />
+      </Profiler>,
+    );
 
     const input = screen.getByRole('textbox');
     fireEvent.input(input, { target: { value: ' 새 제목 ' } });
 
     expect(input).toHaveValue(' 새 제목 ');
-    expect(screen.getByText('원래 제목')).toBeInTheDocument();
+    expect(container.querySelector('span')).toHaveTextContent('새 제목');
+    expect(onRender).toHaveBeenCalledOnce();
 
     fireEvent.blur(input);
     expect(onSubmit).toHaveBeenCalledWith('새 제목');

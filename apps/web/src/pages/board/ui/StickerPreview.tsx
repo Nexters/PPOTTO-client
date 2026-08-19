@@ -87,14 +87,16 @@ export function StickerPreview({
           }}
         />
       </div>
-      <StickerBadge
-        ref={titleInputRef}
-        title={sticker.title}
-        isNew={sticker.isNew}
-        isEditing={isEditingTitle}
-        onSubmit={onSubmitTitle}
-        onCancel={onCancelEditTitle}
-      />
+      <div className="flex w-full shrink-0 justify-center" style={{ height: BADGE_HEIGHT }}>
+        <StickerBadge
+          ref={titleInputRef}
+          title={sticker.title}
+          isNew={sticker.isNew}
+          isEditing={isEditingTitle}
+          onSubmit={onSubmitTitle}
+          onCancel={onCancelEditTitle}
+        />
+      </div>
     </div>
   );
 }

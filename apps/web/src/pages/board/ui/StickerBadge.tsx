@@ -1,6 +1,6 @@
 'use client';
 
-import type { Ref } from 'react';
+import { useRef, type Ref } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -23,6 +23,8 @@ export function StickerBadge({
   onCancel,
   ref,
 }: StickerBadgeProps) {
+  const measureRef = useRef<HTMLSpanElement>(null);
+
   const submit = (input: HTMLInputElement) => {
     const nextTitle = input.value.slice(0, TITLE_MAX_LENGTH).trim();
     if (nextTitle && nextTitle !== title) onSubmit?.(nextTitle);
@@ -32,6 +34,7 @@ export function StickerBadge({
   return (
     <div className={cn('relative inline-block', 'rounded-full bg-white px-3 py-1.5')}>
       <span
+        ref={measureRef}
         aria-hidden={isEditing || undefined}
         className={cn('whitespace-pre text-caption-01 text-gray-900', isEditing && 'invisible')}
       >
@@ -49,9 +52,9 @@ export function StickerBadge({
           )}
           // IME 조합 중엔 브라우저가 maxLength를 강제하지 않을 수 있다
           onInput={(event) => {
-            if (event.currentTarget.value.length > TITLE_MAX_LENGTH) {
-              event.currentTarget.value = event.currentTarget.value.slice(0, TITLE_MAX_LENGTH);
-            }
+            const value = event.currentTarget.value.slice(0, TITLE_MAX_LENGTH);
+            if (event.currentTarget.value !== value) event.currentTarget.value = value;
+            if (measureRef.current) measureRef.current.textContent = value || '\u00a0';
           }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') submit(event.currentTarget);
