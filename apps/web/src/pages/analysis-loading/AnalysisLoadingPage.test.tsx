@@ -9,7 +9,7 @@ interface MotionOptions {
   phase: string;
   photos: Array<{ src: string; ratio: number; capturedAt: null }>;
   stickerSrcs: string[];
-  onPhaseStarted: (phase: 'SCAN') => void;
+  onPhaseStarted: (phase: 'SCAN' | 'REVEAL') => void;
   onPhaseFinished: (phase: 'SCAN') => Promise<unknown>;
   onRevealFinished: () => void;
 }
@@ -37,7 +37,16 @@ const mocks = vi.hoisted(() => {
   const createLoadingMotion = vi.fn((_options: MotionOptions) => ({ start, destroy }));
   const replace = vi.fn();
   const boardList = vi.fn(() => Promise.resolve([{ id: 'board-1', name: '보드' }]));
-  const boardGet = vi.fn(() => Promise.resolve({ id: 'board-1' }));
+  const boardGet = vi.fn(() =>
+    Promise.resolve({
+      id: 'board-1',
+      stickers: [
+        { imageUrl: 'https://storage.example.com/sticker-1.png' },
+        { imageUrl: 'https://storage.example.com/sticker-2.png' },
+        { imageUrl: 'https://storage.example.com/sticker-3.png' },
+      ],
+    }),
+  );
   const fetchQuery = vi.fn(({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn());
   const eventHandlers = new Map<string, () => void>();
   const on = vi.fn((message: string, handler: () => void) => {
@@ -109,6 +118,9 @@ describe('AnalysisLoadingPage', () => {
     expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_READY');
 
     options.onPhaseStarted('SCAN');
+    expect(mocks.boardList).not.toHaveBeenCalled();
+    options.onPhaseStarted('REVEAL');
+    await waitFor(() => expect(mocks.decode).toHaveBeenCalledTimes(33));
     await expect(options.onPhaseFinished('SCAN')).resolves.toEqual(mocks.nextState);
     options.onRevealFinished();
     await waitFor(() =>
@@ -116,6 +128,9 @@ describe('AnalysisLoadingPage', () => {
     );
 
     expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_PHASE_STARTED', { phase: 'SCAN' });
+    expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_PHASE_STARTED', {
+      phase: 'REVEAL',
+    });
     expect(mocks.request).toHaveBeenCalledWith('ANALYSIS_LOADING_PHASE_FINISHED', {
       phase: 'SCAN',
     });

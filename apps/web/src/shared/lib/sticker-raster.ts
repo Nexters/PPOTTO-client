@@ -43,6 +43,22 @@ function loadStickerImage(src: string): HTMLImageElement {
   return img;
 }
 
+export async function preloadStickerImages(sources: Array<string | null | undefined>) {
+  const queue = [...new Set(sources.filter((src): src is string => !!src))];
+  let next = 0;
+
+  await Promise.all(
+    Array.from({ length: Math.min(2, queue.length) }, async () => {
+      while (next < queue.length) {
+        const src = queue[next++]!;
+        await loadStickerImage(src)
+          .decode()
+          .catch(() => undefined);
+      }
+    }),
+  );
+}
+
 function useStickerImageInternal(src: string | undefined, load: boolean) {
   // 캐시는 렌더에서 직접 읽는다 — 이미 받아둔 이미지를 한 프레임도 비우지 않고 그리려고.
   // 항목은 null → 이미지로만 바뀌므로 렌더 중 읽어도 값이 뒤집히지 않는다

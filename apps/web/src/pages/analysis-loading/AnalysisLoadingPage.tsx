@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { boardApi } from '@/entities/board/api/board-api';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { bridge } from '@/shared/lib/bridge';
+import { preloadStickerImages } from '@/shared/lib/sticker-raster';
 
 import { createLoadingMotion } from './ppotto-loading-motion';
 import './ppotto-loading-motion.css';
@@ -31,10 +32,12 @@ export function AnalysisLoadingPage() {
     const boardId = boards[0]?.id;
     if (!boardId) return;
 
-    await queryClient.fetchQuery({
+    const board = await queryClient.fetchQuery({
       queryKey: boardQueryKeys.detail(boardId),
       queryFn: () => boardApi.get(boardId),
     });
+
+    await preloadStickerImages(board.stickers.map(({ imageUrl }) => imageUrl));
   }, [queryClient]);
 
   useEffect(() => bridge.on('SHOW_BOARD', () => replace('Board', {})), [replace]);
@@ -60,15 +63,17 @@ export function AnalysisLoadingPage() {
           speed: 0.6,
           boardBgSrc: BOARD_BG_SRC,
           stickerSrcs: STICKER_SRCS,
-          onPhaseStarted: (phase: AnalysisLoadingBridgeState['visiblePhase']) =>
-            bridge.send('ANALYSIS_LOADING_PHASE_STARTED', { phase }),
+          onPhaseStarted: (phase: AnalysisLoadingBridgeState['visiblePhase']) => {
+            bridge.send('ANALYSIS_LOADING_PHASE_STARTED', { phase });
+            if (phase === 'REVEAL') {
+              void prepareBoard().catch((error) =>
+                console.warn('[analysis-loading] 보드 미리 불러오기 실패', error),
+              );
+            }
+          },
           onPhaseFinished: (phase: AnalysisLoadingBridgeState['visiblePhase']) =>
             bridge.request('ANALYSIS_LOADING_PHASE_FINISHED', { phase }),
-          onRevealFinished: () => {
-            void prepareBoard()
-              .catch((error) => console.warn('[analysis-loading] 보드 미리 불러오기 실패', error))
-              .finally(() => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED'));
-          },
+          onRevealFinished: () => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED'),
         });
         motion.start();
         bridge.send('ANALYSIS_LOADING_READY');
