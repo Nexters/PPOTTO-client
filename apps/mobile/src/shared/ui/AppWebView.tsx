@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Platform } from 'react-native';
 import Share, { Social } from 'react-native-share';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import type { Handlers } from 'webview-bridge-kit';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
@@ -92,10 +92,17 @@ export function AppWebView({
   const [loaded, setLoaded] = useState(false);
   const [boardActive, setBoardActive] = useState(false);
   const [traceScript] = useState(buildWebViewTraceScript);
+  const insets = useSafeAreaInsets();
+
+  // WKWebView 안에서는 env(safe-area-inset-top)이 실제 노치 높이를 못 잡고 0으로 계산되는
+  // 경우가 있어서(react-native-webview의 알려진 한계), 네이티브가 직접 측정한 값을 CSS
+  // 커스텀 프로퍼티로 심어준다. 웹 쪽은 이 값을 우선 쓰고, 없으면(일반 브라우저 등) env()로 폴백한다
+  const safeAreaScript = `document.documentElement.style.setProperty('--rn-safe-area-inset-top', '${insets.top}px');`;
 
   const injectedScript =
-    [traceScript, qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : ''].filter(Boolean).join('\n') ||
-    undefined;
+    [traceScript, safeAreaScript, qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : '']
+      .filter(Boolean)
+      .join('\n') || undefined;
 
   const markLoaded = () => setLoaded(true);
 
@@ -214,7 +221,7 @@ export function AppWebView({
   }, [bridge, isFocused]);
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#000' }}>
+    <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: '#000' }}>
       <WebView
         ref={ref}
         style={{ backgroundColor: '#000' }}
@@ -239,6 +246,8 @@ export function AppWebView({
         onLoadEnd={() => {
           if (!waitForAnalysisReady && !waitForBoardReady) markLoaded();
         }}
+        automaticallyAdjustContentInsets={false}
+        contentInsetAdjustmentBehavior="never"
         allowsBackForwardNavigationGestures={false}
         webviewDebuggingEnabled={qaToolEnabled}
         scrollEnabled={!boardActive}
