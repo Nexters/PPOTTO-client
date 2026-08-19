@@ -106,8 +106,10 @@ describe('drawOutlinedSticker', () => {
     expect(vi.mocked(put).mock.calls[0]![0].url).toBe(
       'https://storage.googleapis.com/ppotto/stickers/a.png',
     );
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 
     await clearStickerImageCache();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:sticker');
     expect(deleteCache).toHaveBeenCalledWith('ppotto-stickers-v1');
   });
 

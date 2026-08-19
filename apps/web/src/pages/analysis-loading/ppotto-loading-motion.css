@@ -49,6 +49,35 @@
   inset: 0;
   z-index: 10;
 }
+.ppotto-motion .pm-scan-col {
+  position: absolute;
+  top: 0;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.ppotto-motion .pm-scan .pm-tile,
+.ppotto-motion .pm-scan .pm-tile-dim {
+  will-change: auto;
+}
+.ppotto-motion .pm-scan-band {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 290px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.76) 0%,
+    rgba(0, 0, 0, 0.12) 32%,
+    rgba(0, 0, 0, 0) 50%,
+    rgba(0, 0, 0, 0.12) 68%,
+    rgba(0, 0, 0, 0.76) 100%
+  );
+  box-shadow: 0 0 0 740px rgba(0, 0, 0, 0.76);
+  will-change: transform, opacity;
+}
 .ppotto-motion .pm-tile {
   position: absolute;
   left: 0;
