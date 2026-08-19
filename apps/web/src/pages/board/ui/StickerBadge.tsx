@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type Ref } from 'react';
+import type { Ref } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -23,50 +23,43 @@ export function StickerBadge({
   onCancel,
   ref,
 }: StickerBadgeProps) {
-  const [value, setValue] = useState(title);
-  const [prevIsEditing, setPrevIsEditing] = useState(isEditing);
-
-  // 편집 진입 시 value 리셋 — effect 대신 렌더 중 처리해 재렌더 방지
-  if (isEditing !== prevIsEditing) {
-    setPrevIsEditing(isEditing);
-    if (isEditing) setValue(title);
-  }
-
-  const submit = () => {
-    const nextTitle = value.trim();
+  const submit = (input: HTMLInputElement) => {
+    const nextTitle = input.value.slice(0, TITLE_MAX_LENGTH).trim();
     if (nextTitle && nextTitle !== title) onSubmit?.(nextTitle);
     else onCancel?.();
   };
-  const displayedTitle = isEditing ? value : title;
 
   return (
     <div className={cn('relative inline-block', 'rounded-full bg-white px-3 py-1.5')}>
-      <span aria-hidden className="invisible whitespace-pre text-caption-01 text-gray-900">
-        {displayedTitle || '\u00a0'}
+      <span
+        aria-hidden={isEditing || undefined}
+        className={cn('whitespace-pre text-caption-01 text-gray-900', isEditing && 'invisible')}
+      >
+        {title || '\u00a0'}
       </span>
-      {/* 조건부 마운트 시 동기 focus() 호출이 불가능해 항상 마운트함 */}
-      <input
-        ref={ref}
-        readOnly={!isEditing}
-        value={displayedTitle}
-        maxLength={TITLE_MAX_LENGTH}
-        className={cn(
-          'absolute inset-y-1.5 right-3 left-3 min-w-0',
-          'bg-transparent text-caption-01 text-nowrap',
-          'text-gray-900 outline-none',
-          isEditing ? 'pointer-events-auto' : 'pointer-events-none',
-        )}
-        // IME 조합 중엔 브라우저가 maxLength를 강제하지 않아 직접 자름
-        onChange={(event) => {
-          const nextValue = event.target.value.slice(0, TITLE_MAX_LENGTH);
-          setValue(nextValue);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') submit();
-          if (event.key === 'Escape') onCancel?.();
-        }}
-        onBlur={isEditing ? submit : undefined}
-      />
+      {isEditing && (
+        <input
+          ref={ref}
+          defaultValue={title}
+          maxLength={TITLE_MAX_LENGTH}
+          className={cn(
+            'absolute inset-y-1.5 right-3 left-3 min-w-0',
+            'bg-transparent text-caption-01 text-nowrap',
+            'text-gray-900 outline-none',
+          )}
+          // IME 조합 중엔 브라우저가 maxLength를 강제하지 않을 수 있다
+          onInput={(event) => {
+            if (event.currentTarget.value.length > TITLE_MAX_LENGTH) {
+              event.currentTarget.value = event.currentTarget.value.slice(0, TITLE_MAX_LENGTH);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') submit(event.currentTarget);
+            if (event.key === 'Escape') onCancel?.();
+          }}
+          onBlur={(event) => submit(event.currentTarget)}
+        />
+      )}
       {isNew && (
         <div
           className={cn(
