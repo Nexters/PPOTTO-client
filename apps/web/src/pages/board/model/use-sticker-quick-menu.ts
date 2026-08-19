@@ -6,7 +6,6 @@ import { useRenameSticker } from './use-rename-sticker';
 export function useStickerQuickMenu(boardId: string) {
   const [quickMenuStickerId, setQuickMenuStickerId] = useState<string | null>(null);
   const [directEditStickerId, setDirectEditStickerId] = useState<string | null>(null);
-  const [directEditTitle, setDirectEditTitle] = useState('');
   const [returnToQuickMenu, setReturnToQuickMenu] = useState(false);
   const [quickMenuOpenedFromEdit, setQuickMenuOpenedFromEdit] = useState(false);
   const { rename } = useRenameSticker(boardId);
@@ -31,7 +30,6 @@ export function useStickerQuickMenu(boardId: string) {
   const resetDirectEdit = () => {
     const stickerId = directEditStickerId;
     setDirectEditStickerId(null);
-    setDirectEditTitle('');
     if (returnToQuickMenu && stickerId) {
       setQuickMenuStickerId(stickerId);
       setQuickMenuOpenedFromEdit(true);
@@ -43,7 +41,6 @@ export function useStickerQuickMenu(boardId: string) {
     flushSync(() => {
       setReturnToQuickMenu(false);
       setQuickMenuOpenedFromEdit(false);
-      setDirectEditTitle('');
       setDirectEditStickerId(stickerId);
     });
     focusDirectEditInput();
@@ -57,7 +54,6 @@ export function useStickerQuickMenu(boardId: string) {
       setQuickMenuStickerId(null);
       setReturnToQuickMenu(true);
       setQuickMenuOpenedFromEdit(false);
-      setDirectEditTitle('');
       setDirectEditStickerId(stickerId);
     });
     focusDirectEditInput();
@@ -67,7 +63,6 @@ export function useStickerQuickMenu(boardId: string) {
     if (directEditStickerId) {
       rename(directEditStickerId, title, () => {
         setDirectEditStickerId(null);
-        setDirectEditTitle('');
         setReturnToQuickMenu(false);
         setQuickMenuOpenedFromEdit(false);
       });
@@ -78,11 +73,7 @@ export function useStickerQuickMenu(boardId: string) {
     resetDirectEdit();
   };
 
-  const finishDirectEditFromBackdrop = (originalTitle: string) => {
-    const nextTitle = directEditTitle.trim();
-    if (nextTitle && nextTitle !== originalTitle) submitDirectEdit(nextTitle);
-    else cancelDirectEdit();
-  };
+  const finishDirectEditFromBackdrop = () => directEditInputElementRef.current?.blur();
 
   const directEditInputRef = useCallback((node: HTMLInputElement | null) => {
     directEditInputElementRef.current = node;
@@ -99,7 +90,6 @@ export function useStickerQuickMenu(boardId: string) {
     submitDirectEdit,
     cancelDirectEdit,
     finishDirectEditFromBackdrop,
-    setDirectEditTitle,
     quickMenuOpenedFromEdit,
     directEditInputRef,
     isEditingRef,

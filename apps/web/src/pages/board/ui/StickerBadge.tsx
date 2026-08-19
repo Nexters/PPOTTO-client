@@ -12,7 +12,6 @@ type StickerBadgeProps = {
   isEditing?: boolean;
   onSubmit?: (title: string) => void;
   onCancel?: () => void;
-  onValueChange?: (title: string) => void;
   ref?: Ref<HTMLInputElement>;
 };
 
@@ -22,7 +21,6 @@ export function StickerBadge({
   isEditing,
   onSubmit,
   onCancel,
-  onValueChange,
   ref,
 }: StickerBadgeProps) {
   const [value, setValue] = useState(title);
@@ -62,7 +60,6 @@ export function StickerBadge({
         onChange={(event) => {
           const nextValue = event.target.value.slice(0, TITLE_MAX_LENGTH);
           setValue(nextValue);
-          onValueChange?.(nextValue);
         }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') submit();

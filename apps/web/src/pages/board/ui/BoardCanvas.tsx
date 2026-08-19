@@ -1604,7 +1604,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             className="modal-overlay fixed inset-0 z-50 backdrop-blur-[30px]"
             onPointerDown={(event) => {
               event.preventDefault();
-              quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
+              quickMenu.finishDirectEditFromBackdrop();
             }}
           />
           <StickerPreview
@@ -1613,7 +1613,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             isEditingTitle
             onSubmitTitle={quickMenu.submitDirectEdit}
             onCancelEditTitle={quickMenu.cancelDirectEdit}
-            onTitleChange={quickMenu.setDirectEditTitle}
           />
         </>
       )}
