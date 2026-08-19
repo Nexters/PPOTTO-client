@@ -1,7 +1,7 @@
 import type { AnalysisLoadingBridgeState, AnalysisLoadingPhaseState } from '@ppotto/bridge';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { photoUploadService, type UploadMotionPhoto } from '@/features/photo-upload';
@@ -170,8 +170,8 @@ export function AnalysisLoadingScreen() {
 
       {!showingBoard && (
         <View
-          className="absolute right-[18px] bottom-0 left-[18px]"
-          style={{ paddingBottom: insets.bottom + 48 }}
+          className="absolute right-[18px] bottom-0 left-[18px] pb-12"
+          style={Platform.OS === 'android' ? { paddingBottom: insets.bottom + 48 } : undefined}
         >
           <Button disabled={!sequence.revealFinished} onPress={showBoard} size="large">
             <Text

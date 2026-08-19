@@ -52,6 +52,10 @@ jest.mock('@/shared/ui/AppBackground', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');
   return { AppBackground: () => <Text>앱 로딩 배경</Text> };
 });
+jest.mock('react-native-safe-area-context', () => ({
+  ...(jest.requireActual('react-native-safe-area-context') as object),
+  useSafeAreaInsets: () => ({ top: 47, bottom: 34, left: 0, right: 0 }),
+}));
 jest.mock('react-native-webview', () => {
   const React = jest.requireActual('react') as typeof import('react');
   const { View } = jest.requireActual('react-native') as typeof import('react-native');
@@ -316,7 +320,7 @@ describe('WebView QA 진단', () => {
   it('QA 도구가 꺼져 있으면 진단 스크립트와 WebView 디버깅을 비활성화한다', async () => {
     await render(<AppWebView />);
 
-    expect(mockInjectedJavaScript).toBeUndefined();
+    expect(mockInjectedJavaScript).not.toContain('__qaDiagnosticsInstalled');
     expect(mockWebviewDebuggingEnabled).toBe(false);
 
     const message = '__QA_DIAGNOSTIC__:{"type":"console"}';
@@ -342,9 +346,27 @@ describe('Sentry trace 전파', () => {
     expect(mockInjectedJavaScript).toContain('__qaDiagnosticsInstalled');
   });
 
-  it('trace 정보가 없으면 아무것도 주입하지 않는다', async () => {
+  it('trace 정보가 없으면 trace 스크립트는 주입하지 않는다', async () => {
     await render(<AppWebView />);
 
-    expect(mockInjectedJavaScript).toBeUndefined();
+    expect(mockInjectedJavaScript).not.toContain('window.__ppottoSentryTrace');
+  });
+});
+
+describe('세이프에리아 값 주입', () => {
+  it('네이티브가 측정한 상단 세이프에리아 값을 CSS 커스텀 프로퍼티로 심어준다', async () => {
+    await render(<AppWebView />);
+
+    expect(mockInjectedJavaScript).toContain(
+      "document.documentElement.style.setProperty('--rn-safe-area-inset-top', '47px');",
+    );
+  });
+
+  it('네이티브가 측정한 하단 세이프에리아 값을 CSS 커스텀 프로퍼티로 심어준다', async () => {
+    await render(<AppWebView />);
+
+    expect(mockInjectedJavaScript).toContain(
+      "document.documentElement.style.setProperty('--rn-safe-area-inset-bottom', '34px');",
+    );
   });
 });

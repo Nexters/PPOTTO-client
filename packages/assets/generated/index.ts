@@ -8,6 +8,7 @@ export { default as ChevronDown } from './ChevronDown';
 export { default as ChevronLeft } from './ChevronLeft';
 export { default as ChevronLeftSmall } from './ChevronLeftSmall';
 export { default as ChevronUp } from './ChevronUp';
+export { default as Close } from './Close';
 export { default as Download } from './Download';
 export { default as Edit } from './Edit';
 export { default as Filter } from './Filter';

@@ -18,6 +18,7 @@ import { DrawingHeader } from './ui/DrawingHeader';
 import { DRAW_STROKE_WIDTH_DEFAULT, DrawingSizeSlider } from './ui/DrawingSizeSlider';
 import { DrawingSizePreview } from './ui/DrawingSizePreview';
 import { EyedropperMarker } from './ui/EyedropperMarker';
+import { MoveHeader } from './ui/MoveHeader';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
@@ -41,6 +42,9 @@ export function BoardPage() {
   const [isDrawingOverTrash, setIsDrawingOverTrash] = useState(false);
   const isDrawingUiHidden =
     (toolbarMode === 'draw' && isDrawingActive) ||
+    ((toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed);
+  const isBottomBarVisible =
+    !isDrawingUiHidden ||
     ((toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed);
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -171,6 +175,22 @@ export function BoardPage() {
           backgroundSize: '18px 18px',
         }}
       >
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-60"
+          style={{
+            height: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))',
+            backgroundColor: BOARD_BACKGROUND_COLOR,
+          }}
+        />
+        {!isBottomBarVisible && (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-60"
+            style={{
+              height: 'var(--rn-safe-area-inset-bottom, env(safe-area-inset-bottom))',
+              backgroundColor: BOARD_BACKGROUND_COLOR,
+            }}
+          />
+        )}
         {!isDrawingUiHidden &&
           (toolbarMode === 'draw' ? (
             <DrawingHeader
@@ -178,6 +198,14 @@ export function BoardPage() {
               onUndo={() => canvasRef.current?.undoLastStroke()}
               canRedo={canRedo}
               onRedo={() => canvasRef.current?.redoLastStroke()}
+              onConfirm={() => setToolbarMode('default')}
+            />
+          ) : toolbarMode === 'move' ? (
+            <MoveHeader
+              onCancel={() => {
+                canvasRef.current?.cancelMoveSession();
+                setToolbarMode('default');
+              }}
               onConfirm={() => setToolbarMode('default')}
             />
           ) : (
