@@ -172,6 +172,13 @@ export function BoardPage() {
           backgroundSize: '18px 18px',
         }}
       >
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-60"
+          style={{
+            height: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))',
+            backgroundColor: BOARD_BACKGROUND_COLOR,
+          }}
+        />
         {!isDrawingUiHidden &&
           (toolbarMode === 'draw' ? (
             <DrawingHeader

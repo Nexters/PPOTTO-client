@@ -16,10 +16,13 @@ export function DrawingHeader({ canUndo, onUndo, canRedo, onRedo, onConfirm }: D
   return (
     <div
       className={cn(
-        'pointer-events-none absolute inset-x-0 top-0 z-60 flex flex-col',
+        'pointer-events-none absolute inset-x-0 z-60 flex flex-col',
         'items-start px-6 pt-5 pb-16',
       )}
-      style={{ backgroundImage: 'linear-gradient(to bottom, black 29px, transparent)' }}
+      style={{
+        top: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))',
+        backgroundImage: 'linear-gradient(to bottom, black 29px, transparent)',
+      }}
     >
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-4">
