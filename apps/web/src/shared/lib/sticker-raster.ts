@@ -55,11 +55,9 @@ async function resolveStickerImageSource(src: string): Promise<string> {
 
 function setImageSource(image: HTMLImageElement, src: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const objectUrl = src.startsWith('blob:') ? src : undefined;
     const settle = (callback: () => void) => {
       image.removeEventListener('load', onLoad);
       image.removeEventListener('error', onError);
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
       callback();
     };
     const onLoad = () => settle(resolve);
@@ -80,6 +78,7 @@ function loadStickerImage(src: string): StickerImageEntry {
   image.crossOrigin = 'anonymous';
   const ready = resolveStickerImageSource(src).then((resolvedSrc) =>
     setImageSource(image, resolvedSrc).catch(() => {
+      if (resolvedSrc.startsWith('blob:')) URL.revokeObjectURL(resolvedSrc);
       if (resolvedSrc === src) throw new Error('스티커 이미지를 불러오지 못했습니다.');
       return setImageSource(image, src);
     }),
@@ -112,6 +111,9 @@ export async function preloadStickerImages(sources: Array<string | null | undefi
 
 export async function clearStickerImageCache() {
   cacheGeneration += 1;
+  for (const { image } of stickerImageCache.values()) {
+    if (image.src.startsWith('blob:')) URL.revokeObjectURL(image.src);
+  }
   stickerImageCache.clear();
   if (!('caches' in window)) return;
   await Promise.allSettled([...pendingCacheWrites]);
