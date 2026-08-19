@@ -25,6 +25,7 @@ import { useToast } from '@/shared/ui/common/Toast';
 
 import {
   BOARD_ZOOM_MIN,
+  DOT_FADE_START_ZOOM,
   type CameraState,
   computeBoardPinchZoom,
   computeFocusTarget,
@@ -1428,17 +1429,28 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     setIsEmptyBoardQuickMenuOpen(true);
   };
 
+  const dotZoomRatio = Math.max(camera.scale, DOT_FADE_START_ZOOM) / DOT_FADE_START_ZOOM;
+  const dotFadeProgress = (camera.scale - BOARD_ZOOM_MIN) / (DOT_FADE_START_ZOOM - BOARD_ZOOM_MIN);
+  const dotOpacity = Math.min(1, Math.max(0, dotFadeProgress));
+
   return (
     <div
       ref={setContainer}
       className="relative w-full h-full overflow-hidden touch-none"
-      style={{
-        backgroundColor: '#000',
-        backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
-        backgroundSize: `${(DOT_SPACING_AT_MIN_ZOOM * camera.scale) / BOARD_ZOOM_MIN}px ${(DOT_SPACING_AT_MIN_ZOOM * camera.scale) / BOARD_ZOOM_MIN}px`,
-        backgroundPosition: `${camera.x}px ${camera.y}px`,
-      }}
+      style={{ backgroundColor: '#000' }}
     >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
+          backgroundSize: `${DOT_SPACING_AT_MIN_ZOOM}px ${DOT_SPACING_AT_MIN_ZOOM}px`,
+          backgroundPosition: `${camera.x / dotZoomRatio}px ${camera.y / dotZoomRatio}px`,
+          transform: `scale(${dotZoomRatio})`,
+          transformOrigin: '0 0',
+          opacity: dotOpacity,
+        }}
+      />
       {isEmptyBoardStickerVisible && isEmptyBoardQuickMenuOpen && (
         <EmptyBoardSticker
           title={emptyBoardStickerTitle}
@@ -1586,15 +1598,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         )}
       </div>
       {directEditSticker && (
-        <>
-          <div
-            aria-hidden
-            className="modal-overlay fixed inset-0 z-50 transform-gpu bg-black/[0.01] backdrop-blur-[30px]"
-            onPointerDown={(event) => {
-              event.preventDefault();
-              quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
-            }}
-          />
+        <div
+          className="modal-overlay fixed inset-0 z-50 bg-black/1 backdrop-blur-[30px]"
+          onPointerDown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            event.preventDefault();
+            quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
+          }}
+        >
           <StickerPreview
             sticker={directEditSticker}
             titleInputRef={quickMenu.directEditInputRef}
@@ -1603,7 +1614,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             onCancelEditTitle={quickMenu.cancelDirectEdit}
             onTitleChange={quickMenu.setDirectEditTitle}
           />
-        </>
+        </div>
       )}
       <StickerQuickMenu
         sticker={quickMenuSticker}
