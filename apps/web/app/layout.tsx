@@ -15,6 +15,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -29,6 +30,7 @@ export default function RootLayout({
           className={cn(
             'relative mx-auto flex min-h-screen w-full max-w-112.5',
             'flex-col',
+            'bg-black pt-[env(safe-area-inset-top)]',
             'shadow-[0_0_24px_rgba(0,0,0,0.08)] dark:shadow-[0_0_24px_rgba(0,0,0,0.5)]',
           )}
         >
