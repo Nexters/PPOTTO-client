@@ -10,25 +10,35 @@ type TextInputOverlayProps = {
   fontSize: number;
 };
 
+function fitHeight(node: HTMLTextAreaElement) {
+  node.style.height = 'auto';
+  node.style.height = `${node.scrollHeight}px`;
+}
+
 export function TextInputOverlay({ value, onChange, fontSize }: TextInputOverlayProps) {
-  const focusOnMount = useCallback((node: HTMLTextAreaElement | null) => {
-    node?.focus();
+  const setRef = useCallback((node: HTMLTextAreaElement | null) => {
+    if (!node) return;
+    node.focus();
+    fitHeight(node);
   }, []);
 
   return (
     <div
       className={cn(
         'pointer-events-none absolute inset-0 z-50 flex items-center justify-center',
-        'px-12',
+        'pr-12 pl-16',
       )}
     >
       <textarea
-        ref={focusOnMount}
+        ref={setRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value);
+          fitHeight(e.target);
+        }}
         rows={1}
         className={cn(
-          'pointer-events-auto w-full resize-none bg-transparent text-center font-bold',
+          'pointer-events-auto w-full min-w-0 resize-none bg-transparent text-center font-bold',
           'text-white outline-none',
         )}
         style={{ fontSize }}
