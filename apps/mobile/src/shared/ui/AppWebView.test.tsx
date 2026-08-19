@@ -54,7 +54,7 @@ jest.mock('@/shared/ui/AppBackground', () => {
 });
 jest.mock('react-native-safe-area-context', () => ({
   ...(jest.requireActual('react-native-safe-area-context') as object),
-  useSafeAreaInsets: () => ({ top: 47, bottom: 0, left: 0, right: 0 }),
+  useSafeAreaInsets: () => ({ top: 47, bottom: 34, left: 0, right: 0 }),
 }));
 jest.mock('react-native-webview', () => {
   const React = jest.requireActual('react') as typeof import('react');
@@ -359,6 +359,14 @@ describe('세이프에리아 값 주입', () => {
 
     expect(mockInjectedJavaScript).toContain(
       "document.documentElement.style.setProperty('--rn-safe-area-inset-top', '47px');",
+    );
+  });
+
+  it('네이티브가 측정한 하단 세이프에리아 값을 CSS 커스텀 프로퍼티로 심어준다', async () => {
+    await render(<AppWebView />);
+
+    expect(mockInjectedJavaScript).toContain(
+      "document.documentElement.style.setProperty('--rn-safe-area-inset-bottom', '34px');",
     );
   });
 });
