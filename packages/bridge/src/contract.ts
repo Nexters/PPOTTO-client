@@ -82,6 +82,7 @@ export const contract = defineContract({
   SHOW_BOARD: event(),
   // 안드로이드 하드웨어 뒤로가기 — 네이티브가 웹에 전달하고, 웹이 시트 닫기/스택 pop을 처리한다
   NAVIGATE_BACK: event(),
+  KEYBOARD_HEIGHT_CHANGED: event({ payload: z.object({ height: z.number() }) }),
   // 웹 스택이 루트라 더 뒤로 갈 곳이 없음 — 네이티브가 앱을 백그라운드로 보낸다
   EXIT_APP: command(),
 });

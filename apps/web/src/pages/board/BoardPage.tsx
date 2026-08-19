@@ -33,6 +33,7 @@ const DRAW_STROKE_WIDTH_DEFAULT = (DRAW_STROKE_WIDTH_MIN + DRAW_STROKE_WIDTH_MAX
 const TEXT_FONT_SIZE_MIN = 12;
 const TEXT_FONT_SIZE_MAX = 40;
 const TEXT_FONT_SIZE_DEFAULT = (TEXT_FONT_SIZE_MIN + TEXT_FONT_SIZE_MAX) / 2;
+const TEXT_MODE_HEADER_HEIGHT = 72;
 
 const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
 const BOARD_BACKGROUND_COLOR = '#000';
@@ -47,6 +48,7 @@ export function BoardPage() {
   const [isAdjustingStrokeWidth, setIsAdjustingStrokeWidth] = useState(false);
   const [textDraft, setTextDraft] = useState('');
   const [textFontSize, setTextFontSize] = useState(TEXT_FONT_SIZE_DEFAULT);
+  const [keyboardHeight, setKeyboardHeight] = useState<number | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [cameraScale, setCameraScale] = useState(1);
@@ -162,11 +164,20 @@ export function BoardPage() {
 
   const handleToolbarModeChange = (next: ToolbarMode) => {
     if (next === 'text') {
-      flushSync(() => setToolbarMode(next));
+      flushSync(() => {
+        setToolbarMode(next);
+        setKeyboardHeight(null);
+      });
       return;
     }
     setToolbarMode(next);
   };
+
+  // keyboardHeight 초기화는 handleToolbarModeChange 담당 — 이전 세션 값 잔존 방지
+  useEffect(() => {
+    if (toolbarMode !== 'text') return;
+    return bridge.on('KEYBOARD_HEIGHT_CHANGED', (payload) => setKeyboardHeight(payload.height));
+  }, [toolbarMode]);
 
   // 헤더·툴바·배경은 보드 데이터와 무관하게 이미 그려져 있다. 스티커를 기다리지 않고
   // 셸이 페인트되는 즉시 커버를 걷는다 — 스티커는 그 뒤에 채워진다
@@ -256,7 +267,10 @@ export function BoardPage() {
           </div>
         )}
         {toolbarMode === 'text' && (
-          <>
+          <div
+            className="fixed inset-x-0 z-55 transition-[bottom] duration-300 ease-out"
+            style={{ top: TEXT_MODE_HEADER_HEIGHT, bottom: keyboardHeight ?? 0 }}
+          >
             <TextInputOverlay value={textDraft} onChange={setTextDraft} fontSize={textFontSize} />
             <BoardSizeSlider
               value={textFontSize}
@@ -264,7 +278,7 @@ export function BoardPage() {
               max={TEXT_FONT_SIZE_MAX}
               onChange={setTextFontSize}
             />
-          </>
+          </div>
         )}
         {!isDrawingUiHidden && toolbarMode !== 'text' && (
           <BoardToolbar
