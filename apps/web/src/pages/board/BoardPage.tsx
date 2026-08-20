@@ -60,7 +60,6 @@ export function BoardPage() {
   const pickerPositionRef = useRef<{ x: number; y: number } | null>(null);
 
   const isEyedropperActive = isPickingColor || colorSource === 'eyedropper';
-  const isEyedropperColorApplied = colorSource === 'eyedropper';
 
   const captureBoard = (element: HTMLElement) =>
     toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
@@ -255,7 +254,6 @@ export function BoardPage() {
                   }}
                   eyedropperColor={eyedropperColor}
                   isEyedropperActive={isEyedropperActive}
-                  isEyedropperColorApplied={isEyedropperColorApplied}
                   onEyedropperStart={() => void startPicking()}
                 />
               ) : undefined

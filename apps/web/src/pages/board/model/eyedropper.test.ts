@@ -3,10 +3,12 @@
  *
  * sampleColorAt: 캡처된 캔버스의 특정 좌표 픽셀 색을 hex로 읽는다. 좌표가 캔버스 범위를
  * 벗어나면(드래그가 캡처 영역 밖으로 나간 경우) 가장 가까운 가장자리 픽셀로 고정한다.
+ * getContrastingIconColor: 배경색의 체감 밝기를 기준으로, 그 위에서 항상 구분되는
+ * 검정/흰색 아이콘 색을 고른다.
  */
 import { describe, expect, it } from 'vitest';
 
-import { sampleColorAt } from './eyedropper';
+import { getContrastingIconColor, sampleColorAt } from './eyedropper';
 
 describe('sampleColorAt', () => {
   function fakeCanvas(
@@ -57,5 +59,23 @@ describe('sampleColorAt', () => {
     canvas.getContext = (() => null) as typeof canvas.getContext;
 
     expect(sampleColorAt(canvas, 0, 0)).toBeNull();
+  });
+});
+
+describe('getContrastingIconColor', () => {
+  it('흰색 배경에는 검정 아이콘을 고른다', () => {
+    expect(getContrastingIconColor('#ffffff')).toBe('#181818');
+  });
+
+  it('검정 배경에는 흰색 아이콘을 고른다', () => {
+    expect(getContrastingIconColor('#000000')).toBe('#ffffff');
+  });
+
+  it('연노랑처럼 밝은 배경에는 검정 아이콘을 고른다', () => {
+    expect(getContrastingIconColor('#fff697')).toBe('#181818');
+  });
+
+  it('진한 파랑처럼 어두운 배경에는 흰색 아이콘을 고른다', () => {
+    expect(getContrastingIconColor('#1a1a4d')).toBe('#ffffff');
   });
 });

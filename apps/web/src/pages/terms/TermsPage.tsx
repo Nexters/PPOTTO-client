@@ -63,7 +63,9 @@ export function TermsPage() {
     <main className="flex h-dvh flex-col overflow-hidden bg-black px-6 text-white">
       <header
         className="relative flex min-h-18 shrink-0 items-center justify-center"
-        style={{ paddingTop: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))' }}
+        style={{
+          paddingTop: 'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 0.75rem)',
+        }}
       >
         <button
           type="button"

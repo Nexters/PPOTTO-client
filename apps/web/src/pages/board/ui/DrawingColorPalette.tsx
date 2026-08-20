@@ -4,6 +4,8 @@ import { Check, IconEyedropper } from '@ppotto/assets';
 
 import { cn } from '@/shared/lib/cn';
 
+import { getContrastingIconColor } from '../model/eyedropper';
+
 const PALETTE_COLORS = [
   { label: '화이트', value: '#ffffff', className: 'bg-white' },
   { label: '핑크', value: '#ffaee1', className: 'bg-[#ffaee1]' },
@@ -17,7 +19,6 @@ type DrawingColorPaletteProps = {
   onColorChange: (color: string) => void;
   eyedropperColor: string;
   isEyedropperActive: boolean;
-  isEyedropperColorApplied: boolean;
   onEyedropperStart: () => void;
 };
 
@@ -26,7 +27,6 @@ export function DrawingColorPalette({
   onColorChange,
   eyedropperColor,
   isEyedropperActive,
-  isEyedropperColorApplied,
   onEyedropperStart,
 }: DrawingColorPaletteProps) {
   return (
@@ -59,11 +59,7 @@ export function DrawingColorPalette({
           'border-2 border-white',
         )}
       >
-        <IconEyedropper
-          color={isEyedropperColorApplied ? '#ffffff' : '#181818'}
-          width={20}
-          height={20}
-        />
+        <IconEyedropper color={getContrastingIconColor(eyedropperColor)} width={20} height={20} />
       </button>
     </div>
   );
