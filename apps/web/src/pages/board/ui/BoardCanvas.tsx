@@ -1420,6 +1420,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const directEditSticker = stickers.find(
     (sticker) => sticker.id === quickMenu.directEditStickerId,
   );
+  const shouldBlurBoard = Boolean(quickMenuSticker || directEditSticker);
   const activeDrawingBoxTransform = drawingBoxPinchPreview ?? selectedDrawingBoxTransform;
   const isEmptyBoardStickerVisible = stickers.length === 0 && !isEmptyStickerHidden;
   const activeEmptyBoardStickerTransform =
@@ -1441,7 +1442,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     >
       <div
         className="absolute inset-0"
-        style={{ filter: directEditSticker ? 'blur(30px)' : undefined }}
+        style={{ filter: shouldBlurBoard ? 'blur(30px)' : undefined }}
       >
         <div
           aria-hidden
