@@ -4,6 +4,7 @@ import { useFlow } from '@stackflow/react';
 import { useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
+import { cn } from '@/shared/lib/cn';
 
 import {
   buildDisplayList,
@@ -12,6 +13,7 @@ import {
   resolveFilmstripSelection,
   type PhotoSelection,
 } from './model/photo-selection';
+import { usePhotoDismissGesture } from './model/use-photo-dismiss-gesture';
 import { PhotoCarousel } from './ui/PhotoCarousel';
 import { PhotoFilmstrip } from './ui/PhotoFilmstrip';
 import { PhotoViewerHeader } from './ui/PhotoViewerHeader';
@@ -28,6 +30,14 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     subIndex: 0,
   });
   const { pop } = useFlow();
+  const {
+    gestureRef,
+    viewerRef,
+    backdropRef,
+    headerRef,
+    filmstripRef,
+    handlers: dismissHandlers,
+  } = usePhotoDismissGesture(() => pop());
 
   const filmstripPhotos = data ? buildDisplayList(data.photos, selection.topIndex) : [];
   const filmstripIndex = findFlatIndex(filmstripPhotos, selection);
@@ -47,10 +57,17 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
   if (!data) return null;
 
   return (
-    <div className="flex h-full w-full flex-col bg-black">
-      <PhotoViewerHeader onBack={() => pop()} />
-      <div className="mt-4 flex flex-1 flex-col gap-11">
-        <div className="relative min-h-0 w-full flex-1">
+    <div ref={viewerRef} className="relative flex h-full w-full flex-col overflow-hidden">
+      <div ref={backdropRef} className="pointer-events-none absolute inset-0 bg-black" />
+      <div ref={headerRef} className="relative z-10 will-change-opacity">
+        <PhotoViewerHeader onBack={() => pop()} />
+      </div>
+      <div className={cn('relative z-10 mt-4 flex', 'min-h-0 flex-1 flex-col gap-11')}>
+        <div
+          ref={gestureRef}
+          className={cn('relative min-h-0 w-full flex-1', 'touch-none will-change-transform')}
+          {...dismissHandlers}
+        >
           <PhotoCarousel
             stickerId={stickerId}
             photos={carouselPhotos}
@@ -58,12 +75,14 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
             onSelect={handleCarouselSelect}
           />
         </div>
-        <PhotoFilmstrip
-          stickerId={stickerId}
-          photos={filmstripPhotos}
-          selectedIndex={filmstripIndex}
-          onSelect={handleFilmstripSelect}
-        />
+        <div ref={filmstripRef} className="will-change-opacity">
+          <PhotoFilmstrip
+            stickerId={stickerId}
+            photos={filmstripPhotos}
+            selectedIndex={filmstripIndex}
+            onSelect={handleFilmstripSelect}
+          />
+        </div>
       </div>
     </div>
   );
