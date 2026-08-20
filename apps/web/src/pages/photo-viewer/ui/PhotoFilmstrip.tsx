@@ -17,7 +17,13 @@ export function PhotoFilmstrip({
   selectedIndex,
   onSelect,
 }: PhotoFilmstripProps) {
-  const { containerRef, getItemRef } = useFilmstripSync(selectedIndex, onSelect);
+  const expandedGroupTopIndex =
+    photos.find((photo) => photo.groupPosition === 'first')?.topIndex ?? null;
+  const { containerRef, getItemRef } = useFilmstripSync(
+    selectedIndex,
+    expandedGroupTopIndex,
+    onSelect,
+  );
 
   return (
     <div
