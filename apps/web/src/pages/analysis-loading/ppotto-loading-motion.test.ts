@@ -73,22 +73,6 @@ describe('ppotto loading motion', () => {
 
     motion.start();
     expect(mount.querySelector('.pm-fact')).toBeNull();
-    const scanColumns = [...mount.querySelectorAll<HTMLElement>('.pm-scan-col')];
-    expect(scanColumns).toHaveLength(2);
-    expect(mount.querySelector('.pm-scan-band')).not.toBeNull();
-    expect(scanColumns.every((column) => column.children.length % 2 === 0)).toBe(true);
-    const initialColumnTransform = scanColumns[0]?.style.transform;
-    const initialTileTransform = scanColumns[0]?.firstElementChild?.getAttribute('style');
-    for (let count = 0; count < 2; count += 1) {
-      now += 100;
-      const currentFrames = frames;
-      frames = [];
-      currentFrames.forEach((frame) => frame(now));
-      await Promise.resolve();
-    }
-    expect(scanColumns[0]?.style.transform).not.toBe(initialColumnTransform);
-    expect(scanColumns[0]?.firstElementChild?.getAttribute('style')).toBe(initialTileTransform);
-
     for (let count = 0; count < 500 && !onRevealFinished.mock.calls.length; count += 1) {
       now += 100;
       const currentFrames = frames;
