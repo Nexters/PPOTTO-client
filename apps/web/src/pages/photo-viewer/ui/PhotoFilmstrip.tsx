@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 import { cn } from '@/shared/lib/cn';
 
@@ -19,6 +21,25 @@ export function PhotoFilmstrip({
 }: PhotoFilmstripProps) {
   const expandedGroupTopIndex =
     photos.find((photo) => photo.groupPosition === 'first')?.topIndex ?? null;
+  const expandedGroupLastSubIndex = photos.reduce(
+    (lastSubIndex, photo) =>
+      photo.topIndex === expandedGroupTopIndex
+        ? Math.max(lastSubIndex, photo.subIndex)
+        : lastSubIndex,
+    0,
+  );
+  // 그룹 안에서 사진을 넘겨도 재생되지 않도록, 진입 방향은 그룹이 바뀐 순간에만 고정
+  const [groupEntry, setGroupEntry] = useState<{
+    expandedGroup: number | null;
+    enterDirection: 'left' | 'right';
+  }>({ expandedGroup: expandedGroupTopIndex, enterDirection: 'left' });
+  if (groupEntry.expandedGroup !== expandedGroupTopIndex) {
+    setGroupEntry({
+      expandedGroup: expandedGroupTopIndex,
+      enterDirection: (photos[selectedIndex]?.subIndex ?? 0) > 0 ? 'right' : 'left',
+    });
+  }
+  const expandsFromRight = groupEntry.enterDirection === 'right';
   const { containerRef, getItemRef } = useFilmstripSync(
     selectedIndex,
     expandedGroupTopIndex,
@@ -37,13 +58,17 @@ export function PhotoFilmstrip({
           'calc(var(--rn-safe-area-inset-bottom, env(safe-area-inset-bottom)) + 0.75rem)',
       }}
     >
-      {/* TODO: 그룹 접힘/펼침 전환 애니메이션 */}
       {photos.map((photo, index) => {
         const isSelected = index === selectedIndex;
         const isGroupMember =
           photo.groupPosition === 'first' ||
           photo.groupPosition === 'middle' ||
           photo.groupPosition === 'last';
+        const isNewlyExpandedMember =
+          photo.groupPosition === 'middle' || photo.groupPosition === 'last';
+        const revealOrder = expandsFromRight
+          ? expandedGroupLastSubIndex - photo.subIndex
+          : photo.subIndex - 1;
         const isTightGap = photo.groupPosition === 'first' || photo.groupPosition === 'middle';
 
         if (isGroupMember) {
@@ -65,8 +90,15 @@ export function PhotoFilmstrip({
                 rounded,
                 isTightGap ? 'mr-px' : 'mr-2',
                 'border transition-colors duration-200',
+                isNewlyExpandedMember && 'filmstrip-group-member-enter',
                 isSelected ? 'border-white' : 'border-transparent',
               )}
+              style={
+                isNewlyExpandedMember
+                  ? { animationDelay: `${Math.min(Math.max(revealOrder, 0), 5) * 34}ms` }
+                  : undefined
+              }
+              data-enter-direction={expandsFromRight ? 'right' : 'left'}
             >
               <StickerPhotoImage
                 stickerId={stickerId}

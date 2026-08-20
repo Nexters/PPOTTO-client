@@ -18,6 +18,34 @@
   --color-foreground: var(--foreground);
 }
 
+@keyframes filmstrip-group-member-enter-from-left {
+  from {
+    transform: translateX(-8px) scale(0.96);
+    opacity: 0;
+  }
+}
+
+@keyframes filmstrip-group-member-enter-from-right {
+  from {
+    transform: translateX(8px) scale(0.96);
+    opacity: 0;
+  }
+}
+
+.filmstrip-group-member-enter {
+  animation-duration: 190ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+.filmstrip-group-member-enter[data-enter-direction='left'] {
+  animation-name: filmstrip-group-member-enter-from-left;
+}
+
+.filmstrip-group-member-enter[data-enter-direction='right'] {
+  animation-name: filmstrip-group-member-enter-from-right;
+}
+
 /* 스켈레톤 시머 — 하이라이트 밴드가 좌→우로 쓸고 지나간다 */
 @keyframes toast-up {
   from {
@@ -142,6 +170,7 @@
 
   .modal-overlay,
   .modal-content,
+  .filmstrip-group-member-enter,
   .skeleton {
     animation-duration: 1ms;
   }
