@@ -57,12 +57,11 @@ import {
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
 import {
   computeBringToFrontZIndex,
-  computeInitialLayout,
   computeTopZIndex,
-  type ExistingSticker,
   needsInitialLayout,
   toLayoutInput,
 } from '../model/board-layout';
+import { computePoissonInitialLayout, type ExistingSticker } from '../model/poisson-cluster';
 import {
   computeStickerPinchTransform,
   type PinchSample,
@@ -255,7 +254,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const unplacedStickers = rawStickers.filter(needsInitialLayout);
   const placedStickers: ExistingSticker[] = rawStickers
     .filter((sticker) => !needsInitialLayout(sticker))
-    .map((sticker) => ({ posX: sticker.posX!, posY: sticker.posY!, zIndex: sticker.zIndex! }));
+    .map((sticker) => ({
+      posX: sticker.posX!,
+      posY: sticker.posY!,
+      zIndex: sticker.zIndex!,
+      scale: sticker.scale,
+      rotation: sticker.rotation,
+    }));
 
   const baseStickers: StickerData[] = useMemo(
     () =>
@@ -684,7 +689,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
     const rect = container.getBoundingClientRect();
     const viewport = { width: rect.width, height: rect.height };
-    const laidOut = computeInitialLayout(pending, placedStickers, viewport);
+    const laidOut = computePoissonInitialLayout(pending, placedStickers);
 
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
       current
