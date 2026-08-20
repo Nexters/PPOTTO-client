@@ -4,16 +4,15 @@ import { useFlow } from '@stackflow/react';
 import { useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
-import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 
 import {
   buildDisplayList,
+  buildExpandedDisplayList,
   findFlatIndex,
-  getAdjacentSelection,
   resolveFilmstripSelection,
   type PhotoSelection,
 } from './model/photo-selection';
-import { useSwipeNavigation } from './model/use-swipe-navigation';
+import { PhotoCarousel } from './ui/PhotoCarousel';
 import { PhotoFilmstrip } from './ui/PhotoFilmstrip';
 import { PhotoViewerHeader } from './ui/PhotoViewerHeader';
 
@@ -30,19 +29,20 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
   });
   const { pop } = useFlow();
 
-  const displayList = data ? buildDisplayList(data.photos, selection.topIndex) : [];
-  const flatIndex = findFlatIndex(displayList, selection);
-  const selectedPhoto = displayList[flatIndex];
+  const filmstripPhotos = data ? buildDisplayList(data.photos, selection.topIndex) : [];
+  const filmstripIndex = findFlatIndex(filmstripPhotos, selection);
+  const carouselPhotos = data ? buildExpandedDisplayList(data.photos) : [];
+  const carouselIndex = findFlatIndex(carouselPhotos, selection);
 
   const handleFilmstripSelect = (newFlatIndex: number) => {
     if (!data) return;
     setSelection((prev) => resolveFilmstripSelection(data.photos, prev, newFlatIndex));
   };
 
-  const swipeHandlers = useSwipeNavigation((direction) => {
-    if (!data) return;
-    setSelection((prev) => getAdjacentSelection(data.photos, prev, direction));
-  });
+  const handleCarouselSelect = (index: number) => {
+    const photo = carouselPhotos[index];
+    if (photo) setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
+  };
 
   if (!data) return null;
 
@@ -50,21 +50,18 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     <div className="flex h-full w-full flex-col bg-black">
       <PhotoViewerHeader onBack={() => pop()} />
       <div className="mt-4 flex flex-1 flex-col gap-11">
-        <div className="relative w-full flex-1" {...swipeHandlers}>
-          {selectedPhoto && (
-            <StickerPhotoImage
-              stickerId={stickerId}
-              src={selectedPhoto.imageUrl}
-              alt=""
-              fill
-              className="object-contain"
-            />
-          )}
+        <div className="relative min-h-0 w-full flex-1">
+          <PhotoCarousel
+            stickerId={stickerId}
+            photos={carouselPhotos}
+            selectedIndex={carouselIndex}
+            onSelect={handleCarouselSelect}
+          />
         </div>
         <PhotoFilmstrip
           stickerId={stickerId}
-          photos={displayList}
-          selectedIndex={flatIndex}
+          photos={filmstripPhotos}
+          selectedIndex={filmstripIndex}
           onSelect={handleFilmstripSelect}
         />
       </div>

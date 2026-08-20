@@ -4,6 +4,7 @@ import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
 
 import {
   buildDisplayList,
+  buildExpandedDisplayList,
   findFlatIndex,
   getAdjacentSelection,
   resolveFilmstripSelection,
@@ -82,6 +83,21 @@ describe('buildDisplayList', () => {
       expect.objectContaining({ id: 'g2', topIndex: 1, subIndex: 2, groupPosition: 'middle' }),
       expect.objectContaining({ id: 'g3', topIndex: 1, subIndex: 3, groupPosition: 'last' }),
       expect.objectContaining({ id: 'p3', topIndex: 2, subIndex: 0, groupPosition: 'none' }),
+    ]);
+  });
+});
+
+describe('buildExpandedDisplayList', () => {
+  test('큰 사진 캐러셀에서는 모든 그룹 사진을 항상 고정된 순서로 펼친다', () => {
+    const result = buildExpandedDisplayList(photosWithMiddleGroup());
+
+    expect(result.map(({ id, topIndex, subIndex }) => ({ id, topIndex, subIndex }))).toEqual([
+      { id: 'p1', topIndex: 0, subIndex: 0 },
+      { id: 'p2', topIndex: 1, subIndex: 0 },
+      { id: 'g1', topIndex: 1, subIndex: 1 },
+      { id: 'g2', topIndex: 1, subIndex: 2 },
+      { id: 'g3', topIndex: 1, subIndex: 3 },
+      { id: 'p3', topIndex: 2, subIndex: 0 },
     ]);
   });
 });
