@@ -2,7 +2,7 @@
 
 import { toCanvas } from 'html-to-image';
 import dynamic from 'next/dynamic';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 import { bridge } from '@/shared/lib/bridge';
@@ -20,6 +20,7 @@ import { DrawingDeleteBar } from './ui/DrawingDeleteBar';
 import { DrawingHeader } from './ui/DrawingHeader';
 import { DrawingSizePreview } from './ui/DrawingSizePreview';
 import { EyedropperMarker } from './ui/EyedropperMarker';
+import { captureBoardTextLayout } from './ui/board-text-layout';
 import { TextInputOverlay } from './ui/TextInputOverlay';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
@@ -58,10 +59,14 @@ export function BoardPage() {
     (toolbarMode === 'draw' && isDrawingActive) ||
     ((toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed);
   const canvasRef = useRef<BoardCanvasHandle>(null);
+  const textInputRef = useRef<HTMLTextAreaElement | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLCanvasElement | null>(null);
   const previewColorRef = useRef<string | null>(null);
   const trashButtonRef = useRef<HTMLButtonElement>(null);
+  const setTextInputNode = useCallback((node: HTMLTextAreaElement | null) => {
+    textInputRef.current = node;
+  }, []);
 
   const [isPickingColor, setIsPickingColor] = useState(false);
   const [pickerPosition, setPickerPosition] = useState<{ x: number; y: number } | null>(null);
@@ -180,8 +185,13 @@ export function BoardPage() {
   }, [toolbarMode]);
 
   const finishTextMode = () => {
-    const trimmed = textDraft.trim();
-    if (trimmed) canvasRef.current?.createText(trimmed, textFontSize);
+    if (textDraft.trim()) {
+      const textInput = textInputRef.current;
+      if (textInput) {
+        const renderedText = captureBoardTextLayout(textInput, textDraft);
+        canvasRef.current?.createText(renderedText, textFontSize, textInput.clientWidth);
+      }
+    }
     setTextDraft('');
     setToolbarMode('default');
   };
@@ -282,7 +292,12 @@ export function BoardPage() {
             className="pointer-events-none fixed inset-x-0 z-55 transition-[bottom] duration-300 ease-out"
             style={{ top: TEXT_MODE_HEADER_HEIGHT, bottom: keyboardHeight ?? 0 }}
           >
-            <TextInputOverlay value={textDraft} onChange={setTextDraft} fontSize={textFontSize} />
+            <TextInputOverlay
+              value={textDraft}
+              onChange={setTextDraft}
+              fontSize={textFontSize}
+              onNodeChange={setTextInputNode}
+            />
             <BoardSizeSlider
               value={textFontSize}
               min={TEXT_FONT_SIZE_MIN}

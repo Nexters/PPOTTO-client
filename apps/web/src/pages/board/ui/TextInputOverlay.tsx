@@ -1,13 +1,16 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import { cn } from '@/shared/lib/cn';
+
+import { BOARD_TEXT_STYLE } from './board-text-style';
 
 type TextInputOverlayProps = {
   value: string;
   onChange: (value: string) => void;
   fontSize: number;
+  onNodeChange?: (node: HTMLTextAreaElement | null) => void;
 };
 
 function fitHeight(node: HTMLTextAreaElement) {
@@ -15,12 +18,28 @@ function fitHeight(node: HTMLTextAreaElement) {
   node.style.height = `${node.scrollHeight}px`;
 }
 
-export function TextInputOverlay({ value, onChange, fontSize }: TextInputOverlayProps) {
-  const setRef = useCallback((node: HTMLTextAreaElement | null) => {
-    if (!node) return;
-    node.focus();
-    fitHeight(node);
-  }, []);
+export function TextInputOverlay({
+  value,
+  onChange,
+  fontSize,
+  onNodeChange,
+}: TextInputOverlayProps) {
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const setRef = useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      textAreaRef.current = node;
+      if (node) {
+        node.focus();
+        fitHeight(node);
+      }
+      onNodeChange?.(node);
+    },
+    [onNodeChange],
+  );
+
+  useLayoutEffect(() => {
+    if (textAreaRef.current) fitHeight(textAreaRef.current);
+  }, [fontSize, value]);
 
   return (
     <div
@@ -32,16 +51,13 @@ export function TextInputOverlay({ value, onChange, fontSize }: TextInputOverlay
       <textarea
         ref={setRef}
         value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-          fitHeight(e.target);
-        }}
+        onChange={(e) => onChange(e.target.value)}
         rows={1}
         className={cn(
-          'pointer-events-auto w-full min-w-0 resize-none bg-transparent text-center font-bold',
-          'text-white outline-none',
+          'pointer-events-auto w-full min-w-0 resize-none overflow-hidden border-0',
+          'bg-transparent p-0 text-white outline-none',
         )}
-        style={{ fontSize }}
+        style={{ ...BOARD_TEXT_STYLE, fontSize }}
       />
     </div>
   );

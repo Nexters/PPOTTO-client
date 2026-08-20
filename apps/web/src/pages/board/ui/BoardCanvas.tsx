@@ -76,6 +76,7 @@ import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
 import type { ToolbarMode } from './BoardToolbar';
+import { BOARD_TEXT_STYLE } from './board-text-style';
 import { DrawingStroke } from './DrawingStroke';
 import {
   EmptyBoardSticker,
@@ -124,7 +125,7 @@ export type BoardCanvasHandle = {
   undoLastStroke: () => void;
   redoLastStroke: () => void;
   cancelMoveSession: () => void;
-  createText: (text: string, fontSize: number) => void;
+  createText: (text: string, fontSize: number, editWidth: number) => void;
 };
 
 type LocalTextItem = {
@@ -133,6 +134,7 @@ type LocalTextItem = {
   x: number;
   y: number;
   fontSize: number;
+  maxWidth: number;
   zIndex: number;
 };
 
@@ -640,7 +642,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       cancelMoveSession: () => {
         discardMoveSessionRef.current();
       },
-      createText: (text: string, fontSize: number) => {
+      createText: (text: string, fontSize: number, editWidth: number) => {
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
         const center = toWorldPoint(cameraRef.current, { x: rect.width / 2, y: rect.height / 2 });
@@ -652,6 +654,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             x: center.x,
             y: center.y,
             fontSize: fontSize / cameraRef.current.scale,
+            maxWidth: editWidth / cameraRef.current.scale,
             zIndex: computeTopZIndex([
               ...combinedZIndexPool(),
               ...draftDrawingsRef.current,
@@ -1549,9 +1552,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               zIndex: item.zIndex,
               fontSize: item.fontSize,
               color: '#fff',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
+              width: item.maxWidth,
               pointerEvents: 'none',
+              ...BOARD_TEXT_STYLE,
+              whiteSpace: 'pre',
             }}
           >
             {item.text}
