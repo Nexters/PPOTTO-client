@@ -280,7 +280,7 @@ export function BoardPage() {
         )}
         {toolbarMode === 'text' && (
           <div
-            className="fixed inset-0 z-50"
+            className="modal-overlay fixed inset-0 z-50 bg-black/1 backdrop-blur-[30px]"
             onPointerDown={(event) => {
               if (event.target !== event.currentTarget) return;
               finishTextMode();
