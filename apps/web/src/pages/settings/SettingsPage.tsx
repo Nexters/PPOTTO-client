@@ -76,7 +76,9 @@ export function SettingsPage() {
     <main className="flex flex-col w-full min-h-full gap-10 px-6 bg-black">
       <header
         className="relative w-full min-h-6"
-        style={{ paddingTop: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))' }}
+        style={{
+          paddingTop: 'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 0.75rem)',
+        }}
       >
         <button
           type="button"

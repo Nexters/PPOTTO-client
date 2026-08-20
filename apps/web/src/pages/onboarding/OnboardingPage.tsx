@@ -44,7 +44,9 @@ export function OnboardingPage() {
     >
       <header
         className={cn('relative z-10 flex items-center justify-center', 'min-h-18 shrink-0 px-6')}
-        style={{ paddingTop: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))' }}
+        style={{
+          paddingTop: 'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 0.75rem)',
+        }}
       >
         <div
           aria-hidden
