@@ -75,6 +75,7 @@ export function PhotoSelectScreen() {
     mode,
   });
   const permissionRequired = permission !== null && !permission.granted;
+  const canRequestPermission = permission?.canAskAgain === true;
   const galleryEmpty = !loading && !permissionRequired && photoUnits.length === 0;
 
   useEffect(() => {
@@ -143,7 +144,7 @@ export function PhotoSelectScreen() {
             <View className="gap-1">
               <Text className="text-white text-body-01">
                 {permissionRequired
-                  ? '사진 접근을 허용해 주세요'
+                  ? '사진 접근이 필요해요'
                   : mode === 'additional'
                     ? '추억할 사진을 최소 20장 선택해주세요'
                     : `${me ? `${me.name}님의 ` : ''}최근 사진 100장을 골랐어요`}
@@ -162,20 +163,24 @@ export function PhotoSelectScreen() {
         {permissionRequired ? (
           <View className="items-center justify-center flex-1 gap-6 px-8 pb-24">
             <View className="items-center gap-2">
-              <Text className="text-center text-white text-body-02">사진 접근 권한이 필요해요</Text>
+              <Text className="text-center text-white text-body-02">
+                {canRequestPermission ? '사진 접근이 필요해요' : '사진 접근 권한이 필요해요'}
+              </Text>
               <Text className="text-center text-gray-400 text-body-06">
-                보드에 사용할 최근 사진을 불러오고 선택하려면{`\n`}사진 보관함 접근을 허용해 주세요.
+                {canRequestPermission
+                  ? `보드에 사용할 최근 사진을 불러오고 선택하려면\n사진 보관함 접근이 필요해요.`
+                  : `사진을 불러오려면 설정에서\n사진 접근을 허용해 주세요.`}
               </Text>
             </View>
             <View className="w-full">
               <Button
                 onPress={() =>
-                  void (permission.canAskAgain ? requestPermission() : Linking.openSettings())
+                  void (canRequestPermission ? requestPermission() : Linking.openSettings())
                 }
                 size="large"
               >
                 <Text className="text-black text-body-03">
-                  {permission.canAskAgain ? '사진 접근 허용하기' : '설정에서 권한 허용하기'}
+                  {canRequestPermission ? '계속' : '설정으로 이동'}
                 </Text>
               </Button>
             </View>
