@@ -2,6 +2,8 @@ import { Download, Edit, Trash } from '@ppotto/assets';
 
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 
+import { QuickMenuButton } from '../StickerQuickMenu';
+
 type EmptyBoardStickerQuickMenuProps = {
   title: string;
   isOpen: boolean;
@@ -28,7 +30,7 @@ export function EmptyBoardStickerQuickMenu({
         onClose();
       },
     },
-    { label: '스티커 저장하기', Icon: Download, onClick: onClose },
+    { label: '스티커 저장', Icon: Download, onClick: onClose },
     {
       label: '삭제하기',
       Icon: Trash,
@@ -41,17 +43,13 @@ export function EmptyBoardStickerQuickMenu({
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
-      {menuItems.map(({ label, Icon, onClick }) => (
-        <button
-          key={label}
-          type="button"
-          className="flex items-center w-full gap-2 text-white"
-          onClick={onClick}
-        >
-          <Icon color="white" />
-          <span className="font-medium text-body-04">{label}</span>
-        </button>
-      ))}
+      <span className="text-body-01 w-full text-white">스티커 메뉴</span>
+      <div className="flex w-full items-start justify-between">
+        {menuItems.map(({ label, Icon, onClick }) => (
+          <QuickMenuButton key={label} Icon={Icon} label={label} onClick={onClick} />
+        ))}
+        <div className="w-18" aria-hidden />
+      </div>
     </BottomSheet>
   );
 }

@@ -19,7 +19,7 @@ type EmptyBoardStickerProps = {
 };
 
 export const EMPTY_BOARD_STICKER_ID = 'empty-board-sticker';
-export const EMPTY_BOARD_STICKER_DEFAULT_TITLE = 'PPOTTO를 3초간 꾹 눌러보세요👆';
+export const EMPTY_BOARD_STICKER_DEFAULT_TITLE = 'PPOTTO를 눌러보세요👆';
 export const EMPTY_BOARD_STICKER_WIDTH = 291;
 export const EMPTY_BOARD_STICKER_HEIGHT = 136;
 
