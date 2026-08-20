@@ -69,23 +69,13 @@
   pointer-events: none;
   background: linear-gradient(
     180deg,
-    rgba(0, 0, 0, 0.88) 0%,
-    rgba(0, 0, 0, 0.71) 5%,
-    rgba(0, 0, 0, 0.52) 10%,
-    rgba(0, 0, 0, 0.34) 15%,
-    rgba(0, 0, 0, 0.19) 20%,
-    rgba(0, 0, 0, 0.08) 25%,
-    rgba(0, 0, 0, 0.01) 37.5%,
+    rgba(0, 0, 0, 0.76) 0%,
+    rgba(0, 0, 0, 0.12) 32%,
     rgba(0, 0, 0, 0) 50%,
-    rgba(0, 0, 0, 0.01) 62.5%,
-    rgba(0, 0, 0, 0.08) 75%,
-    rgba(0, 0, 0, 0.19) 80%,
-    rgba(0, 0, 0, 0.34) 85%,
-    rgba(0, 0, 0, 0.52) 90%,
-    rgba(0, 0, 0, 0.71) 95%,
-    rgba(0, 0, 0, 0.88) 100%
+    rgba(0, 0, 0, 0.12) 68%,
+    rgba(0, 0, 0, 0.76) 100%
   );
-  box-shadow: 0 0 0 740px rgba(0, 0, 0, 0.88);
+  box-shadow: 0 0 0 740px rgba(0, 0, 0, 0.76);
   will-change: transform, opacity;
 }
 .ppotto-motion .pm-tile {
