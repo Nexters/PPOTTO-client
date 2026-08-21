@@ -13,12 +13,20 @@ import {
 
 const SETTLE_DURATION_MS = 200;
 const DISMISS_DURATION_MS = 180;
-const SHARED_DISMISS_DURATION_MS = 240;
+const SHARED_DISMISS_DURATION_MAX_MS = 240;
+const SHARED_DISMISS_DURATION_MIN_MS = 190;
+const SHARED_DISMISS_MAX_VELOCITY = 1.5;
 const VELOCITY_MAX_AGE_MS = 80;
 const VELOCITY_SAMPLE_WINDOW_MS = 100;
 
 function motionDuration(duration: number): number {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : duration;
+}
+
+function sharedDismissDuration(velocityY: number): number {
+  const progress = Math.min(Math.max(velocityY, 0) / SHARED_DISMISS_MAX_VELOCITY, 1);
+  const range = SHARED_DISMISS_DURATION_MAX_MS - SHARED_DISMISS_DURATION_MIN_MS;
+  return SHARED_DISMISS_DURATION_MAX_MS - range * progress;
 }
 
 type DismissTarget = () => DOMRect | undefined;
@@ -133,7 +141,7 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
     }, duration);
   };
 
-  const finishDismiss = (dragX: number) => {
+  const finishDismiss = (dragX: number, velocityY: number) => {
     if (isDismissingRef.current) return;
     isDismissingRef.current = true;
     cancelScheduledWork();
@@ -153,7 +161,7 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
     const source = activeImage ? containedImageRect(activeImage) : null;
 
     if (viewer && activeImage && source && target) {
-      const duration = motionDuration(SHARED_DISMISS_DURATION_MS);
+      const duration = motionDuration(sharedDismissDuration(velocityY));
       const viewerRect = viewer.getBoundingClientRect();
       const clone = activeImage.cloneNode() as HTMLImageElement;
       clone.alt = '';
@@ -258,7 +266,7 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
     );
 
     if (dragY > 0 && shouldDismiss(dragY, window.innerHeight, velocityY)) {
-      finishDismiss(event.clientX - startRef.current.x);
+      finishDismiss(event.clientX - startRef.current.x, velocityY);
     } else {
       settleBack();
     }
