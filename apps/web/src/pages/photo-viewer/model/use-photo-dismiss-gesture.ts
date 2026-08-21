@@ -2,11 +2,15 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 
 import {
+  calculateContainedImageRect,
+  calculateCoveredImageRect,
   calculateReleaseVelocity,
+  calculateSharedDismissTransform,
   clampDragY,
   dragYToScale,
   resolveDragAxis,
   shouldDismiss,
+  toRelativeRect,
   type DragAxis,
   type DragSample,
 } from './photo-dismiss-gesture';
@@ -30,22 +34,6 @@ function sharedDismissDuration(velocityY: number): number {
 }
 
 type DismissTarget = () => DOMRect | undefined;
-
-function containedImageRect(image: HTMLImageElement): DOMRect | null {
-  if (!image.naturalWidth || !image.naturalHeight) return null;
-
-  const box = image.getBoundingClientRect();
-  const scale = Math.min(box.width / image.naturalWidth, box.height / image.naturalHeight);
-  const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
-
-  return new DOMRect(
-    box.left + (box.width - width) / 2,
-    box.top + (box.height - height) / 2,
-    width,
-    height,
-  );
-}
 
 export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?: DismissTarget) {
   const gestureRef = useRef<HTMLDivElement>(null);
@@ -158,11 +146,33 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
       '[data-photo-viewer-active-image="true"]',
     );
     const target = getDismissTargetRef.current?.();
-    const source = activeImage ? containedImageRect(activeImage) : null;
+    const source = activeImage
+      ? calculateContainedImageRect(
+          activeImage.getBoundingClientRect(),
+          activeImage.naturalWidth,
+          activeImage.naturalHeight,
+        )
+      : null;
+    const coveredTarget =
+      activeImage && target
+        ? calculateCoveredImageRect(target, activeImage.naturalWidth, activeImage.naturalHeight)
+        : null;
 
-    if (viewer && activeImage && source && target) {
+    if (viewer && activeImage && source && target && coveredTarget) {
       const duration = motionDuration(sharedDismissDuration(velocityY));
       const viewerRect = viewer.getBoundingClientRect();
+      const relativeSource = toRelativeRect(source, viewerRect);
+      const relativeTarget = toRelativeRect(target, viewerRect);
+      const relativeCoveredTarget = toRelativeRect(coveredTarget, viewerRect);
+      const transform = calculateSharedDismissTransform(
+        relativeSource,
+        relativeTarget,
+        relativeCoveredTarget,
+      );
+      if (!transform) {
+        onDismissRef.current();
+        return;
+      }
       const clone = activeImage.cloneNode() as HTMLImageElement;
       clone.alt = '';
       clone.removeAttribute('data-photo-viewer-active-image');
@@ -171,12 +181,15 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
         'pointer-events:none',
         'z-index:20',
         'object-fit:cover',
-        `left:${source.left - viewerRect.left}px`,
-        `top:${source.top - viewerRect.top}px`,
-        `width:${source.width}px`,
-        `height:${source.height}px`,
+        `left:${relativeSource.left}px`,
+        `top:${relativeSource.top}px`,
+        `width:${relativeSource.width}px`,
+        `height:${relativeSource.height}px`,
         'border-radius:0',
-        `transition:left ${duration}ms ease-in-out, top ${duration}ms ease-in-out, width ${duration}ms ease-in-out, height ${duration}ms ease-in-out, border-radius ${duration}ms ease-in-out`,
+        'transform-origin:0 0',
+        'clip-path:inset(0 round 0)',
+        'will-change:transform,clip-path',
+        `transition:transform ${duration}ms ease-in-out, clip-path ${duration}ms ease-in-out`,
       ].join(';');
       dismissCloneRef.current = clone;
       viewer.append(clone);
@@ -191,11 +204,8 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
       rafRef.current = requestAnimationFrame(() => {
         rafRef.current = requestAnimationFrame(() => {
           rafRef.current = null;
-          clone.style.left = `${target.left - viewerRect.left}px`;
-          clone.style.top = `${target.top - viewerRect.top}px`;
-          clone.style.width = `${target.width}px`;
-          clone.style.height = `${target.height}px`;
-          clone.style.borderRadius = '8px';
+          clone.style.transform = `translate3d(${transform.translateX}px, ${transform.translateY}px, 0) scale(${transform.scale})`;
+          clone.style.clipPath = `inset(${transform.clipTop}px ${transform.clipRight}px ${transform.clipBottom}px ${transform.clipLeft}px round ${8 / transform.scale}px)`;
 
           transitionTimerRef.current = window.setTimeout(() => {
             transitionTimerRef.current = null;

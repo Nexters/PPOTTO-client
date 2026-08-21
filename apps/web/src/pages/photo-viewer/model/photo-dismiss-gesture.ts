@@ -1,5 +1,86 @@
 export type DragAxis = 'pending' | 'horizontal' | 'vertical';
 
+type Rect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
+
+export function calculateContainedImageRect(
+  box: Rect,
+  naturalWidth: number,
+  naturalHeight: number,
+): DOMRect | null {
+  if (naturalWidth <= 0 || naturalHeight <= 0) return null;
+
+  const scale = Math.min(box.width / naturalWidth, box.height / naturalHeight);
+  const width = naturalWidth * scale;
+  const height = naturalHeight * scale;
+
+  return new DOMRect(
+    box.left + (box.width - width) / 2,
+    box.top + (box.height - height) / 2,
+    width,
+    height,
+  );
+}
+
+export function calculateCoveredImageRect(
+  box: Rect,
+  naturalWidth: number,
+  naturalHeight: number,
+): DOMRect | null {
+  if (naturalWidth <= 0 || naturalHeight <= 0) return null;
+
+  const scale = Math.max(box.width / naturalWidth, box.height / naturalHeight);
+  const width = naturalWidth * scale;
+  const height = naturalHeight * scale;
+
+  return new DOMRect(
+    box.left + (box.width - width) / 2,
+    box.top + (box.height - height) / 2,
+    width,
+    height,
+  );
+}
+
+export type SharedDismissTransform = {
+  translateX: number;
+  translateY: number;
+  scale: number;
+  clipTop: number;
+  clipRight: number;
+  clipBottom: number;
+  clipLeft: number;
+};
+
+export function calculateSharedDismissTransform(
+  source: Rect,
+  target: Rect,
+  coveredTarget: Rect,
+): SharedDismissTransform | null {
+  if (source.width <= 0 || source.height <= 0 || coveredTarget.width <= 0) return null;
+
+  const scale = coveredTarget.width / source.width;
+  if (!Number.isFinite(scale) || scale <= 0) return null;
+
+  return {
+    translateX: coveredTarget.left - source.left,
+    translateY: coveredTarget.top - source.top,
+    scale,
+    clipTop: Math.max(0, (target.top - coveredTarget.top) / scale),
+    clipRight: Math.max(
+      0,
+      (coveredTarget.left + coveredTarget.width - target.left - target.width) / scale,
+    ),
+    clipBottom: Math.max(
+      0,
+      (coveredTarget.top + coveredTarget.height - target.top - target.height) / scale,
+    ),
+    clipLeft: Math.max(0, (target.left - coveredTarget.left) / scale),
+  };
+}
+
+export function toRelativeRect(rect: Rect, container: Rect): DOMRect {
+  return new DOMRect(rect.left - container.left, rect.top - container.top, rect.width, rect.height);
+}
+
 const AXIS_LOCK_DISTANCE = 6;
 
 export function resolveDragAxis(dx: number, dy: number): DragAxis {
