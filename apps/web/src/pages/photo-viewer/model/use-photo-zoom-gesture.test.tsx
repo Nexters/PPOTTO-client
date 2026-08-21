@@ -4,13 +4,20 @@ import { useRef } from 'react';
 
 import { usePhotoZoomGesture } from './use-photo-zoom-gesture';
 
-function ZoomHarness({ onPinchStart }: { onPinchStart: () => void }) {
+function ZoomHarness({
+  onPinchStart,
+  onEdgeNavigate = () => undefined,
+}: {
+  onPinchStart: () => void;
+  onEdgeNavigate?: (direction: 'previous' | 'next') => void;
+}) {
   const gestureRef = useRef<HTMLDivElement>(null);
   const interactionBlockedRef = useRef(false);
   const { resetZoom, handlers } = usePhotoZoomGesture(
     gestureRef,
     interactionBlockedRef,
     onPinchStart,
+    onEdgeNavigate,
   );
 
   return <div ref={gestureRef} data-testid="gesture" {...handlers} onDoubleClick={resetZoom} />;
@@ -203,7 +210,6 @@ describe('usePhotoZoomGesture', () => {
     zoomImage.dataset.photoViewerZoomImage = '';
     zoomLayer.append(zoomImage);
     gesture.append(zoomLayer);
-
     fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
     fireEvent.pointerDown(gesture, { pointerId: 2, clientX: 200, clientY: 100 });
     fireEvent.pointerMove(gesture, { pointerId: 2, clientX: 300, clientY: 100 });
@@ -228,5 +234,71 @@ describe('usePhotoZoomGesture', () => {
 
     act(() => vi.advanceTimersByTime(180));
     expect(zoomImage.style.transition).toBe('');
+  });
+
+  it('사진 끝에서 시작한 새로운 스와이프로 다음 사진을 선택한다', () => {
+    const image = document.createElement('img');
+    const onEdgeNavigate = vi.fn(() => {
+      image.removeAttribute('data-photo-viewer-active-image');
+    });
+    render(<ZoomHarness onPinchStart={vi.fn()} onEdgeNavigate={onEdgeNavigate} />);
+    const gesture = screen.getByTestId('gesture');
+    Object.defineProperty(gesture, 'setPointerCapture', { value: vi.fn() });
+    gesture.getBoundingClientRect = () => new DOMRect(0, 0, 300, 400);
+    image.dataset.photoViewerActiveImage = 'true';
+    Object.defineProperties(image, {
+      naturalWidth: { value: 300 },
+      naturalHeight: { value: 200 },
+    });
+    image.getBoundingClientRect = () => new DOMRect(0, 100, 300, 200);
+    gesture.append(image);
+    const zoomLayer = document.createElement('div');
+    zoomLayer.dataset.photoViewerZoomLayer = '';
+    const zoomImage = document.createElement('img');
+    zoomImage.dataset.photoViewerZoomImage = '';
+    zoomLayer.append(zoomImage);
+    gesture.append(zoomLayer);
+    const nextPreview = document.createElement('div');
+    nextPreview.dataset.photoViewerEdgePreview = 'next';
+    gesture.append(nextPreview);
+    const carouselTrack = document.createElement('div');
+    carouselTrack.dataset.photoViewerCarouselTrack = '';
+    carouselTrack.style.columnGap = '12px';
+    gesture.append(carouselTrack);
+
+    fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(gesture, { pointerId: 2, clientX: 200, clientY: 100 });
+    fireEvent.pointerMove(gesture, { pointerId: 2, clientX: 300, clientY: 100 });
+    act(() => vi.advanceTimersByTime(20));
+    fireEvent.pointerUp(gesture, { pointerId: 2, clientX: 300, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+
+    fireEvent.pointerDown(gesture, { pointerId: 3, clientX: 200, clientY: 150 });
+    fireEvent.pointerMove(gesture, { pointerId: 3, clientX: -100, clientY: 150 });
+    act(() => vi.advanceTimersByTime(20));
+    fireEvent.pointerUp(gesture, { pointerId: 3, clientX: -100, clientY: 150 });
+    act(() => vi.advanceTimersByTime(180));
+
+    expect(onEdgeNavigate).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(gesture, { pointerId: 4, clientX: 200, clientY: 150 });
+    fireEvent.pointerMove(gesture, { pointerId: 4, clientX: 140, clientY: 150 });
+    act(() => vi.advanceTimersByTime(20));
+
+    expect(nextPreview.style.opacity).toBe('1');
+    expect(nextPreview.style.transform).toBe('translate3d(252px, 0, 0)');
+
+    fireEvent.pointerUp(gesture, { pointerId: 4, clientX: 140, clientY: 150 });
+
+    expect(onEdgeNavigate).not.toHaveBeenCalled();
+    expect(nextPreview.style.transform).toBe('translate3d(0, 0, 0)');
+
+    act(() => vi.advanceTimersByTime(180));
+    expect(onEdgeNavigate).toHaveBeenCalledWith('next');
+
+    act(() => vi.advanceTimersByTime(20));
+    expect(image.style.opacity).toBe('');
+    expect(zoomImage.style.transform).toBe('');
+    expect(zoomLayer.style.pointerEvents).toBe('');
   });
 });

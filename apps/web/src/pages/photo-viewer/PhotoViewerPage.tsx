@@ -13,6 +13,7 @@ import {
   resolveFilmstripSelection,
   type PhotoSelection,
 } from './model/photo-selection';
+import type { ZoomEdgeDirection } from './model/photo-zoom';
 import { usePhotoDismissGesture } from './model/use-photo-dismiss-gesture';
 import { usePhotoZoomGesture } from './model/use-photo-zoom-gesture';
 import { PhotoCarousel } from './ui/PhotoCarousel';
@@ -32,6 +33,7 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
   });
   const { pop } = useFlow();
   const zoomInteractionBlockedRef = useRef(false);
+  const jumpCarouselSelectionRef = useRef(false);
   const getDismissTarget = useCallback(() => {
     const recap = document.querySelector('.recap-app-screen');
     const candidates = recap?.querySelectorAll<HTMLElement>(
@@ -63,10 +65,24 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     getDismissTarget,
     () => zoomInteractionBlockedRef.current,
   );
+  const handleZoomEdgeNavigate = useCallback(
+    (direction: ZoomEdgeDirection) => {
+      if (!data) return;
+      const photos = buildExpandedDisplayList(data.photos);
+      const currentIndex = findFlatIndex(photos, selection);
+      const nextIndex = currentIndex + (direction === 'next' ? 1 : -1);
+      const photo = photos[nextIndex];
+      if (!photo) return;
+      jumpCarouselSelectionRef.current = true;
+      setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
+    },
+    [data, selection],
+  );
   const { resetZoom, handlers: zoomHandlers } = usePhotoZoomGesture(
     gestureRef,
     zoomInteractionBlockedRef,
     cancelDismissGesture,
+    handleZoomEdgeNavigate,
   );
 
   useEffect(() => {
@@ -121,6 +137,7 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
             stickerId={stickerId}
             photos={carouselPhotos}
             selectedIndex={carouselIndex}
+            jumpToSelectedRef={jumpCarouselSelectionRef}
             onSelect={handleCarouselSelect}
           />
         </div>

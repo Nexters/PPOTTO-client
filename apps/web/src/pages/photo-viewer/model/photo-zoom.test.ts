@@ -7,6 +7,8 @@ import {
   constrainZoomTransform,
   distanceBetween,
   midpointBetween,
+  resolveZoomEdgeDirection,
+  shouldNavigateZoomEdge,
 } from './photo-zoom';
 
 describe('photo zoom geometry', () => {
@@ -100,5 +102,61 @@ describe('applyZoomBoundaryResistance', () => {
         0.2,
       ),
     ).toEqual({ scale: 2, translateX: 20, translateY: -200 });
+  });
+});
+
+describe('zoom edge navigation', () => {
+  const image = { left: 0, top: 100, width: 300, height: 200 };
+  const viewport = { left: 0, top: 0, width: 300, height: 400 };
+
+  test('오른쪽 끝에서 바깥쪽으로 이동하면 다음 사진 방향을 반환한다', () => {
+    expect(
+      resolveZoomEdgeDirection(
+        { scale: 2, translateX: -300, translateY: -200 },
+        image,
+        viewport,
+        -20,
+        2,
+      ),
+    ).toBe('next');
+  });
+
+  test('왼쪽 끝에서 바깥쪽으로 이동하면 이전 사진 방향을 반환한다', () => {
+    expect(
+      resolveZoomEdgeDirection(
+        { scale: 2, translateX: 0, translateY: -200 },
+        image,
+        viewport,
+        20,
+        2,
+      ),
+    ).toBe('previous');
+  });
+
+  test('경계가 아니거나 세로 이동이면 사진 전환 방향을 반환하지 않는다', () => {
+    expect(
+      resolveZoomEdgeDirection(
+        { scale: 2, translateX: -100, translateY: -200 },
+        image,
+        viewport,
+        -20,
+        2,
+      ),
+    ).toBeNull();
+    expect(
+      resolveZoomEdgeDirection(
+        { scale: 2, translateX: -300, translateY: -200 },
+        image,
+        viewport,
+        -10,
+        20,
+      ),
+    ).toBeNull();
+  });
+
+  test('충분한 거리 또는 속도에서 사진 전환을 확정한다', () => {
+    expect(shouldNavigateZoomEdge(50, 300, 0.1)).toBe(true);
+    expect(shouldNavigateZoomEdge(10, 300, 0.6)).toBe(true);
+    expect(shouldNavigateZoomEdge(20, 300, 0.2)).toBe(false);
   });
 });

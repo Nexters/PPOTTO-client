@@ -1,5 +1,5 @@
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 
 import {
   applyZoomBoundaryResistance,
@@ -8,10 +8,14 @@ import {
   constrainZoomTransform,
   distanceBetween,
   midpointBetween,
+  resolveZoomEdgeDirection,
+  shouldNavigateZoomEdge,
   type Point,
+  type ZoomEdgeDirection,
   type ZoomTransform,
 } from './photo-zoom';
 import { calculateContainedImageRect } from './photo-dismiss-gesture';
+import { usePhotoZoomLayer } from './use-photo-zoom-layer';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 3;
@@ -22,6 +26,8 @@ const TAP_MOVE_TOLERANCE_PX = 8;
 const DOUBLE_TAP_TRANSITION_MS = 180;
 const PAN_BOUNDARY_RESISTANCE = 0.2;
 const PAN_SETTLE_TRANSITION_MS = 180;
+const EDGE_VELOCITY_MAX_AGE_MS = 80;
+const EDGE_TRANSITION_MS = 180;
 
 type PinchStart = {
   distance: number;
@@ -35,7 +41,11 @@ type PanStart = Point & {
   pointerId: number;
   translateX: number;
   translateY: number;
+  mode: 'pending' | 'pan' | 'edge';
+  edgeDirection: ZoomEdgeDirection | null;
 };
+
+type EdgeSample = { x: number; time: number };
 
 type TapCandidate = Point & { pointerId: number };
 type LastTap = Point & { time: number };
@@ -43,12 +53,14 @@ type LastTap = Point & { time: number };
 type ZoomGeometry = {
   image: { left: number; top: number; width: number; height: number };
   viewport: { left: number; top: number; width: number; height: number };
+  carouselGap: number;
 };
 
 export function usePhotoZoomGesture(
   gestureRef: RefObject<HTMLDivElement | null>,
   interactionBlockedRef: RefObject<boolean>,
   onPinchStart: () => void,
+  onEdgeNavigate: (direction: ZoomEdgeDirection) => void,
 ) {
   const pointersRef = useRef(new Map<number, Point>());
   const transformRef = useRef<ZoomTransform>({ scale: 1, translateX: 0, translateY: 0 });
@@ -58,36 +70,23 @@ export function usePhotoZoomGesture(
   const rafRef = useRef<number | null>(null);
   const transitionTimerRef = useRef<number | null>(null);
   const isTransitioningRef = useRef(false);
-  const isZoomLayerActiveRef = useRef(false);
   const tapCandidateRef = useRef<TapCandidate | null>(null);
   const lastTapRef = useRef<LastTap | null>(null);
+  const edgeSamplesRef = useRef<EdgeSample[]>([]);
   const onPinchStartRef = useRef(onPinchStart);
+  const onEdgeNavigateRef = useRef(onEdgeNavigate);
+  const {
+    getTransformElement,
+    getEdgePreview,
+    measureCarouselGap,
+    resetEdgePreviews,
+    setActive: setZoomLayerActive,
+  } = usePhotoZoomLayer(gestureRef);
 
   useLayoutEffect(() => {
     onPinchStartRef.current = onPinchStart;
+    onEdgeNavigateRef.current = onEdgeNavigate;
   });
-
-  const getTransformElement = () =>
-    gestureRef.current?.querySelector<HTMLElement>('[data-photo-viewer-zoom-image]') ??
-    gestureRef.current;
-
-  const setZoomLayerActive = useCallback(
-    (active: boolean) => {
-      if (isZoomLayerActiveRef.current === active) return;
-      const gesture = gestureRef.current;
-      const layer = gesture?.querySelector<HTMLElement>('[data-photo-viewer-zoom-layer]');
-      const original = gesture?.querySelector<HTMLElement>(
-        '[data-photo-viewer-active-image="true"]',
-      );
-      if (layer) {
-        layer.style.opacity = active ? '1' : '';
-        layer.style.pointerEvents = active ? 'auto' : '';
-      }
-      if (original) original.style.opacity = active ? '0' : '';
-      isZoomLayerActiveRef.current = active;
-    },
-    [gestureRef],
-  );
 
   const applyTransform = () => {
     const element = getTransformElement();
@@ -117,6 +116,7 @@ export function usePhotoZoomGesture(
     isTransitioningRef.current = false;
     tapCandidateRef.current = null;
     lastTapRef.current = null;
+    edgeSamplesRef.current = [];
     pointersRef.current.clear();
     pinchStartRef.current = null;
     panStartRef.current = null;
@@ -129,6 +129,7 @@ export function usePhotoZoomGesture(
       element.style.transform = '';
     }
     setZoomLayerActive(false);
+    resetEdgePreviews();
   };
 
   const constrainTransform = (transform: ZoomTransform): ZoomTransform => {
@@ -172,6 +173,7 @@ export function usePhotoZoomGesture(
         height: imageRect.height,
       },
       viewport: { left: 0, top: 0, width: elementRect.width, height: elementRect.height },
+      carouselGap: measureCarouselGap(),
     };
   };
 
@@ -254,7 +256,10 @@ export function usePhotoZoomGesture(
         y: event.clientY,
         translateX: current.translateX,
         translateY: current.translateY,
+        mode: 'pending',
+        edgeDirection: null,
       };
+      edgeSamplesRef.current = [{ x: event.clientX, time: event.timeStamp }];
       event.currentTarget.setPointerCapture(event.pointerId);
     }
   };
@@ -281,10 +286,61 @@ export function usePhotoZoomGesture(
         event.preventDefault();
         event.stopPropagation();
         if (tapCandidateRef.current?.pointerId === event.pointerId) return;
+
+        const deltaX = event.clientX - panStart.x;
+        const deltaY = event.clientY - panStart.y;
+        if (panStart.mode === 'pending') {
+          const geometry = geometryRef.current;
+          panStart.edgeDirection = geometry
+            ? resolveZoomEdgeDirection(
+                {
+                  scale: transformRef.current.scale,
+                  translateX: panStart.translateX,
+                  translateY: panStart.translateY,
+                },
+                geometry.image,
+                geometry.viewport,
+                deltaX,
+                deltaY,
+              )
+            : null;
+          if (panStart.edgeDirection && !getEdgePreview(panStart.edgeDirection)) {
+            panStart.edgeDirection = null;
+          }
+          panStart.mode = panStart.edgeDirection ? 'edge' : 'pan';
+        }
+
+        if (panStart.mode === 'edge' && panStart.edgeDirection) {
+          const outwardDistance =
+            panStart.edgeDirection === 'next' ? Math.min(deltaX, 0) : Math.max(deltaX, 0);
+          const viewportWidth = geometryRef.current?.viewport.width ?? window.innerWidth;
+          const carouselGap = geometryRef.current?.carouselGap ?? measureCarouselGap();
+          const preview = getEdgePreview(panStart.edgeDirection);
+          transformRef.current = {
+            ...transformRef.current,
+            translateX: panStart.translateX + outwardDistance,
+            translateY: panStart.translateY,
+          };
+          if (preview) {
+            const initialOffset =
+              panStart.edgeDirection === 'next'
+                ? viewportWidth + carouselGap
+                : -viewportWidth - carouselGap;
+            preview.style.opacity = '1';
+            preview.style.transform = `translate3d(${initialOffset + outwardDistance}px, 0, 0)`;
+          }
+          edgeSamplesRef.current.push({ x: event.clientX, time: event.timeStamp });
+          edgeSamplesRef.current = edgeSamplesRef.current.filter(
+            (sample) => event.timeStamp - sample.time <= EDGE_VELOCITY_MAX_AGE_MS,
+          );
+          scheduleTransform();
+          return;
+        }
+
         transformRef.current = resistTransform({
           ...transformRef.current,
-          translateX: panStart.translateX + event.clientX - panStart.x,
-          translateY: panStart.translateY + event.clientY - panStart.y,
+          translateX: panStart.translateX + deltaX,
+          translateY: panStart.translateY + deltaY,
         });
         scheduleTransform();
       } else if (interactionBlockedRef.current) {
@@ -355,11 +411,14 @@ export function usePhotoZoomGesture(
     }, DOUBLE_TAP_TRANSITION_MS);
   };
 
-  const settlePanBoundary = () => {
+  const settlePanBoundary = (edgeDirection?: ZoomEdgeDirection | null) => {
     const next = constrainTransform(transformRef.current);
+    const preview = edgeDirection ? getEdgePreview(edgeDirection) : null;
+    const hasVisiblePreview = preview?.style.opacity === '1';
     if (
       next.translateX === transformRef.current.translateX &&
-      next.translateY === transformRef.current.translateY
+      next.translateY === transformRef.current.translateY &&
+      !hasVisiblePreview
     ) {
       return;
     }
@@ -374,12 +433,58 @@ export function usePhotoZoomGesture(
     if (!transformElement) return;
     transformElement.style.transition = `transform ${PAN_SETTLE_TRANSITION_MS}ms ease-out`;
     applyTransform();
+    if (preview) {
+      const viewportWidth = geometryRef.current?.viewport.width ?? window.innerWidth;
+      const carouselGap = geometryRef.current?.carouselGap ?? measureCarouselGap();
+      const initialOffset =
+        edgeDirection === 'next' ? viewportWidth + carouselGap : -viewportWidth - carouselGap;
+      preview.style.transition = `transform ${PAN_SETTLE_TRANSITION_MS}ms ease-out, opacity ${PAN_SETTLE_TRANSITION_MS}ms ease-out`;
+      preview.style.transform = `translate3d(${initialOffset}px, 0, 0)`;
+      preview.style.opacity = '0';
+    }
     transitionTimerRef.current = window.setTimeout(() => {
       transitionTimerRef.current = null;
       isTransitioningRef.current = false;
       transformElement.style.transition = '';
+      if (preview) {
+        preview.style.transition = '';
+        preview.style.transform = '';
+        preview.style.opacity = '';
+      }
       interactionBlockedRef.current = true;
     }, PAN_SETTLE_TRANSITION_MS);
+  };
+
+  const finishEdgeNavigation = (direction: ZoomEdgeDirection, panStart: PanStart) => {
+    const transformElement = getTransformElement();
+    const preview = getEdgePreview(direction);
+    if (!transformElement || !preview) {
+      settlePanBoundary(direction);
+      return;
+    }
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    const viewportWidth = geometryRef.current?.viewport.width ?? window.innerWidth;
+    const carouselGap = geometryRef.current?.carouselGap ?? measureCarouselGap();
+    const exitDistance =
+      direction === 'next' ? -viewportWidth - carouselGap : viewportWidth + carouselGap;
+    transformRef.current = {
+      ...transformRef.current,
+      translateX: panStart.translateX + exitDistance,
+      translateY: panStart.translateY,
+    };
+    isTransitioningRef.current = true;
+    transformElement.style.transition = `transform ${EDGE_TRANSITION_MS}ms ease-out`;
+    preview.style.transition = `transform ${EDGE_TRANSITION_MS}ms ease-out`;
+    applyTransform();
+    preview.style.transform = 'translate3d(0, 0, 0)';
+    transitionTimerRef.current = window.setTimeout(() => {
+      transitionTimerRef.current = null;
+      onEdgeNavigateRef.current(direction);
+      rafRef.current = requestAnimationFrame(() => resetZoom());
+    }, EDGE_TRANSITION_MS);
   };
 
   const handleTap = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -399,22 +504,45 @@ export function usePhotoZoomGesture(
 
   const handlePointerUpCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
     const isTap = tapCandidateRef.current?.pointerId === event.pointerId;
-    const wasPanning = panStartRef.current?.pointerId === event.pointerId;
+    const panStart =
+      panStartRef.current?.pointerId === event.pointerId ? panStartRef.current : null;
     if (pinchStartRef.current || interactionBlockedRef.current) {
       event.preventDefault();
       event.stopPropagation();
     }
     finishPointer(event);
     tapCandidateRef.current = null;
-    if (isTap) handleTap(event);
-    else if (wasPanning) settlePanBoundary();
+    if (isTap) {
+      handleTap(event);
+      return;
+    }
+    if (panStart?.mode === 'edge' && panStart.edgeDirection) {
+      const samples = edgeSamplesRef.current;
+      const first = samples[0];
+      const last = samples.at(-1);
+      const velocityX =
+        first && last && last.time > first.time ? (last.x - first.x) / (last.time - first.time) : 0;
+      const distanceX = event.clientX - panStart.x;
+      const viewportWidth = geometryRef.current?.viewport.width ?? window.innerWidth;
+      const outwardDistance = panStart.edgeDirection === 'next' ? -distanceX : distanceX;
+      const outwardVelocity = panStart.edgeDirection === 'next' ? -velocityX : velocityX;
+      if (
+        shouldNavigateZoomEdge(outwardDistance, viewportWidth, outwardVelocity) &&
+        getEdgePreview(panStart.edgeDirection)
+      ) {
+        finishEdgeNavigation(panStart.edgeDirection, panStart);
+        return;
+      }
+    }
+    if (panStart) settlePanBoundary(panStart.edgeDirection);
   };
 
   const handlePointerCancelCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const wasPanning = panStartRef.current?.pointerId === event.pointerId;
+    const panStart =
+      panStartRef.current?.pointerId === event.pointerId ? panStartRef.current : null;
     if (pinchStartRef.current || interactionBlockedRef.current) event.stopPropagation();
     finishPointer(event);
-    if (wasPanning) settlePanBoundary();
+    if (panStart) settlePanBoundary(panStart.edgeDirection);
     if (tapCandidateRef.current?.pointerId === event.pointerId) {
       tapCandidateRef.current = null;
       lastTapRef.current = null;
@@ -423,9 +551,10 @@ export function usePhotoZoomGesture(
 
   const handleLostPointerCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
-    const wasPanning = panStartRef.current?.pointerId === event.pointerId;
+    const panStart =
+      panStartRef.current?.pointerId === event.pointerId ? panStartRef.current : null;
     finishPointer(event);
-    if (wasPanning) settlePanBoundary();
+    if (panStart) settlePanBoundary(panStart.edgeDirection);
     if (tapCandidateRef.current?.pointerId === event.pointerId) {
       tapCandidateRef.current = null;
       lastTapRef.current = null;
@@ -441,9 +570,10 @@ export function usePhotoZoomGesture(
       panStartRef.current = null;
       geometryRef.current = null;
       setZoomLayerActive(false);
+      resetEdgePreviews();
       interactionBlockedRef.current = false;
     },
-    [interactionBlockedRef, setZoomLayerActive],
+    [interactionBlockedRef, resetEdgePreviews, setZoomLayerActive],
   );
 
   return {

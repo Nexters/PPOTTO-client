@@ -7,6 +7,7 @@ export type ZoomTransform = {
 };
 
 export type ZoomRect = { left: number; top: number; width: number; height: number };
+export type ZoomEdgeDirection = 'previous' | 'next';
 
 export function distanceBetween(first: Point, second: Point): number {
   return Math.hypot(second.x - first.x, second.y - first.y);
@@ -123,4 +124,39 @@ export function applyZoomBoundaryResistance(
     translateY:
       constrained.translateY + (transform.translateY - constrained.translateY) * resistance,
   };
+}
+
+export function resolveZoomEdgeDirection(
+  transform: ZoomTransform,
+  image: ZoomRect,
+  viewport: ZoomRect,
+  deltaX: number,
+  deltaY: number,
+): ZoomEdgeDirection | null {
+  if (Math.abs(deltaX) <= Math.abs(deltaY)) return null;
+
+  const tolerance = 0.5;
+  if (deltaX > 0) {
+    const outward = constrainZoomTransform(
+      { ...transform, translateX: transform.translateX + 1 },
+      image,
+      viewport,
+    );
+    return Math.abs(outward.translateX - transform.translateX) <= tolerance ? 'previous' : null;
+  }
+
+  const outward = constrainZoomTransform(
+    { ...transform, translateX: transform.translateX - 1 },
+    image,
+    viewport,
+  );
+  return Math.abs(outward.translateX - transform.translateX) <= tolerance ? 'next' : null;
+}
+
+export function shouldNavigateZoomEdge(
+  outwardDistance: number,
+  viewportWidth: number,
+  outwardVelocity: number,
+): boolean {
+  return outwardDistance >= viewportWidth * 0.15 || outwardVelocity >= 0.5;
 }
