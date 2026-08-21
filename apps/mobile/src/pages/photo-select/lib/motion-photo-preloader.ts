@@ -15,7 +15,8 @@ type Task = {
 };
 
 async function prepareMotionPhoto(photo: GalleryPhoto): Promise<UploadMotionPhoto> {
-  const compressed = await compressPhoto(photo, { maxDimension: 768, quality: 0.6 });
+  // 로딩 모션 타일용이라 낮게 잡는다 — 장수를 늘리는 대신(25→40) 브릿지 페이로드를 유지
+  const compressed = await compressPhoto(photo, { maxDimension: 640, quality: 0.5 });
   const base64 = await new File(compressed.uri).base64();
 
   return {

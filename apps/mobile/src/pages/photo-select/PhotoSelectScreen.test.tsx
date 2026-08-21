@@ -413,7 +413,7 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
   const { user } = await renderLoadedScreen();
 
   await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(25));
-  expect(mockImageResize).toHaveBeenCalledWith({ width: 768, height: 512 });
+  expect(mockImageResize).toHaveBeenCalledWith({ width: 640, height: 427 });
   expect(mockImageSave.mock.calls.every(([options]) => options.format === 'jpeg')).toBe(true);
 
   await user.press(cta());
