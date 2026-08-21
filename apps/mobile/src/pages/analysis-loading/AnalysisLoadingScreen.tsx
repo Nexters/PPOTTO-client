@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { photoUploadService, type UploadMotionPhoto } from '@/features/photo-upload';
+// 배럴(index) 대신 직접 import — PhotoGrid(reanimated)까지 끌어오지 않기 위함
+import { icloudDownloadStatus } from '@/features/photo-selection/model/icloud-download-status';
+import {
+  PhotoPreparationError,
+  photoUploadService,
+  type UploadMotionPhoto,
+} from '@/features/photo-upload';
 import { AppWebView } from '@/shared/ui/AppWebView';
 import { Button } from '@/shared/ui/Button';
 import { useToast } from '@/shared/ui/Toast';
@@ -27,6 +33,11 @@ export function AnalysisLoadingScreen() {
     photoUploadService.subscribe,
     photoUploadService.getViewState,
     photoUploadService.getViewState,
+  );
+  const downloadingFromICloud = useSyncExternalStore(
+    icloudDownloadStatus.subscribe,
+    icloudDownloadStatus.isDownloading,
+    icloudDownloadStatus.isDownloading,
   );
   const uploadRef = useRef(upload);
   const bridgePhotosRef = useRef<UploadMotionPhoto[]>([]);
@@ -52,6 +63,7 @@ export function AnalysisLoadingScreen() {
   const bridgeStateFor = useCallback(
     (state: LoadingSequenceState): AnalysisLoadingBridgeState => ({
       photoCount: photoUploadService.getMotionPhotoCount(),
+      downloadingFromICloud: icloudDownloadStatus.isDownloading(),
       photos: bridgePhotosRef.current.map(({ id, uri, width, height }) => ({
         id,
         uri,
@@ -138,7 +150,10 @@ export function AnalysisLoadingScreen() {
     }
 
     void current.catch((error) => {
-      if (photoUploadService.isStatusUnavailableError(error)) {
+      if (error instanceof PhotoPreparationError) {
+        toast('사진을 불러오지 못했어요. 다시 업로드해 주세요.');
+        photoUploadService.clearCurrent();
+      } else if (photoUploadService.isStatusUnavailableError(error)) {
         toast('분석 상태를 확인하지 못했어요. 잠시 후 다시 확인해주세요.');
         photoUploadService.clearCurrent();
       } else if (photoUploadService.isRecoverableError(error)) {
@@ -163,6 +178,7 @@ export function AnalysisLoadingScreen() {
     <View className="flex-1 bg-black">
       <AppWebView
         bridgeHandlers={bridgeHandlers}
+        downloadingFromICloud={downloadingFromICloud}
         path="/analysis-loading"
         showBoard={showingBoard}
         waitForAnalysisReady

@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import {
   clearCompressedPhotos,
   compressPhoto,
@@ -7,7 +9,8 @@ import {
 import { createPhotoCompressionQueue } from './photo-compression';
 import type { PhotoGroup } from './photo-group';
 
-const queue = createPhotoCompressionQueue(compressPhoto);
+// iOS는 iCloud 다운로드(IO 바운드)가 섞여 병렬을 더 준다
+const queue = createPhotoCompressionQueue(compressPhoto, Platform.OS === 'ios' ? 6 : 3);
 let runId = 0;
 
 const log = (message: string) => {

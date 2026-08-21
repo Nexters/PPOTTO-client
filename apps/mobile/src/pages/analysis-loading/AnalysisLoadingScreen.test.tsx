@@ -107,6 +107,7 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
   await act(async () => void loadingBridgeHandlers!.ANALYSIS_LOADING_READY());
   expect(photoUploadService.beginUpload).toHaveBeenCalledTimes(1);
   expect(state).toEqual({
+    downloadingFromICloud: false,
     photoCount: 100,
     photos: [{ id: 'photo-1', uri: 'data:image/jpeg;base64,AA==', width: 1200, height: 800 }],
     visiblePhase: 'SCAN',

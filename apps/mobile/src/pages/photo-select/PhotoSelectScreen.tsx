@@ -126,6 +126,7 @@ export function PhotoSelectScreen() {
           boardId,
           selection,
           compressedPhotos: await photoCompressionQueue.wait(),
+          minSubmitUnits,
         });
       },
     });

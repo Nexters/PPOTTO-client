@@ -74,6 +74,7 @@ interface AppWebViewProps {
   waitForAnalysisReady?: boolean;
   waitForBoardReady?: boolean;
   showBoard?: boolean;
+  downloadingFromICloud?: boolean;
 }
 
 // 앱 표준 웹뷰
@@ -84,6 +85,7 @@ export function AppWebView({
   waitForAnalysisReady = false,
   waitForBoardReady = false,
   showBoard = false,
+  downloadingFromICloud,
 }: AppWebViewProps) {
   const qaToolEnabled = isQaToolEnabled();
   const ref = useRef<WebView>(null);
@@ -209,6 +211,11 @@ export function AppWebView({
   useEffect(() => {
     if (showBoard) bridge.emit('SHOW_BOARD');
   }, [bridge, showBoard]);
+
+  useEffect(() => {
+    if (downloadingFromICloud === undefined) return;
+    bridge.emit('ICLOUD_DOWNLOAD_CHANGED', { downloading: downloadingFromICloud });
+  }, [bridge, downloadingFromICloud]);
 
   // 안드로이드 하드웨어 뒤로가기를 웹으로 전달한다
   // 네이티브 화면(사진 선택 등)이 위에 있을 땐 expo-router 기본 pop이 동작하게 한다
