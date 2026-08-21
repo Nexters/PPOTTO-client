@@ -130,6 +130,22 @@
   opacity: 0;
   transition: opacity 0.3s ease;
 }
+.ppotto-motion .pm-notice {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 51px; /* pm-progress(top 40 + height 3) 아래 8px */
+  z-index: 45;
+  text-align: center;
+  font-size: 12px;
+  line-height: 17px;
+  letter-spacing: -0.1px;
+  color: rgba(255, 255, 255, 0.64);
+  white-space: pre-line;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
 .ppotto-motion .pm-vignette {
   position: absolute;
   inset: 0;

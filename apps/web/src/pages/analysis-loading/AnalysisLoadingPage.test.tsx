@@ -34,7 +34,12 @@ const mocks = vi.hoisted(() => {
   const decode = vi.fn(() => Promise.resolve());
   const start = vi.fn();
   const destroy = vi.fn();
-  const createLoadingMotion = vi.fn((_options: MotionOptions) => ({ start, destroy }));
+  const setICloudNotice = vi.fn();
+  const createLoadingMotion = vi.fn((_options: MotionOptions) => ({
+    start,
+    destroy,
+    setICloudNotice,
+  }));
   const replace = vi.fn();
   const boardList = vi.fn(() => Promise.resolve([{ id: 'board-1', name: '보드' }]));
   const boardGet = vi.fn(() =>

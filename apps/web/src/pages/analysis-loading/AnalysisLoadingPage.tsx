@@ -3,7 +3,7 @@
 import type { AnalysisLoadingBridgeState } from '@ppotto/bridge';
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { boardApi } from '@/entities/board/api/board-api';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
@@ -23,7 +23,13 @@ export function AnalysisLoadingPage() {
   const mountRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { replace } = useFlow();
-  const [downloadingFromICloud, setDownloadingFromICloud] = useState(false);
+  const motionRef = useRef<ReturnType<typeof createLoadingMotion>>(undefined);
+  const downloadingFromICloudRef = useRef(false);
+
+  const syncICloudNotice = useCallback((downloading: boolean) => {
+    downloadingFromICloudRef.current = downloading;
+    motionRef.current?.setICloudNotice(downloading);
+  }, []);
 
   const prepareBoard = useCallback(async () => {
     const boards = await queryClient.fetchQuery({
@@ -44,11 +50,8 @@ export function AnalysisLoadingPage() {
   useEffect(() => bridge.on('SHOW_BOARD', () => replace('Board', {})), [replace]);
 
   useEffect(
-    () =>
-      bridge.on('ICLOUD_DOWNLOAD_CHANGED', ({ downloading }) =>
-        setDownloadingFromICloud(downloading),
-      ),
-    [],
+    () => bridge.on('ICLOUD_DOWNLOAD_CHANGED', ({ downloading }) => syncICloudNotice(downloading)),
+    [syncICloudNotice],
   );
 
   useEffect(() => {
@@ -59,7 +62,7 @@ export function AnalysisLoadingPage() {
       .request('GET_ANALYSIS_LOADING_STATE')
       .then(async (state) => {
         if (disposed || !mountRef.current) return;
-        setDownloadingFromICloud(state.downloadingFromICloud ?? false);
+        syncICloudNotice(state.downloadingFromICloud ?? false);
 
         const photos = prepareMotionPhotos(state);
         await preloadImages([...photos.map(({ src }) => src), BOARD_BG_SRC, ...STICKER_SRCS]);
@@ -85,6 +88,8 @@ export function AnalysisLoadingPage() {
             bridge.request('ANALYSIS_LOADING_PHASE_FINISHED', { phase }),
           onRevealFinished: () => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED'),
         });
+        motionRef.current = motion;
+        motion.setICloudNotice(downloadingFromICloudRef.current);
         motion.start();
         bridge.send('ANALYSIS_LOADING_READY');
       })
@@ -92,18 +97,12 @@ export function AnalysisLoadingPage() {
 
     return () => {
       disposed = true;
+      motionRef.current = undefined;
       motion?.destroy();
     };
-  }, [prepareBoard]);
+  }, [prepareBoard, syncICloudNotice]);
 
-  return (
-    <main
-      ref={mountRef}
-      className="relative h-dvh w-full overflow-hidden bg-black"
-      data-downloading-icloud={downloadingFromICloud || undefined}
-    />
-    /* TODO: 디자인 확정 후 downloadingFromICloud가 true인 동안 iCloud 다운로드 안내 표시 */
-  );
+  return <main ref={mountRef} className="relative h-dvh w-full overflow-hidden bg-black" />;
 }
 
 async function preloadImages(sources: string[]) {
