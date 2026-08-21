@@ -7,6 +7,11 @@ html.photo-viewer-reveal-recap .recap-app-screen {
   display: block !important;
 }
 
+/* Stackflow 전환 오프셋 제거 */
+html.photo-viewer-reveal-recap .recap-app-screen [data-part='paper'] {
+  transform: translate3d(0, 0, 0) !important;
+}
+
 @font-face {
   font-family: 'Pretendard';
   font-weight: 100 900;
