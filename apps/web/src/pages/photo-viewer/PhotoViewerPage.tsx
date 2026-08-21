@@ -63,11 +63,11 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     getDismissTarget,
     () => zoomInteractionBlockedRef.current,
   );
-  const { isZoomed, handlers: zoomHandlers } = usePhotoZoomGesture(
-    gestureRef,
-    zoomInteractionBlockedRef,
-    cancelDismissGesture,
-  );
+  const {
+    isZoomed,
+    resetZoom,
+    handlers: zoomHandlers,
+  } = usePhotoZoomGesture(gestureRef, zoomInteractionBlockedRef, cancelDismissGesture);
 
   useEffect(() => {
     document.documentElement.classList.add('photo-viewer-reveal-recap');
@@ -81,12 +81,22 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
 
   const handleFilmstripSelect = (newFlatIndex: number) => {
     if (!data) return;
-    setSelection((prev) => resolveFilmstripSelection(data.photos, prev, newFlatIndex));
+    const nextSelection = resolveFilmstripSelection(data.photos, selection, newFlatIndex);
+    if (
+      nextSelection.topIndex !== selection.topIndex ||
+      nextSelection.subIndex !== selection.subIndex
+    ) {
+      resetZoom();
+      setSelection(nextSelection);
+    }
   };
 
   const handleCarouselSelect = (index: number) => {
     const photo = carouselPhotos[index];
-    if (photo) setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
+    if (photo && (photo.topIndex !== selection.topIndex || photo.subIndex !== selection.subIndex)) {
+      resetZoom();
+      setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
+    }
   };
 
   if (!data) return null;

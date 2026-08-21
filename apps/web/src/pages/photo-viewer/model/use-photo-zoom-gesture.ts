@@ -67,6 +67,22 @@ export function usePhotoZoomGesture(
     });
   };
 
+  const resetZoom = () => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    pointersRef.current.clear();
+    pinchStartRef.current = null;
+    panStartRef.current = null;
+    geometryRef.current = null;
+    transformRef.current = { scale: MIN_SCALE, translateX: 0, translateY: 0 };
+    interactionBlockedRef.current = false;
+    setIsZoomed(false);
+    const element = gestureRef.current;
+    if (element) element.style.transform = '';
+  };
+
   const constrainTransform = (transform: ZoomTransform): ZoomTransform => {
     const geometry = geometryRef.current;
     return geometry
@@ -232,9 +248,18 @@ export function usePhotoZoomGesture(
     finishPointer(event);
   };
 
+  const handleLostPointerCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    finishPointer(event);
+  };
+
   useEffect(
     () => () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      pointersRef.current.clear();
+      pinchStartRef.current = null;
+      panStartRef.current = null;
+      geometryRef.current = null;
       interactionBlockedRef.current = false;
     },
     [interactionBlockedRef],
@@ -242,11 +267,13 @@ export function usePhotoZoomGesture(
 
   return {
     isZoomed,
+    resetZoom,
     handlers: {
       onPointerDownCapture: handlePointerDownCapture,
       onPointerMoveCapture: handlePointerMoveCapture,
       onPointerUpCapture: handlePointerUpCapture,
       onPointerCancelCapture: handlePointerCancelCapture,
+      onLostPointerCapture: handleLostPointerCapture,
     },
   };
 }

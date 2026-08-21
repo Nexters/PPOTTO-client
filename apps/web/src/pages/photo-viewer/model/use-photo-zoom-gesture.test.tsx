@@ -7,13 +7,21 @@ import { usePhotoZoomGesture } from './use-photo-zoom-gesture';
 function ZoomHarness({ onPinchStart }: { onPinchStart: () => void }) {
   const gestureRef = useRef<HTMLDivElement>(null);
   const interactionBlockedRef = useRef(false);
-  const { isZoomed, handlers } = usePhotoZoomGesture(
+  const { isZoomed, resetZoom, handlers } = usePhotoZoomGesture(
     gestureRef,
     interactionBlockedRef,
     onPinchStart,
   );
 
-  return <div ref={gestureRef} data-testid="gesture" data-zoomed={isZoomed} {...handlers} />;
+  return (
+    <div
+      ref={gestureRef}
+      data-testid="gesture"
+      data-zoomed={isZoomed}
+      {...handlers}
+      onDoubleClick={resetZoom}
+    />
+  );
 }
 
 describe('usePhotoZoomGesture', () => {
@@ -109,5 +117,43 @@ describe('usePhotoZoomGesture', () => {
     act(() => vi.advanceTimersByTime(20));
 
     expect(gesture.style.transform).toBe('translate3d(-70px, -80px, 0) scale(2)');
+  });
+
+  it('포인터 캡처를 잃으면 진행 중인 제스처 상태를 정리한다', () => {
+    render(<ZoomHarness onPinchStart={vi.fn()} />);
+    const gesture = screen.getByTestId('gesture');
+    Object.defineProperty(gesture, 'setPointerCapture', { value: vi.fn() });
+    gesture.getBoundingClientRect = () => new DOMRect(0, 0, 300, 400);
+
+    fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(gesture, { pointerId: 2, clientX: 200, clientY: 100 });
+    fireEvent(gesture, new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 }));
+    fireEvent(gesture, new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 2 }));
+
+    const nextPointer = new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      pointerId: 3,
+    });
+    fireEvent(gesture, nextPointer);
+
+    expect(nextPointer.defaultPrevented).toBe(false);
+  });
+
+  it('사진 변경 전에 확대 배율과 위치를 초기화한다', () => {
+    render(<ZoomHarness onPinchStart={vi.fn()} />);
+    const gesture = screen.getByTestId('gesture');
+    Object.defineProperty(gesture, 'setPointerCapture', { value: vi.fn() });
+    gesture.getBoundingClientRect = () => new DOMRect(0, 0, 300, 400);
+
+    fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(gesture, { pointerId: 2, clientX: 200, clientY: 100 });
+    fireEvent.pointerMove(gesture, { pointerId: 2, clientX: 300, clientY: 100 });
+    act(() => vi.advanceTimersByTime(20));
+
+    fireEvent.doubleClick(gesture);
+
+    expect(gesture.style.transform).toBe('');
+    expect(gesture.dataset.zoomed).toBe('false');
   });
 });
