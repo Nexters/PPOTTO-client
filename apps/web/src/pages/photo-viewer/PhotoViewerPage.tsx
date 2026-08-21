@@ -1,7 +1,7 @@
 'use client';
 
 import { useFlow } from '@stackflow/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { cn } from '@/shared/lib/cn';
@@ -38,6 +38,11 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     filmstripRef,
     handlers: dismissHandlers,
   } = usePhotoDismissGesture(() => pop());
+
+  useEffect(() => {
+    document.documentElement.classList.add('photo-viewer-reveal-recap');
+    return () => document.documentElement.classList.remove('photo-viewer-reveal-recap');
+  }, []);
 
   const filmstripPhotos = data ? buildDisplayList(data.photos, selection.topIndex) : [];
   const filmstripIndex = findFlatIndex(filmstripPhotos, selection);
