@@ -8,6 +8,5 @@ export async function buildRecapShareLink(
   options: Record<ShareOptionKey, boolean>,
 ): Promise<string> {
   const { o, sig } = signShareOptions(stickerId, options);
-  const baseUrl = process.env.WEB_APP_URL ?? 'https://ppotto.co.kr';
-  return `${baseUrl}/share/recap/${stickerId}?o=${o}&sig=${sig}`;
+  return `/share/recap/${stickerId}?o=${o}&sig=${sig}`;
 }
