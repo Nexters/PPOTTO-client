@@ -34,7 +34,11 @@ function sharedDismissDuration(velocityY: number): number {
 
 type DismissTarget = () => DOMRect | undefined;
 
-export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?: DismissTarget) {
+export function usePhotoDismissGesture(
+  onDismiss: () => void,
+  getDismissTarget?: DismissTarget,
+  isInteractionBlocked?: () => boolean,
+) {
   const gestureRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -48,12 +52,15 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
   const transitionTimerRef = useRef<number | null>(null);
   const dismissOverlayRef = useRef<HTMLDivElement | null>(null);
   const isDismissingRef = useRef(false);
+  const isVerticalDragActiveRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
   const getDismissTargetRef = useRef(getDismissTarget);
+  const isInteractionBlockedRef = useRef(isInteractionBlocked);
 
   useLayoutEffect(() => {
     onDismissRef.current = onDismiss;
     getDismissTargetRef.current = getDismissTarget;
+    isInteractionBlockedRef.current = isInteractionBlocked;
   });
 
   const cancelScheduledWork = () => {
@@ -110,6 +117,7 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
   const clearPointer = () => {
     axisRef.current = 'pending';
     pointerIdRef.current = null;
+    isVerticalDragActiveRef.current = false;
     velocitySamplesRef.current = [];
   };
 
@@ -255,7 +263,12 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
   };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (pointerIdRef.current !== null || isDismissingRef.current) return;
+    if (
+      pointerIdRef.current !== null ||
+      isDismissingRef.current ||
+      isInteractionBlockedRef.current?.()
+    )
+      return;
     cancelScheduledWork();
 
     setTransition('');
@@ -267,13 +280,21 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (pointerIdRef.current !== event.pointerId || isDismissingRef.current) return;
+    if (
+      pointerIdRef.current !== event.pointerId ||
+      isDismissingRef.current ||
+      isInteractionBlockedRef.current?.()
+    )
+      return;
     const dx = event.clientX - startRef.current.x;
     const dy = event.clientY - startRef.current.y;
 
     if (axisRef.current === 'pending') {
       axisRef.current = resolveDragAxis(dx, dy);
-      if (axisRef.current === 'vertical') event.currentTarget.setPointerCapture(event.pointerId);
+      if (axisRef.current === 'vertical') {
+        isVerticalDragActiveRef.current = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
     }
     if (axisRef.current === 'horizontal') return;
     if (axisRef.current !== 'vertical') return;
@@ -308,6 +329,14 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
     }
   };
 
+  const cancelGesture = () => {
+    if (isDismissingRef.current || pointerIdRef.current === null) return;
+    cancelScheduledWork();
+    clearPointer();
+    setTransition('');
+    applyVisual(0, 0);
+  };
+
   const handlePointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (pointerIdRef.current !== event.pointerId) return;
     if (axisRef.current === 'vertical') settleBack();
@@ -333,6 +362,8 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
     backdropRef,
     headerRef,
     filmstripRef,
+    isVerticalDragActiveRef,
+    cancelGesture,
     handlers: {
       onPointerDown: handlePointerDown,
       onPointerMove: handlePointerMove,

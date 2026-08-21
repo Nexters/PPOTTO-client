@@ -1,7 +1,11 @@
 import useEmblaCarousel from 'embla-carousel-react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-export function usePhotoCarousel(selectedIndex: number, onSelect: (index: number) => void) {
+export function usePhotoCarousel(
+  selectedIndex: number,
+  onSelect: (index: number) => void,
+  jumpToSelectedRef: RefObject<boolean>,
+) {
   const [initialIndex] = useState(selectedIndex);
   const [carouselRef, carouselApi] = useEmblaCarousel({
     align: 'start',
@@ -26,10 +30,12 @@ export function usePhotoCarousel(selectedIndex: number, onSelect: (index: number
     };
   }, [carouselApi]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!carouselApi || carouselApi.selectedScrollSnap() === selectedIndex) return;
-    carouselApi.scrollTo(selectedIndex);
-  }, [carouselApi, selectedIndex]);
+    const jump = jumpToSelectedRef.current;
+    jumpToSelectedRef.current = false;
+    carouselApi.scrollTo(selectedIndex, jump);
+  }, [carouselApi, jumpToSelectedRef, selectedIndex]);
 
   return carouselRef;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useFlow } from '@stackflow/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { cn } from '@/shared/lib/cn';
@@ -13,7 +13,9 @@ import {
   resolveFilmstripSelection,
   type PhotoSelection,
 } from './model/photo-selection';
+import type { ZoomEdgeDirection } from './model/photo-zoom';
 import { usePhotoDismissGesture } from './model/use-photo-dismiss-gesture';
+import { usePhotoZoomGesture } from './model/use-photo-zoom-gesture';
 import { PhotoCarousel } from './ui/PhotoCarousel';
 import { PhotoFilmstrip } from './ui/PhotoFilmstrip';
 import { PhotoViewerHeader } from './ui/PhotoViewerHeader';
@@ -30,6 +32,8 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     subIndex: 0,
   });
   const { pop } = useFlow();
+  const zoomInteractionBlockedRef = useRef(false);
+  const jumpCarouselSelectionRef = useRef(false);
   const getDismissTarget = useCallback(() => {
     const recap = document.querySelector('.recap-app-screen');
     const candidates = recap?.querySelectorAll<HTMLElement>(
@@ -54,8 +58,34 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     backdropRef,
     headerRef,
     filmstripRef,
+    isVerticalDragActiveRef,
+    cancelGesture: cancelDismissGesture,
     handlers: dismissHandlers,
-  } = usePhotoDismissGesture(() => pop(), getDismissTarget);
+  } = usePhotoDismissGesture(
+    () => pop(),
+    getDismissTarget,
+    () => zoomInteractionBlockedRef.current,
+  );
+  const handleZoomEdgeNavigate = useCallback(
+    (direction: ZoomEdgeDirection) => {
+      if (!data) return;
+      const photos = buildExpandedDisplayList(data.photos);
+      const currentIndex = findFlatIndex(photos, selection);
+      const nextIndex = currentIndex + (direction === 'next' ? 1 : -1);
+      const photo = photos[nextIndex];
+      if (!photo) return;
+      jumpCarouselSelectionRef.current = true;
+      setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
+    },
+    [data, selection],
+  );
+  const { resetZoom, handlers: zoomHandlers } = usePhotoZoomGesture(
+    gestureRef,
+    zoomInteractionBlockedRef,
+    cancelDismissGesture,
+    handleZoomEdgeNavigate,
+    isVerticalDragActiveRef,
+  );
 
   useEffect(() => {
     document.documentElement.classList.add('photo-viewer-reveal-recap');
@@ -69,12 +99,22 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
 
   const handleFilmstripSelect = (newFlatIndex: number) => {
     if (!data) return;
-    setSelection((prev) => resolveFilmstripSelection(data.photos, prev, newFlatIndex));
+    const nextSelection = resolveFilmstripSelection(data.photos, selection, newFlatIndex);
+    if (
+      nextSelection.topIndex !== selection.topIndex ||
+      nextSelection.subIndex !== selection.subIndex
+    ) {
+      resetZoom();
+      setSelection(nextSelection);
+    }
   };
 
   const handleCarouselSelect = (index: number) => {
     const photo = carouselPhotos[index];
-    if (photo) setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
+    if (photo && (photo.topIndex !== selection.topIndex || photo.subIndex !== selection.subIndex)) {
+      resetZoom();
+      setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
+    }
   };
 
   if (!data) return null;
@@ -82,23 +122,28 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
   return (
     <div ref={viewerRef} className="relative flex h-full w-full flex-col overflow-hidden">
       <div ref={backdropRef} className="pointer-events-none absolute inset-0 bg-black" />
-      <div ref={headerRef} className="relative z-10 will-change-opacity">
+      <div ref={headerRef} className="relative z-30 will-change-opacity">
         <PhotoViewerHeader onBack={() => pop()} />
       </div>
       <div className={cn('relative z-10 mt-4 flex', 'min-h-0 flex-1 flex-col gap-11')}>
         <div
           ref={gestureRef}
-          className={cn('relative min-h-0 w-full flex-1', 'touch-none will-change-transform')}
+          className={cn(
+            'relative z-20 min-h-0 w-full flex-1 origin-top-left',
+            'touch-none will-change-transform',
+          )}
           {...dismissHandlers}
+          {...zoomHandlers}
         >
           <PhotoCarousel
             stickerId={stickerId}
             photos={carouselPhotos}
             selectedIndex={carouselIndex}
+            jumpToSelectedRef={jumpCarouselSelectionRef}
             onSelect={handleCarouselSelect}
           />
         </div>
-        <div ref={filmstripRef} className="will-change-opacity">
+        <div ref={filmstripRef} className="relative z-30 will-change-opacity">
           <PhotoFilmstrip
             stickerId={stickerId}
             photos={filmstripPhotos}
