@@ -10,10 +10,10 @@ const photos = (count: number): UploadMotionPhoto[] =>
     height: 100,
   }));
 
-it('20장은 모두 쓰고 100장은 중복 없이 25장만 고정한다', () => {
+it('20장은 모두 쓰고 100장은 중복 없이 40장만 고정한다', () => {
   expect(sampleMotionPhotos(photos(20), () => 0)).toHaveLength(20);
 
   const sampled = sampleMotionPhotos(photos(100), () => 0.5);
-  expect(sampled).toHaveLength(25);
-  expect(new Set(sampled.map((photo) => photo.id)).size).toBe(25);
+  expect(sampled).toHaveLength(40);
+  expect(new Set(sampled.map((photo) => photo.id)).size).toBe(40);
 });

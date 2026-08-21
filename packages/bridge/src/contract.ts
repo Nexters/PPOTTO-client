@@ -37,7 +37,7 @@ const analysisLoadingState = analysisLoadingPhaseState.extend({
         height: z.number().positive(),
       }),
     )
-    .max(25),
+    .max(40),
 });
 
 // web <-> RN 브릿지 계약
