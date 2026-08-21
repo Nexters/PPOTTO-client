@@ -97,6 +97,9 @@
           "nativeAppKey": "8434de838d07c6355f3d848b5f5e8b91",
           "android": {
             "forwardKakaoLinkIntentFilterToMainActivity": true
+          },
+          "ios": {
+            "handleKakaoOpenUrl": true
           }
         }
       ],
