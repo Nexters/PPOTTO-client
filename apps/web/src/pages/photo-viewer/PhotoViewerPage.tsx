@@ -1,7 +1,7 @@
 'use client';
 
 import { useFlow } from '@stackflow/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { cn } from '@/shared/lib/cn';
@@ -30,6 +30,24 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     subIndex: 0,
   });
   const { pop } = useFlow();
+  const getDismissTarget = useCallback(() => {
+    const recap = document.querySelector('.recap-app-screen');
+    const candidates = recap?.querySelectorAll<HTMLElement>(
+      `[data-recap-photo-index="${selection.topIndex}"]`,
+    );
+
+    return Array.from(candidates ?? [])
+      .map((element) => element.getBoundingClientRect())
+      .find(
+        (rect) =>
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.bottom > 0 &&
+          rect.top < window.innerHeight &&
+          rect.right > 0 &&
+          rect.left < window.innerWidth,
+      );
+  }, [selection.topIndex]);
   const {
     gestureRef,
     viewerRef,
@@ -37,7 +55,7 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     headerRef,
     filmstripRef,
     handlers: dismissHandlers,
-  } = usePhotoDismissGesture(() => pop());
+  } = usePhotoDismissGesture(() => pop(), getDismissTarget);
 
   useEffect(() => {
     document.documentElement.classList.add('photo-viewer-reveal-recap');

@@ -16,7 +16,7 @@ export function PhotoCarousel({ stickerId, photos, selectedIndex, onSelect }: Ph
   return (
     <div ref={carouselRef} className="h-full w-full overflow-hidden">
       <div className="flex h-full">
-        {photos.map((photo) => (
+        {photos.map((photo, index) => (
           <div key={photo.id} className="relative h-full min-w-0 flex-[0_0_100%]">
             <StickerPhotoImage
               stickerId={stickerId}
@@ -25,6 +25,7 @@ export function PhotoCarousel({ stickerId, photos, selectedIndex, onSelect }: Ph
               fill
               sizes="100vw"
               className="object-contain"
+              data-photo-viewer-active-image={index === selectedIndex ? 'true' : undefined}
             />
           </div>
         ))}

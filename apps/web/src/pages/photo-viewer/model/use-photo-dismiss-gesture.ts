@@ -13,6 +13,7 @@ import {
 
 const SETTLE_DURATION_MS = 200;
 const DISMISS_DURATION_MS = 180;
+const SHARED_DISMISS_DURATION_MS = 240;
 const VELOCITY_MAX_AGE_MS = 80;
 const VELOCITY_SAMPLE_WINDOW_MS = 100;
 
@@ -20,7 +21,25 @@ function motionDuration(duration: number): number {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : duration;
 }
 
-export function usePhotoDismissGesture(onDismiss: () => void) {
+type DismissTarget = () => DOMRect | undefined;
+
+function containedImageRect(image: HTMLImageElement): DOMRect | null {
+  if (!image.naturalWidth || !image.naturalHeight) return null;
+
+  const box = image.getBoundingClientRect();
+  const scale = Math.min(box.width / image.naturalWidth, box.height / image.naturalHeight);
+  const width = image.naturalWidth * scale;
+  const height = image.naturalHeight * scale;
+
+  return new DOMRect(
+    box.left + (box.width - width) / 2,
+    box.top + (box.height - height) / 2,
+    width,
+    height,
+  );
+}
+
+export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?: DismissTarget) {
   const gestureRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -32,11 +51,14 @@ export function usePhotoDismissGesture(onDismiss: () => void) {
   const velocitySamplesRef = useRef<DragSample[]>([]);
   const rafRef = useRef<number | null>(null);
   const transitionTimerRef = useRef<number | null>(null);
+  const dismissCloneRef = useRef<HTMLImageElement | null>(null);
   const isDismissingRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
+  const getDismissTargetRef = useRef(getDismissTarget);
 
   useLayoutEffect(() => {
     onDismissRef.current = onDismiss;
+    getDismissTargetRef.current = getDismissTarget;
   });
 
   const cancelScheduledWork = () => {
@@ -48,6 +70,8 @@ export function usePhotoDismissGesture(onDismiss: () => void) {
       window.clearTimeout(transitionTimerRef.current);
       transitionTimerRef.current = null;
     }
+    dismissCloneRef.current?.remove();
+    dismissCloneRef.current = null;
   };
 
   const applyVisual = (dragX: number, dragY: number) => {
@@ -118,6 +142,61 @@ export function usePhotoDismissGesture(onDismiss: () => void) {
     const photo = gestureRef.current;
     if (!photo) {
       onDismissRef.current();
+      return;
+    }
+
+    const viewer = viewerRef.current;
+    const activeImage = photo.querySelector<HTMLImageElement>(
+      '[data-photo-viewer-active-image="true"]',
+    );
+    const target = getDismissTargetRef.current?.();
+    const source = activeImage ? containedImageRect(activeImage) : null;
+
+    if (viewer && activeImage && source && target) {
+      const duration = motionDuration(SHARED_DISMISS_DURATION_MS);
+      const viewerRect = viewer.getBoundingClientRect();
+      const clone = activeImage.cloneNode() as HTMLImageElement;
+      clone.alt = '';
+      clone.removeAttribute('data-photo-viewer-active-image');
+      clone.style.cssText = [
+        'position:absolute',
+        'pointer-events:none',
+        'z-index:20',
+        'object-fit:cover',
+        `left:${source.left - viewerRect.left}px`,
+        `top:${source.top - viewerRect.top}px`,
+        `width:${source.width}px`,
+        `height:${source.height}px`,
+        'border-radius:0',
+        `transition:left ${duration}ms ease-in-out, top ${duration}ms ease-in-out, width ${duration}ms ease-in-out, height ${duration}ms ease-in-out, border-radius ${duration}ms ease-in-out`,
+      ].join(';');
+      dismissCloneRef.current = clone;
+      viewer.append(clone);
+
+      viewer.style.pointerEvents = 'none';
+      setTransition(`opacity ${duration}ms ease-in-out`);
+      photo.style.opacity = '0';
+      if (backdropRef.current) backdropRef.current.style.opacity = '0';
+      if (headerRef.current) headerRef.current.style.opacity = '0';
+      if (filmstripRef.current) filmstripRef.current.style.opacity = '0';
+
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          clone.style.left = `${target.left - viewerRect.left}px`;
+          clone.style.top = `${target.top - viewerRect.top}px`;
+          clone.style.width = `${target.width}px`;
+          clone.style.height = `${target.height}px`;
+          clone.style.borderRadius = '8px';
+
+          transitionTimerRef.current = window.setTimeout(() => {
+            transitionTimerRef.current = null;
+            clone.remove();
+            dismissCloneRef.current = null;
+            onDismissRef.current();
+          }, duration);
+        });
+      });
       return;
     }
 
