@@ -47,7 +47,7 @@ describe('usePhotoDismissGesture', () => {
     vi.unstubAllGlobals();
   });
 
-  it('리캡 썸네일로 닫을 때 레이아웃 속성 대신 transform과 crop을 전환한다', () => {
+  it('리캡 썸네일로 닫을 때 transform과 opacity로 두 사진을 교차 전환한다', () => {
     const onDismiss = vi.fn();
     const { container } = render(
       <GestureHarness
@@ -72,18 +72,24 @@ describe('usePhotoDismissGesture', () => {
     fireEvent.pointerMove(gesture, { pointerId: 1, clientX: 180, clientY: 260, timeStamp: 100 });
     fireEvent.pointerUp(gesture, { pointerId: 1, clientX: 180, clientY: 260, timeStamp: 110 });
 
-    const clone = container.querySelector<HTMLImageElement>('[style*="will-change: transform"]');
-    expect(clone).not.toBeNull();
-    expect(clone?.style.transition).toContain('transform');
-    expect(clone?.style.transition).toContain('clip-path');
-    expect(clone?.style.transition).not.toContain('left');
-    expect(clone?.style.transition).not.toContain('width');
+    const clones = container.querySelectorAll<HTMLImageElement>(
+      '[style*="will-change: transform"]',
+    );
+    const [sourceClone, targetClone] = clones;
+    expect(clones).toHaveLength(2);
+    expect(sourceClone?.style.transition).toContain('transform');
+    expect(sourceClone?.style.transition).toContain('opacity');
+    expect(sourceClone?.style.transition).not.toContain('clip-path');
+    expect(sourceClone?.style.transition).not.toContain('left');
+    expect(targetClone?.style.objectFit).toBe('cover');
+    expect(targetClone?.style.opacity).toBe('0');
 
     act(() => vi.advanceTimersByTime(40));
 
-    expect(clone?.style.transform).toContain('translate3d');
-    expect(clone?.style.transform).toContain('scale');
-    expect(clone?.style.clipPath).toContain('inset');
+    expect(sourceClone?.style.transform).toContain('translate3d');
+    expect(sourceClone?.style.opacity).toBe('0');
+    expect(targetClone?.style.transform).toBe('translate3d(0, 0, 0) scale(1)');
+    expect(targetClone?.style.opacity).toBe('1');
 
     act(() => vi.runAllTimers());
     expect(onDismiss).toHaveBeenCalledTimes(1);

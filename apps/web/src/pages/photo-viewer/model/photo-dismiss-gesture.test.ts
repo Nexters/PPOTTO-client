@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest';
 
 import {
   calculateContainedImageRect,
-  calculateCoveredImageRect,
   calculateReleaseVelocity,
   calculateSharedDismissTransform,
   clampDragY,
@@ -40,36 +39,17 @@ describe('calculateContainedImageRect', () => {
   });
 });
 
-describe('calculateCoveredImageRect', () => {
-  test('가로 사진을 정사각형 가운데에 맞추고 좌우를 자른다', () => {
-    expect(
-      calculateCoveredImageRect({ left: 100, top: 200, width: 100, height: 100 }, 400, 200),
-    ).toEqual(new DOMRect(50, 200, 200, 100));
-  });
-
-  test('세로 사진을 정사각형 가운데에 맞추고 위아래를 자른다', () => {
-    expect(
-      calculateCoveredImageRect({ left: 100, top: 200, width: 100, height: 100 }, 200, 400),
-    ).toEqual(new DOMRect(100, 150, 100, 200));
-  });
-});
-
 describe('calculateSharedDismissTransform', () => {
-  test('사진 비율을 유지한 이동·축소와 좌우 crop을 계산한다', () => {
+  test('사진 비율을 유지한 이동과 축소를 계산한다', () => {
     expect(
       calculateSharedDismissTransform(
         { left: 0, top: 100, width: 400, height: 200 },
-        { left: 150, top: 500, width: 100, height: 100 },
         { left: 100, top: 500, width: 200, height: 100 },
       ),
     ).toEqual({
       translateX: 100,
       translateY: 400,
       scale: 0.5,
-      clipTop: 0,
-      clipRight: 100,
-      clipBottom: 0,
-      clipLeft: 100,
     });
   });
 
@@ -77,7 +57,6 @@ describe('calculateSharedDismissTransform', () => {
     expect(
       calculateSharedDismissTransform(
         { left: 0, top: 0, width: 0, height: 100 },
-        { left: 0, top: 0, width: 50, height: 50 },
         { left: 0, top: 0, width: 50, height: 50 },
       ),
     ).toBeNull();
