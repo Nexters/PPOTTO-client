@@ -23,10 +23,31 @@ function findClosestIndex(container: HTMLDivElement, items: (HTMLButtonElement |
   return closestIndex;
 }
 
-export function useFilmstripSync(selectedIndex: number, onSelect: (index: number) => void) {
+export function getFilmstripSyncBehavior({
+  isFirstSync,
+  isOwnScrollUpdate,
+  previousExpandedGroup,
+  expandedGroup,
+}: {
+  isFirstSync: boolean;
+  isOwnScrollUpdate: boolean;
+  previousExpandedGroup: number | null;
+  expandedGroup: number | null;
+}): ScrollBehavior {
+  return isFirstSync || isOwnScrollUpdate || previousExpandedGroup !== expandedGroup
+    ? 'auto'
+    : 'smooth';
+}
+
+export function useFilmstripSync(
+  selectedIndex: number,
+  expandedGroupTopIndex: number | null,
+  onSelect: (index: number) => void,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const isFirstSyncRef = useRef(true);
+  const expandedGroupTopIndexRef = useRef(expandedGroupTopIndex);
   // 필름스트립 자체 스크롤이면 관성 스크롤과 안 겹치게 auto로 이동
   const isOwnScrollUpdateRef = useRef(false);
 
@@ -39,9 +60,15 @@ export function useFilmstripSync(selectedIndex: number, onSelect: (index: number
   });
 
   useLayoutEffect(() => {
-    const behavior = isFirstSyncRef.current || isOwnScrollUpdateRef.current ? 'auto' : 'smooth';
+    const behavior = getFilmstripSyncBehavior({
+      isFirstSync: isFirstSyncRef.current,
+      isOwnScrollUpdate: isOwnScrollUpdateRef.current,
+      previousExpandedGroup: expandedGroupTopIndexRef.current,
+      expandedGroup: expandedGroupTopIndex,
+    });
     isFirstSyncRef.current = false;
     isOwnScrollUpdateRef.current = false;
+    expandedGroupTopIndexRef.current = expandedGroupTopIndex;
 
     const container = containerRef.current;
     const item = itemRefs.current[selectedIndex];
@@ -57,7 +84,7 @@ export function useFilmstripSync(selectedIndex: number, onSelect: (index: number
         (container.clientWidth - item.clientWidth) / 2,
       behavior,
     });
-  }, [selectedIndex]);
+  }, [expandedGroupTopIndex, selectedIndex]);
 
   useEffect(() => {
     const container = containerRef.current;

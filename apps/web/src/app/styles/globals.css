@@ -1,6 +1,17 @@
 @import 'tailwindcss';
 @config "../../../../../packages/tokens/primitive.js";
 
+/* Stackflow가 숨긴 직전 Recap 화면을 PhotoViewer 아래에만 노출 */
+
+html.photo-viewer-reveal-recap .recap-app-screen {
+  display: block !important;
+}
+
+/* Stackflow 전환 오프셋 제거 */
+html.photo-viewer-reveal-recap .recap-app-screen [data-part='paper'] {
+  transform: translate3d(0, 0, 0) !important;
+}
+
 @font-face {
   font-family: 'Pretendard';
   font-weight: 100 900;
@@ -16,6 +27,34 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+}
+
+@keyframes filmstrip-group-member-enter-from-left {
+  from {
+    transform: translateX(-8px) scale(0.96);
+    opacity: 0;
+  }
+}
+
+@keyframes filmstrip-group-member-enter-from-right {
+  from {
+    transform: translateX(8px) scale(0.96);
+    opacity: 0;
+  }
+}
+
+.filmstrip-group-member-enter {
+  animation-duration: 190ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+.filmstrip-group-member-enter[data-enter-direction='left'] {
+  animation-name: filmstrip-group-member-enter-from-left;
+}
+
+.filmstrip-group-member-enter[data-enter-direction='right'] {
+  animation-name: filmstrip-group-member-enter-from-right;
 }
 
 /* 스켈레톤 시머 — 하이라이트 밴드가 좌→우로 쓸고 지나간다 */
@@ -142,6 +181,7 @@
 
   .modal-overlay,
   .modal-content,
+  .filmstrip-group-member-enter,
   .skeleton {
     animation-duration: 1ms;
   }
