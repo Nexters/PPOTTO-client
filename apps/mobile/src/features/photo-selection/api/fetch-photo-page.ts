@@ -21,7 +21,7 @@ export const requestPhotoLibraryPermission = () =>
 export const presentPhotoLibraryPermissionPicker = () =>
   MediaLibrary.presentPermissionsPickerAsync(['photo']);
 
-/** iOS는 Swift에서 로컬 사진 검사와 그룹 페이지 경계를 확정한다. */
+/** iOS는 Swift에서 그룹 페이지 경계를 확정한다. iCloud 전용(원본 미보유) 사진도 포함된다. */
 export const fetchPhotoPage: FetchPhotoPage = async ({ album, first, after }) => {
   if (Platform.OS === 'ios') {
     return fetchLocalPhotoGroupPage({ after, album, first });

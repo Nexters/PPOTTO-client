@@ -3,7 +3,7 @@
 import type { AnalysisLoadingBridgeState } from '@ppotto/bridge';
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { boardApi } from '@/entities/board/api/board-api';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
@@ -23,6 +23,7 @@ export function AnalysisLoadingPage() {
   const mountRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { replace } = useFlow();
+  const [downloadingFromICloud, setDownloadingFromICloud] = useState(false);
 
   const prepareBoard = useCallback(async () => {
     const boards = await queryClient.fetchQuery({
@@ -42,6 +43,14 @@ export function AnalysisLoadingPage() {
 
   useEffect(() => bridge.on('SHOW_BOARD', () => replace('Board', {})), [replace]);
 
+  useEffect(
+    () =>
+      bridge.on('ICLOUD_DOWNLOAD_CHANGED', ({ downloading }) =>
+        setDownloadingFromICloud(downloading),
+      ),
+    [],
+  );
+
   useEffect(() => {
     let disposed = false;
     let motion: ReturnType<typeof createLoadingMotion> | undefined;
@@ -50,6 +59,7 @@ export function AnalysisLoadingPage() {
       .request('GET_ANALYSIS_LOADING_STATE')
       .then(async (state) => {
         if (disposed || !mountRef.current) return;
+        setDownloadingFromICloud(state.downloadingFromICloud ?? false);
 
         const photos = prepareMotionPhotos(state);
         await preloadImages([...photos.map(({ src }) => src), BOARD_BG_SRC, ...STICKER_SRCS]);
@@ -86,7 +96,14 @@ export function AnalysisLoadingPage() {
     };
   }, [prepareBoard]);
 
-  return <main ref={mountRef} className="relative h-dvh w-full overflow-hidden bg-black" />;
+  return (
+    <main
+      ref={mountRef}
+      className="relative h-dvh w-full overflow-hidden bg-black"
+      data-downloading-icloud={downloadingFromICloud || undefined}
+    />
+    /* TODO: 디자인 확정 후 downloadingFromICloud가 true인 동안 iCloud 다운로드 안내 표시 */
+  );
 }
 
 async function preloadImages(sources: string[]) {
