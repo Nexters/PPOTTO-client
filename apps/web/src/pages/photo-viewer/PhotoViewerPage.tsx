@@ -63,11 +63,11 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     getDismissTarget,
     () => zoomInteractionBlockedRef.current,
   );
-  const {
-    isZoomed,
-    resetZoom,
-    handlers: zoomHandlers,
-  } = usePhotoZoomGesture(gestureRef, zoomInteractionBlockedRef, cancelDismissGesture);
+  const { resetZoom, handlers: zoomHandlers } = usePhotoZoomGesture(
+    gestureRef,
+    zoomInteractionBlockedRef,
+    cancelDismissGesture,
+  );
 
   useEffect(() => {
     document.documentElement.classList.add('photo-viewer-reveal-recap');
@@ -124,10 +124,7 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
             onSelect={handleCarouselSelect}
           />
         </div>
-        <div
-          ref={filmstripRef}
-          className={cn('relative z-30 will-change-opacity', isZoomed && 'pointer-events-none')}
-        >
+        <div ref={filmstripRef} className="relative z-30 will-change-opacity">
           <PhotoFilmstrip
             stickerId={stickerId}
             photos={filmstripPhotos}
