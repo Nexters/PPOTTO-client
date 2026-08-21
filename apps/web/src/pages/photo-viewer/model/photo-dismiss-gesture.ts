@@ -37,13 +37,15 @@ export function shouldDismiss(dragY: number, viewportHeight: number, velocityY: 
   return dragY > viewportHeight * DISMISS_DISTANCE_RATIO || velocityY > DISMISS_VELOCITY_PX_MS;
 }
 
-const SCALE_DISTANCE = 400;
-const MAX_SCALE_DOWN = 0.06;
+const SCALE_DISTANCE_RATIO = 0.3;
+const MAX_SCALE_DOWN = 0.12;
 
-function dragProgress(dragY: number): number {
-  return Math.min(Math.max(dragY, 0) / SCALE_DISTANCE, 1);
+function dragProgress(dragY: number, viewportHeight: number): number {
+  const scaleDistance = viewportHeight * SCALE_DISTANCE_RATIO;
+  if (scaleDistance <= 0) return 0;
+  return Math.min(Math.max(dragY, 0) / scaleDistance, 1);
 }
 
-export function dragYToScale(dragY: number): number {
-  return 1 - dragProgress(dragY) * MAX_SCALE_DOWN;
+export function dragYToScale(dragY: number, viewportHeight: number): number {
+  return 1 - dragProgress(dragY, viewportHeight) * MAX_SCALE_DOWN;
 }

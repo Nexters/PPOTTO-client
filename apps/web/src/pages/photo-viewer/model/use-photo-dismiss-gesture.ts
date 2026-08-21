@@ -50,14 +50,16 @@ export function usePhotoDismissGesture(onDismiss: () => void) {
     }
   };
 
-  const applyVisual = (dragY: number) => {
+  const applyVisual = (dragX: number, dragY: number) => {
     const photo = gestureRef.current;
     if (!photo) return;
 
     const dismissProgress = Math.min(Math.max(dragY, 0) / (window.innerHeight * 0.5), 1);
     const chromeProgress = Math.min(Math.max(dragY, 0) / 80, 1);
     photo.style.transform =
-      dragY === 0 ? '' : `translateY(${dragY}px) scale(${dragYToScale(dragY)})`;
+      dragY === 0
+        ? ''
+        : `translate3d(${dragX}px, ${dragY}px, 0) scale(${dragYToScale(dragY, window.innerHeight)})`;
     if (backdropRef.current) {
       backdropRef.current.style.opacity = dragY === 0 ? '' : String(1 - dismissProgress);
     }
@@ -78,11 +80,11 @@ export function usePhotoDismissGesture(onDismiss: () => void) {
     });
   };
 
-  const scheduleVisual = (dragY: number) => {
+  const scheduleVisual = (dragX: number, dragY: number) => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
-      applyVisual(dragY);
+      applyVisual(dragX, dragY);
     });
   };
 
@@ -100,14 +102,14 @@ export function usePhotoDismissGesture(onDismiss: () => void) {
     if (!photo) return;
     const duration = motionDuration(SETTLE_DURATION_MS);
     setTransition(`transform ${duration}ms ease-out, opacity ${duration}ms ease-out`);
-    applyVisual(0);
+    applyVisual(0, 0);
     transitionTimerRef.current = window.setTimeout(() => {
       transitionTimerRef.current = null;
       if (gestureRef.current === photo) setTransition('');
     }, duration);
   };
 
-  const finishDismiss = () => {
+  const finishDismiss = (dragX: number) => {
     if (isDismissingRef.current) return;
     isDismissingRef.current = true;
     cancelScheduledWork();
@@ -122,7 +124,7 @@ export function usePhotoDismissGesture(onDismiss: () => void) {
     const duration = motionDuration(DISMISS_DURATION_MS);
     if (viewerRef.current) viewerRef.current.style.pointerEvents = 'none';
     setTransition(`transform ${duration}ms ease-in, opacity ${duration}ms ease-in`);
-    applyVisual(window.innerHeight);
+    applyVisual(dragX, window.innerHeight);
     transitionTimerRef.current = window.setTimeout(() => {
       transitionTimerRef.current = null;
       onDismissRef.current();
@@ -158,7 +160,8 @@ export function usePhotoDismissGesture(onDismiss: () => void) {
     velocitySamplesRef.current = velocitySamplesRef.current.filter(
       (sample) => event.timeStamp - sample.time <= VELOCITY_SAMPLE_WINDOW_MS,
     );
-    scheduleVisual(clampDragY(dy));
+    const dragY = clampDragY(dy);
+    scheduleVisual(dragY > 0 ? dx : 0, dragY);
   };
 
   const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -176,7 +179,7 @@ export function usePhotoDismissGesture(onDismiss: () => void) {
     );
 
     if (dragY > 0 && shouldDismiss(dragY, window.innerHeight, velocityY)) {
-      finishDismiss();
+      finishDismiss(event.clientX - startRef.current.x);
     } else {
       settleBack();
     }

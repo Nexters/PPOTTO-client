@@ -82,10 +82,14 @@ describe('shouldDismiss', () => {
 
 describe('dragYToScale', () => {
   test('안 당겼으면 원래 크기를 유지한다', () => {
-    expect(dragYToScale(0)).toBe(1);
+    expect(dragYToScale(0, 800)).toBe(1);
   });
 
-  test('충분히 당기면 최대로 축소된 크기에서 더 줄지 않는다', () => {
-    expect(dragYToScale(1000)).toBeCloseTo(0.94);
+  test('화면 높이의 30%만큼 당기면 최대 축소 크기에 도달한다', () => {
+    expect(dragYToScale(240, 800)).toBeCloseTo(0.88);
+  });
+
+  test('같은 화면 비율만큼 당기면 기기 높이와 관계없이 같은 크기가 된다', () => {
+    expect(dragYToScale(200, 800)).toBeCloseTo(dragYToScale(250, 1000));
   });
 });

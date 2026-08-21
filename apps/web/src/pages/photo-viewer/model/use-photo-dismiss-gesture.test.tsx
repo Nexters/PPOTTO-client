@@ -56,16 +56,16 @@ describe('usePhotoDismissGesture', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('세로 드래그 중 사진은 손가락을 따라가고 배경과 조작 UI는 옅어진다', () => {
+  it('아래쪽 대각선 드래그 중 사진은 손가락을 따라가고 배경과 조작 UI는 옅어진다', () => {
     render(<GestureHarness onDismiss={vi.fn()} />);
     const gesture = screen.getByTestId('gesture');
     Object.defineProperty(gesture, 'setPointerCapture', { value: vi.fn() });
 
     fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
-    fireEvent.pointerMove(gesture, { pointerId: 1, clientX: 102, clientY: 180 });
+    fireEvent.pointerMove(gesture, { pointerId: 1, clientX: 150, clientY: 180 });
     act(() => vi.advanceTimersByTime(20));
 
-    expect(gesture.style.transform).toContain('translateY(80px)');
+    expect(gesture.style.transform).toContain('translate3d(50px, 80px, 0)');
     expect(Number(screen.getByTestId('backdrop').style.opacity)).toBeLessThan(1);
     expect(Number(screen.getByTestId('header').style.opacity)).toBe(0);
     expect(Number(screen.getByTestId('filmstrip').style.opacity)).toBe(0);
@@ -99,7 +99,7 @@ describe('usePhotoDismissGesture', () => {
     fireEvent(child, new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 }));
     act(() => vi.advanceTimersByTime(20));
 
-    expect(gesture.style.transform).toContain('translateY(80px)');
+    expect(gesture.style.transform).toContain('translate3d(2px, 80px, 0)');
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
