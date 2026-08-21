@@ -76,6 +76,13 @@ export function createLoadingMotion(opts) {
   });
   const elProgress = mk('pm-progress');
   const elProgressFill = mk('pm-progress-fill', elProgress);
+  // 프로그레스바 아래 안내 문구 — 다운로드 중엔 iCloud 안내, 그 외엔 소요 시간 안내.
+  // 마지막 막(REVEAL)부터는 표시하지 않는다.
+  const ICLOUD_NOTICE = 'iCloud에서 사진을 다운받고 있어요.\n앱을 종료하지 말아주세요';
+  const WAIT_NOTICE = '최대 3분 정도 소요돼요';
+  const elNotice = mk('pm-notice');
+  let icloudNoticeOn = false;
+  let noticeText = '';
   mk('pm-vignette');
   mk('pm-scrim-top');
   mk('pm-scrim-bottom');
@@ -315,6 +322,16 @@ export function createLoadingMotion(opts) {
     }
     elProgress.style.opacity = progressFading ? '0' : '1';
     elProgressFill.style.transform = `scaleX(${progressShown.toFixed(4)})`;
+    paintNotice();
+  }
+
+  function paintNotice() {
+    const nextText = tl.actIndex === LAST_ACT ? '' : icloudNoticeOn ? ICLOUD_NOTICE : WAIT_NOTICE;
+    if (nextText !== noticeText) {
+      noticeText = nextText;
+      if (nextText) elNotice.textContent = nextText;
+    }
+    elNotice.style.opacity = noticeText && !progressFading ? '1' : '0';
   }
 
   /* 막 사이에 넘겨주는 타일 위치 — 컷이 튀지 않도록 다음 막이 이 자리에서 이어받는다 */
@@ -1537,6 +1554,9 @@ export function createLoadingMotion(opts) {
     el: root,
     start,
     destroy,
+    setICloudNotice(visible) {
+      icloudNoticeOn = visible;
+    },
     get finished() {
       return tl.finished;
     },
