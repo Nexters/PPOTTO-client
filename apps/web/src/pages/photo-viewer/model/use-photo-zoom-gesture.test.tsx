@@ -156,4 +156,45 @@ describe('usePhotoZoomGesture', () => {
     expect(gesture.style.transform).toBe('');
     expect(gesture.dataset.zoomed).toBe('false');
   });
+
+  it('더블 탭한 지점을 중심으로 확대하고 다시 더블 탭하면 복귀한다', () => {
+    render(<ZoomHarness onPinchStart={vi.fn()} />);
+    const gesture = screen.getByTestId('gesture');
+    Object.defineProperty(gesture, 'setPointerCapture', { value: vi.fn() });
+    gesture.getBoundingClientRect = () => new DOMRect(0, 0, 300, 400);
+
+    fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(gesture, { pointerId: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 2, clientX: 100, clientY: 100 });
+
+    expect(gesture.style.transform).toBe('translate3d(-100px, -100px, 0) scale(2)');
+    expect(gesture.dataset.zoomed).toBe('true');
+
+    act(() => vi.advanceTimersByTime(180));
+    fireEvent.pointerDown(gesture, { pointerId: 3, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 3, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(gesture, { pointerId: 4, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 4, clientX: 100, clientY: 100 });
+
+    expect(gesture.style.transform).toBe('');
+    expect(gesture.dataset.zoomed).toBe('false');
+  });
+
+  it('두 탭 사이에 드래그가 있으면 더블 탭으로 처리하지 않는다', () => {
+    render(<ZoomHarness onPinchStart={vi.fn()} />);
+    const gesture = screen.getByTestId('gesture');
+    gesture.getBoundingClientRect = () => new DOMRect(0, 0, 300, 400);
+
+    fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(gesture, { pointerId: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(gesture, { pointerId: 2, clientX: 120, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 2, clientX: 120, clientY: 100 });
+    fireEvent.pointerDown(gesture, { pointerId: 3, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 3, clientX: 100, clientY: 100 });
+
+    expect(gesture.style.transform).toBe('');
+    expect(gesture.dataset.zoomed).toBe('false');
+  });
 });

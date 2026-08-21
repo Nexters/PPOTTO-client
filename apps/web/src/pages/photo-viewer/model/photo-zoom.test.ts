@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  calculatePointZoomTransform,
   calculatePinchTransform,
   constrainZoomTransform,
   distanceBetween,
@@ -8,6 +9,16 @@ import {
 } from './photo-zoom';
 
 describe('photo zoom geometry', () => {
+  test('선택한 지점을 유지하며 지정 배율로 확대한다', () => {
+    expect(
+      calculatePointZoomTransform(
+        { scale: 1, translateX: 0, translateY: 0 },
+        { x: 100, y: 80 },
+        2.5,
+      ),
+    ).toEqual({ scale: 2.5, translateX: -150, translateY: -120 });
+  });
+
   test('두 포인터의 거리와 중심점을 계산한다', () => {
     expect(distanceBetween({ x: 0, y: 0 }, { x: 3, y: 4 })).toBe(5);
     expect(midpointBetween({ x: 10, y: 20 }, { x: 30, y: 60 })).toEqual({ x: 20, y: 40 });

@@ -16,6 +16,21 @@ export function midpointBetween(first: Point, second: Point): Point {
   return { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
 }
 
+export function calculatePointZoomTransform(
+  current: ZoomTransform,
+  point: Point,
+  nextScale: number,
+): ZoomTransform {
+  const contentX = (point.x - current.translateX) / current.scale;
+  const contentY = (point.y - current.translateY) / current.scale;
+
+  return {
+    scale: nextScale,
+    translateX: point.x - contentX * nextScale,
+    translateY: point.y - contentY * nextScale,
+  };
+}
+
 export function calculatePinchTransform({
   startDistance,
   startScale,
