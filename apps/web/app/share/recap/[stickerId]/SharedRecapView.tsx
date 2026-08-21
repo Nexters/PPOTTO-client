@@ -2,15 +2,17 @@ import Image from 'next/image';
 
 import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
+import type { ShareOptionKey } from '@/pages/recap/ui/RecapShareOptions';
 import { RecapStickerVisual } from '@/pages/recap/ui/RecapStickerVisual';
 import { RecapSummary } from '@/pages/recap/ui/RecapSummary';
 import { RecapThemeTags } from '@/pages/recap/ui/RecapThemeTags';
 
 type SharedRecapViewProps = {
   data: StickerRecap;
+  options: Record<ShareOptionKey, boolean>;
 };
 
-export function SharedRecapView({ data }: SharedRecapViewProps) {
+export function SharedRecapView({ data, options }: SharedRecapViewProps) {
   const floatComments = data.comments.filter((comment) => comment.posX != null);
   const tagContents = data.comments
     .filter((comment) => comment.posX == null)
@@ -35,23 +37,27 @@ export function SharedRecapView({ data }: SharedRecapViewProps) {
         <div className="relative flex w-full flex-col gap-10 px-5 pt-10">
           <span className="text-body-01 text-center text-gray-50">{data.sticker.title}</span>
           <div className="flex w-full flex-col">
-            <RecapStickerVisual
-              stickerId={data.sticker.id}
-              imageUrl={data.sticker.imageUrl ?? ''}
-              floatComments={floatComments}
-            />
-            <RecapSummary content={data.summary} />
+            {options.image && (
+              <RecapStickerVisual
+                stickerId={data.sticker.id}
+                imageUrl={data.sticker.imageUrl ?? ''}
+                floatComments={floatComments}
+              />
+            )}
+            {options.summary && <RecapSummary content={data.summary} />}
           </div>
-          <RecapThemeTags tags={tagContents} />
+          {options.themeAnalysis && <RecapThemeTags tags={tagContents} />}
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-3 px-5">
-        {data.photos.map((photo) => (
-          <div key={photo.id} className="rounded-8 relative aspect-square w-full overflow-hidden">
-            <Image src={photo.imageUrl} alt="" fill sizes="33vw" className="object-cover" />
-          </div>
-        ))}
-      </div>
+      {options.themePhotos && (
+        <div className="grid grid-cols-3 gap-3 px-5">
+          {data.photos.map((photo) => (
+            <div key={photo.id} className="rounded-8 relative aspect-square w-full overflow-hidden">
+              <Image src={photo.imageUrl} alt="" fill sizes="33vw" className="object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
