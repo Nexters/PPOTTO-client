@@ -1,23 +1,30 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
 import { usePhotoZoomGesture } from './use-photo-zoom-gesture';
 
 function ZoomHarness({
   onPinchStart,
   onEdgeNavigate = () => undefined,
+  dismissDragActive = false,
 }: {
   onPinchStart: () => void;
   onEdgeNavigate?: (direction: 'previous' | 'next') => void;
+  dismissDragActive?: boolean;
 }) {
   const gestureRef = useRef<HTMLDivElement>(null);
   const interactionBlockedRef = useRef(false);
+  const dismissDragActiveRef = useRef(dismissDragActive);
+  useLayoutEffect(() => {
+    dismissDragActiveRef.current = dismissDragActive;
+  });
   const { resetZoom, handlers } = usePhotoZoomGesture(
     gestureRef,
     interactionBlockedRef,
     onPinchStart,
     onEdgeNavigate,
+    dismissDragActiveRef,
   );
 
   return <div ref={gestureRef} data-testid="gesture" {...handlers} onDoubleClick={resetZoom} />;
@@ -37,6 +44,29 @@ describe('usePhotoZoomGesture', () => {
         }
       },
     );
+  });
+
+  it('세로 닫기 드래그 중 추가 포인터로 핀치 확대를 시작하지 않는다', () => {
+    const onPinchStart = vi.fn();
+    const { rerender } = render(<ZoomHarness onPinchStart={onPinchStart} />);
+    const gesture = screen.getByTestId('gesture');
+
+    fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    rerender(<ZoomHarness onPinchStart={onPinchStart} dismissDragActive />);
+
+    const secondPointer = new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      pointerId: 2,
+      clientX: 200,
+      clientY: 100,
+    });
+    fireEvent(gesture, secondPointer);
+    fireEvent.pointerMove(gesture, { pointerId: 2, clientX: 300, clientY: 100 });
+
+    expect(secondPointer.defaultPrevented).toBe(true);
+    expect(onPinchStart).not.toHaveBeenCalled();
+    expect(gesture.style.transform).toBe('');
   });
 
   afterEach(() => {

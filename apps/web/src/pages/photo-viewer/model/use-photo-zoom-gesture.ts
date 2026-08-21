@@ -61,6 +61,7 @@ export function usePhotoZoomGesture(
   interactionBlockedRef: RefObject<boolean>,
   onPinchStart: () => void,
   onEdgeNavigate: (direction: ZoomEdgeDirection) => void,
+  dismissDragActiveRef?: RefObject<boolean>,
 ) {
   const pointersRef = useRef(new Map<number, Point>());
   const transformRef = useRef<ZoomTransform>({ scale: 1, translateX: 0, translateY: 0 });
@@ -227,6 +228,11 @@ export function usePhotoZoomGesture(
   };
 
   const handlePointerDownCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dismissDragActiveRef?.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (isTransitioningRef.current) {
       event.preventDefault();
       event.stopPropagation();

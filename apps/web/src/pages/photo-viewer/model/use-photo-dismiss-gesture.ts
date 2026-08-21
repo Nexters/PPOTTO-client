@@ -52,6 +52,7 @@ export function usePhotoDismissGesture(
   const transitionTimerRef = useRef<number | null>(null);
   const dismissOverlayRef = useRef<HTMLDivElement | null>(null);
   const isDismissingRef = useRef(false);
+  const isVerticalDragActiveRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
   const getDismissTargetRef = useRef(getDismissTarget);
   const isInteractionBlockedRef = useRef(isInteractionBlocked);
@@ -116,6 +117,7 @@ export function usePhotoDismissGesture(
   const clearPointer = () => {
     axisRef.current = 'pending';
     pointerIdRef.current = null;
+    isVerticalDragActiveRef.current = false;
     velocitySamplesRef.current = [];
   };
 
@@ -289,7 +291,10 @@ export function usePhotoDismissGesture(
 
     if (axisRef.current === 'pending') {
       axisRef.current = resolveDragAxis(dx, dy);
-      if (axisRef.current === 'vertical') event.currentTarget.setPointerCapture(event.pointerId);
+      if (axisRef.current === 'vertical') {
+        isVerticalDragActiveRef.current = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
     }
     if (axisRef.current === 'horizontal') return;
     if (axisRef.current !== 'vertical') return;
@@ -357,6 +362,7 @@ export function usePhotoDismissGesture(
     backdropRef,
     headerRef,
     filmstripRef,
+    isVerticalDragActiveRef,
     cancelGesture,
     handlers: {
       onPointerDown: handlePointerDown,

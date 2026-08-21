@@ -58,6 +58,7 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     backdropRef,
     headerRef,
     filmstripRef,
+    isVerticalDragActiveRef,
     cancelGesture: cancelDismissGesture,
     handlers: dismissHandlers,
   } = usePhotoDismissGesture(
@@ -83,6 +84,7 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     zoomInteractionBlockedRef,
     cancelDismissGesture,
     handleZoomEdgeNavigate,
+    isVerticalDragActiveRef,
   );
 
   useEffect(() => {
