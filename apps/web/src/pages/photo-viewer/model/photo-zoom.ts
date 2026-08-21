@@ -108,3 +108,19 @@ export function constrainZoomTransform(
     ),
   };
 }
+
+export function applyZoomBoundaryResistance(
+  transform: ZoomTransform,
+  image: ZoomRect,
+  viewport: ZoomRect,
+  resistance: number,
+): ZoomTransform {
+  const constrained = constrainZoomTransform(transform, image, viewport);
+  return {
+    scale: transform.scale,
+    translateX:
+      constrained.translateX + (transform.translateX - constrained.translateX) * resistance,
+    translateY:
+      constrained.translateY + (transform.translateY - constrained.translateY) * resistance,
+  };
+}

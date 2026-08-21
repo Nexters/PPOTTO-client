@@ -7,21 +7,13 @@ import { usePhotoZoomGesture } from './use-photo-zoom-gesture';
 function ZoomHarness({ onPinchStart }: { onPinchStart: () => void }) {
   const gestureRef = useRef<HTMLDivElement>(null);
   const interactionBlockedRef = useRef(false);
-  const { isZoomed, resetZoom, handlers } = usePhotoZoomGesture(
+  const { resetZoom, handlers } = usePhotoZoomGesture(
     gestureRef,
     interactionBlockedRef,
     onPinchStart,
   );
 
-  return (
-    <div
-      ref={gestureRef}
-      data-testid="gesture"
-      data-zoomed={isZoomed}
-      {...handlers}
-      onDoubleClick={resetZoom}
-    />
-  );
+  return <div ref={gestureRef} data-testid="gesture" {...handlers} onDoubleClick={resetZoom} />;
 }
 
 describe('usePhotoZoomGesture', () => {
@@ -68,7 +60,6 @@ describe('usePhotoZoomGesture', () => {
     expect(onPinchStart).toHaveBeenCalledTimes(1);
     expect(secondPointer.defaultPrevented).toBe(true);
     expect(gesture.style.transform).toBe('translate3d(-100px, -100px, 0) scale(2)');
-    expect(gesture.dataset.zoomed).toBe('true');
   });
 
   it('최소 배율로 축소하면 원래 위치와 크기로 복귀한다', () => {
@@ -85,7 +76,6 @@ describe('usePhotoZoomGesture', () => {
     act(() => vi.advanceTimersByTime(20));
 
     expect(gesture.style.transform).toBe('');
-    expect(gesture.dataset.zoomed).toBe('false');
 
     fireEvent.pointerUp(gesture, { pointerId: 2, clientX: 110, clientY: 100 });
     fireEvent.pointerUp(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
@@ -154,7 +144,6 @@ describe('usePhotoZoomGesture', () => {
     fireEvent.doubleClick(gesture);
 
     expect(gesture.style.transform).toBe('');
-    expect(gesture.dataset.zoomed).toBe('false');
   });
 
   it('더블 탭한 지점을 중심으로 확대하고 다시 더블 탭하면 복귀한다', () => {
@@ -169,7 +158,6 @@ describe('usePhotoZoomGesture', () => {
     fireEvent.pointerUp(gesture, { pointerId: 2, clientX: 100, clientY: 100 });
 
     expect(gesture.style.transform).toBe('translate3d(-100px, -100px, 0) scale(2)');
-    expect(gesture.dataset.zoomed).toBe('true');
 
     act(() => vi.advanceTimersByTime(180));
     fireEvent.pointerDown(gesture, { pointerId: 3, clientX: 100, clientY: 100 });
@@ -178,7 +166,6 @@ describe('usePhotoZoomGesture', () => {
     fireEvent.pointerUp(gesture, { pointerId: 4, clientX: 100, clientY: 100 });
 
     expect(gesture.style.transform).toBe('');
-    expect(gesture.dataset.zoomed).toBe('false');
   });
 
   it('두 탭 사이에 드래그가 있으면 더블 탭으로 처리하지 않는다', () => {
@@ -195,6 +182,51 @@ describe('usePhotoZoomGesture', () => {
     fireEvent.pointerUp(gesture, { pointerId: 3, clientX: 100, clientY: 100 });
 
     expect(gesture.style.transform).toBe('');
-    expect(gesture.dataset.zoomed).toBe('false');
+  });
+
+  it('사진 경계를 넘으면 저항을 적용하고 손을 놓으면 경계로 복귀한다', () => {
+    render(<ZoomHarness onPinchStart={vi.fn()} />);
+    const gesture = screen.getByTestId('gesture');
+    Object.defineProperty(gesture, 'setPointerCapture', { value: vi.fn() });
+    gesture.getBoundingClientRect = () => new DOMRect(0, 0, 300, 400);
+    const image = document.createElement('img');
+    image.dataset.photoViewerActiveImage = 'true';
+    Object.defineProperties(image, {
+      naturalWidth: { value: 300 },
+      naturalHeight: { value: 200 },
+    });
+    image.getBoundingClientRect = () => new DOMRect(0, 100, 300, 200);
+    gesture.append(image);
+    const zoomLayer = document.createElement('div');
+    zoomLayer.dataset.photoViewerZoomLayer = '';
+    const zoomImage = document.createElement('img');
+    zoomImage.dataset.photoViewerZoomImage = '';
+    zoomLayer.append(zoomImage);
+    gesture.append(zoomLayer);
+
+    fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(gesture, { pointerId: 2, clientX: 200, clientY: 100 });
+    fireEvent.pointerMove(gesture, { pointerId: 2, clientX: 300, clientY: 100 });
+    act(() => vi.advanceTimersByTime(20));
+    fireEvent.pointerUp(gesture, { pointerId: 2, clientX: 300, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+
+    fireEvent.pointerDown(gesture, { pointerId: 3, clientX: 150, clientY: 150 });
+    fireEvent.pointerMove(gesture, { pointerId: 3, clientX: 350, clientY: 150 });
+    act(() => vi.advanceTimersByTime(20));
+
+    expect(gesture.style.transform).toBe('');
+    expect(image.style.opacity).toBe('0');
+    expect(zoomLayer.style.opacity).toBe('1');
+    expect(zoomLayer.style.pointerEvents).toBe('auto');
+    expect(zoomImage.style.transform).toBe('translate3d(20px, -200px, 0) scale(2)');
+
+    fireEvent.pointerUp(gesture, { pointerId: 3, clientX: 350, clientY: 150 });
+
+    expect(zoomImage.style.transform).toBe('translate3d(0px, -200px, 0) scale(2)');
+    expect(zoomImage.style.transition).toBe('transform 180ms ease-out');
+
+    act(() => vi.advanceTimersByTime(180));
+    expect(zoomImage.style.transition).toBe('');
   });
 });

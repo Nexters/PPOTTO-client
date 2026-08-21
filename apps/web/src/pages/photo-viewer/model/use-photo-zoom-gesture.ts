@@ -1,7 +1,8 @@
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 import {
+  applyZoomBoundaryResistance,
   calculatePointZoomTransform,
   calculatePinchTransform,
   constrainZoomTransform,
@@ -19,6 +20,8 @@ const DOUBLE_TAP_INTERVAL_MS = 300;
 const DOUBLE_TAP_DISTANCE_PX = 32;
 const TAP_MOVE_TOLERANCE_PX = 8;
 const DOUBLE_TAP_TRANSITION_MS = 180;
+const PAN_BOUNDARY_RESISTANCE = 0.2;
+const PAN_SETTLE_TRANSITION_MS = 180;
 
 type PinchStart = {
   distance: number;
@@ -55,17 +58,39 @@ export function usePhotoZoomGesture(
   const rafRef = useRef<number | null>(null);
   const transitionTimerRef = useRef<number | null>(null);
   const isTransitioningRef = useRef(false);
+  const isZoomLayerActiveRef = useRef(false);
   const tapCandidateRef = useRef<TapCandidate | null>(null);
   const lastTapRef = useRef<LastTap | null>(null);
   const onPinchStartRef = useRef(onPinchStart);
-  const [isZoomed, setIsZoomed] = useState(false);
 
   useLayoutEffect(() => {
     onPinchStartRef.current = onPinchStart;
   });
 
+  const getTransformElement = () =>
+    gestureRef.current?.querySelector<HTMLElement>('[data-photo-viewer-zoom-image]') ??
+    gestureRef.current;
+
+  const setZoomLayerActive = useCallback(
+    (active: boolean) => {
+      if (isZoomLayerActiveRef.current === active) return;
+      const gesture = gestureRef.current;
+      const layer = gesture?.querySelector<HTMLElement>('[data-photo-viewer-zoom-layer]');
+      const original = gesture?.querySelector<HTMLElement>(
+        '[data-photo-viewer-active-image="true"]',
+      );
+      if (layer) {
+        layer.style.opacity = active ? '1' : '';
+        layer.style.pointerEvents = active ? 'auto' : '';
+      }
+      if (original) original.style.opacity = active ? '0' : '';
+      isZoomLayerActiveRef.current = active;
+    },
+    [gestureRef],
+  );
+
   const applyTransform = () => {
-    const element = gestureRef.current;
+    const element = getTransformElement();
     if (!element) return;
     const { translateX, translateY, scale } = transformRef.current;
     element.style.transform =
@@ -98,18 +123,30 @@ export function usePhotoZoomGesture(
     geometryRef.current = null;
     transformRef.current = { scale: MIN_SCALE, translateX: 0, translateY: 0 };
     interactionBlockedRef.current = false;
-    setIsZoomed(false);
-    const element = gestureRef.current;
+    const element = getTransformElement();
     if (element) {
       element.style.transition = '';
       element.style.transform = '';
     }
+    setZoomLayerActive(false);
   };
 
   const constrainTransform = (transform: ZoomTransform): ZoomTransform => {
     const geometry = geometryRef.current;
     return geometry
       ? constrainZoomTransform(transform, geometry.image, geometry.viewport)
+      : transform;
+  };
+
+  const resistTransform = (transform: ZoomTransform): ZoomTransform => {
+    const geometry = geometryRef.current;
+    return geometry
+      ? applyZoomBoundaryResistance(
+          transform,
+          geometry.image,
+          geometry.viewport,
+          PAN_BOUNDARY_RESISTANCE,
+        )
       : transform;
   };
 
@@ -243,7 +280,8 @@ export function usePhotoZoomGesture(
       if (panStart?.pointerId === event.pointerId && transformRef.current.scale > MIN_SCALE) {
         event.preventDefault();
         event.stopPropagation();
-        transformRef.current = constrainTransform({
+        if (tapCandidateRef.current?.pointerId === event.pointerId) return;
+        transformRef.current = resistTransform({
           ...transformRef.current,
           translateX: panStart.translateX + event.clientX - panStart.x,
           translateY: panStart.translateY + event.clientY - panStart.y,
@@ -275,7 +313,7 @@ export function usePhotoZoomGesture(
     );
     transformRef.current = next;
     interactionBlockedRef.current = true;
-    setIsZoomed(next.scale > MIN_SCALE);
+    setZoomLayerActive(next.scale > MIN_SCALE);
     scheduleTransform();
   };
 
@@ -300,16 +338,48 @@ export function usePhotoZoomGesture(
     transformRef.current = next;
     interactionBlockedRef.current = true;
     isTransitioningRef.current = true;
-    setIsZoomed(next.scale > MIN_SCALE);
-    element.style.transition = `transform ${DOUBLE_TAP_TRANSITION_MS}ms ease-out`;
+    if (next.scale > MIN_SCALE) setZoomLayerActive(true);
+    const transformElement = getTransformElement();
+    if (!transformElement) return;
+    transformElement.style.transition = `transform ${DOUBLE_TAP_TRANSITION_MS}ms ease-out`;
     applyTransform();
     transitionTimerRef.current = window.setTimeout(() => {
       transitionTimerRef.current = null;
       isTransitioningRef.current = false;
-      element.style.transition = '';
+      transformElement.style.transition = '';
       interactionBlockedRef.current = next.scale > MIN_SCALE;
-      if (next.scale === MIN_SCALE) geometryRef.current = null;
+      if (next.scale === MIN_SCALE) {
+        geometryRef.current = null;
+        setZoomLayerActive(false);
+      }
     }, DOUBLE_TAP_TRANSITION_MS);
+  };
+
+  const settlePanBoundary = () => {
+    const next = constrainTransform(transformRef.current);
+    if (
+      next.translateX === transformRef.current.translateX &&
+      next.translateY === transformRef.current.translateY
+    ) {
+      return;
+    }
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    transformRef.current = next;
+    interactionBlockedRef.current = true;
+    isTransitioningRef.current = true;
+    const transformElement = getTransformElement();
+    if (!transformElement) return;
+    transformElement.style.transition = `transform ${PAN_SETTLE_TRANSITION_MS}ms ease-out`;
+    applyTransform();
+    transitionTimerRef.current = window.setTimeout(() => {
+      transitionTimerRef.current = null;
+      isTransitioningRef.current = false;
+      transformElement.style.transition = '';
+      interactionBlockedRef.current = true;
+    }, PAN_SETTLE_TRANSITION_MS);
   };
 
   const handleTap = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -329,6 +399,7 @@ export function usePhotoZoomGesture(
 
   const handlePointerUpCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
     const isTap = tapCandidateRef.current?.pointerId === event.pointerId;
+    const wasPanning = panStartRef.current?.pointerId === event.pointerId;
     if (pinchStartRef.current || interactionBlockedRef.current) {
       event.preventDefault();
       event.stopPropagation();
@@ -336,11 +407,14 @@ export function usePhotoZoomGesture(
     finishPointer(event);
     tapCandidateRef.current = null;
     if (isTap) handleTap(event);
+    else if (wasPanning) settlePanBoundary();
   };
 
   const handlePointerCancelCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const wasPanning = panStartRef.current?.pointerId === event.pointerId;
     if (pinchStartRef.current || interactionBlockedRef.current) event.stopPropagation();
     finishPointer(event);
+    if (wasPanning) settlePanBoundary();
     if (tapCandidateRef.current?.pointerId === event.pointerId) {
       tapCandidateRef.current = null;
       lastTapRef.current = null;
@@ -349,7 +423,9 @@ export function usePhotoZoomGesture(
 
   const handleLostPointerCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
+    const wasPanning = panStartRef.current?.pointerId === event.pointerId;
     finishPointer(event);
+    if (wasPanning) settlePanBoundary();
     if (tapCandidateRef.current?.pointerId === event.pointerId) {
       tapCandidateRef.current = null;
       lastTapRef.current = null;
@@ -364,13 +440,13 @@ export function usePhotoZoomGesture(
       pinchStartRef.current = null;
       panStartRef.current = null;
       geometryRef.current = null;
+      setZoomLayerActive(false);
       interactionBlockedRef.current = false;
     },
-    [interactionBlockedRef],
+    [interactionBlockedRef, setZoomLayerActive],
   );
 
   return {
-    isZoomed,
     resetZoom,
     handlers: {
       onPointerDownCapture: handlePointerDownCapture,

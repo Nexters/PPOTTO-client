@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  applyZoomBoundaryResistance,
   calculatePointZoomTransform,
   calculatePinchTransform,
   constrainZoomTransform,
@@ -86,5 +87,18 @@ describe('constrainZoomTransform', () => {
         { left: 0, top: 0, width: 300, height: 400 },
       ),
     ).toEqual({ scale: 1.5, translateX: -75, translateY: -100 });
+  });
+});
+
+describe('applyZoomBoundaryResistance', () => {
+  test('경계를 넘은 이동량의 일부만 반영한다', () => {
+    expect(
+      applyZoomBoundaryResistance(
+        { scale: 2, translateX: 100, translateY: -200 },
+        { left: 0, top: 100, width: 300, height: 200 },
+        { left: 0, top: 0, width: 300, height: 400 },
+        0.2,
+      ),
+    ).toEqual({ scale: 2, translateX: 20, translateY: -200 });
   });
 });
