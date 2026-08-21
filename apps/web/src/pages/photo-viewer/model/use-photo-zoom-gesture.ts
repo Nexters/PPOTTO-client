@@ -3,11 +3,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import {
   calculatePinchTransform,
+  constrainZoomTransform,
   distanceBetween,
   midpointBetween,
   type Point,
   type ZoomTransform,
 } from './photo-zoom';
+import { calculateContainedImageRect } from './photo-dismiss-gesture';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 3;
@@ -20,6 +22,17 @@ type PinchStart = {
   baseTop: number;
 };
 
+type PanStart = Point & {
+  pointerId: number;
+  translateX: number;
+  translateY: number;
+};
+
+type ZoomGeometry = {
+  image: { left: number; top: number; width: number; height: number };
+  viewport: { left: number; top: number; width: number; height: number };
+};
+
 export function usePhotoZoomGesture(
   gestureRef: RefObject<HTMLDivElement | null>,
   interactionBlockedRef: RefObject<boolean>,
@@ -28,6 +41,8 @@ export function usePhotoZoomGesture(
   const pointersRef = useRef(new Map<number, Point>());
   const transformRef = useRef<ZoomTransform>({ scale: 1, translateX: 0, translateY: 0 });
   const pinchStartRef = useRef<PinchStart | null>(null);
+  const panStartRef = useRef<PanStart | null>(null);
+  const geometryRef = useRef<ZoomGeometry | null>(null);
   const rafRef = useRef<number | null>(null);
   const onPinchStartRef = useRef(onPinchStart);
   const [isZoomed, setIsZoomed] = useState(false);
@@ -52,6 +67,38 @@ export function usePhotoZoomGesture(
     });
   };
 
+  const constrainTransform = (transform: ZoomTransform): ZoomTransform => {
+    const geometry = geometryRef.current;
+    return geometry
+      ? constrainZoomTransform(transform, geometry.image, geometry.viewport)
+      : transform;
+  };
+
+  const measureGeometry = (element: HTMLDivElement) => {
+    const image = element.querySelector<HTMLImageElement>(
+      '[data-photo-viewer-active-image="true"]',
+    );
+    if (!image) return;
+
+    const elementRect = element.getBoundingClientRect();
+    const imageRect = calculateContainedImageRect(
+      image.getBoundingClientRect(),
+      image.naturalWidth,
+      image.naturalHeight,
+    );
+    if (!imageRect) return;
+
+    geometryRef.current = {
+      image: {
+        left: imageRect.left - elementRect.left,
+        top: imageRect.top - elementRect.top,
+        width: imageRect.width,
+        height: imageRect.height,
+      },
+      viewport: { left: 0, top: 0, width: elementRect.width, height: elementRect.height },
+    };
+  };
+
   const beginPinch = (element: HTMLDivElement) => {
     const points = [...pointersRef.current.values()];
     const first = points[0];
@@ -59,8 +106,12 @@ export function usePhotoZoomGesture(
     if (!first || !second) return;
 
     const current = transformRef.current;
-    if (current.scale === MIN_SCALE) onPinchStartRef.current();
+    if (current.scale === MIN_SCALE) {
+      onPinchStartRef.current();
+      measureGeometry(element);
+    }
     interactionBlockedRef.current = true;
+    panStartRef.current = null;
     const center = midpointBetween(first, second);
     const rect = element.getBoundingClientRect();
     const baseLeft = rect.left - current.translateX;
@@ -89,7 +140,9 @@ export function usePhotoZoomGesture(
     }
 
     pinchStartRef.current = null;
+    if (panStartRef.current?.pointerId === event.pointerId) panStartRef.current = null;
     interactionBlockedRef.current = transformRef.current.scale > MIN_SCALE;
+    if (!interactionBlockedRef.current) geometryRef.current = null;
   };
 
   const handlePointerDownCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -105,6 +158,15 @@ export function usePhotoZoomGesture(
     if (interactionBlockedRef.current) {
       event.preventDefault();
       event.stopPropagation();
+      const current = transformRef.current;
+      panStartRef.current = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        translateX: current.translateX,
+        translateY: current.translateY,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
     }
   };
 
@@ -117,7 +179,17 @@ export function usePhotoZoomGesture(
     const first = points[0];
     const second = points[1];
     if (!pinchStart || !first || !second) {
-      if (interactionBlockedRef.current) {
+      const panStart = panStartRef.current;
+      if (panStart?.pointerId === event.pointerId && transformRef.current.scale > MIN_SCALE) {
+        event.preventDefault();
+        event.stopPropagation();
+        transformRef.current = constrainTransform({
+          ...transformRef.current,
+          translateX: panStart.translateX + event.clientX - panStart.x,
+          translateY: panStart.translateY + event.clientY - panStart.y,
+        });
+        scheduleTransform();
+      } else if (interactionBlockedRef.current) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -127,18 +199,20 @@ export function usePhotoZoomGesture(
     event.preventDefault();
     event.stopPropagation();
     const center = midpointBetween(first, second);
-    const next = calculatePinchTransform({
-      startDistance: pinchStart.distance,
-      startScale: pinchStart.scale,
-      startFocalPoint: pinchStart.focalPoint,
-      currentDistance: distanceBetween(first, second),
-      currentCenter: {
-        x: center.x - pinchStart.baseLeft,
-        y: center.y - pinchStart.baseTop,
-      },
-      minScale: MIN_SCALE,
-      maxScale: MAX_SCALE,
-    });
+    const next = constrainTransform(
+      calculatePinchTransform({
+        startDistance: pinchStart.distance,
+        startScale: pinchStart.scale,
+        startFocalPoint: pinchStart.focalPoint,
+        currentDistance: distanceBetween(first, second),
+        currentCenter: {
+          x: center.x - pinchStart.baseLeft,
+          y: center.y - pinchStart.baseTop,
+        },
+        minScale: MIN_SCALE,
+        maxScale: MAX_SCALE,
+      }),
+    );
     transformRef.current = next;
     interactionBlockedRef.current = true;
     setIsZoomed(next.scale > MIN_SCALE);

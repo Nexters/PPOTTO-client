@@ -90,4 +90,24 @@ describe('usePhotoZoomGesture', () => {
 
     expect(nextPointer.defaultPrevented).toBe(false);
   });
+
+  it('확대 상태에서 한 포인터 이동을 사진 위치에 반영한다', () => {
+    render(<ZoomHarness onPinchStart={vi.fn()} />);
+    const gesture = screen.getByTestId('gesture');
+    Object.defineProperty(gesture, 'setPointerCapture', { value: vi.fn() });
+    gesture.getBoundingClientRect = () => new DOMRect(0, 0, 300, 400);
+
+    fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(gesture, { pointerId: 2, clientX: 200, clientY: 100 });
+    fireEvent.pointerMove(gesture, { pointerId: 2, clientX: 300, clientY: 100 });
+    act(() => vi.advanceTimersByTime(20));
+    fireEvent.pointerUp(gesture, { pointerId: 2, clientX: 300, clientY: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 1, clientX: 100, clientY: 100 });
+
+    fireEvent.pointerDown(gesture, { pointerId: 3, clientX: 150, clientY: 150 });
+    fireEvent.pointerMove(gesture, { pointerId: 3, clientX: 180, clientY: 170 });
+    act(() => vi.advanceTimersByTime(20));
+
+    expect(gesture.style.transform).toBe('translate3d(-70px, -80px, 0) scale(2)');
+  });
 });

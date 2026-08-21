@@ -6,6 +6,8 @@ export type ZoomTransform = {
   translateY: number;
 };
 
+export type ZoomRect = { left: number; top: number; width: number; height: number };
+
 export function distanceBetween(first: Point, second: Point): number {
   return Math.hypot(second.x - first.x, second.y - first.y);
 }
@@ -43,5 +45,51 @@ export function calculatePinchTransform({
     scale,
     translateX: currentCenter.x - startFocalPoint.x * scale,
     translateY: currentCenter.y - startFocalPoint.y * scale,
+  };
+}
+
+function constrainAxis(
+  translation: number,
+  scale: number,
+  contentStart: number,
+  contentSize: number,
+  viewportStart: number,
+  viewportSize: number,
+): number {
+  const scaledSize = contentSize * scale;
+  if (scaledSize <= viewportSize) {
+    return viewportStart + (viewportSize - scaledSize) / 2 - contentStart * scale;
+  }
+
+  const minimum = viewportStart + viewportSize - (contentStart + contentSize) * scale;
+  const maximum = viewportStart - contentStart * scale;
+  return Math.min(Math.max(translation, minimum), maximum);
+}
+
+export function constrainZoomTransform(
+  transform: ZoomTransform,
+  image: ZoomRect,
+  viewport: ZoomRect,
+): ZoomTransform {
+  if (transform.scale <= 1) return { scale: 1, translateX: 0, translateY: 0 };
+
+  return {
+    scale: transform.scale,
+    translateX: constrainAxis(
+      transform.translateX,
+      transform.scale,
+      image.left,
+      image.width,
+      viewport.left,
+      viewport.width,
+    ),
+    translateY: constrainAxis(
+      transform.translateY,
+      transform.scale,
+      image.top,
+      image.height,
+      viewport.top,
+      viewport.height,
+    ),
   };
 }

@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 
-import { calculatePinchTransform, distanceBetween, midpointBetween } from './photo-zoom';
+import {
+  calculatePinchTransform,
+  constrainZoomTransform,
+  distanceBetween,
+  midpointBetween,
+} from './photo-zoom';
 
 describe('photo zoom geometry', () => {
   test('두 포인터의 거리와 중심점을 계산한다', () => {
@@ -48,5 +53,27 @@ describe('photo zoom geometry', () => {
         maxScale: 3,
       }),
     ).toEqual({ scale: 1, translateX: 0, translateY: 0 });
+  });
+});
+
+describe('constrainZoomTransform', () => {
+  test('확대된 사진이 뷰포트 오른쪽 밖으로 지나치게 이동하지 않도록 제한한다', () => {
+    expect(
+      constrainZoomTransform(
+        { scale: 2, translateX: 100, translateY: 0 },
+        { left: 0, top: 100, width: 300, height: 200 },
+        { left: 0, top: 0, width: 300, height: 400 },
+      ),
+    ).toEqual({ scale: 2, translateX: 0, translateY: -200 });
+  });
+
+  test('확대 후에도 뷰포트보다 작은 축은 가운데에 고정한다', () => {
+    expect(
+      constrainZoomTransform(
+        { scale: 1.5, translateX: -50, translateY: 100 },
+        { left: 100, top: 150, width: 100, height: 100 },
+        { left: 0, top: 0, width: 300, height: 400 },
+      ),
+    ).toEqual({ scale: 1.5, translateX: -75, translateY: -100 });
   });
 });
