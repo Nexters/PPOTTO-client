@@ -3,9 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { usePhotoDismissGesture } from './use-photo-dismiss-gesture';
 
-function GestureHarness({ onDismiss }: { onDismiss: () => void }) {
+function GestureHarness({
+  onDismiss,
+  getDismissTarget,
+}: {
+  onDismiss: () => void;
+  getDismissTarget?: () => DOMRect | undefined;
+}) {
   const { gestureRef, viewerRef, backdropRef, headerRef, filmstripRef, handlers } =
-    usePhotoDismissGesture(onDismiss);
+    usePhotoDismissGesture(onDismiss, getDismissTarget);
 
   return (
     <div ref={viewerRef} data-testid="viewer">
@@ -39,6 +45,48 @@ describe('usePhotoDismissGesture', () => {
     cleanup();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it('리캡 썸네일로 닫을 때 레이아웃 속성 대신 transform과 crop을 전환한다', () => {
+    const onDismiss = vi.fn();
+    const { container } = render(
+      <GestureHarness
+        onDismiss={onDismiss}
+        getDismissTarget={() => new DOMRect(130, 500, 100, 100)}
+      />,
+    );
+    const viewer = screen.getByTestId('viewer');
+    const gesture = screen.getByTestId('gesture');
+    const image = document.createElement('img');
+    image.dataset.photoViewerActiveImage = 'true';
+    Object.defineProperties(image, {
+      naturalWidth: { value: 400 },
+      naturalHeight: { value: 200 },
+    });
+    image.getBoundingClientRect = () => new DOMRect(0, 100, 360, 180);
+    gesture.append(image);
+    viewer.getBoundingClientRect = () => new DOMRect(0, 0, 360, 720);
+    Object.defineProperty(gesture, 'setPointerCapture', { value: vi.fn() });
+
+    fireEvent.pointerDown(gesture, { pointerId: 1, clientX: 180, clientY: 100, timeStamp: 0 });
+    fireEvent.pointerMove(gesture, { pointerId: 1, clientX: 180, clientY: 260, timeStamp: 100 });
+    fireEvent.pointerUp(gesture, { pointerId: 1, clientX: 180, clientY: 260, timeStamp: 110 });
+
+    const clone = container.querySelector<HTMLImageElement>('[style*="will-change: transform"]');
+    expect(clone).not.toBeNull();
+    expect(clone?.style.transition).toContain('transform');
+    expect(clone?.style.transition).toContain('clip-path');
+    expect(clone?.style.transition).not.toContain('left');
+    expect(clone?.style.transition).not.toContain('width');
+
+    act(() => vi.advanceTimersByTime(40));
+
+    expect(clone?.style.transform).toContain('translate3d');
+    expect(clone?.style.transform).toContain('scale');
+    expect(clone?.style.clipPath).toContain('inset');
+
+    act(() => vi.runAllTimers());
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   it('아래로 충분히 드래그하면 퇴장 모션 후 닫는다', () => {
