@@ -149,8 +149,7 @@ export function EmptyBoardSticker({
         </div>
         <div
           className={cn(
-            // 제목이 텍스트 길이에 맞게 늘고 줄 수 있게 폭을 고정하지 않는다 — 오른쪽 끝 기준 정렬
-            'absolute top-0 right-0 flex justify-end',
+            'absolute top-1.25 right-5 flex justify-end',
             'transition-transform duration-250 ease-out',
             isQuickMenuOpen && '-translate-x-12.5 translate-y-21.25 rotate-[-6.18deg]',
           )}
