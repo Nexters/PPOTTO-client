@@ -1,7 +1,7 @@
 'use client';
 
 import { useFlow } from '@stackflow/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { cn } from '@/shared/lib/cn';
@@ -14,6 +14,7 @@ import {
   type PhotoSelection,
 } from './model/photo-selection';
 import { usePhotoDismissGesture } from './model/use-photo-dismiss-gesture';
+import { usePhotoZoomGesture } from './model/use-photo-zoom-gesture';
 import { PhotoCarousel } from './ui/PhotoCarousel';
 import { PhotoFilmstrip } from './ui/PhotoFilmstrip';
 import { PhotoViewerHeader } from './ui/PhotoViewerHeader';
@@ -30,6 +31,7 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     subIndex: 0,
   });
   const { pop } = useFlow();
+  const zoomInteractionBlockedRef = useRef(false);
   const getDismissTarget = useCallback(() => {
     const recap = document.querySelector('.recap-app-screen');
     const candidates = recap?.querySelectorAll<HTMLElement>(
@@ -54,8 +56,18 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     backdropRef,
     headerRef,
     filmstripRef,
+    cancelGesture: cancelDismissGesture,
     handlers: dismissHandlers,
-  } = usePhotoDismissGesture(() => pop(), getDismissTarget);
+  } = usePhotoDismissGesture(
+    () => pop(),
+    getDismissTarget,
+    () => zoomInteractionBlockedRef.current,
+  );
+  const { isZoomed, handlers: zoomHandlers } = usePhotoZoomGesture(
+    gestureRef,
+    zoomInteractionBlockedRef,
+    cancelDismissGesture,
+  );
 
   useEffect(() => {
     document.documentElement.classList.add('photo-viewer-reveal-recap');
@@ -82,14 +94,18 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
   return (
     <div ref={viewerRef} className="relative flex h-full w-full flex-col overflow-hidden">
       <div ref={backdropRef} className="pointer-events-none absolute inset-0 bg-black" />
-      <div ref={headerRef} className="relative z-10 will-change-opacity">
+      <div ref={headerRef} className="relative z-30 will-change-opacity">
         <PhotoViewerHeader onBack={() => pop()} />
       </div>
       <div className={cn('relative z-10 mt-4 flex', 'min-h-0 flex-1 flex-col gap-11')}>
         <div
           ref={gestureRef}
-          className={cn('relative min-h-0 w-full flex-1', 'touch-none will-change-transform')}
+          className={cn(
+            'relative z-20 min-h-0 w-full flex-1 origin-top-left',
+            'touch-none will-change-transform',
+          )}
           {...dismissHandlers}
+          {...zoomHandlers}
         >
           <PhotoCarousel
             stickerId={stickerId}
@@ -98,7 +114,10 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
             onSelect={handleCarouselSelect}
           />
         </div>
-        <div ref={filmstripRef} className="will-change-opacity">
+        <div
+          ref={filmstripRef}
+          className={cn('relative z-30 will-change-opacity', isZoomed && 'pointer-events-none')}
+        >
           <PhotoFilmstrip
             stickerId={stickerId}
             photos={filmstripPhotos}
