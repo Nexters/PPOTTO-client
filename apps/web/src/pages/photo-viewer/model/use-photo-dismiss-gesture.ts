@@ -2,11 +2,13 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 
 import {
+  calculateContainedImageRect,
   calculateReleaseVelocity,
   clampDragY,
   dragYToScale,
   resolveDragAxis,
   shouldDismiss,
+  toRelativeRect,
   type DragAxis,
   type DragSample,
 } from './photo-dismiss-gesture';
@@ -30,22 +32,6 @@ function sharedDismissDuration(velocityY: number): number {
 }
 
 type DismissTarget = () => DOMRect | undefined;
-
-function containedImageRect(image: HTMLImageElement): DOMRect | null {
-  if (!image.naturalWidth || !image.naturalHeight) return null;
-
-  const box = image.getBoundingClientRect();
-  const scale = Math.min(box.width / image.naturalWidth, box.height / image.naturalHeight);
-  const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
-
-  return new DOMRect(
-    box.left + (box.width - width) / 2,
-    box.top + (box.height - height) / 2,
-    width,
-    height,
-  );
-}
 
 export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?: DismissTarget) {
   const gestureRef = useRef<HTMLDivElement>(null);
@@ -158,11 +144,19 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
       '[data-photo-viewer-active-image="true"]',
     );
     const target = getDismissTargetRef.current?.();
-    const source = activeImage ? containedImageRect(activeImage) : null;
+    const source = activeImage
+      ? calculateContainedImageRect(
+          activeImage.getBoundingClientRect(),
+          activeImage.naturalWidth,
+          activeImage.naturalHeight,
+        )
+      : null;
 
     if (viewer && activeImage && source && target) {
       const duration = motionDuration(sharedDismissDuration(velocityY));
       const viewerRect = viewer.getBoundingClientRect();
+      const relativeSource = toRelativeRect(source, viewerRect);
+      const relativeTarget = toRelativeRect(target, viewerRect);
       const clone = activeImage.cloneNode() as HTMLImageElement;
       clone.alt = '';
       clone.removeAttribute('data-photo-viewer-active-image');
@@ -171,10 +165,10 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
         'pointer-events:none',
         'z-index:20',
         'object-fit:cover',
-        `left:${source.left - viewerRect.left}px`,
-        `top:${source.top - viewerRect.top}px`,
-        `width:${source.width}px`,
-        `height:${source.height}px`,
+        `left:${relativeSource.left}px`,
+        `top:${relativeSource.top}px`,
+        `width:${relativeSource.width}px`,
+        `height:${relativeSource.height}px`,
         'border-radius:0',
         `transition:left ${duration}ms ease-in-out, top ${duration}ms ease-in-out, width ${duration}ms ease-in-out, height ${duration}ms ease-in-out, border-radius ${duration}ms ease-in-out`,
       ].join(';');
@@ -191,10 +185,10 @@ export function usePhotoDismissGesture(onDismiss: () => void, getDismissTarget?:
       rafRef.current = requestAnimationFrame(() => {
         rafRef.current = requestAnimationFrame(() => {
           rafRef.current = null;
-          clone.style.left = `${target.left - viewerRect.left}px`;
-          clone.style.top = `${target.top - viewerRect.top}px`;
-          clone.style.width = `${target.width}px`;
-          clone.style.height = `${target.height}px`;
+          clone.style.left = `${relativeTarget.left}px`;
+          clone.style.top = `${relativeTarget.top}px`;
+          clone.style.width = `${relativeTarget.width}px`;
+          clone.style.height = `${relativeTarget.height}px`;
           clone.style.borderRadius = '8px';
 
           transitionTimerRef.current = window.setTimeout(() => {

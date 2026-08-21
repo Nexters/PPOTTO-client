@@ -1,5 +1,30 @@
 export type DragAxis = 'pending' | 'horizontal' | 'vertical';
 
+type Rect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
+
+export function calculateContainedImageRect(
+  box: Rect,
+  naturalWidth: number,
+  naturalHeight: number,
+): DOMRect | null {
+  if (naturalWidth <= 0 || naturalHeight <= 0) return null;
+
+  const scale = Math.min(box.width / naturalWidth, box.height / naturalHeight);
+  const width = naturalWidth * scale;
+  const height = naturalHeight * scale;
+
+  return new DOMRect(
+    box.left + (box.width - width) / 2,
+    box.top + (box.height - height) / 2,
+    width,
+    height,
+  );
+}
+
+export function toRelativeRect(rect: Rect, container: Rect): DOMRect {
+  return new DOMRect(rect.left - container.left, rect.top - container.top, rect.width, rect.height);
+}
+
 const AXIS_LOCK_DISTANCE = 6;
 
 export function resolveDragAxis(dx: number, dy: number): DragAxis {

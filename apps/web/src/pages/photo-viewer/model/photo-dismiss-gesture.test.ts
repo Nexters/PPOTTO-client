@@ -1,12 +1,53 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  calculateContainedImageRect,
   calculateReleaseVelocity,
   clampDragY,
   dragYToScale,
   resolveDragAxis,
   shouldDismiss,
+  toRelativeRect,
 } from './photo-dismiss-gesture';
+
+describe('calculateContainedImageRect', () => {
+  test('가로 사진을 컨테이너 안에 비율을 유지해 배치한다', () => {
+    const rect = calculateContainedImageRect(
+      { left: 10, top: 20, width: 300, height: 400 },
+      400,
+      200,
+    );
+
+    expect(rect).toEqual(new DOMRect(10, 145, 300, 150));
+  });
+
+  test('세로 사진을 컨테이너 안에 비율을 유지해 배치한다', () => {
+    const rect = calculateContainedImageRect(
+      { left: 10, top: 20, width: 300, height: 400 },
+      200,
+      400,
+    );
+
+    expect(rect).toEqual(new DOMRect(60, 20, 200, 400));
+  });
+
+  test('이미지 원본 크기가 유효하지 않으면 영역을 계산하지 않는다', () => {
+    expect(
+      calculateContainedImageRect({ left: 0, top: 0, width: 300, height: 400 }, 0, 400),
+    ).toBeNull();
+  });
+});
+
+describe('toRelativeRect', () => {
+  test('화면 좌표를 컨테이너 기준 좌표로 변환한다', () => {
+    expect(
+      toRelativeRect(
+        { left: 120, top: 240, width: 200, height: 100 },
+        { left: 20, top: 40, width: 360, height: 720 },
+      ),
+    ).toEqual(new DOMRect(100, 200, 200, 100));
+  });
+});
 
 describe('resolveDragAxis', () => {
   test('축 판정 거리보다 적게 움직이면 아직 방향을 정하지 않는다', () => {
