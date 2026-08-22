@@ -1,19 +1,12 @@
-export type EyedropperPixels = Pick<ImageData, 'data' | 'height' | 'width'>;
-
-export function readCanvasPixels(canvas: HTMLCanvasElement): EyedropperPixels | null {
+export function sampleColorAt(canvas: HTMLCanvasElement, x: number, y: number): string | null {
   const context = canvas.getContext('2d');
   if (!context) return null;
 
-  return context.getImageData(0, 0, canvas.width, canvas.height);
-}
+  const clampedX = Math.min(Math.max(Math.round(x), 0), canvas.width - 1);
+  const clampedY = Math.min(Math.max(Math.round(y), 0), canvas.height - 1);
+  const [r, g, b] = context.getImageData(clampedX, clampedY, 1, 1).data;
 
-export function sampleColorAt(pixels: EyedropperPixels, x: number, y: number): string {
-  const clampedX = Math.min(Math.max(Math.round(x), 0), pixels.width - 1);
-  const clampedY = Math.min(Math.max(Math.round(y), 0), pixels.height - 1);
-  const offset = (clampedY * pixels.width + clampedX) * 4;
-  const { data } = pixels;
-
-  return rgbToHex(data[offset]!, data[offset + 1]!, data[offset + 2]!);
+  return rgbToHex(r!, g!, b!);
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
