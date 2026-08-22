@@ -111,6 +111,8 @@ type BoardCanvasProps = {
   onCanRedoChange?: (canRedo: boolean) => void;
   // 카메라 줌 배율이 바뀔 때마다 호출
   onCameraScaleChange?: (scale: number) => void;
+  // 스포이드용 화면 캐시를 무효화해야 하는 보드 시각 변경 알림
+  onVisualChange?: () => void;
   // 그림이 삭제 가능 상태(꾹 눌러 승격됨)인지 여부가 바뀔 때마다 호출
   onDrawingDeleteArmedChange?: (isArmed: boolean) => void;
   // 그림을 드래그하는 동안 휴지통 버튼 위에 있는지 여부가 바뀔 때마다 호출 — 놓기 전 확대 피드백에 사용
@@ -123,6 +125,7 @@ export type BoardCanvasHandle = {
   undoLastStroke: () => void;
   redoLastStroke: () => void;
   cancelMoveSession: () => void;
+  getViewportElement: () => HTMLDivElement | null;
 };
 
 export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
@@ -170,6 +173,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onCanUndoChange,
     onCanRedoChange,
     onCameraScaleChange,
+    onVisualChange,
     onDrawingDeleteArmedChange,
     onDrawingDragOverTrashChange,
     trashButtonRef,
@@ -564,6 +568,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   }, [camera.scale, onCameraScaleChange]);
 
   useEffect(() => {
+    onVisualChange?.();
+  }, [camera.x, camera.y, camera.scale, stickers, drawings, draftDrawings, onVisualChange]);
+
+  useEffect(() => {
     const timer = setTimeout(() => saveCamera(boardId, camera), 400);
     return () => clearTimeout(timer);
   }, [boardId, camera]);
@@ -632,8 +640,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       cancelMoveSession: () => {
         discardMoveSessionRef.current();
       },
+      getViewportElement: () => container,
     }),
-    [],
+    [container],
   );
 
   // 배치 처리 시작한 스티커 id를 기억해서, 저장 응답이 캐시에 반영되기 전에 리렌더가 껴도
@@ -1592,6 +1601,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               sticker={sticker}
               selected={selectedId === sticker.id}
               transformOverride={dragTransform?.id === sticker.id ? dragTransform : undefined}
+              onRasterReady={onVisualChange}
             />
           ))}
           {stickers
@@ -1600,7 +1610,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               <StickerBadgeMark
                 key={sticker.id}
                 sticker={sticker}
-                isEditMode={isEditMode}
+                isEditMode={isEditMode || isPointerInputSuspended}
                 onNameClick={quickMenu.startDirectEdit}
               />
             ))}
@@ -1619,7 +1629,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           <div
             aria-hidden
             className="modal-overlay fixed inset-0 z-50"
-            onClick={() => quickMenu.finishDirectEditFromBackdrop()}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              quickMenu.finishDirectEditFromBackdrop();
+            }}
           />
           <StickerPreview
             sticker={directEditSticker}
