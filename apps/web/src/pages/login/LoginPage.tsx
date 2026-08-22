@@ -2,19 +2,15 @@
 
 import { AppleLogo, KakaoLogo, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
-import { useState } from 'react';
 
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 
 export function LoginPage() {
   const { replace } = useFlow();
-  // 화면 전환 중 URL이 먼저 바뀌어도 영향 없게 마운트 시점 값으로 고정
-  const [isAndroid] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).get('nativePlatform') === 'android',
-  );
+  const isAndroid =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('nativePlatform') === 'android';
 
   const login = async (channel: 'APPLE_LOGIN' | 'KAKAO_LOGIN') => {
     try {

@@ -40,7 +40,7 @@ export function AuthScreen() {
     };
   }, []);
 
-  if (status === 'login') return <AppWebView />;
+  if (status === 'login') return <AppWebView path="/login" />;
 
   if (status === 'retry') {
     return (

@@ -1,8 +1,4 @@
-type EyedropperMarkerProps = {
-  color: string;
-};
-
-export function EyedropperMarker({ color }: EyedropperMarkerProps) {
+export function EyedropperMarker() {
   return (
     <div className="pointer-events-none flex flex-col items-center gap-2">
       <svg
@@ -15,13 +11,13 @@ export function EyedropperMarker({ color }: EyedropperMarkerProps) {
       >
         <path
           d="M24.4992 4L39.2577 19.3734C51.7412 32.3771 42.5252 54 24.4992 54C6.47328 54 -2.74279 32.3771 9.74075 19.3734L24.4992 4Z"
-          fill={color}
+          fill="currentColor"
           stroke="white"
           strokeWidth={2}
         />
       </svg>
       <svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-        <circle cx={10} cy={10} r={6} fill={color} stroke="white" strokeWidth={2} />
+        <circle cx={10} cy={10} r={6} fill="currentColor" stroke="white" strokeWidth={2} />
       </svg>
     </div>
   );
