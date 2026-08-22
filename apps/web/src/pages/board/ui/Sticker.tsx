@@ -51,14 +51,12 @@ type StickerProps = {
   sticker: StickerData;
   selected?: boolean;
   transformOverride?: StickerTransform;
-  onRasterReady?: () => void;
 };
 
 export const Sticker = memo(function Sticker({
   sticker,
   selected,
   transformOverride,
-  onRasterReady,
 }: StickerProps) {
   const scale = transformOverride?.scale ?? sticker.scale;
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
@@ -68,9 +66,8 @@ export const Sticker = memo(function Sticker({
   useLayoutEffect(() => {
     if (canvasRef.current && photoImage) {
       drawOutlinedSticker(canvasRef.current, photoImage, STICKER_MAX_EDGE);
-      onRasterReady?.();
     }
-  }, [photoImage, onRasterReady]);
+  }, [photoImage]);
 
   if (!photoImage || width <= 0 || height <= 0) return null;
 
