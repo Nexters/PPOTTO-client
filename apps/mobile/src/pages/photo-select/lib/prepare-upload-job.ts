@@ -1,6 +1,6 @@
 import * as MediaLibrary from 'expo-media-library';
 
-import type { GalleryPhoto, PhotoSelection } from '@/features/photo-selection';
+import { compressPhoto, type GalleryPhoto, type PhotoSelection } from '@/features/photo-selection';
 import { selectedPhotoGroups } from '@/features/photo-selection/model/photo-group';
 import { PhotoPreparationError } from '@/features/photo-upload';
 
@@ -47,6 +47,12 @@ export async function prepareUploadJob({
       });
       if (!original.localUri) return [source.id, null] as const;
 
+      if (isHeicFilename(original.filename)) {
+        const converted = await convertToJpeg(original);
+        if (!converted) return [source.id, null] as const;
+        return [source.id, { fileUri: converted.uri, contentType: 'image/jpeg' as const }] as const;
+      }
+
       return [
         source.id,
         { fileUri: original.localUri, contentType: contentTypeOf(original.filename) },
@@ -81,7 +87,27 @@ function contentTypeOf(filename: string) {
   const extension = filename.split('.').pop()?.toLowerCase();
   if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg' as const;
   if (extension === 'png') return 'image/png' as const;
-  if (extension === 'heic' || extension === 'heif') return 'image/heic' as const;
   if (extension === 'webp') return 'image/webp' as const;
   throw new Error(`지원하지 않는 원본 이미지 형식입니다: ${filename}`);
+}
+
+function isHeicFilename(filename: string) {
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension === 'heic' || extension === 'heif';
+}
+
+// 압축 실패로 원본을 폴백으로 쓸 때도 JPEG로 다시 변환
+async function convertToJpeg(original: MediaLibrary.AssetInfo): Promise<GalleryPhoto | null> {
+  if (!original.localUri) return null;
+  try {
+    return await compressPhoto({
+      id: original.id,
+      uri: original.localUri,
+      creationTime: original.creationTime,
+      width: original.width,
+      height: original.height,
+    });
+  } catch {
+    return null;
+  }
 }
