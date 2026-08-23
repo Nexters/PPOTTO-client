@@ -42,7 +42,7 @@ it('선택 상태와 준비된 파일로 촬영순 업로드 작업을 만든다
       'representative',
       { fileUri: 'file:///representative.png', contentType: 'image/png' as const },
     ],
-    ['sibling', { fileUri: 'file:///sibling.heic', contentType: 'image/heic' as const }],
+    ['sibling', { fileUri: 'file:///sibling.webp', contentType: 'image/webp' as const }],
   ]);
 
   expect(
@@ -77,8 +77,8 @@ it('선택 상태와 준비된 파일로 촬영순 업로드 작업을 만든다
           },
           {
             clientPhotoId: 'sibling',
-            fileUri: 'file:///sibling.heic',
-            contentType: 'image/heic',
+            fileUri: 'file:///sibling.webp',
+            contentType: 'image/webp',
             width: 100,
             height: 100,
             takenAt: '2026-08-09T00:12:00.000Z',

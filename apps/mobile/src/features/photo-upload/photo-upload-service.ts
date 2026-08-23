@@ -69,7 +69,7 @@ export interface UploadMotionPhoto {
   uri: string;
   width: number;
   height: number;
-  contentType?: 'image/jpeg' | 'image/png' | 'image/heic' | 'image/webp';
+  contentType?: 'image/jpeg' | 'image/png' | 'image/webp';
 }
 
 interface StartPhotoUploadOptions {
