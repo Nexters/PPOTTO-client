@@ -1249,12 +1249,12 @@
                         "items": [
                           {
                             "takenAt": "2026-06-14T04:24:02Z",
-                            "contentType": "image/heic",
+                            "contentType": "image/png",
                             "isRepresentative": true
                           },
                           {
                             "takenAt": "2026-06-14T04:24:03Z",
-                            "contentType": "image/heic",
+                            "contentType": "image/webp",
                             "isRepresentative": false
                           }
                         ]
@@ -1298,7 +1298,7 @@
                           },
                           {
                             "photoId": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
-                            "uploadUrl": "https://storage.googleapis.com/ppotto-photos/01983f2f.heic?X-Goog-Expires=900"
+                            "uploadUrl": "https://storage.googleapis.com/ppotto-photos/01983f2f.webp?X-Goog-Expires=900"
                           }
                         ]
                       }
@@ -1745,7 +1745,7 @@
       "get": {
         "tags": ["스티커"],
         "summary": "리캡 상세 조회",
-        "description": "스티커 정보와 분석 코멘트, 관련 사진을 반환함. 빨간 점 제거는 /view를 따로 호출함",
+        "description": "스티커 정보와 분석 코멘트, 관련 사진을 반환함. 인증 없이 누구나 조회할 수 있고 isNew는 본인 스티커일 때만 true가 됨. 빨간 점 제거는 /view를 따로 호출함",
         "operationId": "getRecap",
         "parameters": [
           {
@@ -1890,7 +1890,7 @@
             }
           },
           "401": {
-            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "description": "전달한 access token이 유효하지 않음 (COMMON-004)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1939,6 +1939,7 @@
           }
         },
         "security": [
+          {},
           {
             "bearerAuth": []
           }
@@ -4431,7 +4432,7 @@
           "contentType": {
             "type": "string",
             "description": "지원 형식. 업로드 시 Content-Type과 일치해야 함",
-            "enum": ["image/jpeg", "image/png", "image/heic", "image/webp"],
+            "enum": ["image/jpeg", "image/png", "image/webp"],
             "example": "image/jpeg"
           },
           "isRepresentative": {
