@@ -1,0 +1,99 @@
+name: Deploy web
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'apps/web/**'
+      - 'packages/api/**'
+      - 'packages/assets/**'
+      - 'packages/bridge/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-production
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/nexters/ppotto-client-web
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build image
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          docker build \
+            --secret id=SENTRY_AUTH_TOKEN,env=SENTRY_AUTH_TOKEN \
+            --build-arg NEXT_PUBLIC_API_URL='${{ vars.NEXT_PUBLIC_API_URL }}' \
+            --build-arg NEXT_PUBLIC_USE_MOCK=false \
+            --build-arg NEXT_PUBLIC_KAKAO_JS_KEY='${{ vars.NEXT_PUBLIC_KAKAO_JS_KEY }}' \
+            --build-arg NEXT_PUBLIC_SENTRY_DSN='${{ vars.NEXT_PUBLIC_SENTRY_DSN }}' \
+            --build-arg NEXT_PUBLIC_SENTRY_ENVIRONMENT='${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT }}' \
+            --build-arg SENTRY_RELEASE='${{ github.sha }}' \
+            --build-arg SENTRY_DIST='${{ github.run_id }}' \
+            --tag "$IMAGE:${{ github.sha }}" \
+            --tag "$IMAGE:latest" \
+            .
+
+      - name: Push image
+        run: |
+          echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+          docker push "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:latest"
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' '${{ secrets.PROD_WEB_SSH_KEY }}' > ~/.ssh/ppotto-web.pem
+          printf '%s\n' '${{ secrets.PROD_WEB_KNOWN_HOSTS }}' > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/ppotto-web.pem ~/.ssh/known_hosts
+
+      - name: Log in server to GHCR
+        run: |
+          echo '${{ secrets.GITHUB_TOKEN }}' | ssh -i ~/.ssh/ppotto-web.pem \
+            '${{ vars.PROD_WEB_USER }}@${{ vars.PROD_WEB_HOST }}' \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+
+      - name: Deploy
+        run: |
+          ssh -i ~/.ssh/ppotto-web.pem '${{ vars.PROD_WEB_USER }}@${{ vars.PROD_WEB_HOST }}' <<'REMOTE'
+            set -eu
+            IMAGE='${{ env.IMAGE }}:${{ github.sha }}'
+
+            docker pull "$IMAGE"
+            docker rm -f ppotto-web 2>/dev/null || true
+            docker run -d \
+              --name ppotto-web \
+              --restart unless-stopped \
+              --env-file /opt/ppotto-web/.env \
+              --publish 127.0.0.1:3000:3000 \
+              "$IMAGE"
+
+            for attempt in $(seq 1 20); do
+              if curl -fsS http://127.0.0.1:3000/landing >/dev/null; then
+                docker image prune -f
+                exit 0
+              fi
+              sleep 1
+            done
+
+            docker logs --tail 100 ppotto-web
+            exit 1
+          REMOTE
