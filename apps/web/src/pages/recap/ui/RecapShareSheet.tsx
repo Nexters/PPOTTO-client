@@ -13,6 +13,8 @@ import { initKakao } from '@/shared/lib/kakao';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 import { useToast } from '@/shared/ui/common/Toast';
 
+import { buildRecapShareLink } from '../model/build-recap-share-link';
+
 import { RecapShareCard } from './RecapShareCard';
 import { RecapShareList } from './RecapShareList';
 import { RecapShareOptions, type ShareOptionKey } from './RecapShareOptions';
@@ -99,6 +101,7 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
       const tags = data.comments
         .filter((comment) => comment.posX == null)
         .map((comment) => comment.content);
+      const webLink = await buildRecapShareLink(stickerId, options);
 
       const { success } = await bridge.request('SHARE_KAKAO', {
         templateArgs: {
@@ -106,6 +109,7 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
           USER_NAME: me?.name ?? '',
           STICKER_NAME: data.sticker.title,
           KEYWORDS: tags.join(', '),
+          WEB_LINK: webLink,
         },
       });
       if (success) handleClose();
