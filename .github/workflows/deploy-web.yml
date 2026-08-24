@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE: ghcr.io/nexters/gallery100-client-web
+  IMAGE: ghcr.io/nexters/ppotto-client-web
 
 jobs:
   deploy:
