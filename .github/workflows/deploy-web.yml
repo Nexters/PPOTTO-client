@@ -86,14 +86,19 @@ jobs:
               --publish 127.0.0.1:3000:3000 \
               "$IMAGE"
 
+            ready=false
             for attempt in $(seq 1 20); do
-              if curl -fsS http://127.0.0.1:3000/landing >/dev/null; then
-                docker image prune -f
-                exit 0
+              if curl -fsS http://127.0.0.1:3000/landing >/dev/null 2>&1; then
+                ready=true
+                break
               fi
               sleep 1
             done
 
-            docker logs --tail 100 ppotto-web
-            exit 1
+            if [ "$ready" != true ]; then
+              docker logs --tail 100 ppotto-web
+              exit 1
+            fi
+
+            docker image prune -f
           REMOTE
