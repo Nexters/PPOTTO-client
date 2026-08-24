@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
@@ -7,6 +9,8 @@ const sentryRelease = process.env.SENTRY_RELEASE ?? process.env.VERCEL_GIT_COMMI
 const sentryDist = process.env.SENTRY_DIST ?? process.env.VERCEL_DEPLOYMENT_ID;
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../..'),
   transpilePackages: ['@ppotto/api', '@ppotto/assets', '@ppotto/bridge'],
   allowedDevOrigins: ['10.0.2.2', ...(allowedDevOrigin ? [allowedDevOrigin] : [])],
   env: {
