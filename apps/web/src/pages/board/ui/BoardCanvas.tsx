@@ -1,6 +1,6 @@
 'use client';
 
-import { useFlow } from '@stackflow/react';
+import { useActivity, useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   forwardRef,
@@ -16,7 +16,6 @@ import type { BoardDetail } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
-import { stickerQueryOptions } from '@/entities/sticker/api/sticker-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
@@ -224,6 +223,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
+  const { isActive } = useActivity();
   const queryClient = useQueryClient();
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
@@ -330,6 +330,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const selectedDrawingIdRef = useRef(activeSelectedDrawingId);
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
+  const isOpeningRecapRef = useRef(false);
   const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
   const drawColorRef = useRef(drawColor);
   const drawStrokeWidthRef = useRef(drawStrokeWidth);
@@ -553,6 +554,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawingLongPressRef.current = drawingLongPress;
     onDrawingActiveChangeRef.current = onDrawingActiveChange;
   });
+
+  useEffect(() => {
+    if (isActive) isOpeningRecapRef.current = false;
+  }, [isActive]);
 
   // 실행취소할 그림이 있는지 여부를 부모에 알림 — 이번 세션에 그린 draft 기준(이미 확정된 그림은 대상 아님)
   useEffect(() => {
@@ -1367,12 +1372,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             lastBackgroundTapRef.current = { time: now, point: tap.startClient };
             if (isEditModeRef.current) setSelectedStickerId(null);
           }
-        } else if (!isEditModeRef.current) {
-          const stickerId = tap.stickerId;
-          const openRecap = () => pushRef.current('Recap', { stickerId, boardId });
-          void queryClient
-            .ensureQueryData(stickerQueryOptions(stickerId))
-            .then(openRecap, openRecap);
+        } else if (!isEditModeRef.current && !isOpeningRecapRef.current) {
+          isOpeningRecapRef.current = true;
+          pushRef.current('Recap', { stickerId: tap.stickerId, boardId });
         }
       }
     };
@@ -1411,7 +1413,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       container.removeEventListener('gesturechange', blockGesture);
       container.removeEventListener('gestureend', blockGesture);
     };
-  }, [container, boardId, queryClient, quickMenu.isEditingRef, trashButtonRef]);
+  }, [container, boardId, quickMenu.isEditingRef, trashButtonRef]);
 
   if (isLoading) {
     return (
@@ -1629,10 +1631,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           <div
             aria-hidden
             className="modal-overlay fixed inset-0 z-50"
-            onPointerDown={(event) => {
-              event.preventDefault();
-              quickMenu.finishDirectEditFromBackdrop();
-            }}
+            onClick={() => quickMenu.finishDirectEditFromBackdrop()}
           />
           <StickerPreview
             sticker={directEditSticker}
