@@ -1,6 +1,6 @@
 'use client';
 
-import { useFlow } from '@stackflow/react';
+import { useActivity, useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   forwardRef,
@@ -223,6 +223,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
+  const { isActive } = useActivity();
   const queryClient = useQueryClient();
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
@@ -329,6 +330,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const selectedDrawingIdRef = useRef(activeSelectedDrawingId);
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
+  const isOpeningRecapRef = useRef(false);
   const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
   const drawColorRef = useRef(drawColor);
   const drawStrokeWidthRef = useRef(drawStrokeWidth);
@@ -552,6 +554,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawingLongPressRef.current = drawingLongPress;
     onDrawingActiveChangeRef.current = onDrawingActiveChange;
   });
+
+  useEffect(() => {
+    if (isActive) isOpeningRecapRef.current = false;
+  }, [isActive]);
 
   // 실행취소할 그림이 있는지 여부를 부모에 알림 — 이번 세션에 그린 draft 기준(이미 확정된 그림은 대상 아님)
   useEffect(() => {
@@ -1366,7 +1372,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             lastBackgroundTapRef.current = { time: now, point: tap.startClient };
             if (isEditModeRef.current) setSelectedStickerId(null);
           }
-        } else if (!isEditModeRef.current) {
+        } else if (!isEditModeRef.current && !isOpeningRecapRef.current) {
+          isOpeningRecapRef.current = true;
           pushRef.current('Recap', { stickerId: tap.stickerId, boardId });
         }
       }
