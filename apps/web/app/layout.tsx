@@ -4,6 +4,7 @@ import '@/app/styles/globals.css';
 export const metadata: Metadata = {
   title: 'ppotto',
   description: '방치된 갤러리 사진을 테마별 스티커로 만드는 포토 리캡',
+  icons: { icon: '/logo/ppotto-icon.png' },
 };
 
 export const viewport: Viewport = {
