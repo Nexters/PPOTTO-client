@@ -1624,10 +1624,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           <div
             aria-hidden
             className="modal-overlay fixed inset-0 z-50"
-            onPointerDown={(event) => {
-              event.preventDefault();
-              quickMenu.finishDirectEditFromBackdrop();
-            }}
+            onClick={() => quickMenu.finishDirectEditFromBackdrop()}
           />
           <StickerPreview
             sticker={directEditSticker}
