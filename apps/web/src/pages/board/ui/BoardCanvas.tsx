@@ -54,6 +54,10 @@ import {
   parseStrokeZIndex,
   toDrawingMoveInput,
 } from '../model/board-drawing';
+import {
+  type DrawingSelectionGesture,
+  drawingSelectionGestureReducer,
+} from '../model/board-drawing-selection';
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
 import {
   computeBringToFrontZIndex,
@@ -335,23 +339,16 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const drawStrokeWidthRef = useRef(drawStrokeWidth);
   const dragTransformRef = useRef<DragTransform | null>(null);
   const drawGestureRef = useRef<DrawGesture | null>(null);
-  const drawingDragStartRef = useRef<{ pointerId: number; startWorldPoint: Point } | null>(null);
+  // 선택된 그림의 드래그/핀치 모드와 그 시작 기준값 — drawingSelectionGestureReducer가 전이를 담당
+  const drawingSelectionGestureRef = useRef<DrawingSelectionGesture | null>(null);
   // handlePointerUp에서 최종 이동량을 읽어야 해서 state와 별도로 ref에도 최신값을 들고 있는다
   const drawingDragOffsetRef = useRef<Point | null>(null);
   // 휴지통 호버 진입 순간에만 햅틱을 울리기 위해 직전 프레임의 호버 여부를 들고 있는다
   const wasOverTrashRef = useRef(false);
-  // 선택된 그림을 두 손가락으로 회전+확대하는 동안의 시작 상태(원본 점/굵기 + 시작 시점 손가락 샘플)
-  const drawingPinchStartRef = useRef<{
-    points: Point[];
-    strokeWidth: number;
-    sample: PinchSample;
-  } | null>(null);
   // handlePointerUp에서 최종 결과를 읽어야 해서 state와 별도로 ref에도 최신값을 들고 있는다
   const drawingPinchPreviewRef = useRef<{ points: Point[]; strokeWidth: number } | null>(null);
   // 선택 박스의 확정된 중심/회전/배율 — pointerdown에서 제스처 시작 기준값으로 읽어야 해서 ref로도 들고 있는다
   const selectedDrawingBoxTransformRef = useRef<DrawingBoxTransform | null>(null);
-  // 두 손가락 제스처 시작 시점의 선택 박스 상태(기준값)
-  const drawingBoxPinchStartRef = useRef<DrawingBoxTransform | null>(null);
   // handlePointerUp에서 최종 결과를 읽어야 해서 state와 별도로 ref에도 최신값을 들고 있는다
   const drawingBoxPinchPreviewRef = useRef<DrawingBoxTransform | null>(null);
 
@@ -592,12 +589,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   // move 모드를 벗어나면 그림 선택 드래그/핀치 관련 ref도 정리 — 렌더 중엔 ref를 못 건드려 별도 effect로 분리
   useEffect(() => {
     if (isEditMode) return;
-    drawingDragStartRef.current = null;
+    drawingSelectionGestureRef.current = null;
     drawingDragOffsetRef.current = null;
-    drawingPinchStartRef.current = null;
     drawingPinchPreviewRef.current = null;
     selectedDrawingBoxTransformRef.current = null;
-    drawingBoxPinchStartRef.current = null;
     drawingBoxPinchPreviewRef.current = null;
   }, [isEditMode]);
 
@@ -873,7 +868,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             const bounds = selected && getDrawingBounds(selected.points, selected.strokeWidth);
 
             if (bounds && isPointInDrawingBounds(worldPoint, bounds)) {
-              drawingDragStartRef.current = { pointerId: e.pointerId, startWorldPoint: worldPoint };
+              drawingSelectionGestureRef.current = drawingSelectionGestureReducer(
+                drawingSelectionGestureRef.current,
+                { type: 'POINTER_DOWN', pointerId: e.pointerId, worldPoint },
+              );
               setLiveDrawingDragOffset({ x: 0, y: 0 });
               wasOverTrashRef.current = false;
               // 이미 선택된 그림을 다시 눌러도, 계속 누르고 있으면 삭제 가능 상태로 승격될 수 있다
@@ -895,7 +893,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               if (isEditModeRef.current) {
                 selectDrawingRef.current(hitDrawingId);
               }
-              drawingDragStartRef.current = { pointerId: e.pointerId, startWorldPoint: worldPoint };
+              drawingSelectionGestureRef.current = drawingSelectionGestureReducer(
+                drawingSelectionGestureRef.current,
+                { type: 'POINTER_DOWN', pointerId: e.pointerId, worldPoint },
+              );
               setLiveDrawingDragOffset({ x: 0, y: 0 });
               wasOverTrashRef.current = false;
               drawingLongPressRef.current.start(point, hitDrawingId);
@@ -905,7 +906,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         } else if (pointersRef.current.size === 2 && selectedDrawingIdRef.current) {
           drawingLongPressRef.current.cancel();
           const points = [...pointersRef.current.values()];
-          drawingDragStartRef.current = null;
           setLiveDrawingDragOffset(null);
           setIsDrawingOverTrash(false);
           wasOverTrashRef.current = false;
@@ -913,18 +913,16 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           const selected = drawingsRef.current.find(
             (drawing) => drawing.id === selectedDrawingIdRef.current,
           );
-          if (selected) {
-            drawingPinchStartRef.current = {
-              points: selected.points,
-              strokeWidth: selected.strokeWidth,
-              sample: {
-                centroid: toWorldPoint(cameraRef.current, centroid(points)),
-                distance: distance(points[0]!, points[1]!),
-                angle: angleBetween(points[0]!, points[1]!),
-              },
-            };
-            drawingBoxPinchStartRef.current = selectedDrawingBoxTransformRef.current;
-          }
+          drawingSelectionGestureRef.current = selected
+            ? drawingSelectionGestureReducer(drawingSelectionGestureRef.current, {
+                type: 'MULTI_TOUCH',
+                points: [points[0]!, points[1]!],
+                camera: cameraRef.current,
+                basePoints: selected.points,
+                baseStrokeWidth: selected.strokeWidth,
+                baseBoxTransform: selectedDrawingBoxTransformRef.current,
+              })
+            : null;
           return;
         }
       }
@@ -1014,47 +1012,43 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       if (isEditModeRef.current || !isDrawModeRef.current) {
         if (pointersRef.current.size >= 2) {
           drawingLongPressRef.current.cancel();
-          if (drawingDragStartRef.current) {
+          const selectionGesture = drawingSelectionGestureRef.current;
+
+          if (selectionGesture?.kind === 'dragging') {
             // 드래그 중 두 번째 손가락이 닿으면 드래그를 취소한다(선택은 유지)
-            drawingDragStartRef.current = null;
+            drawingSelectionGestureRef.current = null;
             setLiveDrawingDragOffset(null);
             setIsDrawingOverTrash(false);
             wasOverTrashRef.current = false;
-          }
-
-          if (drawingPinchStartRef.current) {
+          } else if (selectionGesture?.kind === 'pinching') {
             const points = [...pointersRef.current.values()];
-            const {
-              points: basePoints,
-              strokeWidth: baseStrokeWidth,
-              sample: start,
-            } = drawingPinchStartRef.current;
+            const { basePoints, baseStrokeWidth, baseBoxTransform, startSample } = selectionGesture;
             const current: PinchSample = {
               centroid: toWorldPoint(cameraRef.current, centroid(points)),
               distance: distance(points[0]!, points[1]!),
               angle: angleBetween(points[0]!, points[1]!),
             };
             setLiveDrawingPinchPreview(
-              computeDrawingPinchTransform(basePoints, baseStrokeWidth, start, current),
+              computeDrawingPinchTransform(basePoints, baseStrokeWidth, startSample, current),
             );
-            if (drawingBoxPinchStartRef.current) {
+            if (baseBoxTransform) {
               setLiveDrawingBoxPinchPreview(
-                computeDrawingBoxPinchTransform(drawingBoxPinchStartRef.current, start, current),
+                computeDrawingBoxPinchTransform(baseBoxTransform, startSample, current),
               );
             }
             return;
           }
           // 선택된 그림이 없으면(핀치 시작 안 됐으면) 기존 스티커/카메라 핀치 로직으로 계속 진행
         } else if (selectedDrawingIdRef.current) {
-          const dragStart = drawingDragStartRef.current;
-          if (!dragStart || dragStart.pointerId !== e.pointerId) return;
+          const gesture = drawingSelectionGestureRef.current;
+          if (gesture?.kind !== 'dragging' || gesture.pointerId !== e.pointerId) return;
           // 너무 많이 움직이면 삭제 가능 상태로의 승격이 취소되고(제자리에서 계속 누르고 있어야
           // 승격됨), 이미 승격된 뒤라면 이 호출은 아무 효과가 없다
           drawingLongPressRef.current.move(point);
           const worldPoint = toWorldPoint(cameraRef.current, point);
           setLiveDrawingDragOffset({
-            x: worldPoint.x - dragStart.startWorldPoint.x,
-            y: worldPoint.y - dragStart.startWorldPoint.y,
+            x: worldPoint.x - gesture.startWorldPoint.x,
+            y: worldPoint.y - gesture.startWorldPoint.y,
           });
           const overTrash = isOverTrash(e);
           // 휴지통 위로 막 넘어온 순간(rising edge)에만 햅틱 — 계속 위에 머물러도 반복 발동하지 않는다
@@ -1185,33 +1179,31 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         drawingLongPressRef.current.cancel();
 
         if (selectedDrawingIdRef.current) {
-          const pinchStart = drawingPinchStartRef.current;
+          const selectionGesture = drawingSelectionGestureRef.current;
 
-          if (pinchStart && pointersRef.current.size === 1) {
-            drawingPinchStartRef.current = null;
-            drawingBoxPinchStartRef.current = null;
-
+          if (selectionGesture?.kind === 'pinching' && pointersRef.current.size === 1) {
             const [remainingPointerId, remainingPoint] = [...pointersRef.current][0]!;
-            drawingDragStartRef.current = {
-              pointerId: remainingPointerId,
-              startWorldPoint: toWorldPoint(cameraRef.current, remainingPoint),
-            };
+            drawingSelectionGestureRef.current = drawingSelectionGestureReducer(selectionGesture, {
+              type: 'POINTER_UP_TO_ONE',
+              remainingPointerId,
+              remainingWorldPoint: toWorldPoint(cameraRef.current, remainingPoint),
+            });
             setLiveDrawingDragOffset({ x: 0, y: 0 });
             return;
           }
 
-          const dragStart = drawingDragStartRef.current;
+          const dragStart = selectionGesture?.kind === 'dragging' ? selectionGesture : null;
           const offset = drawingDragOffsetRef.current;
           const pinchPreview = drawingPinchPreviewRef.current;
           const boxPinchPreview = drawingBoxPinchPreviewRef.current;
-          drawingDragStartRef.current = null;
+          drawingSelectionGestureRef.current = drawingSelectionGestureReducer(selectionGesture, {
+            type: 'POINTER_UP_TO_ZERO',
+          });
           setLiveDrawingDragOffset(null);
           setIsDrawingOverTrash(false);
           wasOverTrashRef.current = false;
           setIsDrawingDeleteArmed(false);
-          drawingPinchStartRef.current = null;
           setLiveDrawingPinchPreview(null);
-          drawingBoxPinchStartRef.current = null;
           setLiveDrawingBoxPinchPreview(null);
 
           if (dragStart && dragStart.pointerId === e.pointerId && isOverTrash(e)) {
