@@ -18,7 +18,6 @@ import { stickerQueryOptions } from '@/entities/sticker/api/sticker-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
-import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
 
 import {
@@ -30,11 +29,6 @@ import {
   zoomCamera,
   zoomCameraTo,
 } from '../model/board-camera';
-import {
-  type DrawGesture,
-  type DrawGestureResult,
-  drawGestureReducer,
-} from '../model/board-draw-gesture';
 import {
   computeDrawingBoxPinchTransform,
   computeDrawingPinchTransform,
@@ -53,11 +47,7 @@ import {
   drawingSelectionGestureReducer,
 } from '../model/board-drawing-selection';
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
-import {
-  computeBringToFrontZIndex,
-  computeTopZIndex,
-  needsInitialLayout,
-} from '../model/board-layout';
+import { computeBringToFrontZIndex, needsInitialLayout } from '../model/board-layout';
 import type { ExistingSticker } from '../model/poisson-cluster';
 import {
   computeStickerPinchTransform,
@@ -68,6 +58,7 @@ import {
 import { angleBetween, centroid, distance, type Point } from '../model/geometry';
 import { useBoardCamera } from '../model/use-board-camera';
 import { useDeleteSticker } from '../model/use-delete-sticker';
+import { useDrawMode } from '../model/use-draw-mode';
 import { useDrawingPersistence } from '../model/use-drawing-persistence';
 import {
   EMPTY_BOARD_STICKER_INITIAL_TRANSFORM,
@@ -172,9 +163,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const { camera, setCamera, cameraRef, requestFocus } = useBoardCamera(boardId);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
-  const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
-  const [draftDrawings, setDraftDrawings] = useState<ParsedDrawing[]>([]);
-  const [redoDrawings, setRedoDrawings] = useState<ParsedDrawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [drawingDragOffset, setDrawingDragOffset] = useState<Point | null>(null);
   // 선택된 그림을 꾹 눌러 삭제 가능 상태로 승격했는지
@@ -316,10 +304,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
   const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
-  const drawColorRef = useRef(drawColor);
-  const drawStrokeWidthRef = useRef(drawStrokeWidth);
   const dragTransformRef = useRef<DragTransform | null>(null);
-  const drawGestureRef = useRef<DrawGesture | null>(null);
   // 선택된 그림의 드래그/핀치 모드와 그 시작 기준값 — drawingSelectionGestureReducer가 전이를 담당
   const drawingSelectionGestureRef = useRef<DrawingSelectionGesture | null>(null);
   // handlePointerUp에서 최종 이동량을 읽어야 해서 state와 별도로 ref에도 최신값을 들고 있는다
@@ -450,6 +435,20 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     saveLayout,
   });
 
+  const drawMode = useDrawMode({
+    isDrawMode,
+    cameraRef,
+    setCamera,
+    pointersRef,
+    drawColor,
+    drawStrokeWidth,
+    combinedZIndexPool,
+    confirmDraftDrawings,
+    onDrawingActiveChange,
+    onCanUndoChange,
+    onCanRedoChange,
+  });
+
   const applyStickerChangeRef = useRef(applyStickerChange);
   const applyDrawingChangeRef = useRef(applyDrawingChange);
   const markDrawingDeletedRef = useRef(markDrawingDeleted);
@@ -459,15 +458,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const selectDrawingRef = useRef(selectDrawing);
   const deleteDrawingRef = useRef(deleteDrawing);
   const moveDrawingRef = useRef(moveDrawing);
-  const confirmDraftDrawingsRef = useRef(confirmDraftDrawings);
   const drawingsRef = useRef(drawings);
-  const draftDrawingsRef = useRef(draftDrawings);
-  const redoDrawingsRef = useRef(redoDrawings);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
   const drawingLongPressRef = useRef(drawingLongPress);
-  const onDrawingActiveChangeRef = useRef(onDrawingActiveChange);
-  const isDrawingActiveRef = useRef(false);
+  // 포인터 이펙트가 등록될 때의 정적 클로저에서도 항상 최신 draw 모드 훅 결과를 읽기 위함
+  const drawModeRef = useRef(drawMode);
 
   // ref들을 매 렌더 이후 최신값으로 동기화
   useEffect(() => {
@@ -479,8 +475,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     isEditModeRef.current = isEditMode;
     isDrawModeRef.current = isDrawMode;
     isPointerInputSuspendedRef.current = isPointerInputSuspended;
-    drawColorRef.current = drawColor;
-    drawStrokeWidthRef.current = drawStrokeWidth;
     applyStickerChangeRef.current = applyStickerChange;
     applyDrawingChangeRef.current = applyDrawingChange;
     markDrawingDeletedRef.current = markDrawingDeleted;
@@ -490,24 +484,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     selectDrawingRef.current = selectDrawing;
     deleteDrawingRef.current = deleteDrawing;
     moveDrawingRef.current = moveDrawing;
-    confirmDraftDrawingsRef.current = confirmDraftDrawings;
     drawingsRef.current = drawings;
-    draftDrawingsRef.current = draftDrawings;
-    redoDrawingsRef.current = redoDrawings;
     pushRef.current = push;
     longPressRef.current = longPress;
     drawingLongPressRef.current = drawingLongPress;
-    onDrawingActiveChangeRef.current = onDrawingActiveChange;
+    drawModeRef.current = drawMode;
   });
-
-  // 실행취소할 그림이 있는지 여부를 부모에 알림 — 이번 세션에 그린 draft 기준(이미 확정된 그림은 대상 아님)
-  useEffect(() => {
-    onCanUndoChange?.(draftDrawings.length > 0);
-  }, [draftDrawings.length, onCanUndoChange]);
-
-  useEffect(() => {
-    onCanRedoChange?.(redoDrawings.length > 0);
-  }, [redoDrawings.length, onCanRedoChange]);
 
   useEffect(() => {
     onCameraScaleChange?.(camera.scale);
@@ -515,7 +497,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
   useEffect(() => {
     onVisualChange?.();
-  }, [camera.x, camera.y, camera.scale, stickers, drawings, draftDrawings, onVisualChange]);
+  }, [
+    camera.x,
+    camera.y,
+    camera.scale,
+    stickers,
+    drawings,
+    drawMode.draftDrawings,
+    onVisualChange,
+  ]);
 
   // 그림이 삭제 가능 상태인지를 부모에 알림 — 상단 UI 숨김/하단 삭제 바 전환에 사용
   useEffect(() => {
@@ -543,34 +533,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     confirmMoveSessionRef.current();
   }, [isEditMode]);
 
-  // draw 모드를 나가면(확정 버튼이든 다른 툴바 모드로 전환이든) 이번 세션에 그린 draft를 한 번에
-  // 저장하고 비운다. 되돌리기/다시실행 이력도 이번 세션 것이니 같이 비운다
-  useEffect(() => {
-    if (isDrawMode) return;
-    setRedoDrawings([]);
-    const drafts = draftDrawingsRef.current;
-    if (drafts.length === 0) return;
-    setDraftDrawings([]);
-    confirmDraftDrawingsRef.current(drafts);
-  }, [isDrawMode]);
-
   useImperativeHandle(
     ref,
     () => ({
-      undoLastStroke: () => {
-        const current = draftDrawingsRef.current;
-        if (current.length === 0) return;
-        const popped = current[current.length - 1]!;
-        setDraftDrawings(current.slice(0, -1));
-        setRedoDrawings((prev) => [...prev, popped]);
-      },
-      redoLastStroke: () => {
-        const current = redoDrawingsRef.current;
-        if (current.length === 0) return;
-        const restored = current[current.length - 1]!;
-        setRedoDrawings(current.slice(0, -1));
-        setDraftDrawings((prev) => [...prev, restored]);
-      },
+      undoLastStroke: () => drawModeRef.current.undoLastStroke(),
+      redoLastStroke: () => drawModeRef.current.redoLastStroke(),
       // 이동 모드 세션의 변경분을 버린다
       cancelMoveSession: () => {
         discardMoveSessionRef.current();
@@ -647,36 +614,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       setDrawingBoxPinchPreview(next);
     };
 
-    // drawGestureReducer 결과를 실제 상태(refs/state)에 반영하고, 완성된 선이 있으면 저장한다
-    const applyDrawGestureResult = (result: DrawGestureResult) => {
-      drawGestureRef.current = result.state;
-      setDrawingPoints(result.state?.kind === 'drawing' ? result.state.points : null);
-
-      // 그리는 중(drawing/pinching) 여부가 실제로 바뀔 때만 부모에 알림
-      const isActive = result.state !== null;
-      if (isActive !== isDrawingActiveRef.current) {
-        isDrawingActiveRef.current = isActive;
-        onDrawingActiveChangeRef.current?.(isActive);
-      }
-
-      if (result.finalizedStroke && result.finalizedStroke.length > 0) {
-        const finalizedStroke = result.finalizedStroke;
-        // 서버에 바로 저장하지 않고 이번 세션의 draft로만 들고 있는다 — draw 모드를 나갈 때 한 번에 저장됨
-        setDraftDrawings((prev) => [
-          ...prev,
-          {
-            id: uuidv7(),
-            points: finalizedStroke,
-            color: drawColorRef.current,
-            strokeWidth: drawStrokeWidthRef.current,
-            // 스티커+그림+이번 세션에 이미 그린 draft를 통틀어 맨 위로 — 새로 그리면 항상 맨 위에 온다
-            zIndex: computeTopZIndex([...combinedZIndexPool(), ...prev]),
-          },
-        ]);
-        setRedoDrawings([]);
-      }
-    };
-
     const handlePointerDown = (e: PointerEvent) => {
       if (isPointerInputSuspendedRef.current) return;
       // 퀵메뉴/이름 직접 편집 중엔 캔버스 제스처 비활성화
@@ -685,24 +622,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       pointersRef.current.set(e.pointerId, point);
 
       if (isDrawModeRef.current) {
-        if (pointersRef.current.size === 1) {
-          applyDrawGestureResult(
-            drawGestureReducer(drawGestureRef.current, {
-              type: 'POINTER_DOWN',
-              pointerId: e.pointerId,
-              point: toWorldPoint(cameraRef.current, point),
-            }),
-          );
-        } else if (pointersRef.current.size === 2) {
-          const points = [...pointersRef.current.values()];
-          applyDrawGestureResult(
-            drawGestureReducer(drawGestureRef.current, {
-              type: 'MULTI_TOUCH',
-              points: [points[0]!, points[1]!],
-              camera: cameraRef.current,
-            }),
-          );
-        }
+        drawModeRef.current.onPointerDown(e, point);
         return;
       }
 
@@ -836,27 +756,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       pointersRef.current.set(e.pointerId, point);
 
       if (isDrawModeRef.current) {
-        if (pointersRef.current.size >= 2) {
-          const points = [...pointersRef.current.values()];
-          const gesture = drawGestureRef.current;
-          if (gesture?.kind !== 'pinching') return;
-          setCamera(
-            computeBoardPinchZoom(
-              gesture.startCamera,
-              { centroid: gesture.startCentroid, distance: gesture.startDistance },
-              { centroid: centroid(points), distance: distance(points[0]!, points[1]!) },
-            ),
-          );
-          return;
-        }
-
-        applyDrawGestureResult(
-          drawGestureReducer(drawGestureRef.current, {
-            type: 'POINTER_MOVE',
-            pointerId: e.pointerId,
-            point: toWorldPoint(cameraRef.current, point),
-          }),
-        );
+        drawModeRef.current.onPointerMove(e, point);
         return;
       }
 
@@ -1010,17 +910,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       pointersRef.current.delete(e.pointerId);
 
       if (isDrawModeRef.current) {
-        if (pointersRef.current.size === 0) {
-          // 드래그 없이 탭만 해도 점 하나(찍은 점)로 저장한다
-          applyDrawGestureResult(
-            drawGestureReducer(drawGestureRef.current, { type: 'POINTER_UP_TO_ZERO' }),
-          );
-        } else if (pointersRef.current.size === 1) {
-          // 핀치줌 중 손가락 하나가 떨어짐 -> 종료 (남은 손가락으로 이어서 그리진 않음)
-          applyDrawGestureResult(
-            drawGestureReducer(drawGestureRef.current, { type: 'POINTER_UP_TO_ONE' }),
-          );
-        }
+        drawModeRef.current.onPointerUp();
         return;
       }
 
@@ -1376,7 +1266,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             );
           })}
           {/* 이번 세션에 그린 draft — 아직 저장 전이라 선택/드래그 대상이 아니다 */}
-          {draftDrawings.map((drawing) => (
+          {drawMode.draftDrawings.map((drawing) => (
             <svg
               key={drawing.id}
               style={{
@@ -1396,7 +1286,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             </svg>
           ))}
           {/* 그리는 도중인 선의 실시간 미리보기 — 항상 맨 위에 그려짐 */}
-          {drawingPoints && (
+          {drawMode.drawingPoints && (
             <svg
               style={{
                 position: 'absolute',
@@ -1408,7 +1298,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               }}
             >
               <DrawingStroke
-                points={drawingPoints}
+                points={drawMode.drawingPoints}
                 color={drawColor}
                 strokeWidth={drawStrokeWidth}
               />
