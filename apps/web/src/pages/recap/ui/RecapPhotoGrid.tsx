@@ -16,11 +16,12 @@ type RecapPhotoGridProps = {
 type RecapPhotoTileProps = {
   stickerId: string;
   photo: StickerPhoto;
+  index: number;
   eager: boolean;
   onClick: () => void;
 };
 
-function RecapPhotoTile({ stickerId, photo, eager, onClick }: RecapPhotoTileProps) {
+function RecapPhotoTile({ stickerId, photo, index, eager, onClick }: RecapPhotoTileProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   // eager는 공유 카드 캡처용 오프스크린 렌더 — 스켈레톤/페이드가 캡처에 섞이면 안 된다
   const showSkeleton = !eager && !isLoaded;
@@ -28,6 +29,7 @@ function RecapPhotoTile({ stickerId, photo, eager, onClick }: RecapPhotoTileProp
   return (
     <button
       type="button"
+      data-recap-photo-index={index}
       className="rounded-8 relative aspect-square w-full overflow-hidden bg-gray-900"
       onClick={onClick}
     >
@@ -81,6 +83,7 @@ export function RecapPhotoGrid({ stickerId, photos, eager = false }: RecapPhotoG
             key={photo.id}
             stickerId={stickerId}
             photo={photo}
+            index={index}
             eager={eager}
             onClick={() => push('PhotoViewer', { stickerId, initialIndex: String(index) })}
           />

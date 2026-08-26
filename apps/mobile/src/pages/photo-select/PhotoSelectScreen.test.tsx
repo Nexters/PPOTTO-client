@@ -318,8 +318,26 @@ it('사진 권한을 거부하면 설정 이동 안내를 표시하고 갤러리
   );
 
   expect(await screen.findByText('사진 접근 권한이 필요해요')).toBeOnTheScreen();
-  expect(screen.getByRole('button', { name: '설정에서 권한 허용하기' })).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '설정으로 이동' })).toBeOnTheScreen();
   expect(mockFetchLocalPhotoGroupPage).not.toHaveBeenCalled();
+});
+
+it('첫 사진 권한 요청은 계속 버튼으로 안내한다', async () => {
+  getPermissionsAsync.mockResolvedValueOnce({
+    accessPrivileges: 'none',
+    canAskAgain: true,
+    granted: false,
+    status: 'undetermined',
+  });
+
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <PhotoSelectScreen />
+    </SafeAreaProvider>,
+  );
+
+  expect(await screen.findByRole('button', { name: '계속' })).toBeOnTheScreen();
+  expect(screen.queryByText('사진 접근 허용하기')).not.toBeOnTheScreen();
 });
 
 it('단일 사진을 누르면 제외되고 다시 누르면 복구된다', async () => {
@@ -395,7 +413,7 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
   const { user } = await renderLoadedScreen();
 
   await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(25));
-  expect(mockImageResize).toHaveBeenCalledWith({ width: 768, height: 512 });
+  expect(mockImageResize).toHaveBeenCalledWith({ width: 640, height: 427 });
   expect(mockImageSave.mock.calls.every(([options]) => options.format === 'jpeg')).toBe(true);
 
   await user.press(cta());

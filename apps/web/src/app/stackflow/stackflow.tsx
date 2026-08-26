@@ -55,7 +55,7 @@ const TermsDetailActivity: ActivityComponentType<'TermsDetail'> = ({ params }) =
 );
 
 const RecapActivity: ActivityComponentType<'Recap'> = ({ params }) => (
-  <AppScreen>
+  <AppScreen className="recap-app-screen">
     <RecapPage stickerId={params.stickerId} boardId={params.boardId} />
   </AppScreen>
 );

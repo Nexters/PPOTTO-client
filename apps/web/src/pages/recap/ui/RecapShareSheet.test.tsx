@@ -26,6 +26,9 @@ vi.mock('@/shared/lib/capture-element-as-blob', () => ({
 vi.mock('@/shared/lib/crop-canvas-to-square', () => ({
   cropCanvasToSquare: (canvas: HTMLCanvasElement) => canvas,
 }));
+vi.mock('../model/build-recap-share-link', () => ({
+  buildRecapShareLink: vi.fn(() => Promise.resolve('/share/recap/sticker-1?o=1111&sig=test')),
+}));
 
 const uploadImage = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ infos: { original: { url: 'https://k.kakao/image.png' } } }),
@@ -90,6 +93,7 @@ it('카카오톡 버튼으로 업로드한 이미지 URL과 템플릿 변수를 
         USER_NAME: '테스트',
         STICKER_NAME: '고양이',
         KEYWORDS: '귀여움, 행복',
+        WEB_LINK: '/share/recap/sticker-1?o=1111&sig=test',
       },
     }),
   );

@@ -26,9 +26,13 @@ export function BoardToolbar({
     <div
       className={cn(
         'pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end',
-        'justify-between px-6 pt-16 pb-3.5',
+        'justify-between px-6 pt-16',
       )}
-      style={{ backgroundImage: 'linear-gradient(to top, black, transparent)' }}
+      style={{
+        paddingBottom:
+          'calc(var(--rn-safe-area-inset-bottom, env(safe-area-inset-bottom)) + 0.875rem)',
+        backgroundImage: 'linear-gradient(to top, black, transparent)',
+      }}
     >
       <div className="flex flex-col items-start justify-center gap-4">
         {aboveModeSwitcher}

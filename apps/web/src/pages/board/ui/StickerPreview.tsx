@@ -23,7 +23,6 @@ type StickerPreviewProps = {
   isEditingTitle?: boolean;
   onSubmitTitle?: (title: string) => void;
   onCancelEditTitle?: () => void;
-  onTitleChange?: (title: string) => void;
   followKeyboard?: boolean;
   titleInputRef?: Ref<HTMLInputElement>;
   imageRef?: Ref<HTMLDivElement>;
@@ -35,7 +34,6 @@ export function StickerPreview({
   isEditingTitle,
   onSubmitTitle,
   onCancelEditTitle,
-  onTitleChange,
   followKeyboard,
   titleInputRef,
   imageRef,
@@ -89,15 +87,16 @@ export function StickerPreview({
           }}
         />
       </div>
-      <StickerBadge
-        ref={titleInputRef}
-        title={sticker.title}
-        isNew={sticker.isNew}
-        isEditing={isEditingTitle}
-        onSubmit={onSubmitTitle}
-        onCancel={onCancelEditTitle}
-        onValueChange={onTitleChange}
-      />
+      <div className="flex w-full shrink-0 justify-center">
+        <StickerBadge
+          ref={titleInputRef}
+          title={sticker.title}
+          isNew={sticker.isNew}
+          isEditing={isEditingTitle}
+          onSubmit={onSubmitTitle}
+          onCancel={onCancelEditTitle}
+        />
+      </div>
     </div>
   );
 }

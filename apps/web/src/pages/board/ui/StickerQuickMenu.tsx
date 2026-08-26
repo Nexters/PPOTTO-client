@@ -28,7 +28,7 @@ type QuickMenuButtonProps = {
   disabled?: boolean;
 };
 
-function QuickMenuButton({ Icon, label, onClick, disabled }: QuickMenuButtonProps) {
+export function QuickMenuButton({ Icon, label, onClick, disabled }: QuickMenuButtonProps) {
   return (
     <button
       type="button"
@@ -71,6 +71,7 @@ export function StickerQuickMenu({
       <BottomSheet
         isOpen={isOpen}
         onClose={onClose}
+        overlayClassName="bg-transparent"
         animateOverlay={!openedFromEdit}
         animateContent={!openedFromEdit}
       >

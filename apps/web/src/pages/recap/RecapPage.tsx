@@ -79,6 +79,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
           backgroundColor: '#000',
           backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px)',
           backgroundSize: '18px 18px',
+          paddingBottom: 'var(--rn-safe-area-inset-bottom, env(safe-area-inset-bottom))',
         }}
       >
         <div className="flex w-full flex-col gap-10 px-5">
@@ -107,6 +108,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
         backgroundColor: '#000',
         backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px)',
         backgroundSize: '18px 18px',
+        paddingBottom: 'var(--rn-safe-area-inset-bottom, env(safe-area-inset-bottom))',
       }}
     >
       <div className="relative flex w-full flex-col">

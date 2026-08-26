@@ -1,0 +1,12 @@
+.git
+.github
+**/node_modules
+**/.next
+**/.expo
+**/.omc
+**/build
+**/.env*
+!**/.env.example
+apps/mobile
+documents
+*.log

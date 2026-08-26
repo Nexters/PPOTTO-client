@@ -249,7 +249,7 @@ export interface paths {
         };
         /**
          * 리캡 상세 조회
-         * @description 스티커 정보와 분석 코멘트, 관련 사진을 반환함. 빨간 점 제거는 /view를 따로 호출함
+         * @description 스티커 정보와 분석 코멘트, 관련 사진을 반환함. 인증 없이 누구나 조회할 수 있고 isNew는 본인 스티커일 때만 true가 됨. 빨간 점 제거는 /view를 따로 호출함
          */
         get: operations["getRecap"];
         put?: never;
@@ -1022,7 +1022,7 @@ export interface components {
              * @example image/jpeg
              * @enum {string}
              */
-            contentType: "image/jpeg" | "image/png" | "image/heic" | "image/webp";
+            contentType: "image/jpeg" | "image/png" | "image/webp";
             /** @description 연사 그룹 내 대표 사진 여부 */
             isRepresentative: boolean;
             /**
@@ -2285,7 +2285,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseRecapDetailResponse"];
                 };
             };
-            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            /** @description 전달한 access token이 유효하지 않음 (COMMON-004) */
             401: {
                 headers: {
                     [name: string]: unknown;

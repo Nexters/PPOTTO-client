@@ -1,6 +1,10 @@
 {
   "name": "ppotto",
   "private": true,
+  "packageManager": "pnpm@10.12.2",
+  "engines": {
+    "node": ">=22.22.3 <23"
+  },
   "scripts": {
     "openapi:update": "node --env-file=.env packages/api/scripts/update-openapi.mjs && pnpm --filter @ppotto/api exec prettier --write openapi/ppotto-api.json && pnpm gen",
     "gen": "pnpm --filter @ppotto/api gen",

@@ -8,7 +8,12 @@ type RecapHeaderProps = {
 
 export function RecapHeader({ title, onBack, onShare }: RecapHeaderProps) {
   return (
-    <div className="flex w-full items-center justify-between py-3">
+    <div
+      className="flex w-full items-center justify-between pb-3"
+      style={{
+        paddingTop: 'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 0.75rem)',
+      }}
+    >
       <button type="button" onClick={onBack}>
         <ChevronLeft />
       </button>

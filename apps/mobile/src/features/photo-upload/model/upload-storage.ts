@@ -179,6 +179,5 @@ function extensionOf(
 ) {
   if (contentType === 'image/jpeg') return 'jpg';
   if (contentType === 'image/png') return 'png';
-  if (contentType === 'image/webp') return 'webp';
-  return 'heic';
+  return 'webp';
 }

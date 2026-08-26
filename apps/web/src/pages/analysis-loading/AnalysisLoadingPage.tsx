@@ -23,6 +23,13 @@ export function AnalysisLoadingPage() {
   const mountRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { replace } = useFlow();
+  const motionRef = useRef<ReturnType<typeof createLoadingMotion>>(undefined);
+  const downloadingFromICloudRef = useRef(false);
+
+  const syncICloudNotice = useCallback((downloading: boolean) => {
+    downloadingFromICloudRef.current = downloading;
+    motionRef.current?.setICloudNotice(downloading);
+  }, []);
 
   const prepareBoard = useCallback(async () => {
     const boards = await queryClient.fetchQuery({
@@ -42,6 +49,11 @@ export function AnalysisLoadingPage() {
 
   useEffect(() => bridge.on('SHOW_BOARD', () => replace('Board', {})), [replace]);
 
+  useEffect(
+    () => bridge.on('ICLOUD_DOWNLOAD_CHANGED', ({ downloading }) => syncICloudNotice(downloading)),
+    [syncICloudNotice],
+  );
+
   useEffect(() => {
     let disposed = false;
     let motion: ReturnType<typeof createLoadingMotion> | undefined;
@@ -50,6 +62,7 @@ export function AnalysisLoadingPage() {
       .request('GET_ANALYSIS_LOADING_STATE')
       .then(async (state) => {
         if (disposed || !mountRef.current) return;
+        syncICloudNotice(state.downloadingFromICloud ?? false);
 
         const photos = prepareMotionPhotos(state);
         await preloadImages([...photos.map(({ src }) => src), BOARD_BG_SRC, ...STICKER_SRCS]);
@@ -75,6 +88,8 @@ export function AnalysisLoadingPage() {
             bridge.request('ANALYSIS_LOADING_PHASE_FINISHED', { phase }),
           onRevealFinished: () => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED'),
         });
+        motionRef.current = motion;
+        motion.setICloudNotice(downloadingFromICloudRef.current);
         motion.start();
         bridge.send('ANALYSIS_LOADING_READY');
       })
@@ -82,9 +97,10 @@ export function AnalysisLoadingPage() {
 
     return () => {
       disposed = true;
+      motionRef.current = undefined;
       motion?.destroy();
     };
-  }, [prepareBoard]);
+  }, [prepareBoard, syncICloudNotice]);
 
   return <main ref={mountRef} className="relative h-dvh w-full overflow-hidden bg-black" />;
 }

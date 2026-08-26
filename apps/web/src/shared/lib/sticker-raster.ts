@@ -55,11 +55,9 @@ async function resolveStickerImageSource(src: string): Promise<string> {
 
 function setImageSource(image: HTMLImageElement, src: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const objectUrl = src.startsWith('blob:') ? src : undefined;
     const settle = (callback: () => void) => {
       image.removeEventListener('load', onLoad);
       image.removeEventListener('error', onError);
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
       callback();
     };
     const onLoad = () => settle(resolve);
@@ -80,6 +78,7 @@ function loadStickerImage(src: string): StickerImageEntry {
   image.crossOrigin = 'anonymous';
   const ready = resolveStickerImageSource(src).then((resolvedSrc) =>
     setImageSource(image, resolvedSrc).catch(() => {
+      if (resolvedSrc.startsWith('blob:')) URL.revokeObjectURL(resolvedSrc);
       if (resolvedSrc === src) throw new Error('스티커 이미지를 불러오지 못했습니다.');
       return setImageSource(image, src);
     }),
@@ -112,6 +111,9 @@ export async function preloadStickerImages(sources: Array<string | null | undefi
 
 export async function clearStickerImageCache() {
   cacheGeneration += 1;
+  for (const { image } of stickerImageCache.values()) {
+    if (image.src.startsWith('blob:')) URL.revokeObjectURL(image.src);
+  }
   stickerImageCache.clear();
   if (!('caches' in window)) return;
   await Promise.allSettled([...pendingCacheWrites]);
@@ -122,20 +124,25 @@ function useStickerImageInternal(src: string | undefined, load: boolean) {
   // 캐시는 렌더에서 직접 읽는다 — 이미 받아둔 이미지를 한 프레임도 비우지 않고 그리려고.
   // 항목은 null → 이미지로만 바뀌므로 렌더 중 읽어도 값이 뒤집히지 않는다
   const [, onSettled] = useReducer((count: number) => count + 1, 0);
+  const image = readCached(src);
 
   useEffect(() => {
-    if (!src) return;
+    if (!src || image) return;
 
-    const img = load ? loadStickerImage(src).image : stickerImageCache.get(cacheKeyOf(src))?.image;
-    if (!img || (img.complete && img.naturalWidth > 0)) return;
+    const entry = load ? loadStickerImage(src) : stickerImageCache.get(cacheKeyOf(src));
+    if (!entry) return;
 
-    img.addEventListener('load', onSettled);
-    return () => {
-      img.removeEventListener('load', onSettled);
+    let active = true;
+    const settle = () => {
+      if (active) onSettled();
     };
-  }, [load, src]);
+    void entry.ready.then(settle, settle);
+    return () => {
+      active = false;
+    };
+  }, [image, load, src]);
 
-  return readCached(src);
+  return image;
 }
 
 export function useStickerImage(src: string | undefined) {

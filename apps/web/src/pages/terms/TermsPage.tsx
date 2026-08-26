@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Check,
-  CheckCircle,
-  CheckCircleEmpty,
-  ChevronLeft,
-  ChevronLeftSmall,
-  Logo,
-} from '@ppotto/assets';
+import { Check, CheckCircle, CheckCircleEmpty, ChevronLeftSmall, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import { useState } from 'react';
 
@@ -21,7 +14,7 @@ import { TERMS_META, type TermCode } from './terms-content';
 const TERM_CODES: TermCode[] = ['TOS', 'PRIVACY'];
 
 export function TermsPage() {
-  const { push, pop, replace } = useFlow();
+  const { push, replace } = useFlow();
   const { data: currentTerms } = useTermsListQuery();
   const { mutateAsync: agreeTerms, isPending } = useAgreeTermsMutation();
   const [checkedCodes, setCheckedCodes] = useState<string[]>([]);
@@ -61,15 +54,12 @@ export function TermsPage() {
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-black px-6 text-white">
-      <header className="relative flex h-18 shrink-0 items-center justify-center">
-        <button
-          type="button"
-          aria-label="뒤로 가기"
-          onClick={() => pop()}
-          className="absolute left-0"
-        >
-          <ChevronLeft />
-        </button>
+      <header
+        className="flex min-h-18 shrink-0 items-center justify-center"
+        style={{
+          paddingTop: 'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 0.75rem)',
+        }}
+      >
         <Logo width={105} height={32} />
       </header>
 

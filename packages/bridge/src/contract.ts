@@ -26,6 +26,8 @@ const analysisLoadingPhaseState = z.object({
 const analysisLoadingState = analysisLoadingPhaseState.extend({
   // 선택 그룹은 최대 100개지만 그룹당 사진이 최대 10장이므로 실제 사진 수는 1,000장까지 가능하다.
   photoCount: z.number().int().min(0).max(1000),
+  // iCloud에서 사진을 내려받는 중인지. 구버전 앱은 이 필드를 보내지 않으므로 optional
+  downloadingFromICloud: z.boolean().optional(),
   photos: z
     .array(
       z.object({
@@ -35,7 +37,7 @@ const analysisLoadingState = analysisLoadingPhaseState.extend({
         height: z.number().positive(),
       }),
     )
-    .max(25),
+    .max(40),
 });
 
 // web <-> RN 브릿지 계약
@@ -79,6 +81,8 @@ export const contract = defineContract({
     response: analysisLoadingPhaseState,
   }),
   ANALYSIS_LOADING_REVEAL_FINISHED: command(),
+  // iCloud 사진 다운로드 진행 여부 변경 — 초기값은 GET_ANALYSIS_LOADING_STATE에 실려 온다
+  ICLOUD_DOWNLOAD_CHANGED: event({ payload: z.object({ downloading: z.boolean() }) }),
   SHOW_BOARD: event(),
   // 안드로이드 하드웨어 뒤로가기 — 네이티브가 웹에 전달하고, 웹이 시트 닫기/스택 pop을 처리한다
   NAVIGATE_BACK: event(),

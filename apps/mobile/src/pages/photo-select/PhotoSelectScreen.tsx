@@ -3,7 +3,7 @@ import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Text, View } from 'react-native';
+import { Linking, Platform, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMeQuery } from '@/entities/user/api/user-queries';
@@ -75,6 +75,7 @@ export function PhotoSelectScreen() {
     mode,
   });
   const permissionRequired = permission !== null && !permission.granted;
+  const canRequestPermission = permission?.canAskAgain === true;
   const galleryEmpty = !loading && !permissionRequired && photoUnits.length === 0;
 
   useEffect(() => {
@@ -125,6 +126,7 @@ export function PhotoSelectScreen() {
           boardId,
           selection,
           compressedPhotos: await photoCompressionQueue.wait(),
+          minSubmitUnits,
         });
       },
     });
@@ -133,14 +135,17 @@ export function PhotoSelectScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <SafeAreaView className="flex-1" edges={['top']}>
+      <SafeAreaView
+        className="flex-1"
+        edges={Platform.OS === 'android' ? ['top', 'bottom'] : ['top']}
+      >
         <View className="gap-8 px-6 pt-4 pb-8">
           <Header />
           {!galleryEmpty && (
             <View className="gap-1">
               <Text className="text-white text-body-01">
                 {permissionRequired
-                  ? '사진 접근을 허용해 주세요'
+                  ? '사진 접근이 필요해요'
                   : mode === 'additional'
                     ? '추억할 사진을 최소 20장 선택해주세요'
                     : `${me ? `${me.name}님의 ` : ''}최근 사진 100장을 골랐어요`}
@@ -159,20 +164,24 @@ export function PhotoSelectScreen() {
         {permissionRequired ? (
           <View className="items-center justify-center flex-1 gap-6 px-8 pb-24">
             <View className="items-center gap-2">
-              <Text className="text-center text-white text-body-02">사진 접근 권한이 필요해요</Text>
+              <Text className="text-center text-white text-body-02">
+                {canRequestPermission ? '사진 접근이 필요해요' : '사진 접근 권한이 필요해요'}
+              </Text>
               <Text className="text-center text-gray-400 text-body-06">
-                보드에 사용할 최근 사진을 불러오고 선택하려면{`\n`}사진 보관함 접근을 허용해 주세요.
+                {canRequestPermission
+                  ? `보드에 사용할 최근 사진을 불러오고 선택하려면\n사진 보관함 접근이 필요해요.`
+                  : `사진을 불러오려면 설정에서\n사진 접근을 허용해 주세요.`}
               </Text>
             </View>
             <View className="w-full">
               <Button
                 onPress={() =>
-                  void (permission.canAskAgain ? requestPermission() : Linking.openSettings())
+                  void (canRequestPermission ? requestPermission() : Linking.openSettings())
                 }
                 size="large"
               >
                 <Text className="text-black text-body-03">
-                  {permission.canAskAgain ? '사진 접근 허용하기' : '설정에서 권한 허용하기'}
+                  {canRequestPermission ? '계속' : '설정으로 이동'}
                 </Text>
               </Button>
             </View>
@@ -238,10 +247,7 @@ export function PhotoSelectScreen() {
                   height: insets.bottom + 160,
                 }}
               />
-              <View
-                className="absolute left-[18px] right-[18px]"
-                style={{ bottom: insets.bottom + 48 }}
-              >
+              <View className="absolute bottom-12 left-[18px] right-[18px]">
                 <Button disabled={!canSubmit || !boardId} onPress={handleSubmit} size="large">
                   <Text
                     className={canSubmit ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'}

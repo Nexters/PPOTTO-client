@@ -42,6 +42,30 @@ export function buildDisplayList(photos: StickerPhoto[], activeTopIndex: number)
   });
 }
 
+// 캐러셀은 스와이프 중 목록 길이가 고정이어야 해서 항상 전체 펼침
+export function buildExpandedDisplayList(photos: StickerPhoto[]): DisplayItem[] {
+  return photos.flatMap((photo, topIndex) => {
+    const base = {
+      id: photo.id,
+      imageUrl: photo.imageUrl,
+      takenAt: photo.takenAt,
+      topIndex,
+      subIndex: 0,
+      groupPosition: 'none' as const,
+    };
+    const members: DisplayItem[] = (photo.groupPhotos ?? []).map((groupPhoto, index) => ({
+      id: groupPhoto.id,
+      imageUrl: groupPhoto.imageUrl,
+      takenAt: groupPhoto.takenAt,
+      topIndex,
+      subIndex: index + 1,
+      groupPosition: 'none',
+    }));
+
+    return [base, ...members];
+  });
+}
+
 export function findFlatIndex(displayList: DisplayItem[], selection: PhotoSelection): number {
   const index = displayList.findIndex(
     (item) => item.topIndex === selection.topIndex && item.subIndex === selection.subIndex,

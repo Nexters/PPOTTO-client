@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Keyboard, Linking, Platform } from 'react-native';
 import Share, { Social } from 'react-native-share';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import type { Handlers } from 'webview-bridge-kit';
 import { useNativeBridge } from 'webview-bridge-kit/react-native';
@@ -74,6 +74,7 @@ interface AppWebViewProps {
   waitForAnalysisReady?: boolean;
   waitForBoardReady?: boolean;
   showBoard?: boolean;
+  downloadingFromICloud?: boolean;
 }
 
 // 앱 표준 웹뷰
@@ -84,6 +85,7 @@ export function AppWebView({
   waitForAnalysisReady = false,
   waitForBoardReady = false,
   showBoard = false,
+  downloadingFromICloud,
 }: AppWebViewProps) {
   const qaToolEnabled = isQaToolEnabled();
   const ref = useRef<WebView>(null);
@@ -92,10 +94,20 @@ export function AppWebView({
   const [loaded, setLoaded] = useState(false);
   const [boardActive, setBoardActive] = useState(false);
   const [traceScript] = useState(buildWebViewTraceScript);
+  const insets = useSafeAreaInsets();
+
+  // WKWebView 안에서는 env(safe-area-inset-*)이 실제 노치/홈 인디케이터 높이를 못 잡고 0으로
+  // 계산되는 경우가 있어서(react-native-webview의 알려진 한계), 네이티브가 직접 측정한 값을 CSS
+  // 커스텀 프로퍼티로 심어준다. 웹 쪽은 이 값을 우선 쓰고, 없으면(일반 브라우저 등) env()로 폴백한다
+  const safeAreaScript = [
+    `document.documentElement.style.setProperty('--rn-safe-area-inset-top', '${insets.top}px');`,
+    `document.documentElement.style.setProperty('--rn-safe-area-inset-bottom', '${insets.bottom}px');`,
+  ].join('\n');
 
   const injectedScript =
-    [traceScript, qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : ''].filter(Boolean).join('\n') ||
-    undefined;
+    [traceScript, safeAreaScript, qaToolEnabled ? WEB_QA_DIAGNOSTICS_SCRIPT : '']
+      .filter(Boolean)
+      .join('\n') || undefined;
 
   const markLoaded = () => setLoaded(true);
 
@@ -217,6 +229,11 @@ export function AppWebView({
     };
   }, [bridge]);
 
+  useEffect(() => {
+    if (downloadingFromICloud === undefined) return;
+    bridge.emit('ICLOUD_DOWNLOAD_CHANGED', { downloading: downloadingFromICloud });
+  }, [bridge, downloadingFromICloud]);
+
   // 안드로이드 하드웨어 뒤로가기를 웹으로 전달한다
   // 네이티브 화면(사진 선택 등)이 위에 있을 땐 expo-router 기본 pop이 동작하게 한다
   const isFocused = useIsFocused();
@@ -231,7 +248,10 @@ export function AppWebView({
   }, [bridge, isFocused]);
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#000' }}>
+    <SafeAreaView
+      edges={Platform.OS === 'android' ? ['bottom'] : []}
+      style={{ flex: 1, backgroundColor: '#000' }}
+    >
       <WebView
         ref={ref}
         style={{ backgroundColor: '#000' }}
@@ -256,6 +276,8 @@ export function AppWebView({
         onLoadEnd={() => {
           if (!waitForAnalysisReady && !waitForBoardReady) markLoaded();
         }}
+        automaticallyAdjustContentInsets={false}
+        contentInsetAdjustmentBehavior="never"
         allowsBackForwardNavigationGestures={false}
         webviewDebuggingEnabled={qaToolEnabled}
         scrollEnabled={!boardActive}

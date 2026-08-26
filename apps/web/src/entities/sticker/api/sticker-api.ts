@@ -1,6 +1,7 @@
 import { type paths, unwrapData, unwrapVoid } from '@ppotto/api';
 
 import { api } from '@/shared/api/client';
+import { publicApi } from '@/shared/api/public-client';
 
 import { stickerFixture } from './__fixtures__/sticker.fixture';
 
@@ -18,6 +19,10 @@ export const stickerApi = {
   get: (stickerId: string) => {
     if (USE_MOCK) return Promise.resolve(stickerFixture);
     return unwrapData(api.GET('/stickers/{stickerId}', { params: { path: { stickerId } } }));
+  },
+  getPublic: (stickerId: string) => {
+    if (USE_MOCK) return Promise.resolve(stickerFixture);
+    return unwrapData(publicApi.GET('/stickers/{stickerId}', { params: { path: { stickerId } } }));
   },
   markViewed: (stickerId: string) => {
     if (USE_MOCK) return Promise.resolve();

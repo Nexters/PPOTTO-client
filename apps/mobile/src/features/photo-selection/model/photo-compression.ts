@@ -9,9 +9,12 @@ type CompressionProgress = (progress: {
   result: GalleryPhoto;
 }) => void;
 
-const CONCURRENCY = 3;
+const DEFAULT_CONCURRENCY = 3;
 
-export function createPhotoCompressionQueue(compress: CompressPhoto) {
+export function createPhotoCompressionQueue(
+  compress: CompressPhoto,
+  concurrency = DEFAULT_CONCURRENCY,
+) {
   let currentRunId = 0;
   let current = Promise.resolve<ReadonlyMap<string, GalleryPhoto>>(new Map());
 
@@ -46,7 +49,7 @@ export function createPhotoCompressionQueue(compress: CompressPhoto) {
       }
     };
 
-    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, photos.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(concurrency, photos.length) }, worker));
     return results;
   };
 

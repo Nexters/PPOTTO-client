@@ -1,6 +1,6 @@
 'use client';
 
-import { useFlow } from '@stackflow/react';
+import { useActivity, useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   forwardRef,
@@ -16,7 +16,6 @@ import type { BoardDetail } from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
-import { stickerQueryOptions } from '@/entities/sticker/api/sticker-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
@@ -57,12 +56,11 @@ import {
 import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
 import {
   computeBringToFrontZIndex,
-  computeInitialLayout,
   computeTopZIndex,
-  type ExistingSticker,
   needsInitialLayout,
   toLayoutInput,
 } from '../model/board-layout';
+import { computePoissonInitialLayout, type ExistingSticker } from '../model/poisson-cluster';
 import {
   computeStickerPinchTransform,
   type PinchSample,
@@ -113,6 +111,8 @@ type BoardCanvasProps = {
   onCanRedoChange?: (canRedo: boolean) => void;
   // 카메라 줌 배율이 바뀔 때마다 호출
   onCameraScaleChange?: (scale: number) => void;
+  // 스포이드용 화면 캐시를 무효화해야 하는 보드 시각 변경 알림
+  onVisualChange?: () => void;
   // 그림이 삭제 가능 상태(꾹 눌러 승격됨)인지 여부가 바뀔 때마다 호출
   onDrawingDeleteArmedChange?: (isArmed: boolean) => void;
   // 그림을 드래그하는 동안 휴지통 버튼 위에 있는지 여부가 바뀔 때마다 호출 — 놓기 전 확대 피드백에 사용
@@ -126,6 +126,7 @@ export type BoardCanvasHandle = {
   redoLastStroke: () => void;
   cancelMoveSession: () => void;
   createText: (text: string, fontSize: number, editWidth: number) => void;
+  getViewportElement: () => HTMLDivElement | null;
 };
 
 type LocalTextItem = {
@@ -183,6 +184,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onCanUndoChange,
     onCanRedoChange,
     onCameraScaleChange,
+    onVisualChange,
     onDrawingDeleteArmedChange,
     onDrawingDragOverTrashChange,
     trashButtonRef,
@@ -234,6 +236,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
+  const { isActive } = useActivity();
   const queryClient = useQueryClient();
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
@@ -268,7 +271,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const unplacedStickers = rawStickers.filter(needsInitialLayout);
   const placedStickers: ExistingSticker[] = rawStickers
     .filter((sticker) => !needsInitialLayout(sticker))
-    .map((sticker) => ({ posX: sticker.posX!, posY: sticker.posY!, zIndex: sticker.zIndex! }));
+    .map((sticker) => ({
+      posX: sticker.posX!,
+      posY: sticker.posY!,
+      zIndex: sticker.zIndex!,
+      scale: sticker.scale,
+      rotation: sticker.rotation,
+    }));
 
   const baseStickers: StickerData[] = useMemo(
     () =>
@@ -334,6 +343,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const selectedDrawingIdRef = useRef(activeSelectedDrawingId);
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
+  const isOpeningRecapRef = useRef(false);
   const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
   const drawColorRef = useRef(drawColor);
   const drawStrokeWidthRef = useRef(drawStrokeWidth);
@@ -560,6 +570,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onDrawingActiveChangeRef.current = onDrawingActiveChange;
   });
 
+  useEffect(() => {
+    if (isActive) isOpeningRecapRef.current = false;
+  }, [isActive]);
+
   // 실행취소할 그림이 있는지 여부를 부모에 알림 — 이번 세션에 그린 draft 기준(이미 확정된 그림은 대상 아님)
   useEffect(() => {
     onCanUndoChange?.(draftDrawings.length > 0);
@@ -572,6 +586,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   useEffect(() => {
     onCameraScaleChange?.(camera.scale);
   }, [camera.scale, onCameraScaleChange]);
+
+  useEffect(() => {
+    onVisualChange?.();
+  }, [camera.x, camera.y, camera.scale, stickers, drawings, draftDrawings, onVisualChange]);
 
   useEffect(() => {
     const timer = setTimeout(() => saveCamera(boardId, camera), 400);
@@ -663,8 +681,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           },
         ]);
       },
+      getViewportElement: () => container,
     }),
-    [],
+    [container],
   );
 
   // 배치 처리 시작한 스티커 id를 기억해서, 저장 응답이 캐시에 반영되기 전에 리렌더가 껴도
@@ -720,7 +739,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
     const rect = container.getBoundingClientRect();
     const viewport = { width: rect.width, height: rect.height };
-    const laidOut = computeInitialLayout(pending, placedStickers, viewport);
+    const laidOut = computePoissonInitialLayout(pending, placedStickers);
 
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
       current
@@ -1389,12 +1408,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             lastBackgroundTapRef.current = { time: now, point: tap.startClient };
             if (isEditModeRef.current) setSelectedStickerId(null);
           }
-        } else if (!isEditModeRef.current) {
-          const stickerId = tap.stickerId;
-          const openRecap = () => pushRef.current('Recap', { stickerId, boardId });
-          void queryClient
-            .ensureQueryData(stickerQueryOptions(stickerId))
-            .then(openRecap, openRecap);
+        } else if (!isEditModeRef.current && !isOpeningRecapRef.current) {
+          isOpeningRecapRef.current = true;
+          pushRef.current('Recap', { stickerId: tap.stickerId, boardId });
         }
       }
     };
@@ -1433,7 +1449,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       container.removeEventListener('gesturechange', blockGesture);
       container.removeEventListener('gestureend', blockGesture);
     };
-  }, [container, boardId, queryClient, quickMenu.isEditingRef, trashButtonRef]);
+  }, [container, boardId, quickMenu.isEditingRef, trashButtonRef]);
 
   if (isLoading) {
     return (
@@ -1456,6 +1472,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const directEditSticker = stickers.find(
     (sticker) => sticker.id === quickMenu.directEditStickerId,
   );
+  const shouldBlurBoard = Boolean(quickMenuSticker || directEditSticker);
   const activeDrawingBoxTransform = drawingBoxPinchPreview ?? selectedDrawingBoxTransform;
   const isEmptyBoardStickerVisible = stickers.length === 0 && !isEmptyStickerHidden;
   const activeEmptyBoardStickerTransform =
@@ -1476,44 +1493,97 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       style={{ backgroundColor: '#000' }}
     >
       <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
-          backgroundSize: `${DOT_SPACING_AT_MIN_ZOOM}px ${DOT_SPACING_AT_MIN_ZOOM}px`,
-          backgroundPosition: `${camera.x / dotZoomRatio}px ${camera.y / dotZoomRatio}px`,
-          transform: `scale(${dotZoomRatio})`,
-          transformOrigin: '0 0',
-          opacity: dotOpacity,
-        }}
-      />
-      {isEmptyBoardStickerVisible && isEmptyBoardQuickMenuOpen && (
-        <EmptyBoardSticker
-          title={emptyBoardStickerTitle}
-          isQuickMenuOpen
-          isEditMode={false}
-          transform={activeEmptyBoardStickerTransform}
-          onClick={() => push('Onboarding', {})}
-          onLongPress={openEmptyBoardStickerQuickMenu}
-        />
-      )}
-      <div
-        style={
-          {
-            position: 'absolute',
-            inset: 0,
-            transformOrigin: '0 0',
-            transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
-            '--inv-camera-scale': 1 / camera.scale,
-          } as React.CSSProperties
-        }
+        className="absolute inset-0"
+        style={{ filter: shouldBlurBoard ? 'blur(30px)' : undefined }}
       >
-        {drawings.map((drawing) => {
-          const isSelected = drawing.id === activeSelectedDrawingId;
-          const isDragging = isSelected && drawingDragOffset !== null;
-          const pinchPreview = isSelected ? drawingPinchPreview : null;
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
+            backgroundSize: `${DOT_SPACING_AT_MIN_ZOOM}px ${DOT_SPACING_AT_MIN_ZOOM}px`,
+            backgroundPosition: `${camera.x / dotZoomRatio}px ${camera.y / dotZoomRatio}px`,
+            transform: `scale(${dotZoomRatio})`,
+            transformOrigin: '0 0',
+            opacity: dotOpacity,
+          }}
+        />
+        {isEmptyBoardStickerVisible && isEmptyBoardQuickMenuOpen && (
+          <EmptyBoardSticker
+            title={emptyBoardStickerTitle}
+            isQuickMenuOpen
+            isEditMode={false}
+            transform={activeEmptyBoardStickerTransform}
+            onClick={() => push('Onboarding', {})}
+            onLongPress={openEmptyBoardStickerQuickMenu}
+          />
+        )}
+        <div
+          style={
+            {
+              position: 'absolute',
+              inset: 0,
+              transformOrigin: '0 0',
+              transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
+              '--inv-camera-scale': 1 / camera.scale,
+            } as React.CSSProperties
+          }
+        >
+          {drawings.map((drawing) => {
+            const isSelected = drawing.id === activeSelectedDrawingId;
+            const isDragging = isSelected && drawingDragOffset !== null;
+            const pinchPreview = isSelected ? drawingPinchPreview : null;
 
-          return (
+            return (
+              <svg
+                key={drawing.id}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  overflow: 'visible',
+                  pointerEvents: 'none',
+                  zIndex: drawingZIndex(drawing),
+                  willChange: 'transform',
+                }}
+              >
+                <g
+                  transform={
+                    isDragging
+                      ? `translate(${drawingDragOffset!.x}, ${drawingDragOffset!.y})`
+                      : undefined
+                  }
+                >
+                  <DrawingStroke
+                    points={pinchPreview?.points ?? drawing.points}
+                    color={drawing.color}
+                    strokeWidth={pinchPreview?.strokeWidth ?? drawing.strokeWidth}
+                  />
+                </g>
+              </svg>
+            );
+          })}
+          {localTexts.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                position: 'absolute',
+                left: item.x,
+                top: item.y,
+                transform: 'translate(-50%, -50%)',
+                zIndex: item.zIndex,
+                fontSize: item.fontSize,
+                color: '#fff',
+                width: item.maxWidth,
+                pointerEvents: 'none',
+                ...BOARD_TEXT_STYLE,
+                whiteSpace: 'pre',
+              }}
+            >
+              {item.text}
+            </div>
+          ))}
+          {/* 이번 세션에 그린 draft — 아직 저장 전이라 선택/드래그 대상이 아니다 */}
+          {draftDrawings.map((drawing) => (
             <svg
               key={drawing.id}
               style={{
@@ -1525,152 +1595,108 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 willChange: 'transform',
               }}
             >
-              <g
-                transform={
-                  isDragging
-                    ? `translate(${drawingDragOffset!.x}, ${drawingDragOffset!.y})`
-                    : undefined
-                }
-              >
-                <DrawingStroke
-                  points={pinchPreview?.points ?? drawing.points}
-                  color={drawing.color}
-                  strokeWidth={pinchPreview?.strokeWidth ?? drawing.strokeWidth}
-                />
-              </g>
-            </svg>
-          );
-        })}
-        {localTexts.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              position: 'absolute',
-              left: item.x,
-              top: item.y,
-              transform: 'translate(-50%, -50%)',
-              zIndex: item.zIndex,
-              fontSize: item.fontSize,
-              color: '#fff',
-              width: item.maxWidth,
-              pointerEvents: 'none',
-              ...BOARD_TEXT_STYLE,
-              whiteSpace: 'pre',
-            }}
-          >
-            {item.text}
-          </div>
-        ))}
-        {/* 이번 세션에 그린 draft — 아직 저장 전이라 선택/드래그 대상이 아니다 */}
-        {draftDrawings.map((drawing) => (
-          <svg
-            key={drawing.id}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'visible',
-              pointerEvents: 'none',
-              zIndex: drawingZIndex(drawing),
-              willChange: 'transform',
-            }}
-          >
-            <DrawingStroke
-              points={drawing.points}
-              color={drawing.color}
-              strokeWidth={drawing.strokeWidth}
-            />
-          </svg>
-        ))}
-        {/* 그리는 도중인 선의 실시간 미리보기 — 항상 맨 위에 그려짐 */}
-        {drawingPoints && (
-          <svg
-            style={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'visible',
-              pointerEvents: 'none',
-              zIndex: LIVE_STROKE_Z_INDEX,
-              willChange: 'transform',
-            }}
-          >
-            <DrawingStroke points={drawingPoints} color={drawColor} strokeWidth={drawStrokeWidth} />
-          </svg>
-        )}
-        {selectedDrawingBaseSize && activeDrawingBoxTransform && (
-          <SelectionBoxFrame
-            x={activeDrawingBoxTransform.x + (drawingDragOffset?.x ?? 0)}
-            y={activeDrawingBoxTransform.y + (drawingDragOffset?.y ?? 0)}
-            width={selectedDrawingBaseSize.width * activeDrawingBoxTransform.scale}
-            height={selectedDrawingBaseSize.height * activeDrawingBoxTransform.scale}
-            rotation={activeDrawingBoxTransform.rotation}
-            zIndex={9999}
-          />
-        )}
-        {isEmptyBoardStickerVisible && !isEmptyBoardQuickMenuOpen && (
-          <>
-            <EmptyBoardSticker
-              title={emptyBoardStickerTitle}
-              isQuickMenuOpen={false}
-              isEditMode={isEditMode}
-              transform={activeEmptyBoardStickerTransform}
-              onClick={() => push('Onboarding', {})}
-              onLongPress={openEmptyBoardStickerQuickMenu}
-            />
-            {selectedId === EMPTY_BOARD_STICKER_ID && (
-              <SelectionBoxFrame
-                x={activeEmptyBoardStickerTransform.x}
-                y={activeEmptyBoardStickerTransform.y}
-                width={EMPTY_BOARD_STICKER_WIDTH * activeEmptyBoardStickerTransform.scale}
-                height={EMPTY_BOARD_STICKER_HEIGHT * activeEmptyBoardStickerTransform.scale}
-                rotation={activeEmptyBoardStickerTransform.rotation}
-                zIndex={9999}
+              <DrawingStroke
+                points={drawing.points}
+                color={drawing.color}
+                strokeWidth={drawing.strokeWidth}
               />
-            )}
-          </>
-        )}
-        {stickers.map((sticker) => (
-          <Sticker
-            key={sticker.id}
-            sticker={sticker}
-            selected={selectedId === sticker.id}
-            transformOverride={dragTransform?.id === sticker.id ? dragTransform : undefined}
-          />
-        ))}
-        {stickers
-          .filter((sticker) => sticker.id !== selectedId)
-          .map((sticker) => (
-            <StickerBadgeMark
+            </svg>
+          ))}
+          {/* 그리는 도중인 선의 실시간 미리보기 — 항상 맨 위에 그려짐 */}
+          {drawingPoints && (
+            <svg
+              style={{
+                position: 'absolute',
+                inset: 0,
+                overflow: 'visible',
+                pointerEvents: 'none',
+                zIndex: LIVE_STROKE_Z_INDEX,
+                willChange: 'transform',
+              }}
+            >
+              <DrawingStroke
+                points={drawingPoints}
+                color={drawColor}
+                strokeWidth={drawStrokeWidth}
+              />
+            </svg>
+          )}
+          {selectedDrawingBaseSize && activeDrawingBoxTransform && (
+            <SelectionBoxFrame
+              x={activeDrawingBoxTransform.x + (drawingDragOffset?.x ?? 0)}
+              y={activeDrawingBoxTransform.y + (drawingDragOffset?.y ?? 0)}
+              width={selectedDrawingBaseSize.width * activeDrawingBoxTransform.scale}
+              height={selectedDrawingBaseSize.height * activeDrawingBoxTransform.scale}
+              rotation={activeDrawingBoxTransform.rotation}
+              zIndex={9999}
+            />
+          )}
+          {isEmptyBoardStickerVisible && !isEmptyBoardQuickMenuOpen && (
+            <>
+              <EmptyBoardSticker
+                title={emptyBoardStickerTitle}
+                isQuickMenuOpen={false}
+                isEditMode={isEditMode}
+                transform={activeEmptyBoardStickerTransform}
+                onClick={() => push('Onboarding', {})}
+                onLongPress={openEmptyBoardStickerQuickMenu}
+              />
+              {selectedId === EMPTY_BOARD_STICKER_ID && (
+                <SelectionBoxFrame
+                  x={activeEmptyBoardStickerTransform.x}
+                  y={activeEmptyBoardStickerTransform.y}
+                  width={EMPTY_BOARD_STICKER_WIDTH * activeEmptyBoardStickerTransform.scale}
+                  height={EMPTY_BOARD_STICKER_HEIGHT * activeEmptyBoardStickerTransform.scale}
+                  rotation={activeEmptyBoardStickerTransform.rotation}
+                  zIndex={9999}
+                />
+              )}
+            </>
+          )}
+          {stickers.map((sticker) => (
+            <Sticker
               key={sticker.id}
               sticker={sticker}
-              isEditMode={isEditMode}
-              onNameClick={quickMenu.startDirectEdit}
+              selected={selectedId === sticker.id}
+              transformOverride={dragTransform?.id === sticker.id ? dragTransform : undefined}
+              onRasterReady={onVisualChange}
             />
           ))}
-        {selectedSticker && (
-          <SelectBox
-            sticker={selectedSticker}
-            transformOverride={dragTransform?.id === selectedSticker.id ? dragTransform : undefined}
-          />
-        )}
+          {stickers
+            .filter((sticker) => sticker.id !== selectedId)
+            .map((sticker) => (
+              <StickerBadgeMark
+                key={sticker.id}
+                sticker={sticker}
+                isEditMode={isEditMode || isPointerInputSuspended}
+                onNameClick={quickMenu.startDirectEdit}
+              />
+            ))}
+          {selectedSticker && (
+            <SelectBox
+              sticker={selectedSticker}
+              transformOverride={
+                dragTransform?.id === selectedSticker.id ? dragTransform : undefined
+              }
+            />
+          )}
+        </div>
       </div>
       {directEditSticker && (
-        <div
-          className="modal-overlay fixed inset-0 z-50 bg-black/1 backdrop-blur-[30px]"
-          onPointerDown={(event) => {
-            if (event.target !== event.currentTarget) return;
-            event.preventDefault();
-            quickMenu.finishDirectEditFromBackdrop(directEditSticker.title);
-          }}
-        >
+        <>
+          <div
+            aria-hidden
+            className="modal-overlay fixed inset-0 z-50"
+            onClick={() => quickMenu.finishDirectEditFromBackdrop()}
+          />
           <StickerPreview
             sticker={directEditSticker}
             titleInputRef={quickMenu.directEditInputRef}
             isEditingTitle
             onSubmitTitle={quickMenu.submitDirectEdit}
             onCancelEditTitle={quickMenu.cancelDirectEdit}
-            onTitleChange={quickMenu.setDirectEditTitle}
           />
-        </div>
+        </>
       )}
       <StickerQuickMenu
         sticker={quickMenuSticker}

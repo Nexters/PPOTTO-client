@@ -27,15 +27,13 @@
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.6.0",
     "html-to-image": "^1.11.13",
-    "konva": "^10.3.0",
     "next": "16.2.10",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "react-konva": "^19.2.5",
-    "react-konva-utils": "^2.0.0",
     "react-native-svg": "15.15.3",
     "react-native-web": "0.21.2",
     "tailwind-merge": "^3.6.0",
+    "vaul": "^1.1.2",
     "webview-bridge-kit": "^0.2.0"
   },
   "devDependencies": {
