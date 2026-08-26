@@ -14,37 +14,23 @@ import {
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
-import { stickerQueryOptions } from '@/entities/sticker/api/sticker-queries';
 import { bridge } from '@/shared/lib/bridge';
-import { useLongPress } from '@/shared/lib/use-long-press';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { useToast } from '@/shared/ui/common/Toast';
 
-import {
-  BOARD_ZOOM_MIN,
-  DOT_FADE_START_ZOOM,
-  computeBoardPinchZoom,
-  panCamera,
-  toWorldPoint,
-  zoomCamera,
-  zoomCameraTo,
-} from '../model/board-camera';
+import { BOARD_ZOOM_MIN, DOT_FADE_START_ZOOM } from '../model/board-camera';
 import {
   drawingZIndex,
   type ParsedDrawing,
   parseStrokePoints,
   parseStrokeZIndex,
 } from '../model/board-drawing';
-import { type DragTransform, type Gesture, gestureReducer } from '../model/board-gesture';
-import { computeBringToFrontZIndex, needsInitialLayout } from '../model/board-layout';
+import { needsInitialLayout } from '../model/board-layout';
 import type { ExistingSticker } from '../model/poisson-cluster';
-import {
-  computeStickerPinchTransform,
-  scaleBadgeOffset,
-  type StickerTransform,
-} from '../model/board-transform';
-import { angleBetween, centroid, distance, type Point } from '../model/geometry';
+import type { StickerTransform } from '../model/board-transform';
+import type { Point } from '../model/geometry';
 import { useBoardCamera } from '../model/use-board-camera';
+import { useCameraStickerGesture } from '../model/use-camera-sticker-gesture';
 import { useDeleteSticker } from '../model/use-delete-sticker';
 import { useDrawMode } from '../model/use-draw-mode';
 import { useDrawingPersistence } from '../model/use-drawing-persistence';
@@ -116,11 +102,6 @@ export function shouldShowBoardLoadError(isError: boolean, data: unknown): boole
   return isError && !data;
 }
 
-// 탭과 드래그를 구분하는 이동 허용 오차(px)
-const TAP_MOVE_THRESHOLD = 6;
-// 더블탭으로 인정하는 두 탭 사이의 최대 시간(ms), 위치 오차(px)
-const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
-const DOUBLE_TAP_MAX_DISTANCE = 24;
 // 그리는 도중인 선의 실시간 미리보기는 스티커·그림 zIndex 값과 무관하게 항상 맨 위에 그려져야 한다
 const LIVE_STROKE_Z_INDEX = 999999;
 
@@ -151,7 +132,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const { camera, setCamera, cameraRef, requestFocus } = useBoardCamera(boardId);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
-  const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   // 삭제된 빈 스티커는 이번 세션 동안 숨긴다 — 앱 재시작 시 다시 보임
   const [isEmptyStickerHidden, setIsEmptyStickerHidden] = useState(isEmptyBoardStickerHidden);
@@ -245,55 +225,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
   const stickersRef = useRef(stickers);
   const drawingsRef = useRef(drawings);
-  const emptyBoardStickerRef = useRef(emptyBoardSticker);
-  const selectedIdRef = useRef(selectedId);
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
   const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
-  const dragTransformRef = useRef<DragTransform | null>(null);
 
   const pointersRef = useRef(new Map<number, Point>());
-  const gestureRef = useRef<Gesture | null>(null);
-  const tapCandidateRef = useRef<{
-    pointerId: number;
-    stickerId: string | null;
-    startClient: Point;
-  } | null>(null);
-  const pressedStickerRef = useRef<HTMLElement | null>(null);
-  // 더블탭 감지용 — 직전에 빈 배경을 탭한 시각·위치
-  const lastBackgroundTapRef = useRef<{ time: number; point: Point } | null>(null);
-
-  // 롱프레스가 성사된 순간부터 퀵메뉴가 닫힐 때까지 눌린 연출을 잠근다. 이 사이에
-  // 포인터 업·취소 등 여러 경로가 clearPressedSticker를 부르는데, 그걸 그대로 두면
-  // 메뉴가 뜨기도 전에 스티커가 원래 크기로 줄어드는 게 보인다
-  const isPressedStickerLockedRef = useRef(false);
-
-  const releasePressedSticker = () => {
-    isPressedStickerLockedRef.current = false;
-    pressedStickerRef.current?.removeAttribute('data-pressed');
-    pressedStickerRef.current = null;
-  };
-
-  const clearPressedSticker = () => {
-    if (isPressedStickerLockedRef.current) return;
-    releasePressedSticker();
-  };
-
-  // 퀵메뉴가 닫히는 순간에 맞춰 원래 크기로 되돌린다
-  useEffect(() => {
-    if (quickMenu.quickMenuStickerId === null) releasePressedSticker();
-  }, [quickMenu.quickMenuStickerId]);
-
-  const longPress = useLongPress({
-    onLongPress: (stickerId) => {
-      isPressedStickerLockedRef.current = true;
-      bridge.send('HAPTIC', { type: 'heavy' });
-      quickMenu.openQuickMenu(stickerId);
-      // 리캡 이동과 안 겹치게 탭 후보 제거
-      tapCandidateRef.current = null;
-    },
-    onPressEnd: clearPressedSticker,
-  });
 
   useRefetchOnActive(refetch, isStale);
 
@@ -309,15 +245,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     ...stickersRef.current.map((s) => ({ id: s.id, zIndex: s.zIndex ?? 0 })),
     ...drawingsRef.current.map((d) => ({ id: d.id, zIndex: d.zIndex })),
   ];
-
-  // 스티커를 선택하면 스티커+그림 통틀어 맨 위로 보이도록 zIndex를 올림(세션 로컬 변경분)
-  const selectSticker = (sticker: StickerData): StickerData => {
-    setSelectedStickerId(sticker.id);
-    const newZIndex = computeBringToFrontZIndex(combinedZIndexPool(), sticker.id);
-    if (newZIndex === null) return sticker;
-    applyStickerChangeRef.current(sticker.id, { zIndex: newZIndex });
-    return { ...sticker, zIndex: newZIndex };
-  };
 
   const { deleteDrawing, moveDrawing, confirmDraftDrawings } = useDrawingPersistence({
     boardId,
@@ -340,6 +267,27 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     deleteDrawing,
     onDrawingDeleteArmedChange,
     onDrawingDragOverTrashChange,
+  });
+
+  const cameraSticker = useCameraStickerGesture({
+    boardId,
+    isEditMode,
+    cameraRef,
+    setCamera,
+    pointersRef,
+    stickersRef,
+    selectedId,
+    emptyBoardSticker,
+    hitTestSticker,
+    combinedZIndexPool,
+    setSelectedStickerId,
+    applyStickerChange,
+    setEmptyBoardStickerTransform,
+    push,
+    queryClient,
+    quickMenuStickerId: quickMenu.quickMenuStickerId,
+    openQuickMenu: quickMenu.openQuickMenu,
+    cancelDrawingLongPress: drawingSelection.cancelLongPress,
   });
   // 그림 선택은 이동 모드(이동 가능 상태)뿐 아니라 기본 모드(삭제 가능 상태)에서도 일어난다
   const activeSelectedDrawingId = drawingSelection.selectedDrawingId;
@@ -369,33 +317,25 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onCanRedoChange,
   });
 
-  const applyStickerChangeRef = useRef(applyStickerChange);
   const confirmMoveSessionRef = useRef(confirmMoveSession);
   const discardMoveSessionRef = useRef(discardMoveSession);
-  const selectStickerRef = useRef(selectSticker);
-  const pushRef = useRef(push);
-  const longPressRef = useRef(longPress);
-  // 포인터 이펙트가 등록될 때의 정적 클로저에서도 항상 최신 draw 모드/그림선택 훅 결과를 읽기 위함
+  // 포인터 이펙트가 등록될 때의 정적 클로저에서도 항상 최신 draw 모드/그림선택/카메라·스티커 훅 결과를 읽기 위함
   const drawModeRef = useRef(drawMode);
   const drawingSelectionRef = useRef(drawingSelection);
+  const cameraStickerRef = useRef(cameraSticker);
 
   // ref들을 매 렌더 이후 최신값으로 동기화
   useEffect(() => {
     stickersRef.current = stickers;
     drawingsRef.current = drawings;
-    emptyBoardStickerRef.current = emptyBoardSticker;
-    selectedIdRef.current = selectedId;
     isEditModeRef.current = isEditMode;
     isDrawModeRef.current = isDrawMode;
     isPointerInputSuspendedRef.current = isPointerInputSuspended;
-    applyStickerChangeRef.current = applyStickerChange;
     confirmMoveSessionRef.current = confirmMoveSession;
     discardMoveSessionRef.current = discardMoveSession;
-    selectStickerRef.current = selectSticker;
-    pushRef.current = push;
-    longPressRef.current = longPress;
     drawModeRef.current = drawMode;
     drawingSelectionRef.current = drawingSelection;
+    cameraStickerRef.current = cameraSticker;
   });
 
   useEffect(() => {
@@ -471,11 +411,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
 
-    const setLiveTransform = (next: DragTransform | null) => {
-      dragTransformRef.current = next;
-      setDragTransform(next);
-    };
-
     const handlePointerDown = (e: PointerEvent) => {
       if (isPointerInputSuspendedRef.current) return;
       // 퀵메뉴/이름 직접 편집 중엔 캔버스 제스처 비활성화
@@ -492,56 +427,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       // 기본 모드: 이동 없이 롱프레스로 삭제 가능 상태 진입만 지원(스티커가 기본 모드에서 못 옮기는 것과 동일)
       if (drawingSelectionRef.current.onPointerDown(e, point)) return;
 
-      if (pointersRef.current.size !== 1) {
-        tapCandidateRef.current = null;
-        longPressRef.current.cancel();
-        drawingSelectionRef.current.cancelLongPress();
-        return;
-      }
-
-      const stickerElement = hitTestSticker(e.target);
-      const stickerId = stickerElement?.dataset.stickerId ?? null;
-      const isEmptyBoardSticker = stickerId === EMPTY_BOARD_STICKER_ID;
-      // 빈 보드 PPOTTO의 기본 모드 클릭·롱프레스는 자체 핸들러가 담당한다.
-      tapCandidateRef.current = isEmptyBoardSticker
-        ? null
-        : { pointerId: e.pointerId, stickerId, startClient: point };
-
-      // 편집 모드에선 pointerdown이 바로 드래그로 이어지므로 롱프레스는 기본 뷰 모드에서만
-      if (stickerId && stickerElement && !isEmptyBoardSticker && !isEditModeRef.current) {
-        releasePressedSticker();
-        longPressRef.current.start(point, stickerId);
-        stickerElement.dataset.pressed = 'true';
-        pressedStickerRef.current = stickerElement;
-      }
-
-      // 스티커를 처음 선택하는 순간이면 맨 위로 올리는 부수효과를 먼저 실행하고,
-      // 그 결과(갱신된 zIndex)를 반영한 스티커를 reducer에 넘긴다 (편집 모드에서만 선택/저장 부수효과 발생)
-      const found =
-        stickerId && isEditModeRef.current
-          ? isEmptyBoardSticker
-            ? emptyBoardStickerRef.current
-            : stickersRef.current.find((s) => s.id === stickerId)
-          : undefined;
-      let stickerHit: StickerData | null = null;
-      if (found) {
-        if (isEmptyBoardSticker) {
-          setSelectedStickerId(EMPTY_BOARD_STICKER_ID);
-          stickerHit = found;
-        } else {
-          stickerHit =
-            selectedIdRef.current !== stickerId ? selectStickerRef.current(found) : found;
-        }
-      }
-
-      gestureRef.current = gestureReducer(gestureRef.current, {
-        type: 'POINTER_DOWN',
-        pointerId: e.pointerId,
-        point,
-        camera: cameraRef.current,
-        stickerHit,
-        isEditMode: isEditModeRef.current,
-      });
+      cameraStickerRef.current.onPointerDown(e, point);
     };
 
     const handlePointerMove = (e: PointerEvent) => {
@@ -556,93 +442,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
       if (drawingSelectionRef.current.onPointerMove(e, point)) return;
 
-      if (tapCandidateRef.current?.pointerId === e.pointerId) {
-        if (distance(tapCandidateRef.current.startClient, point) > TAP_MOVE_THRESHOLD) {
-          tapCandidateRef.current = null;
-        }
-      }
-
-      longPressRef.current.move(point);
-
-      const gesture = gestureRef.current;
-      if (!gesture) return;
-
-      if (pointersRef.current.size >= 2) {
-        // 두 손가락이 됐으면 탭일 수 없음
-        tapCandidateRef.current = null;
-        longPressRef.current.cancel();
-
-        const points = [...pointersRef.current.values()];
-
-        // 배경을 팬하던 중이면 보드 핀치줌으로, 스티커를 이동하던 중이면 스티커 회전+확대로 전환(rebase).
-        // 이미 pinch/stickerPinch면 reducer가 상태를 그대로 반환한다
-        gestureRef.current = gestureReducer(gestureRef.current, {
-          type: 'MULTI_TOUCH',
-          points: [points[0]!, points[1]!],
-          camera: cameraRef.current,
-          liveTransform: dragTransformRef.current,
-        });
-
-        if (gestureRef.current?.kind === 'pinch') {
-          setCamera(
-            computeBoardPinchZoom(
-              gestureRef.current.startCamera,
-              {
-                centroid: gestureRef.current.startCentroid,
-                distance: gestureRef.current.startDistance,
-              },
-              { centroid: centroid(points), distance: distance(points[0]!, points[1]!) },
-            ),
-          );
-        } else if (gestureRef.current?.kind === 'stickerPinch') {
-          const current = {
-            centroid: toWorldPoint(cameraRef.current, centroid(points)),
-            distance: distance(points[0]!, points[1]!),
-            angle: angleBetween(points[0]!, points[1]!),
-          };
-          const result = computeStickerPinchTransform(
-            gestureRef.current.startTransform,
-            {
-              centroid: gestureRef.current.startCentroid,
-              distance: gestureRef.current.startDistance,
-              angle: gestureRef.current.startAngle,
-            },
-            current,
-          );
-          // 회전이 수평·수직(90° 배수) 스냅에 걸리는 순간에만 1회 햅틱 — 스냅 값은 정확히
-          // 90의 배수로 떨어지므로 직전 프레임과의 상태 전환으로 감지한다
-          const previousRotation = dragTransformRef.current?.rotation;
-          if (
-            result.rotation % 90 === 0 &&
-            previousRotation !== undefined &&
-            previousRotation % 90 !== 0
-          ) {
-            bridge.send('HAPTIC', { type: 'light' });
-          }
-          setLiveTransform({ id: gestureRef.current.sticker.id, ...result });
-        }
-        return;
-      }
-
-      if (gesture.kind === 'pan' && gesture.pointerId === e.pointerId) {
-        setCamera({
-          scale: gesture.startCamera.scale,
-          x: gesture.startCamera.x + (point.x - gesture.startClient.x),
-          y: gesture.startCamera.y + (point.y - gesture.startClient.y),
-        });
-        return;
-      }
-
-      if (gesture.kind === 'move' && gesture.pointerId === e.pointerId) {
-        const scale = cameraRef.current.scale;
-        setLiveTransform({
-          id: gesture.sticker.id,
-          x: gesture.startTransform.x + (point.x - gesture.startClient.x) / scale,
-          y: gesture.startTransform.y + (point.y - gesture.startClient.y) / scale,
-          rotation: gesture.startTransform.rotation,
-          scale: gesture.startTransform.scale,
-        });
-      }
+      cameraStickerRef.current.onPointerMove(e, point);
     };
 
     const handlePointerUp = (e: PointerEvent) => {
@@ -657,109 +457,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
       if (drawingSelectionRef.current.onPointerUp(e)) return;
 
-      longPressRef.current.cancel();
-
-      const gesture = gestureRef.current;
-
-      if (pointersRef.current.size === 0) {
-        // 마지막 손가락이 떨어짐 -> 커밋
-        if (gesture?.kind === 'move' && gesture.pointerId === e.pointerId) {
-          const scale = cameraRef.current.scale;
-          const finalTransform: StickerTransform = {
-            x: gesture.startTransform.x + (point.x - gesture.startClient.x) / scale,
-            y: gesture.startTransform.y + (point.y - gesture.startClient.y) / scale,
-            rotation: gesture.startTransform.rotation,
-            scale: gesture.startTransform.scale,
-          };
-          setLiveTransform(null);
-
-          if (gesture.sticker.id === EMPTY_BOARD_STICKER_ID) {
-            setEmptyBoardStickerTransform(finalTransform);
-            emptyBoardStickerRef.current = {
-              ...emptyBoardStickerRef.current,
-              posX: finalTransform.x,
-              posY: finalTransform.y,
-              rotation: finalTransform.rotation,
-              scale: finalTransform.scale,
-            };
-          }
-
-          // 실제로 아무것도 안 바뀌었으면(드래그 없이 탭만 한 경우) 저장 요청을 보내지 않는다
-          const unchanged =
-            finalTransform.x === gesture.sticker.posX &&
-            finalTransform.y === gesture.sticker.posY &&
-            finalTransform.rotation === gesture.sticker.rotation &&
-            finalTransform.scale === gesture.sticker.scale;
-
-          if (gesture.sticker.id !== EMPTY_BOARD_STICKER_ID && !unchanged) {
-            const badgeOffset = scaleBadgeOffset(
-              { x: gesture.sticker.badgeOffsetX, y: gesture.sticker.badgeOffsetY },
-              finalTransform.scale,
-              gesture.sticker.scale,
-            );
-            applyStickerChangeRef.current(gesture.sticker.id, {
-              posX: finalTransform.x,
-              posY: finalTransform.y,
-              rotation: finalTransform.rotation,
-              scale: finalTransform.scale,
-              badgeOffsetX: badgeOffset.x,
-              badgeOffsetY: badgeOffset.y,
-            });
-          }
-        }
-        gestureRef.current = gestureReducer(gestureRef.current, { type: 'POINTER_UP_TO_ZERO' });
-      } else if (pointersRef.current.size === 1) {
-        // 손가락 하나가 남음 -> 아직 커밋하지 않고 남은 손가락 기준으로 이어감
-        const [remainingPointerId, remainingPoint] = [...pointersRef.current][0]!;
-
-        gestureRef.current = gestureReducer(gestureRef.current, {
-          type: 'POINTER_UP_TO_ONE',
-          remainingPointerId,
-          remainingPoint,
-          camera: cameraRef.current,
-          liveTransform: dragTransformRef.current,
-        });
-      }
-
-      const tap = tapCandidateRef.current;
-      if (tap?.pointerId === e.pointerId) {
-        tapCandidateRef.current = null;
-
-        if (!tap.stickerId) {
-          // 빈 배경 탭 — 더블탭이면 줌을 1.0x로 복귀, 아니면 편집 모드에서 선택 해제
-          const lastTap = lastBackgroundTapRef.current;
-          const now = Date.now();
-          const isDoubleTap =
-            lastTap !== null &&
-            now - lastTap.time < DOUBLE_TAP_MAX_INTERVAL_MS &&
-            distance(lastTap.point, tap.startClient) < DOUBLE_TAP_MAX_DISTANCE;
-
-          if (isDoubleTap) {
-            lastBackgroundTapRef.current = null;
-            setCamera((current) => zoomCameraTo(current, tap.startClient, 1));
-          } else {
-            lastBackgroundTapRef.current = { time: now, point: tap.startClient };
-            if (isEditModeRef.current) setSelectedStickerId(null);
-          }
-        } else if (!isEditModeRef.current) {
-          const stickerId = tap.stickerId;
-          const openRecap = () => pushRef.current('Recap', { stickerId, boardId });
-          void queryClient
-            .ensureQueryData(stickerQueryOptions(stickerId))
-            .then(openRecap, openRecap);
-        }
-      }
+      cameraStickerRef.current.onPointerUp(e, point);
     };
 
     const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      if (e.ctrlKey) {
-        const rect = container.getBoundingClientRect();
-        const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        setCamera((current) => zoomCamera(current, pointer, e.deltaY));
-        return;
-      }
-      setCamera((current) => panCamera(current, { x: e.deltaX, y: e.deltaY }));
+      cameraStickerRef.current.onWheel(e, container);
     };
 
     // iOS Safari 제스처(핀치로 페이지 전체가 확대되는 것)를 막음
@@ -775,7 +477,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     container.addEventListener('gestureend', blockGesture);
 
     return () => {
-      releasePressedSticker();
+      cameraStickerRef.current.releasePressedSticker();
       container.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
@@ -821,7 +523,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawingSelection.drawingBoxPinchPreview ?? drawingSelection.selectedDrawingBoxTransform;
   const isEmptyBoardStickerVisible = stickers.length === 0 && !isEmptyStickerHidden;
   const activeEmptyBoardStickerTransform =
-    dragTransform?.id === EMPTY_BOARD_STICKER_ID ? dragTransform : emptyBoardStickerTransform;
+    cameraSticker.dragTransform?.id === EMPTY_BOARD_STICKER_ID
+      ? cameraSticker.dragTransform
+      : emptyBoardStickerTransform;
   const openEmptyBoardStickerQuickMenu = () => {
     bridge.send('HAPTIC', { type: 'heavy' });
     setIsEmptyBoardQuickMenuOpen(true);
@@ -987,7 +691,11 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               key={sticker.id}
               sticker={sticker}
               selected={selectedId === sticker.id}
-              transformOverride={dragTransform?.id === sticker.id ? dragTransform : undefined}
+              transformOverride={
+                cameraSticker.dragTransform?.id === sticker.id
+                  ? cameraSticker.dragTransform
+                  : undefined
+              }
               onRasterReady={onVisualChange}
             />
           ))}
@@ -1005,7 +713,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             <SelectBox
               sticker={selectedSticker}
               transformOverride={
-                dragTransform?.id === selectedSticker.id ? dragTransform : undefined
+                cameraSticker.dragTransform?.id === selectedSticker.id
+                  ? cameraSticker.dragTransform
+                  : undefined
               }
             />
           )}
