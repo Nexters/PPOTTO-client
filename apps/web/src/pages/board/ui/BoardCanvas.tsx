@@ -27,7 +27,6 @@ import {
   BOARD_ZOOM_MIN,
   DOT_FADE_START_ZOOM,
   computeBoardPinchZoom,
-  computeFocusTarget,
   panCamera,
   toWorldPoint,
   zoomCamera,
@@ -72,6 +71,10 @@ import {
 import { angleBetween, centroid, distance, type Point } from '../model/geometry';
 import { useBoardCamera } from '../model/use-board-camera';
 import { useDeleteSticker } from '../model/use-delete-sticker';
+import {
+  EMPTY_BOARD_STICKER_INITIAL_TRANSFORM,
+  useEmptyBoardRecenter,
+} from '../model/use-empty-board-recenter';
 import { useInitialStickerPlacement } from '../model/use-initial-sticker-placement';
 import { useMoveSession } from '../model/use-move-session';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
@@ -142,12 +145,6 @@ const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
 const DOUBLE_TAP_MAX_DISTANCE = 24;
 // 그리는 도중인 선의 실시간 미리보기는 스티커·그림 zIndex 값과 무관하게 항상 맨 위에 그려져야 한다
 const LIVE_STROKE_Z_INDEX = 999999;
-const EMPTY_BOARD_STICKER_INITIAL_TRANSFORM: StickerTransform = {
-  x: 0,
-  y: 0,
-  rotation: 0,
-  scale: 1,
-};
 
 function hitTestSticker(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Element)) return null;
@@ -616,38 +613,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     [container],
   );
 
-  const previousStickerCountRef = useRef<number | null>(null);
-
   // 빈 보드의 월드 원점(0, 0)을 화면 정중앙 1배율에 둔다. 최초 진입은 즉시 맞추고,
   // 마지막 실제 스티커가 사라진 순간에는 기존 카메라 포커스 모션으로 이동한다.
-  useEffect(() => {
-    if (!container || !data) return;
-
-    const stickerCount = data.stickers.length;
-    const previousStickerCount = previousStickerCountRef.current;
-    if (stickerCount === previousStickerCount) return;
-    previousStickerCountRef.current = stickerCount;
-
-    if (stickerCount > 0) {
-      if (previousStickerCount === 0) {
-        setSelectedStickerId((current) => (current === EMPTY_BOARD_STICKER_ID ? null : current));
-        setIsEmptyBoardQuickMenuOpen(false);
-      }
-      return;
-    }
-
-    setEmptyBoardStickerTransform({ ...EMPTY_BOARD_STICKER_INITIAL_TRANSFORM });
-    setSelectedStickerId((current) => (current === EMPTY_BOARD_STICKER_ID ? null : current));
-
-    const rect = container.getBoundingClientRect();
-    const targetCamera = computeFocusTarget({ scale: 1, x: 0, y: 0 }, [{ x: 0, y: 0 }], {
-      width: rect.width,
-      height: rect.height,
-    });
-
-    if (previousStickerCount === null) setCamera(targetCamera);
-    else if (previousStickerCount > 0) requestFocus(targetCamera);
-  }, [container, data, setCamera, requestFocus]);
+  useEmptyBoardRecenter({
+    container,
+    data,
+    setSelectedStickerId,
+    setIsEmptyBoardQuickMenuOpen,
+    setEmptyBoardStickerTransform,
+    setCamera,
+    requestFocus,
+  });
 
   // 새로 생성돼 좌표가 없는 스티커를 빈 공간에 배치하고 저장한다
   useInitialStickerPlacement({

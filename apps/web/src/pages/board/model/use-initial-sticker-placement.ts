@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { type Dispatch, type RefObject, type SetStateAction, useEffect, useRef } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 
 import type { BoardDetail } from '@/entities/board/api/board-api';
@@ -24,8 +24,8 @@ type UseInitialStickerPlacementParams = {
   placedStickers: ExistingSticker[];
   queryClient: QueryClient;
   saveLayout: ReturnType<typeof useUpdateBoardLayoutMutation>['mutate'];
-  cameraRef: React.RefObject<CameraState>;
-  setCamera: (updater: CameraState | ((current: CameraState) => CameraState)) => void;
+  cameraRef: RefObject<CameraState>;
+  setCamera: Dispatch<SetStateAction<CameraState>>;
   requestFocus: (target: CameraState) => void;
 };
 
