@@ -74,6 +74,7 @@ import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
 import type { ToolbarMode } from './BoardToolbar';
+import { BOARD_TEXT_STYLE } from './board-text-style';
 import { DrawingStroke } from './DrawingStroke';
 import {
   EmptyBoardSticker,
@@ -124,7 +125,18 @@ export type BoardCanvasHandle = {
   undoLastStroke: () => void;
   redoLastStroke: () => void;
   cancelMoveSession: () => void;
+  createText: (text: string, fontSize: number, editWidth: number) => void;
   getViewportElement: () => HTMLDivElement | null;
+};
+
+type LocalTextItem = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  maxWidth: number;
+  zIndex: number;
 };
 
 export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
@@ -183,6 +195,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [camera, setCamera] = useState<CameraState>(
     () => loadSavedCamera(boardId) ?? { scale: 1, x: 0, y: 0 },
   );
+  const [localTexts, setLocalTexts] = useState<LocalTextItem[]>([]);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [dragTransform, setDragTransform] = useState<DragTransform | null>(null);
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
@@ -517,6 +530,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const drawingsRef = useRef(drawings);
   const draftDrawingsRef = useRef(draftDrawings);
   const redoDrawingsRef = useRef(redoDrawings);
+  const containerRef = useRef(container);
   const pushRef = useRef(push);
   const longPressRef = useRef(longPress);
   const drawingLongPressRef = useRef(drawingLongPress);
@@ -549,6 +563,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawingsRef.current = drawings;
     draftDrawingsRef.current = draftDrawings;
     redoDrawingsRef.current = redoDrawings;
+    containerRef.current = container;
     pushRef.current = push;
     longPressRef.current = longPress;
     drawingLongPressRef.current = drawingLongPress;
@@ -644,6 +659,27 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       // 이동 모드 세션의 변경분을 버린다
       cancelMoveSession: () => {
         discardMoveSessionRef.current();
+      },
+      createText: (text: string, fontSize: number, editWidth: number) => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const center = toWorldPoint(cameraRef.current, { x: rect.width / 2, y: rect.height / 2 });
+        setLocalTexts((prev) => [
+          ...prev,
+          {
+            id: uuidv7(),
+            text,
+            x: center.x,
+            y: center.y,
+            fontSize: fontSize / cameraRef.current.scale,
+            maxWidth: editWidth / cameraRef.current.scale,
+            zIndex: computeTopZIndex([
+              ...combinedZIndexPool(),
+              ...draftDrawingsRef.current,
+              ...prev,
+            ]),
+          },
+        ]);
       },
       getViewportElement: () => container,
     }),
@@ -1526,6 +1562,26 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               </svg>
             );
           })}
+          {localTexts.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                position: 'absolute',
+                left: item.x,
+                top: item.y,
+                transform: 'translate(-50%, -50%)',
+                zIndex: item.zIndex,
+                fontSize: item.fontSize,
+                color: '#fff',
+                width: item.maxWidth,
+                pointerEvents: 'none',
+                ...BOARD_TEXT_STYLE,
+                whiteSpace: 'pre',
+              }}
+            >
+              {item.text}
+            </div>
+          ))}
           {/* 이번 세션에 그린 draft — 아직 저장 전이라 선택/드래그 대상이 아니다 */}
           {draftDrawings.map((drawing) => (
             <svg

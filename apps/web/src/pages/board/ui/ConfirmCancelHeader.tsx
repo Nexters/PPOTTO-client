@@ -4,12 +4,12 @@ import { Check, Close } from '@ppotto/assets';
 
 import { cn } from '@/shared/lib/cn';
 
-type MoveHeaderProps = {
+type ConfirmCancelHeaderProps = {
   onCancel: () => void;
   onConfirm: () => void;
 };
 
-export function MoveHeader({ onCancel, onConfirm }: MoveHeaderProps) {
+export function ConfirmCancelHeader({ onCancel, onConfirm }: ConfirmCancelHeaderProps) {
   return (
     <div
       className={cn(
