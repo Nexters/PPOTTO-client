@@ -16,16 +16,17 @@ import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutatio
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
+import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
 
-import { BOARD_ZOOM_MIN, DOT_FADE_START_ZOOM } from '../model/board-camera';
+import { BOARD_ZOOM_MIN, DOT_FADE_START_ZOOM, toWorldPoint } from '../model/board-camera';
 import {
   drawingZIndex,
   type ParsedDrawing,
   parseStrokePoints,
   parseStrokeZIndex,
 } from '../model/board-drawing';
-import { needsInitialLayout } from '../model/board-layout';
+import { computeTopZIndex, needsInitialLayout } from '../model/board-layout';
 import type { ExistingSticker } from '../model/poisson-cluster';
 import type { StickerTransform } from '../model/board-transform';
 import type { Point } from '../model/geometry';
@@ -45,6 +46,7 @@ import { useRegenerateSticker } from '../model/use-regenerate-sticker';
 import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
 import type { ToolbarMode } from './BoardToolbar';
+import { BOARD_TEXT_STYLE } from './board-text-style';
 import { DrawingStroke } from './DrawingStroke';
 import {
   EmptyBoardSticker,
@@ -95,7 +97,18 @@ export type BoardCanvasHandle = {
   undoLastStroke: () => void;
   redoLastStroke: () => void;
   cancelMoveSession: () => void;
+  createText: (text: string, fontSize: number, editWidth: number) => void;
   getViewportElement: () => HTMLDivElement | null;
+};
+
+type LocalTextItem = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  maxWidth: number;
+  zIndex: number;
 };
 
 export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
@@ -131,6 +144,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 ) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const { camera, setCamera, cameraRef, requestFocus } = useBoardCamera(boardId);
+  const [localTexts, setLocalTexts] = useState<LocalTextItem[]>([]);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   // 삭제된 빈 스티커는 이번 세션 동안 숨긴다 — 앱 재시작 시 다시 보임
@@ -324,6 +338,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const drawModeRef = useRef(drawMode);
   const drawingSelectionRef = useRef(drawingSelection);
   const cameraStickerRef = useRef(cameraSticker);
+  // createText(useImperativeHandle)에서 뷰포트 크기를 읽어야 해서 ref로도 들고 있는다
+  const containerRef = useRef(container);
 
   // ref들을 매 렌더 이후 최신값으로 동기화
   useEffect(() => {
@@ -337,6 +353,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawModeRef.current = drawMode;
     drawingSelectionRef.current = drawingSelection;
     cameraStickerRef.current = cameraSticker;
+    containerRef.current = container;
   });
 
   useEffect(() => {
@@ -371,9 +388,30 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       cancelMoveSession: () => {
         discardMoveSessionRef.current();
       },
+      createText: (text: string, fontSize: number, editWidth: number) => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const center = toWorldPoint(cameraRef.current, { x: rect.width / 2, y: rect.height / 2 });
+        setLocalTexts((prev) => [
+          ...prev,
+          {
+            id: uuidv7(),
+            text,
+            x: center.x,
+            y: center.y,
+            fontSize: fontSize / cameraRef.current.scale,
+            maxWidth: editWidth / cameraRef.current.scale,
+            zIndex: computeTopZIndex([
+              ...combinedZIndexPool(),
+              ...drawModeRef.current.draftDrawings,
+              ...prev,
+            ]),
+          },
+        ]);
+      },
       getViewportElement: () => container,
     }),
-    [container],
+    [container, cameraRef],
   );
 
   // 빈 보드의 월드 원점(0, 0)을 화면 정중앙 1배율에 둔다. 최초 진입은 즉시 맞추고,
@@ -604,6 +642,26 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               </svg>
             );
           })}
+          {localTexts.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                position: 'absolute',
+                left: item.x,
+                top: item.y,
+                transform: 'translate(-50%, -50%)',
+                zIndex: item.zIndex,
+                fontSize: item.fontSize,
+                color: '#fff',
+                width: item.maxWidth,
+                pointerEvents: 'none',
+                ...BOARD_TEXT_STYLE,
+                whiteSpace: 'pre',
+              }}
+            >
+              {item.text}
+            </div>
+          ))}
           {/* 이번 세션에 그린 draft — 아직 저장 전이라 선택/드래그 대상이 아니다 */}
           {drawMode.draftDrawings.map((drawing) => (
             <svg

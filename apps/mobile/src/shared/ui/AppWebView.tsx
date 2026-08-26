@@ -6,7 +6,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { useIsFocused } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, Linking, Platform } from 'react-native';
+import { BackHandler, Keyboard, Linking, Platform } from 'react-native';
 import Share, { Social } from 'react-native-share';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -211,6 +211,23 @@ export function AppWebView({
   useEffect(() => {
     if (showBoard) bridge.emit('SHOW_BOARD');
   }, [bridge, showBoard]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (e) => {
+      bridge.emit('KEYBOARD_HEIGHT_CHANGED', { height: e.endCoordinates.height });
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      bridge.emit('KEYBOARD_HEIGHT_CHANGED', { height: 0 });
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [bridge]);
 
   useEffect(() => {
     if (downloadingFromICloud === undefined) return;
