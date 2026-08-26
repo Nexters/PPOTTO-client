@@ -1,0 +1,101 @@
+name: Native Compile
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/native-compile.yml'
+      - '.nvmrc'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'apps/mobile/app.config.ts'
+      - 'apps/mobile/app.json'
+      - 'apps/mobile/assets/**'
+      - 'apps/mobile/modules/**'
+      - 'apps/mobile/package.json'
+  push:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/native-compile.yml'
+      - '.nvmrc'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'apps/mobile/app.config.ts'
+      - 'apps/mobile/app.json'
+      - 'apps/mobile/assets/**'
+      - 'apps/mobile/modules/**'
+      - 'apps/mobile/package.json'
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Android project
+        run: pnpm --filter mobile exec expo prebuild --platform android --clean --no-install
+      - name: Compile Android
+        working-directory: apps/mobile/android
+        run: ./gradlew :app:assembleDebug -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+  ios:
+    name: iOS
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate iOS project
+        run: pnpm --filter mobile exec expo prebuild --platform ios --clean --no-install
+      - name: Install CocoaPods
+        working-directory: apps/mobile/ios
+        run: pod install
+      - name: Compile iOS
+        working-directory: apps/mobile/ios
+        run: |
+          xcodebuild \
+            -workspace app.xcworkspace \
+            -scheme app \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/ppotto-derived-data" \
+            CODE_SIGNING_ALLOWED=NO \
+            build \
+            -quiet
