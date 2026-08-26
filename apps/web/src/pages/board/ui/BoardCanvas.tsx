@@ -1,6 +1,6 @@
 'use client';
 
-import { useFlow } from '@stackflow/react';
+import { useActivity, useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   forwardRef,
@@ -144,6 +144,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
+  const { isActive } = useActivity();
   const queryClient = useQueryClient();
   const { regenerate, isRegenerating } = useRegenerateSticker(boardId);
   const { deleteSticker, isDeleting } = useDeleteSticker(boardId);
@@ -284,7 +285,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     applyStickerChange,
     setEmptyBoardStickerTransform,
     push,
-    queryClient,
+    isActive,
     quickMenuStickerId: quickMenu.quickMenuStickerId,
     openQuickMenu: quickMenu.openQuickMenu,
     cancelDrawingLongPress: drawingSelection.cancelLongPress,
@@ -487,15 +488,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       container.removeEventListener('gesturechange', blockGesture);
       container.removeEventListener('gestureend', blockGesture);
     };
-  }, [
-    container,
-    boardId,
-    queryClient,
-    quickMenu.isEditingRef,
-    trashButtonRef,
-    cameraRef,
-    setCamera,
-  ]);
+  }, [container, boardId, quickMenu.isEditingRef, trashButtonRef]);
 
   if (isLoading) {
     return (
@@ -726,10 +719,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           <div
             aria-hidden
             className="modal-overlay fixed inset-0 z-50"
-            onPointerDown={(event) => {
-              event.preventDefault();
-              quickMenu.finishDirectEditFromBackdrop();
-            }}
+            onClick={() => quickMenu.finishDirectEditFromBackdrop()}
           />
           <StickerPreview
             sticker={directEditSticker}

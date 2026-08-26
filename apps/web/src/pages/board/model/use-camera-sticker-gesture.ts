@@ -1,5 +1,4 @@
 import type { useFlow } from '@stackflow/react';
-import type { QueryClient } from '@tanstack/react-query';
 import {
   type Dispatch,
   type RefObject,
@@ -9,7 +8,6 @@ import {
   useState,
 } from 'react';
 
-import { stickerQueryOptions } from '@/entities/sticker/api/sticker-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { useLongPress } from '@/shared/lib/use-long-press';
 
@@ -62,7 +60,8 @@ type UseCameraStickerGestureParams = {
   applyStickerChange: (stickerId: string, overrides: StickerOverride) => void;
   setEmptyBoardStickerTransform: Dispatch<SetStateAction<StickerTransform>>;
   push: ReturnType<typeof useFlow>['push'];
-  queryClient: QueryClient;
+  // 리캡 화면 진입 이펙트가 다시 활성화된 시점(재진입)에 연속 탭 방지 잠금을 풀어야 한다
+  isActive: boolean;
   quickMenuStickerId: string | null;
   openQuickMenu: (stickerId: string) => void;
   // 손가락이 1개가 아니게 됐을 때 그림 선택 쪽 롱프레스도 방어적으로 취소해야 해서(두 훅이 각자
@@ -88,7 +87,7 @@ export function useCameraStickerGesture({
   applyStickerChange,
   setEmptyBoardStickerTransform,
   push,
-  queryClient,
+  isActive,
   quickMenuStickerId,
   openQuickMenu,
   cancelDrawingLongPress,
@@ -106,6 +105,8 @@ export function useCameraStickerGesture({
   } | null>(null);
   // 더블탭 감지용 — 직전에 빈 배경을 탭한 시각·위치
   const lastBackgroundTapRef = useRef<{ time: number; point: Point } | null>(null);
+  // 리캡 전환 중 연속 탭으로 중복 진입하는 것을 막는다. 화면이 다시 활성화되면 풀린다
+  const isOpeningRecapRef = useRef(false);
   const pressedStickerRef = useRef<HTMLElement | null>(null);
   // 롱프레스가 성사된 순간부터 퀵메뉴가 닫힐 때까지 눌린 연출을 잠근다. 이 사이에
   // 포인터 업·취소 등 여러 경로가 clearPressedSticker를 부르는데, 그걸 그대로 두면
@@ -116,6 +117,10 @@ export function useCameraStickerGesture({
     selectedIdRef.current = selectedId;
     emptyBoardStickerRef.current = emptyBoardSticker;
   });
+
+  useEffect(() => {
+    if (isActive) isOpeningRecapRef.current = false;
+  }, [isActive]);
 
   const releasePressedSticker = () => {
     isPressedStickerLockedRef.current = false;
@@ -385,10 +390,9 @@ export function useCameraStickerGesture({
           lastBackgroundTapRef.current = { time: now, point: tap.startClient };
           if (isEditMode) setSelectedStickerId(null);
         }
-      } else if (!isEditMode) {
-        const stickerId = tap.stickerId;
-        const openRecap = () => push('Recap', { stickerId, boardId });
-        void queryClient.ensureQueryData(stickerQueryOptions(stickerId)).then(openRecap, openRecap);
+      } else if (!isEditMode && !isOpeningRecapRef.current) {
+        isOpeningRecapRef.current = true;
+        push('Recap', { stickerId: tap.stickerId, boardId });
       }
     }
   };
