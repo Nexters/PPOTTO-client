@@ -60,7 +60,6 @@ const dependencies: PhotoUploadServiceDependencies = {
 };
 
 let currentUpload: Promise<void> | null = null;
-let beginCurrentUpload: (() => void) | null = null;
 let runId = 0;
 const listeners = new Set<() => void>();
 
@@ -201,13 +200,8 @@ export const photoUploadService = {
       motionPhotos = [...photos];
       if (!motionPhotos.length) throw new Error('로딩 화면용 사진을 준비하지 못했습니다.');
     });
-    const loadingReady = new Promise<void>((resolve) => {
-      beginCurrentUpload = resolve;
-    });
-
     currentUpload = (async () => {
       await motionPhotosReady;
-      await loadingReady;
       logPhotoUpload(`#${id} 모션 시작 — 업로드 사진 압축 시작`);
       const job = await prepareJob();
       const uploadPhotoCount = job.groups.reduce((count, group) => count + group.items.length, 0);
@@ -231,11 +225,7 @@ export const photoUploadService = {
 
   getCurrent: () => currentUpload,
 
-  beginUpload() {
-    const begin = beginCurrentUpload;
-    beginCurrentUpload = null;
-    begin?.();
-  },
+  beginUpload() {},
 
   getMotionPhotoCount: () => motionPhotoCount,
 
@@ -266,7 +256,6 @@ export const photoUploadService = {
 
     const id = ++runId;
     const startedAt = Date.now();
-    beginCurrentUpload = null;
     viewState = { progress: 0, status: 'UPLOADING' };
     motionPhotos = [];
     motionPhotoCount = 0;
@@ -322,7 +311,6 @@ export const photoUploadService = {
 
   clearCurrent() {
     currentUpload = null;
-    beginCurrentUpload = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -334,7 +322,6 @@ export const photoUploadService = {
     await storage.clearJob();
     await clearLastSeenLoadingPhase();
     currentUpload = null;
-    beginCurrentUpload = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -344,7 +331,6 @@ export const photoUploadService = {
 
   async discard() {
     currentUpload = null;
-    beginCurrentUpload = null;
     const result = await discardSavedPhotoUpload(dependencies);
     if (result === 'DISCARDED') await clearLastSeenLoadingPhase();
     return result;
