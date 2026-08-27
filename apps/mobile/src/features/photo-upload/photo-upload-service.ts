@@ -225,8 +225,6 @@ export const photoUploadService = {
 
   getCurrent: () => currentUpload,
 
-  beginUpload() {},
-
   getMotionPhotoCount: () => motionPhotoCount,
 
   getMotionPhotosForWeb,

@@ -127,10 +127,6 @@ export function AnalysisLoadingScreen() {
   }, [updateSequence, upload]);
 
   useEffect(() => {
-    if (motionReady) photoUploadService.beginUpload();
-  }, [motionReady]);
-
-  useEffect(() => {
     if (!motionReady || upload.status !== 'UPLOADING' || upload.progress > 0) return;
 
     const timer = setInterval(() => {

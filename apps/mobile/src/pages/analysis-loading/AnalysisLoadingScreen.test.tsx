@@ -42,7 +42,6 @@ jest.mock('@/shared/ui/AppWebView', () => {
 });
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: {
-    beginUpload: jest.fn(),
     clearCurrent: jest.fn(),
     finish: jest.fn(),
     getCurrent: jest.fn(),
@@ -59,7 +58,6 @@ jest.mock('@/features/photo-upload', () => ({
 
 const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
   photoUploadService: {
-    beginUpload: jest.Mock;
     finish: jest.Mock;
     getCurrent: jest.Mock;
     getLastSeenLoadingPhase: jest.Mock;
@@ -105,7 +103,6 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
     state = await loadingBridgeHandlers!.GET_ANALYSIS_LOADING_STATE();
   });
   await act(async () => void loadingBridgeHandlers!.ANALYSIS_LOADING_READY());
-  expect(photoUploadService.beginUpload).toHaveBeenCalledTimes(1);
   expect(state).toEqual({
     downloadingFromICloud: false,
     photoCount: 100,
