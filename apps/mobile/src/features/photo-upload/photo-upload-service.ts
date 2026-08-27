@@ -196,12 +196,21 @@ export const photoUploadService = {
       logPhotoUploadError('로딩 단계 초기화 실패', error),
     );
 
-    motionPhotosReady = preparedMotionPhotos.then((photos) => {
-      motionPhotos = [...photos];
-      if (!motionPhotos.length) throw new Error('로딩 화면용 사진을 준비하지 못했습니다.');
-    });
+    motionPhotosReady = preparedMotionPhotos
+      .then((photos) => {
+        motionPhotos = [...photos];
+        if (!motionPhotos.length) {
+          logPhotoUploadError(
+            '로딩 화면용 사진을 준비하지 못했습니다.',
+            new Error('No motion photos'),
+          );
+        }
+      })
+      .catch((error) => {
+        motionPhotos = [];
+        logPhotoUploadError('로딩 화면용 사진 준비 실패', error);
+      });
     currentUpload = (async () => {
-      await motionPhotosReady;
       logPhotoUpload(`#${id} 모션 시작 — 업로드 사진 압축 시작`);
       const job = await prepareJob();
       const uploadPhotoCount = job.groups.reduce((count, group) => count + group.items.length, 0);
