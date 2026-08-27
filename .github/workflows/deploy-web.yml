@@ -101,7 +101,6 @@ jobs:
             ARCHIVE="/tmp/ppotto-web-$RELEASE_ID.tar.gz"
             RELEASE="/opt/ppotto-web/releases/$RELEASE_ID"
             PREVIOUS="$(readlink -f /opt/ppotto-web/current 2>/dev/null || true)"
-            PREVIOUS_IMAGE="$(sudo docker inspect --format '{{.Config.Image}}' ppotto-web 2>/dev/null || true)"
 
             sudo install -d -o ppotto -g ppotto -m 0755 "$RELEASE"
             sudo tar -xzf "$ARCHIVE" -C "$RELEASE"
@@ -111,7 +110,6 @@ jobs:
 
             sudo ln -sfnT "$RELEASE" /opt/ppotto-web/current
             sudo systemctl enable ppotto-web
-            sudo docker rm -f ppotto-web 2>/dev/null || true
 
             ready=false
             if sudo systemctl restart ppotto-web; then
@@ -131,14 +129,6 @@ jobs:
               if [ -n "$PREVIOUS" ] && [ -d "$PREVIOUS" ]; then
                 sudo ln -sfnT "$PREVIOUS" /opt/ppotto-web/current
                 sudo systemctl restart ppotto-web || true
-              elif [ -n "$PREVIOUS_IMAGE" ]; then
-                sudo systemctl disable ppotto-web || true
-                sudo docker run -d \
-                  --name ppotto-web \
-                  --restart unless-stopped \
-                  --env-file /opt/ppotto-web/.env \
-                  --publish 127.0.0.1:3000:3000 \
-                  "$PREVIOUS_IMAGE"
               fi
 
               exit 1
