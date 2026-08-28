@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import {
+  clearCompressedPhotos,
   compressPhoto,
   createUploadPhotoCompressionQueue,
   type GalleryPhoto,
@@ -86,6 +87,10 @@ export function PhotoSelectScreen() {
   const galleryEmpty = !loading && !permissionRequired && photoUnits.length === 0;
 
   useEffect(() => {
+    clearCompressedPhotos();
+  }, []);
+
+  useEffect(() => {
     if (loading) {
       motionPhotosRef.current = [];
       motionPhotoPreloader.sync([]);
@@ -106,6 +111,7 @@ export function PhotoSelectScreen() {
       if (!submittedRef.current) {
         motionPhotoPreloader.clear();
         uploadCompressionQueue.clear();
+        clearCompressedPhotos();
       }
     },
     [motionPhotoPreloader, uploadCompressionQueue],
