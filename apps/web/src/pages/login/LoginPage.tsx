@@ -2,13 +2,25 @@
 
 import { AppleLogo, KakaoLogo, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 
+import { isDevelopmentBrowser } from '@/shared/api/browser-dev-session';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
+import { Button } from '@/shared/ui/common/Button';
+
+import { DevelopmentLoginModal } from './ui/DevelopmentLoginModal';
+
+const subscribeToBrowserEnvironment = () => () => undefined;
 
 export function LoginPage() {
   const { replace } = useFlow();
+  const showDevelopmentLogin = useSyncExternalStore(
+    subscribeToBrowserEnvironment,
+    isDevelopmentBrowser,
+    () => false,
+  );
+  const [developmentLoginOpen, setDevelopmentLoginOpen] = useState(false);
   // 화면 전환 중 URL이 먼저 바뀌어도 영향 없게 마운트 시점 값으로 고정
   const [isAndroid] = useState(
     () =>
@@ -32,6 +44,12 @@ export function LoginPage() {
       <Logo width={261} height={80} />
 
       <div className="flex flex-col w-full gap-4 mt-auto">
+        {showDevelopmentLogin && (
+          <Button className="bg-gray-800 text-white" onClick={() => setDevelopmentLoginOpen(true)}>
+            개발 로그인
+          </Button>
+        )}
+
         {!isAndroid && (
           <button
             type="button"
@@ -58,6 +76,12 @@ export function LoginPage() {
           <span className="flex-1 text-center">카카오로 로그인</span>
         </button>
       </div>
+
+      <DevelopmentLoginModal
+        open={developmentLoginOpen}
+        onOpenChange={setDevelopmentLoginOpen}
+        onSuccess={() => replace('Board', {})}
+      />
     </main>
   );
 }
