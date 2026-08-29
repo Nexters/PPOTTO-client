@@ -15,6 +15,7 @@ import { PhotoViewerPage } from '@/pages/photo-viewer';
 import { RecapPage } from '@/pages/recap';
 import { SettingsPage } from '@/pages/settings';
 import { TermsDetailPage, TermsPage } from '@/pages/terms';
+import { track } from '@/shared/lib/bridge';
 
 import { androidBackPlugin, registerAndroidBackHandler } from './android-back';
 import { config } from './config';
@@ -105,4 +106,7 @@ export const { Stack, actions } = stackflow({
 });
 
 // 안드로이드 하드웨어 뒤로가기(NAVIGATE_BACK) 수신 — 시트 닫기/스택 pop/앱 이탈 위임
-if (typeof window !== 'undefined') registerAndroidBackHandler(actions);
+if (typeof window !== 'undefined') {
+  registerAndroidBackHandler(actions);
+  if (process.env.NODE_ENV === 'development') track('webview_analytics_setup_test');
+}

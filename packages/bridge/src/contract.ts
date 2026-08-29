@@ -39,6 +39,8 @@ const analysisLoadingState = analysisLoadingPhaseState.extend({
     )
     .max(40),
 });
+const analyticsName = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/);
+const analyticsParams = z.record(analyticsName, z.union([z.string(), z.number()]));
 
 // web <-> RN 브릿지 계약
 export const contract = defineContract({
@@ -70,6 +72,9 @@ export const contract = defineContract({
   SET_BOARD_ACTIVE: command({ payload: z.object({ active: z.boolean() }) }),
   // 네이티브 햅틱 피드백 — 제스처를 막지 않도록 단방향 command
   HAPTIC: command({ payload: z.object({ type: z.enum(['light', 'medium', 'heavy']) }) }),
+  TRACK_ANALYTICS_EVENT: command({
+    payload: z.object({ name: analyticsName, params: analyticsParams }),
+  }),
   BOARD_READY: command(),
   GET_ANALYSIS_LOADING_STATE: request({ response: analysisLoadingState }),
   ANALYSIS_LOADING_READY: command(),

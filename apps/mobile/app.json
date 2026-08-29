@@ -11,11 +11,13 @@
       "icon": "./assets/ppotto-icon.png",
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.ppotto.mobile",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "icon": "./assets/ppotto-icon.png",
       "package": "com.ppotto.mobile",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#000000",
@@ -36,6 +38,22 @@
     "plugins": [
       "expo-router",
       "expo-apple-authentication",
+      [
+        "@react-native-firebase/app",
+        {
+          "ios": {
+            "disableSPM": true
+          }
+        }
+      ],
+      [
+        "@react-native-firebase/analytics",
+        {
+          "ios": {
+            "withoutAdIdSupport": true
+          }
+        }
+      ],
       [
         "expo-media-library",
         {
@@ -78,6 +96,10 @@
       [
         "expo-build-properties",
         {
+          "ios": {
+            "useFrameworks": "static",
+            "forceStaticLinking": ["RNFBApp", "RNFBAnalytics"]
+          },
           "android": {
             "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"]
           }
