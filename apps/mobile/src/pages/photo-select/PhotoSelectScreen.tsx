@@ -134,6 +134,7 @@ export function PhotoSelectScreen() {
     submittedRef.current = true;
 
     photoUploadService.start({
+      jobId,
       motionPhotos: preparedMotionPhotos,
       photoCount,
       prepareJob: async () => {

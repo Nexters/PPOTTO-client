@@ -62,6 +62,7 @@ export function AnalysisLoadingScreen() {
 
   const bridgeStateFor = useCallback(
     (state: LoadingSequenceState): AnalysisLoadingBridgeState => ({
+      jobId: photoUploadService.getCurrentJobId(),
       photoCount: photoUploadService.getMotionPhotoCount(),
       downloadingFromICloud: icloudDownloadStatus.isDownloading(),
       photos: bridgePhotosRef.current.map(({ id, uri, width, height }) => ({
@@ -92,7 +93,15 @@ export function AnalysisLoadingScreen() {
   }, [bridgeStateFor, commitSequence]);
 
   const finishPhase = useCallback(
-    ({ phase }: { phase: AnalysisLoadingBridgeState['visiblePhase'] }) => {
+    ({
+      jobId,
+      phase,
+    }: {
+      jobId: string | null;
+      phase: AnalysisLoadingBridgeState['visiblePhase'];
+    }) => {
+      if (!photoUploadService.isCurrentJob(jobId)) return toBridgePhaseState(sequenceRef.current);
+
       const latest = loadingSequenceReducer(sequenceRef.current, {
         type: 'SERVER_PROGRESS_UPDATED',
         progress: uploadRef.current.progress,
@@ -107,14 +116,22 @@ export function AnalysisLoadingScreen() {
   const bridgeHandlers = useMemo(
     () => ({
       GET_ANALYSIS_LOADING_STATE: getInitialBridgeState,
-      ANALYSIS_LOADING_READY: () => setMotionReady(true),
+      ANALYSIS_LOADING_READY: ({ jobId }: { jobId: string | null }) => {
+        if (photoUploadService.isCurrentJob(jobId)) setMotionReady(true);
+      },
       ANALYSIS_LOADING_PHASE_STARTED: ({
+        jobId,
         phase,
       }: {
+        jobId: string | null;
         phase: AnalysisLoadingBridgeState['visiblePhase'];
-      }) => photoUploadService.setLastSeenLoadingPhase(phase),
+      }) =>
+        photoUploadService.isCurrentJob(jobId)
+          ? photoUploadService.setLastSeenLoadingPhase(phase)
+          : undefined,
       ANALYSIS_LOADING_PHASE_FINISHED: finishPhase,
-      ANALYSIS_LOADING_REVEAL_FINISHED: () => {
+      ANALYSIS_LOADING_REVEAL_FINISHED: ({ jobId }: { jobId: string | null }) => {
+        if (!photoUploadService.isCurrentJob(jobId)) return;
         updateSequence({ type: 'REVEAL_FINISHED' });
       },
     }),

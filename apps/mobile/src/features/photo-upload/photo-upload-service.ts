@@ -60,6 +60,7 @@ const dependencies: PhotoUploadServiceDependencies = {
 };
 
 let currentUpload: Promise<void> | null = null;
+let currentJobId: string | null = null;
 let runId = 0;
 const listeners = new Set<() => void>();
 
@@ -72,6 +73,7 @@ export interface UploadMotionPhoto {
 }
 
 interface StartPhotoUploadOptions {
+  jobId: string;
   motionPhotos: Promise<readonly UploadMotionPhoto[]>;
   photoCount: number;
   prepareJob: () => Promise<UploadJobSnapshot>;
@@ -182,9 +184,15 @@ async function waitUntilComplete(analysisId: string) {
 }
 
 export const photoUploadService = {
-  start({ motionPhotos: preparedMotionPhotos, photoCount, prepareJob }: StartPhotoUploadOptions) {
+  start({
+    jobId,
+    motionPhotos: preparedMotionPhotos,
+    photoCount,
+    prepareJob,
+  }: StartPhotoUploadOptions) {
     const id = ++runId;
     const startedAt = Date.now();
+    currentJobId = jobId;
     viewState = { progress: 0, status: 'UPLOADING' };
     motionPhotoCount = photoCount;
     motionPhotos = [];
@@ -234,6 +242,10 @@ export const photoUploadService = {
 
   getCurrent: () => currentUpload,
 
+  getCurrentJobId: () => currentJobId,
+
+  isCurrentJob: (jobId: string | null) => jobId === currentJobId,
+
   getMotionPhotoCount: () => motionPhotoCount,
 
   getMotionPhotosForWeb,
@@ -270,7 +282,10 @@ export const photoUploadService = {
     logPhotoUpload(`#${id} 저장된 작업 재개`);
 
     const restoredJob = storage.loadJob().then((stored) => {
-      if (stored) restoreMotionPhotos(stored.snapshot);
+      if (stored) {
+        currentJobId = stored.snapshot.jobId;
+        restoreMotionPhotos(stored.snapshot);
+      }
       return stored;
     });
     motionPhotosReady = restoredJob.then(() => undefined);
@@ -318,6 +333,7 @@ export const photoUploadService = {
 
   clearCurrent() {
     currentUpload = null;
+    currentJobId = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -329,6 +345,7 @@ export const photoUploadService = {
     await storage.clearJob();
     await clearLastSeenLoadingPhase();
     currentUpload = null;
+    currentJobId = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -338,6 +355,7 @@ export const photoUploadService = {
 
   async discard() {
     currentUpload = null;
+    currentJobId = null;
     const result = await discardSavedPhotoUpload(dependencies);
     if (result === 'DISCARDED') await clearLastSeenLoadingPhase();
     return result;

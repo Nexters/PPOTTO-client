@@ -214,7 +214,7 @@ describe('WebView 로딩', () => {
     await act(async () => mockOnLoadEnd?.());
     expect(screen.queryByText('앱 로딩 배경')).toBeOnTheScreen();
 
-    await act(async () => void mockBridgeHandlers.ANALYSIS_LOADING_READY!());
+    await act(async () => void mockBridgeHandlers.ANALYSIS_LOADING_READY!({ jobId: null }));
     expect(screen.queryByText('앱 로딩 배경')).not.toBeOnTheScreen();
   });
 
@@ -232,6 +232,7 @@ describe('WebView 로딩', () => {
 describe('분석 로딩 브리지', () => {
   it('페이지 전용 로딩 메시지를 부모가 제공한 handler에 위임한다', async () => {
     const state = {
+      jobId: 'job-1',
       photoCount: 20,
       photos: [{ id: 'photo-1', uri: 'data:image/jpeg;base64,image', width: 300, height: 400 }],
       visiblePhase: 'SCAN' as const,
@@ -248,16 +249,25 @@ describe('분석 로딩 브리지', () => {
     await render(<AppWebView bridgeHandlers={bridgeHandlers} path="/analysis-loading" />);
 
     expect(await mockBridgeHandlers.GET_ANALYSIS_LOADING_STATE!()).toEqual(state);
-    await act(async () => void mockBridgeHandlers.ANALYSIS_LOADING_READY!());
-    await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED!({ phase: 'SCAN' });
-    expect(await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED!({ phase: 'SCAN' })).toEqual(
-      nextState,
-    );
-    await mockBridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED!();
+    await act(async () => void mockBridgeHandlers.ANALYSIS_LOADING_READY!({ jobId: 'job-1' }));
+    await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED!({ jobId: 'job-1', phase: 'SCAN' });
+    expect(
+      await mockBridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED!({
+        jobId: 'job-1',
+        phase: 'SCAN',
+      }),
+    ).toEqual(nextState);
+    await mockBridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED!({ jobId: 'job-1' });
 
     expect(bridgeHandlers.ANALYSIS_LOADING_READY).toHaveBeenCalledTimes(1);
-    expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED).toHaveBeenCalledWith({ phase: 'SCAN' });
-    expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED).toHaveBeenCalledWith({ phase: 'SCAN' });
+    expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_STARTED).toHaveBeenCalledWith({
+      jobId: 'job-1',
+      phase: 'SCAN',
+    });
+    expect(bridgeHandlers.ANALYSIS_LOADING_PHASE_FINISHED).toHaveBeenCalledWith({
+      jobId: 'job-1',
+      phase: 'SCAN',
+    });
     expect(bridgeHandlers.ANALYSIS_LOADING_REVEAL_FINISHED).toHaveBeenCalledTimes(1);
   });
 

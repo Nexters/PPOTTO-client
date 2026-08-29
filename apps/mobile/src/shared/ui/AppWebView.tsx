@@ -139,9 +139,9 @@ export function AppWebView({
       BackHandler.exitApp();
     },
     BOARD_READY: () => markLoaded(),
-    ANALYSIS_LOADING_READY: () => {
+    ANALYSIS_LOADING_READY: (payload) => {
       markLoaded();
-      return bridgeHandlers?.ANALYSIS_LOADING_READY?.();
+      return bridgeHandlers?.ANALYSIS_LOADING_READY?.(payload);
     },
     GET_ANALYSIS_LOADING_STATE: () => {
       const handler = bridgeHandlers?.GET_ANALYSIS_LOADING_STATE;
@@ -155,7 +155,8 @@ export function AppWebView({
       if (!handler) throw new Error('analysis loading bridge handler is not configured');
       return handler(payload);
     },
-    ANALYSIS_LOADING_REVEAL_FINISHED: () => bridgeHandlers?.ANALYSIS_LOADING_REVEAL_FINISHED?.(),
+    ANALYSIS_LOADING_REVEAL_FINISHED: (payload) =>
+      bridgeHandlers?.ANALYSIS_LOADING_REVEAL_FINISHED?.(payload),
     SAVE_IMAGE: async ({ base64 }) => {
       try {
         const { status } = await MediaLibrary.requestPermissionsAsync(true, ['photo']);

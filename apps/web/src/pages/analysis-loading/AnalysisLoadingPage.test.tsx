@@ -16,6 +16,7 @@ interface MotionOptions {
 
 const mocks = vi.hoisted(() => {
   const state = {
+    jobId: 'job-1',
     photoCount: 20,
     photos: Array.from({ length: 20 }, (_, index) => ({
       id: `photo-${index}`,
@@ -125,7 +126,7 @@ describe('AnalysisLoadingPage', () => {
       ratio: 0.75,
       capturedAt: null,
     });
-    expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_READY');
+    expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_READY', { jobId: 'job-1' });
 
     options.onPhaseStarted('SCAN');
     expect(mocks.boardList).not.toHaveBeenCalled();
@@ -140,17 +141,26 @@ describe('AnalysisLoadingPage', () => {
     await expect(options.onPhaseFinished('SCAN')).resolves.toEqual(mocks.nextState);
     options.onRevealFinished();
     await waitFor(() =>
-      expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_REVEAL_FINISHED'),
+      expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_REVEAL_FINISHED', {
+        jobId: 'job-1',
+      }),
     );
 
-    expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_PHASE_STARTED', { phase: 'SCAN' });
     expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_PHASE_STARTED', {
+      jobId: 'job-1',
+      phase: 'SCAN',
+    });
+    expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_PHASE_STARTED', {
+      jobId: 'job-1',
       phase: 'REVEAL',
     });
     expect(mocks.request).toHaveBeenCalledWith('ANALYSIS_LOADING_PHASE_FINISHED', {
+      jobId: 'job-1',
       phase: 'SCAN',
     });
-    expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_REVEAL_FINISHED');
+    expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_REVEAL_FINISHED', {
+      jobId: 'job-1',
+    });
     expect(mocks.boardList).toHaveBeenCalledTimes(1);
     expect(mocks.boardGet).toHaveBeenCalledWith('board-1');
 
