@@ -11,6 +11,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { QaRecorderProbe } from '@/features/qa-report';
+import { track } from '@/shared/lib/analytics';
 import { isQaToolEnabled } from '@/shared/lib/qa-tool';
 import {
   SENTRY_DIST,
@@ -73,6 +74,8 @@ const appTheme = {
 
 function RootLayout() {
   useEffect(() => {
+    if (__DEV__ && !isRunningInExpoGo()) track('analytics_setup_test');
+
     const timer = setTimeout(() => void SplashScreen.hideAsync(), 700);
     return () => clearTimeout(timer);
   }, []);

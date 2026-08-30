@@ -14,8 +14,12 @@ let mockScrollEnabled: boolean | undefined;
 const mockPushMessage = jest.fn();
 const mockEmit = jest.fn();
 const mockFileWrite = jest.fn();
+const mockTrack = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
+jest.mock('@/shared/lib/analytics', () => ({
+  track: (...args: unknown[]) => mockTrack(...args),
+}));
 jest.mock('@/lib/auth-session', () => ({
   getAccessToken: jest.fn(),
   loginWithApple: jest.fn(),
@@ -149,6 +153,19 @@ describe('WebView 인증 만료', () => {
     await mockBridgeHandlers.AUTH_EXPIRED!();
 
     expect(router.replace).toHaveBeenCalledWith('/');
+  });
+});
+
+describe('WebView Analytics 브리지', () => {
+  it('웹 이벤트를 네이티브 Firebase Analytics로 전달한다', async () => {
+    await render(<AppWebView />);
+
+    mockBridgeHandlers.TRACK_ANALYTICS_EVENT!({
+      name: 'board_viewed',
+      params: { photo_count: 3 },
+    });
+
+    expect(mockTrack).toHaveBeenCalledWith('board_viewed', { photo_count: 3 });
   });
 });
 
