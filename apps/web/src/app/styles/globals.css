@@ -205,6 +205,23 @@ body {
   font-family: 'Pretendard', sans-serif;
 }
 
+.landing-bg {
+  background-color: #000;
+  background-image:
+    radial-gradient(
+      ellipse 75% 230% at 50% 50%,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(12, 12, 12, 0.56) 50%,
+      rgba(24, 24, 24, 0.32) 100%
+    ),
+    radial-gradient(#313131 1.2px, transparent 1.2px), linear-gradient(to bottom, #000, #181818);
+  background-repeat: no-repeat, repeat, no-repeat;
+  background-size:
+    auto,
+    18px 18px,
+    100% 100%;
+}
+
 input,
 textarea,
 [contenteditable='true'] {
