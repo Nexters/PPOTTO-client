@@ -100,11 +100,15 @@ jobs:
 
             ARCHIVE="/tmp/ppotto-web-$RELEASE_ID.tar.gz"
             RELEASE="/opt/ppotto-web/releases/$RELEASE_ID"
+            IMAGE_CACHE="/opt/ppotto-web/shared/next-image-cache"
             PREVIOUS="$(readlink -f /opt/ppotto-web/current 2>/dev/null || true)"
 
             sudo install -d -o ppotto -g ppotto -m 0755 "$RELEASE"
             sudo tar -xzf "$ARCHIVE" -C "$RELEASE"
             sudo chown -R ppotto:ppotto "$RELEASE"
+            sudo install -d -o ppotto -g ppotto -m 0755 "$IMAGE_CACHE"
+            sudo install -d -o ppotto -g ppotto -m 0755 "$RELEASE/apps/web/.next/cache"
+            sudo ln -sfnT "$IMAGE_CACHE" "$RELEASE/apps/web/.next/cache/images"
             rm -f "$ARCHIVE"
             sudo test -f "$RELEASE/apps/web/server.js"
 

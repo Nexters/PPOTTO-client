@@ -37,7 +37,12 @@ const isTokenBundle = (value: unknown): value is TokenBundle =>
   typeof value.accessTokenExpiresIn === 'number';
 
 export function isDevelopmentBrowser() {
-  if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') return false;
+  if (
+    (process.env.NODE_ENV !== 'development' &&
+      process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN !== 'true') ||
+    typeof window === 'undefined'
+  )
+    return false;
   const host = window as NativeBridgeWindow;
   return !(
     host.ReactNativeWebView ||
