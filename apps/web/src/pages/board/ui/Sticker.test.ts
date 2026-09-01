@@ -101,10 +101,13 @@ describe('drawOutlinedSticker', () => {
     await preloadStickerImages([renewed]);
 
     expect(fetchImage).toHaveBeenCalledOnce();
-    expect(fetchImage).toHaveBeenCalledWith(renewed, { mode: 'cors' });
+    expect(fetchImage).toHaveBeenCalledWith(
+      `/_next/image?url=${encodeURIComponent(renewed)}&w=750&q=75`,
+      { headers: { Accept: 'image/webp,image/*;q=0.8' } },
+    );
     expect(put).toHaveBeenCalledOnce();
     expect(vi.mocked(put).mock.calls[0]![0].url).toBe(
-      'https://storage.googleapis.com/ppotto/stickers/a.png',
+      'https://storage.googleapis.com/ppotto/stickers/a.png?ppotto-width=750',
     );
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 
@@ -134,7 +137,9 @@ describe('drawOutlinedSticker', () => {
 
     const src = 'https://storage.googleapis.com/ppotto/stickers/race.png';
     const preload = preloadStickerImages([src]);
-    await waitFor(() => expect(TestImage.current?.src).toBe(src));
+    await waitFor(() =>
+      expect(TestImage.current?.src).toBe(`/_next/image?url=${encodeURIComponent(src)}&w=750&q=75`),
+    );
 
     const { result } = renderHook(() => {
       const image = useStickerImage(src);

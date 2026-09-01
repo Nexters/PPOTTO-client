@@ -1,6 +1,7 @@
 import { useEffect, useReducer } from 'react';
 
 const STICKER_BITMAP_MAX_EDGE = 750;
+const STICKER_IMAGE_QUALITY = 75;
 const STICKER_CACHE_NAME = 'ppotto-stickers-v1';
 
 export const STICKER_OUTLINE_WIDTH = 3;
@@ -24,22 +25,35 @@ function cacheKeyOf(src: string): string {
   }
 }
 
+function persistentCacheKeyOf(src: string): string {
+  const url = new URL(cacheKeyOf(src));
+  url.searchParams.set('ppotto-width', String(STICKER_BITMAP_MAX_EDGE));
+  return url.toString();
+}
+
+function optimizedImageSrc(src: string): string {
+  return `/_next/image?url=${encodeURIComponent(src)}&w=${STICKER_BITMAP_MAX_EDGE}&q=${STICKER_IMAGE_QUALITY}`;
+}
+
 function readCached(src: string | undefined): HTMLImageElement | null {
   const image = src ? stickerImageCache.get(cacheKeyOf(src))?.image : undefined;
   return image?.complete && image.naturalWidth > 0 ? image : null;
 }
 
 async function resolveStickerImageSource(src: string): Promise<string> {
-  if (!('caches' in window)) return src;
+  const optimizedSrc = optimizedImageSrc(src);
+  if (!('caches' in window)) return optimizedSrc;
 
   try {
     const generation = cacheGeneration;
     const cache = await window.caches.open(STICKER_CACHE_NAME);
-    const key = new Request(cacheKeyOf(src));
+    const key = new Request(persistentCacheKeyOf(src));
     const cached = await cache.match(key);
     if (cached?.ok) return URL.createObjectURL(await cached.blob());
 
-    const response = await fetch(src, { mode: 'cors' });
+    const response = await fetch(optimizedSrc, {
+      headers: { Accept: 'image/webp,image/*;q=0.8' },
+    });
     if (!response.ok) return src;
 
     if (generation === cacheGeneration) {
