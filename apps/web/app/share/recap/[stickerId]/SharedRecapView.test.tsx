@@ -4,6 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { stickerFixture } from '@/entities/sticker/api/__fixtures__/sticker.fixture';
 
+// jsdom이 Element.scrollTo를 구현하지 않아 필름스트립 동기화 로직이 던짐
+Element.prototype.scrollTo = vi.fn();
+
+// 열림/닫힘만 검증하므로, jsdom에 없는 브라우저 API를 요구하는 embla는 모킹
+vi.mock('embla-carousel-react', () => ({
+  default: () => [vi.fn(), undefined],
+}));
+
 // fill은 next/image 전용 boolean prop이라 DOM에 그대로 넘기면 경고가 나 제외
 vi.mock('next/image', () => ({
   default: ({ fill: _fill, ...props }: React.ComponentProps<'img'> & { fill?: boolean }) => (
