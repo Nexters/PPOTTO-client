@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getDevelopmentAccessToken,
   hasDevelopmentSession,
+  isDevelopmentBrowser,
   loginWithDevelopmentEmail,
   logoutDevelopmentSession,
 } from './browser-dev-session';
@@ -27,6 +28,14 @@ describe('browser dev session', () => {
     localStorage.clear();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+  });
+
+  it('production에서는 명시적 플래그가 있을 때만 개발 브라우저를 허용한다', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(isDevelopmentBrowser()).toBe(false);
+
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEV_LOGIN', 'true');
+    expect(isDevelopmentBrowser()).toBe(true);
   });
 
   it('이메일 로그인 후 만료 토큰을 한 번만 갱신하고 로그아웃한다', async () => {
