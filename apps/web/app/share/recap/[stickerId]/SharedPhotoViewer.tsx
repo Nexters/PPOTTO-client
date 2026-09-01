@@ -1,17 +1,10 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
-import {
-  buildDisplayList,
-  buildExpandedDisplayList,
-  findFlatIndex,
-  type PhotoSelection,
-  resolveFilmstripSelection,
-} from '@/pages/photo-viewer/model/photo-selection';
-import type { ZoomEdgeDirection } from '@/pages/photo-viewer/model/photo-zoom';
 import { usePhotoDismissGesture } from '@/pages/photo-viewer/model/use-photo-dismiss-gesture';
+import { usePhotoViewerSelection } from '@/pages/photo-viewer/model/use-photo-viewer-selection';
 import { usePhotoZoomGesture } from '@/pages/photo-viewer/model/use-photo-zoom-gesture';
 import { PhotoViewerHeader } from '@/pages/photo-viewer/ui/PhotoViewerHeader';
 import { cn } from '@/shared/lib/cn';
@@ -26,17 +19,25 @@ type SharedPhotoViewerProps = {
 };
 
 export function SharedPhotoViewer({ photos, initialIndex, onClose }: SharedPhotoViewerProps) {
-  const [selection, setSelection] = useState<PhotoSelection>({
-    topIndex: initialIndex,
-    subIndex: 0,
-  });
   const zoomInteractionBlockedRef = useRef(false);
-  const jumpCarouselSelectionRef = useRef(false);
+  // 순환 의존 회피용 ref
+  const resetZoomRef = useRef<() => void>(() => {});
 
-  const filmstripPhotos = buildDisplayList(photos, selection.topIndex);
-  const filmstripIndex = findFlatIndex(filmstripPhotos, selection);
-  const carouselPhotos = buildExpandedDisplayList(photos);
-  const carouselIndex = findFlatIndex(carouselPhotos, selection);
+  const {
+    selection,
+    filmstripPhotos,
+    filmstripIndex,
+    carouselPhotos,
+    carouselIndex,
+    jumpCarouselSelectionRef,
+    handleFilmstripSelect,
+    handleCarouselSelect,
+    handleZoomEdgeNavigate,
+  } = usePhotoViewerSelection({
+    photos,
+    initialTopIndex: initialIndex,
+    onSelectionChange: () => resetZoomRef.current(),
+  });
 
   const getDismissTarget = useCallback(() => {
     const grid = document.querySelector('.recap-share-photo-grid');
@@ -68,17 +69,6 @@ export function SharedPhotoViewer({ photos, initialIndex, onClose }: SharedPhoto
     handlers: dismissHandlers,
   } = usePhotoDismissGesture(onClose, getDismissTarget, () => zoomInteractionBlockedRef.current);
 
-  const handleZoomEdgeNavigate = useCallback(
-    (direction: ZoomEdgeDirection) => {
-      const nextIndex = carouselIndex + (direction === 'next' ? 1 : -1);
-      const photo = carouselPhotos[nextIndex];
-      if (!photo) return;
-      jumpCarouselSelectionRef.current = true;
-      setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
-    },
-    [carouselIndex, carouselPhotos],
-  );
-
   const { resetZoom, handlers: zoomHandlers } = usePhotoZoomGesture(
     gestureRef,
     zoomInteractionBlockedRef,
@@ -87,24 +77,9 @@ export function SharedPhotoViewer({ photos, initialIndex, onClose }: SharedPhoto
     isVerticalDragActiveRef,
   );
 
-  const handleFilmstripSelect = (newFlatIndex: number) => {
-    const nextSelection = resolveFilmstripSelection(photos, selection, newFlatIndex);
-    if (
-      nextSelection.topIndex !== selection.topIndex ||
-      nextSelection.subIndex !== selection.subIndex
-    ) {
-      resetZoom();
-      setSelection(nextSelection);
-    }
-  };
-
-  const handleCarouselSelect = (index: number) => {
-    const photo = carouselPhotos[index];
-    if (photo && (photo.topIndex !== selection.topIndex || photo.subIndex !== selection.subIndex)) {
-      resetZoom();
-      setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
-    }
-  };
+  useLayoutEffect(() => {
+    resetZoomRef.current = resetZoom;
+  });
 
   return (
     <div className="fixed inset-0 z-50">
