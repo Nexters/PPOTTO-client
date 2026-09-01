@@ -1,5 +1,6 @@
 'use client';
 
+import { ImageMultiple } from '@ppotto/assets';
 import Image from 'next/image';
 import { useState } from 'react';
 
@@ -67,6 +68,20 @@ export function SharedRecapView({ data, options }: SharedRecapViewProps) {
               onClick={() => setOpenPhotoIndex(index)}
             >
               <Image src={photo.imageUrl} alt="" fill sizes="33vw" className="object-cover" />
+              {photo.groupPhotos.length > 0 && (
+                <ImageMultiple
+                  width={20}
+                  height={20}
+                  viewBox="9 7 20 20"
+                  color="#fff"
+                  style={{
+                    position: 'absolute',
+                    top: 7,
+                    right: 6,
+                    filter: 'drop-shadow(0px 2.5px 10.83px rgba(0, 0, 0, 0.5))',
+                  }}
+                />
+              )}
             </button>
           ))}
         </div>
