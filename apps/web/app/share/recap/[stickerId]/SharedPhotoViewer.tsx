@@ -1,6 +1,5 @@
 'use client';
 
-import { Close } from '@ppotto/assets';
 import { useCallback, useRef, useState } from 'react';
 
 import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
@@ -14,6 +13,7 @@ import {
 import type { ZoomEdgeDirection } from '@/pages/photo-viewer/model/photo-zoom';
 import { usePhotoDismissGesture } from '@/pages/photo-viewer/model/use-photo-dismiss-gesture';
 import { usePhotoZoomGesture } from '@/pages/photo-viewer/model/use-photo-zoom-gesture';
+import { PhotoViewerHeader } from '@/pages/photo-viewer/ui/PhotoViewerHeader';
 import { cn } from '@/shared/lib/cn';
 
 import { SharedPhotoCarousel } from './SharedPhotoCarousel';
@@ -107,46 +107,43 @@ export function SharedPhotoViewer({ photos, initialIndex, onClose }: SharedPhoto
   };
 
   return (
-    <div ref={viewerRef} className="fixed inset-0 z-50 flex flex-col overflow-hidden">
-      <div ref={backdropRef} className="pointer-events-none absolute inset-0 bg-black" />
+    <div className="fixed inset-0 z-50">
       <div
-        ref={headerRef}
-        className="relative z-30 flex w-full justify-end px-6 will-change-opacity"
-        style={{
-          paddingTop: 'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 0.75rem)',
-        }}
-      >
-        <button
-          type="button"
-          aria-label="닫기"
-          onClick={onClose}
-          className="flex size-8 items-center justify-center rounded-full bg-gray-800"
-        >
-          <Close color="white" />
-        </button>
-      </div>
-      <div
-        ref={gestureRef}
+        ref={viewerRef}
         className={cn(
-          'relative z-20 min-h-0 w-full flex-1 origin-top-left',
-          'touch-none will-change-transform',
+          'relative mx-auto flex h-full w-full max-w-112.5',
+          'flex-col overflow-hidden',
         )}
-        {...dismissHandlers}
-        {...zoomHandlers}
       >
-        <SharedPhotoCarousel
-          photos={carouselPhotos}
-          selectedIndex={carouselIndex}
-          jumpToSelectedRef={jumpCarouselSelectionRef}
-          onSelect={handleCarouselSelect}
-        />
-      </div>
-      <div ref={filmstripRef} className="relative z-30 will-change-opacity">
-        <SharedPhotoFilmstrip
-          photos={filmstripPhotos}
-          selectedIndex={filmstripIndex}
-          onSelect={handleFilmstripSelect}
-        />
+        <div ref={backdropRef} className="pointer-events-none absolute inset-0 bg-black" />
+        <div ref={headerRef} className="relative z-30 will-change-opacity">
+          <PhotoViewerHeader onBack={onClose} />
+        </div>
+        <div className={cn('relative z-10 mt-4 flex', 'min-h-0 flex-1 flex-col gap-11')}>
+          <div
+            ref={gestureRef}
+            className={cn(
+              'relative z-20 min-h-0 w-full flex-1 origin-top-left',
+              'touch-none will-change-transform',
+            )}
+            {...dismissHandlers}
+            {...zoomHandlers}
+          >
+            <SharedPhotoCarousel
+              photos={carouselPhotos}
+              selectedIndex={carouselIndex}
+              jumpToSelectedRef={jumpCarouselSelectionRef}
+              onSelect={handleCarouselSelect}
+            />
+          </div>
+          <div ref={filmstripRef} className="relative z-30 will-change-opacity">
+            <SharedPhotoFilmstrip
+              photos={filmstripPhotos}
+              selectedIndex={filmstripIndex}
+              onSelect={handleFilmstripSelect}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

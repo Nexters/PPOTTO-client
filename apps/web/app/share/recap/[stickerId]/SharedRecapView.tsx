@@ -4,11 +4,12 @@ import Image from 'next/image';
 import { useState } from 'react';
 
 import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
-import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import type { ShareOptionKey } from '@/pages/recap/ui/RecapShareOptions';
 import { RecapStickerVisual } from '@/pages/recap/ui/RecapStickerVisual';
 import { RecapSummary } from '@/pages/recap/ui/RecapSummary';
 import { RecapThemeTags } from '@/pages/recap/ui/RecapThemeTags';
+import { cn } from '@/shared/lib/cn';
+import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 
 import { SharedPhotoViewer } from './SharedPhotoViewer';
 
@@ -26,7 +27,7 @@ export function SharedRecapView({ data, options }: SharedRecapViewProps) {
 
   return (
     <div
-      className="flex min-h-full w-full flex-col gap-10 pb-10"
+      className={cn('mx-auto flex min-h-full w-full max-w-112.5 flex-col gap-10', 'pb-10')}
       style={{
         backgroundColor: '#000',
         backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px)',

@@ -36,16 +36,16 @@ describe('SharedRecapView', () => {
 
     await user.click(screen.getAllByRole('button')[0]!);
 
-    expect(screen.getByRole('button', { name: '닫기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '뒤로가기' })).toBeInTheDocument();
   });
 
-  it('닫기 버튼을 누르면 크게보기가 닫힌다', async () => {
+  it('뒤로가기 버튼을 누르면 크게보기가 닫힌다', async () => {
     const user = userEvent.setup();
     render(<SharedRecapView data={stickerFixture} options={options} />);
 
     await user.click(screen.getAllByRole('button')[0]!);
-    await user.click(screen.getByRole('button', { name: '닫기' }));
+    await user.click(screen.getByRole('button', { name: '뒤로가기' }));
 
-    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '뒤로가기' })).not.toBeInTheDocument();
   });
 });
