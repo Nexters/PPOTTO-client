@@ -4,6 +4,7 @@ import { useFlow } from '@stackflow/react';
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
+import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 import { cn } from '@/shared/lib/cn';
 
 import { usePhotoDismissGesture } from './model/use-photo-dismiss-gesture';
@@ -109,19 +110,23 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
           {...zoomHandlers}
         >
           <PhotoCarousel
-            stickerId={stickerId}
             photos={carouselPhotos}
             selectedIndex={carouselIndex}
             jumpToSelectedRef={jumpCarouselSelectionRef}
             onSelect={handleCarouselSelect}
+            renderImage={(photo, props) => (
+              <StickerPhotoImage stickerId={stickerId} src={photo.imageUrl} {...props} />
+            )}
           />
         </div>
         <div ref={filmstripRef} className="relative z-30 will-change-opacity">
           <PhotoFilmstrip
-            stickerId={stickerId}
             photos={filmstripPhotos}
             selectedIndex={filmstripIndex}
             onSelect={handleFilmstripSelect}
+            renderImage={(photo, props) => (
+              <StickerPhotoImage stickerId={stickerId} src={photo.imageUrl} {...props} />
+            )}
           />
         </div>
       </div>

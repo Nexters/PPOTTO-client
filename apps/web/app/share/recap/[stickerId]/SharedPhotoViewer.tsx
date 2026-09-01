@@ -1,16 +1,16 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import type { StickerPhoto } from '@/entities/sticker/api/sticker-api';
 import { usePhotoDismissGesture } from '@/pages/photo-viewer/model/use-photo-dismiss-gesture';
 import { usePhotoViewerSelection } from '@/pages/photo-viewer/model/use-photo-viewer-selection';
 import { usePhotoZoomGesture } from '@/pages/photo-viewer/model/use-photo-zoom-gesture';
+import { PhotoCarousel } from '@/pages/photo-viewer/ui/PhotoCarousel';
+import { PhotoFilmstrip } from '@/pages/photo-viewer/ui/PhotoFilmstrip';
 import { PhotoViewerHeader } from '@/pages/photo-viewer/ui/PhotoViewerHeader';
 import { cn } from '@/shared/lib/cn';
-
-import { SharedPhotoCarousel } from './SharedPhotoCarousel';
-import { SharedPhotoFilmstrip } from './SharedPhotoFilmstrip';
 
 type SharedPhotoViewerProps = {
   photos: StickerPhoto[];
@@ -104,18 +104,20 @@ export function SharedPhotoViewer({ photos, initialIndex, onClose }: SharedPhoto
             {...dismissHandlers}
             {...zoomHandlers}
           >
-            <SharedPhotoCarousel
+            <PhotoCarousel
               photos={carouselPhotos}
               selectedIndex={carouselIndex}
               jumpToSelectedRef={jumpCarouselSelectionRef}
               onSelect={handleCarouselSelect}
+              renderImage={(photo, props) => <Image src={photo.imageUrl} {...props} alt="" />}
             />
           </div>
           <div ref={filmstripRef} className="relative z-30 will-change-opacity">
-            <SharedPhotoFilmstrip
+            <PhotoFilmstrip
               photos={filmstripPhotos}
               selectedIndex={filmstripIndex}
               onSelect={handleFilmstripSelect}
+              renderImage={(photo, props) => <Image src={photo.imageUrl} {...props} alt="" />}
             />
           </div>
         </div>

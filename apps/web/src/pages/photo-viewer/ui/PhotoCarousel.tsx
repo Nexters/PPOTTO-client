@@ -1,24 +1,31 @@
-import type { RefObject } from 'react';
-
-import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
+import type { ReactNode, RefObject } from 'react';
 
 import type { DisplayItem } from '../model/photo-selection';
 import { usePhotoCarousel } from '../model/use-photo-carousel';
 
+export type PhotoCarouselImageProps = {
+  alt: string;
+  fill: true;
+  sizes: string;
+  className: string;
+  'data-photo-viewer-active-image'?: string;
+  'data-photo-viewer-zoom-image'?: boolean;
+};
+
 type PhotoCarouselProps = {
-  stickerId: string;
   photos: DisplayItem[];
   selectedIndex: number;
   jumpToSelectedRef: RefObject<boolean>;
   onSelect: (index: number) => void;
+  renderImage: (photo: DisplayItem, props: PhotoCarouselImageProps) => ReactNode;
 };
 
 export function PhotoCarousel({
-  stickerId,
   photos,
   selectedIndex,
   jumpToSelectedRef,
   onSelect,
+  renderImage,
 }: PhotoCarouselProps) {
   const carouselRef = usePhotoCarousel(selectedIndex, onSelect, jumpToSelectedRef);
   const selectedPhoto = photos[selectedIndex];
@@ -31,15 +38,13 @@ export function PhotoCarousel({
         <div data-photo-viewer-carousel-track className="flex h-full gap-2">
           {photos.map((photo, index) => (
             <div key={photo.id} className="relative h-full min-w-0 flex-[0_0_100%]">
-              <StickerPhotoImage
-                stickerId={stickerId}
-                src={photo.imageUrl}
-                alt=""
-                fill
-                sizes="100vw"
-                className="object-contain"
-                data-photo-viewer-active-image={index === selectedIndex ? 'true' : undefined}
-              />
+              {renderImage(photo, {
+                alt: '',
+                fill: true,
+                sizes: '100vw',
+                className: 'object-contain',
+                'data-photo-viewer-active-image': index === selectedIndex ? 'true' : undefined,
+              })}
             </div>
           ))}
         </div>
@@ -49,15 +54,13 @@ export function PhotoCarousel({
           data-photo-viewer-zoom-layer
           className="pointer-events-none absolute inset-0 z-10 opacity-0"
         >
-          <StickerPhotoImage
-            stickerId={stickerId}
-            src={selectedPhoto.imageUrl}
-            alt=""
-            fill
-            sizes="100vw"
-            className="origin-top-left object-contain will-change-transform"
-            data-photo-viewer-zoom-image
-          />
+          {renderImage(selectedPhoto, {
+            alt: '',
+            fill: true,
+            sizes: '100vw',
+            className: 'origin-top-left object-contain will-change-transform',
+            'data-photo-viewer-zoom-image': true,
+          })}
         </div>
       )}
       {previousPhoto && (
@@ -65,14 +68,12 @@ export function PhotoCarousel({
           data-photo-viewer-edge-preview="previous"
           className="pointer-events-none absolute inset-0 z-10 opacity-0"
         >
-          <StickerPhotoImage
-            stickerId={stickerId}
-            src={previousPhoto.imageUrl}
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-contain"
-          />
+          {renderImage(previousPhoto, {
+            alt: '',
+            fill: true,
+            sizes: '100vw',
+            className: 'object-contain',
+          })}
         </div>
       )}
       {nextPhoto && (
@@ -80,14 +81,12 @@ export function PhotoCarousel({
           data-photo-viewer-edge-preview="next"
           className="pointer-events-none absolute inset-0 z-10 opacity-0"
         >
-          <StickerPhotoImage
-            stickerId={stickerId}
-            src={nextPhoto.imageUrl}
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-contain"
-          />
+          {renderImage(nextPhoto, {
+            alt: '',
+            fill: true,
+            sizes: '100vw',
+            className: 'object-contain',
+          })}
         </div>
       )}
     </div>
