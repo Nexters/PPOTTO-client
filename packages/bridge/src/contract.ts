@@ -24,6 +24,7 @@ const analysisLoadingPhaseState = z.object({
   visualProgress: z.number().min(0).max(100),
 });
 const analysisLoadingState = analysisLoadingPhaseState.extend({
+  jobId: z.string().nullable().optional(),
   // 선택 그룹은 최대 100개지만 그룹당 사진이 최대 10장이므로 실제 사진 수는 1,000장까지 가능하다.
   photoCount: z.number().int().min(0).max(1000),
   // iCloud에서 사진을 내려받는 중인지. 구버전 앱은 이 필드를 보내지 않으므로 optional
@@ -77,15 +78,19 @@ export const contract = defineContract({
   }),
   BOARD_READY: command(),
   GET_ANALYSIS_LOADING_STATE: request({ response: analysisLoadingState }),
-  ANALYSIS_LOADING_READY: command(),
+  ANALYSIS_LOADING_READY: command({
+    payload: z.object({ jobId: z.string().nullable() }),
+  }),
   ANALYSIS_LOADING_PHASE_STARTED: command({
-    payload: z.object({ phase: analysisLoadingPhase }),
+    payload: z.object({ jobId: z.string().nullable(), phase: analysisLoadingPhase }),
   }),
   ANALYSIS_LOADING_PHASE_FINISHED: request({
-    payload: z.object({ phase: analysisLoadingPhase }),
+    payload: z.object({ jobId: z.string().nullable(), phase: analysisLoadingPhase }),
     response: analysisLoadingPhaseState,
   }),
-  ANALYSIS_LOADING_REVEAL_FINISHED: command(),
+  ANALYSIS_LOADING_REVEAL_FINISHED: command({
+    payload: z.object({ jobId: z.string().nullable() }),
+  }),
   // iCloud 사진 다운로드 진행 여부 변경 — 초기값은 GET_ANALYSIS_LOADING_STATE에 실려 온다
   ICLOUD_DOWNLOAD_CHANGED: event({ payload: z.object({ downloading: z.boolean() }) }),
   SHOW_BOARD: event(),
