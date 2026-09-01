@@ -17,13 +17,13 @@ export function LandingNav() {
   return (
     <nav
       className={cn(
-        'sticky top-0 z-50 flex h-20 items-center',
+        'sticky top-0 z-50 flex h-14 items-center lg:h-20',
         'justify-between px-6 py-5 transition-colors duration-200 lg:px-12',
-        isScrolled && 'bg-black/20 backdrop-blur-[4px]',
+        isScrolled && 'bg-black/20 backdrop-blur-[10px]',
       )}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- 정적 SVG, 최적화 불필요 */}
-      <img src="/logo/Logo.svg" alt="PPOTTO" className="h-8 w-auto lg:h-10" />
+      <img src="/logo/Logo.svg" alt="PPOTTO" className="h-7 w-auto lg:h-10" />
       <a
         href="#download"
         className={cn(

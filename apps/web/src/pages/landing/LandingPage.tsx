@@ -1,10 +1,12 @@
 /* eslint-disable @next/next/no-img-element -- 정적 랜딩 애셋, next/image 최적화 비활성 상태라 불필요 */
 import { cn } from '@/shared/lib/cn';
 
+import { FeatureSection } from './ui/FeatureSection';
+import { HeroPhoneImage } from './ui/HeroPhoneImage';
 import { LandingNav } from './ui/LandingNav';
 
-// ponytail: 구글 플레이 미출시 — 출시 후 실제 스토어 URL로 교체
-const GOOGLE_PLAY_URL = '#';
+const GOOGLE_PLAY_URL =
+  'https://play.google.com/store/apps/details?id=com.ppotto.mobile&pcampaignid=web_share';
 const APP_STORE_URL = 'https://apps.apple.com/kr/app/id6796674900';
 
 const FEATURES = [
@@ -67,7 +69,7 @@ function StoreButtons() {
 
 export function LandingPage() {
   return (
-    <div className="w-full text-white bg-gradient-to-b from-black to-gray-900">
+    <div className="landing-bg relative w-full text-white">
       <LandingNav />
 
       {/* 히어로 */}
@@ -79,11 +81,20 @@ export function LandingPage() {
       >
         <img
           aria-hidden
-          src="/landing/hero-bg.webp"
+          src="/landing/hero-bg-mobile.webp"
           alt=""
           className={cn(
             'pointer-events-none absolute top-[28%] left-[-23%] w-[136%] max-w-none select-none',
-            'lg:top-[11%] lg:left-[-16%] lg:w-[129%]',
+            'lg:hidden',
+          )}
+        />
+        <img
+          aria-hidden
+          src="/landing/hero-bg.webp"
+          alt=""
+          className={cn(
+            'pointer-events-none absolute hidden max-w-none select-none',
+            'lg:top-[11%] lg:left-[-16%] lg:block lg:w-[129%]',
           )}
         />
         <div className="relative flex flex-col items-center gap-10 px-6">
@@ -99,58 +110,34 @@ export function LandingPage() {
           <p className="text-center font-semibold text-[22px] tracking-[-0.03em] lg:font-bold lg:text-[40px]">
             스티커로 다시 만나는 앨범 속 추억
           </p>
-          <img
-            src="/landing/hero-phone.webp"
-            alt="뽀또 앱 보드 화면"
-            className="w-[360px] max-w-full lg:w-[786px]"
-          />
+          <HeroPhoneImage />
         </div>
       </section>
 
       {/* 기능 소개 */}
       {FEATURES.map((feature) => (
-        <section
-          key={feature.label}
-          className={cn(
-            'flex flex-col items-center justify-center gap-10 px-6 pt-20',
-            'lg:h-[720px] lg:gap-20 lg:pt-24',
-            feature.imageFirst ? 'lg:flex-row-reverse' : 'lg:flex-row',
-          )}
-        >
-          <div
-            className={cn(
-              'flex flex-col items-center gap-2 text-center lg:items-start lg:gap-[17px]',
-              'lg:text-left',
-            )}
-          >
-            <p
-              className={cn(
-                'font-semibold text-[18px] text-gray-500 leading-6 tracking-[-0.03em] lg:font-bold lg:text-[24px]',
-                'lg:leading-9',
-              )}
-            >
-              {feature.label}
-            </p>
-            <h2 className="font-bold text-[24px] leading-9 tracking-[-0.03em] lg:text-[36px] lg:leading-[48px]">
-              {feature.title[0]}
-              <br />
-              {feature.title[1]}
-            </h2>
-          </div>
-          <img src={feature.image} alt="" className="w-[277px] shrink-0 lg:w-[347px]" />
-        </section>
+        <FeatureSection key={feature.label} feature={feature} />
       ))}
 
       {/* 다운로드 CTA */}
       <section
         id="download"
         className={cn(
-          'relative mt-20 flex flex-col items-center justify-center overflow-hidden',
-          'px-6 py-[160px] lg:mt-24 lg:py-[182px]',
+          'relative flex flex-col items-center justify-center overflow-hidden',
+          'px-6 py-[160px] lg:py-[182px]',
         )}
       >
         <div aria-hidden className="absolute inset-0 pointer-events-none select-none">
-          <img src="/landing/cta-bg.webp" alt="" className="object-cover size-full" />
+          <img
+            src="/landing/cta-bg-mobile.webp"
+            alt=""
+            className="hidden object-cover object-bottom size-full max-[440px]:block"
+          />
+          <img
+            src="/landing/cta-bg.webp"
+            alt=""
+            className="object-cover size-full max-[440px]:hidden"
+          />
           <div className="absolute inset-0 bg-black/20" />
         </div>
         <div className="relative flex flex-col items-center gap-10">
