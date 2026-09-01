@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1012555972746",
+    "project_id": "ppotto-f5a60",
+    "storage_bucket": "ppotto-f5a60.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1012555972746:android:a9b2671de9fc59a0a36d73",
+        "android_client_info": {
+          "package_name": "com.ppotto.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_0qy02FG0dD3qnFqhwNN36Z7pqR5cbuM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

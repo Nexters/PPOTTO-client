@@ -116,7 +116,7 @@ async function compressPhotoInner(
   }
 }
 
-/** 새 갤러리 목록을 압축하기 전에 이전 staging 파일을 정리한다. */
+/** 업로드 준비용 임시 압축 파일을 정리한다. */
 export function clearCompressedPhotos() {
   if (STAGING_DIRECTORY.exists) STAGING_DIRECTORY.delete();
 }

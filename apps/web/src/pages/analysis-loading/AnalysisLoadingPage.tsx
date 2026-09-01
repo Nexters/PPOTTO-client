@@ -63,6 +63,7 @@ export function AnalysisLoadingPage() {
       .then(async (state) => {
         if (disposed || !mountRef.current) return;
         syncICloudNotice(state.downloadingFromICloud ?? false);
+        const jobId = state.jobId ?? null;
 
         const photos = prepareMotionPhotos(state);
         await preloadImages([...photos.map(({ src }) => src), BOARD_BG_SRC, ...STICKER_SRCS]);
@@ -77,7 +78,7 @@ export function AnalysisLoadingPage() {
           boardBgSrc: BOARD_BG_SRC,
           stickerSrcs: STICKER_SRCS,
           onPhaseStarted: (phase: AnalysisLoadingBridgeState['visiblePhase']) => {
-            bridge.send('ANALYSIS_LOADING_PHASE_STARTED', { phase });
+            bridge.send('ANALYSIS_LOADING_PHASE_STARTED', { jobId, phase });
             if (phase === 'REVEAL') {
               void prepareBoard().catch((error) =>
                 console.warn('[analysis-loading] 보드 미리 불러오기 실패', error),
@@ -85,13 +86,13 @@ export function AnalysisLoadingPage() {
             }
           },
           onPhaseFinished: (phase: AnalysisLoadingBridgeState['visiblePhase']) =>
-            bridge.request('ANALYSIS_LOADING_PHASE_FINISHED', { phase }),
-          onRevealFinished: () => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED'),
+            bridge.request('ANALYSIS_LOADING_PHASE_FINISHED', { jobId, phase }),
+          onRevealFinished: () => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED', { jobId }),
         });
         motionRef.current = motion;
         motion.setICloudNotice(downloadingFromICloudRef.current);
         motion.start();
-        bridge.send('ANALYSIS_LOADING_READY');
+        bridge.send('ANALYSIS_LOADING_READY', { jobId });
       })
       .catch((error) => console.error('[analysis-loading] 화면 시작 실패', error));
 

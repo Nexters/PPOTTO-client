@@ -11,94 +11,134 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
-      - 'Dockerfile'
-      - '.dockerignore'
+      - '.nvmrc'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
 
 concurrency:
   group: deploy-web-production
-  cancel-in-progress: true
-
-env:
-  IMAGE: ghcr.io/nexters/ppotto-client-web
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, ppotto-web-build]
     environment: production
     permissions:
       contents: read
-      packages: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Build image
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm --filter web... install --frozen-lockfile
+
+      - name: Build
         env:
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_USE_MOCK: 'false'
+          NEXT_PUBLIC_KAKAO_JS_KEY: ${{ vars.NEXT_PUBLIC_KAKAO_JS_KEY }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+          NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: |
-          docker build \
-            --secret id=SENTRY_AUTH_TOKEN,env=SENTRY_AUTH_TOKEN \
-            --build-arg NEXT_PUBLIC_API_URL='${{ vars.NEXT_PUBLIC_API_URL }}' \
-            --build-arg NEXT_PUBLIC_USE_MOCK=false \
-            --build-arg NEXT_PUBLIC_KAKAO_JS_KEY='${{ vars.NEXT_PUBLIC_KAKAO_JS_KEY }}' \
-            --build-arg NEXT_PUBLIC_SENTRY_DSN='${{ vars.NEXT_PUBLIC_SENTRY_DSN }}' \
-            --build-arg NEXT_PUBLIC_SENTRY_ENVIRONMENT='${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT }}' \
-            --build-arg SENTRY_RELEASE='${{ github.sha }}' \
-            --build-arg SENTRY_DIST='${{ github.run_id }}' \
-            --tag "$IMAGE:${{ github.sha }}" \
-            --tag "$IMAGE:latest" \
-            .
+          SENTRY_RELEASE: ${{ github.sha }}
+          SENTRY_DIST: ${{ github.run_id }}
+        run: pnpm --filter web build
 
-      - name: Push image
+      - name: Package standalone server
         run: |
-          echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
-          docker push "$IMAGE:${{ github.sha }}"
-          docker push "$IMAGE:latest"
+          STAGE_DIR="$(mktemp -d)"
+          ARCHIVE="$RUNNER_TEMP/ppotto-web-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.tar.gz"
+          trap 'rm -rf "$STAGE_DIR"' EXIT
 
-      - name: Configure SSH
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' '${{ secrets.PROD_WEB_SSH_KEY }}' > ~/.ssh/ppotto-web.pem
-          printf '%s\n' '${{ secrets.PROD_WEB_KNOWN_HOSTS }}' > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/ppotto-web.pem ~/.ssh/known_hosts
+          cp -a apps/web/.next/standalone/. "$STAGE_DIR/"
+          mkdir -p "$STAGE_DIR/apps/web/.next"
+          cp -a apps/web/.next/static "$STAGE_DIR/apps/web/.next/static"
+          cp -a apps/web/public "$STAGE_DIR/apps/web/public"
 
-      - name: Log in server to GHCR
-        run: |
-          echo '${{ secrets.GITHUB_TOKEN }}' | ssh -i ~/.ssh/ppotto-web.pem \
-            '${{ vars.PROD_WEB_USER }}@${{ vars.PROD_WEB_HOST }}' \
-            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+          test -f "$STAGE_DIR/apps/web/server.js"
+          tar -C "$STAGE_DIR" -czf "$ARCHIVE" .
+          test -s "$ARCHIVE"
 
       - name: Deploy
+        env:
+          PROD_WEB_SSH_KEY: ${{ secrets.PROD_WEB_SSH_KEY }}
+          PROD_WEB_KNOWN_HOSTS: ${{ secrets.PROD_WEB_KNOWN_HOSTS }}
+          PROD_WEB_USER: ${{ vars.PROD_WEB_USER }}
+          PROD_WEB_HOST: ${{ vars.PROD_WEB_HOST }}
         run: |
-          ssh -i ~/.ssh/ppotto-web.pem '${{ vars.PROD_WEB_USER }}@${{ vars.PROD_WEB_HOST }}' <<'REMOTE'
-            set -eu
-            IMAGE='${{ env.IMAGE }}:${{ github.sha }}'
+          RELEASE_ID="$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          ARCHIVE="$RUNNER_TEMP/ppotto-web-$RELEASE_ID.tar.gz"
+          REMOTE_ARCHIVE="/tmp/ppotto-web-$RELEASE_ID.tar.gz"
+          SSH_DIR="$(mktemp -d)"
+          trap 'rm -rf "$SSH_DIR"; rm -f "$ARCHIVE"' EXIT
 
-            docker pull "$IMAGE"
-            docker rm -f ppotto-web 2>/dev/null || true
-            docker run -d \
-              --name ppotto-web \
-              --restart unless-stopped \
-              --env-file /opt/ppotto-web/.env \
-              --publish 127.0.0.1:3000:3000 \
-              "$IMAGE"
+          printf '%s\n' "$PROD_WEB_SSH_KEY" > "$SSH_DIR/key"
+          printf '%s\n' "$PROD_WEB_KNOWN_HOSTS" > "$SSH_DIR/known_hosts"
+          chmod 600 "$SSH_DIR/key" "$SSH_DIR/known_hosts"
+
+          SSH_OPTIONS=(
+            -i "$SSH_DIR/key"
+            -o "UserKnownHostsFile=$SSH_DIR/known_hosts"
+            -o StrictHostKeyChecking=yes
+          )
+
+          scp "${SSH_OPTIONS[@]}" "$ARCHIVE" "$PROD_WEB_USER@$PROD_WEB_HOST:$REMOTE_ARCHIVE"
+
+          ssh "${SSH_OPTIONS[@]}" "$PROD_WEB_USER@$PROD_WEB_HOST" \
+            "RELEASE_ID='$RELEASE_ID' bash -s" <<'REMOTE'
+            set -eu
+
+            ARCHIVE="/tmp/ppotto-web-$RELEASE_ID.tar.gz"
+            RELEASE="/opt/ppotto-web/releases/$RELEASE_ID"
+            PREVIOUS="$(readlink -f /opt/ppotto-web/current 2>/dev/null || true)"
+
+            sudo install -d -o ppotto -g ppotto -m 0755 "$RELEASE"
+            sudo tar -xzf "$ARCHIVE" -C "$RELEASE"
+            sudo chown -R ppotto:ppotto "$RELEASE"
+            rm -f "$ARCHIVE"
+            sudo test -f "$RELEASE/apps/web/server.js"
+
+            sudo ln -sfnT "$RELEASE" /opt/ppotto-web/current
+            sudo systemctl enable ppotto-web
 
             ready=false
-            for attempt in $(seq 1 20); do
-              if curl -fsS http://127.0.0.1:3000/landing >/dev/null 2>&1; then
-                ready=true
-                break
-              fi
-              sleep 1
-            done
+            if sudo systemctl restart ppotto-web; then
+              for attempt in $(seq 1 30); do
+                if curl -fsS http://127.0.0.1:3000/ >/dev/null 2>&1; then
+                  ready=true
+                  break
+                fi
+                sleep 1
+              done
+            fi
 
             if [ "$ready" != true ]; then
-              docker logs --tail 100 ppotto-web
+              sudo journalctl -u ppotto-web -n 100 --no-pager
+              sudo systemctl stop ppotto-web || true
+
+              if [ -n "$PREVIOUS" ] && [ -d "$PREVIOUS" ]; then
+                sudo ln -sfnT "$PREVIOUS" /opt/ppotto-web/current
+                sudo systemctl restart ppotto-web || true
+              fi
+
               exit 1
             fi
 
-            docker image prune -f
+            sudo find /opt/ppotto-web/releases \
+              -mindepth 1 \
+              -maxdepth 1 \
+              -type d \
+              ! -path "$RELEASE" \
+              -mtime +7 \
+              -exec rm -rf -- {} +
           REMOTE

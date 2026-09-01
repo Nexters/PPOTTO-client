@@ -8,8 +8,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import {
+  clearCompressedPhotos,
+  compressPhoto,
+  createUploadPhotoCompressionQueue,
   type GalleryPhoto,
-  photoCompressionQueue,
   PhotoGrid,
   selectedPhotoGroups,
   usePhotoSelection,
@@ -47,6 +49,12 @@ export function PhotoSelectScreen() {
   const mode = modeParam === 'additional' ? 'additional' : 'initial';
   const minSubmitUnits = mode === 'additional' ? 20 : 90;
   const [motionPhotoPreloader] = useState(createMotionPhotoPreloader);
+  const [uploadCompressionQueue] = useState(() =>
+    createUploadPhotoCompressionQueue(compressPhoto, {
+      backgroundConcurrency: Platform.OS === 'ios' ? 2 : 1,
+      submitConcurrency: Platform.OS === 'ios' ? 6 : 3,
+    }),
+  );
   const motionPhotosRef = useRef<GalleryPhoto[]>([]);
   const submittedRef = useRef(false);
   const insets = useSafeAreaInsets();
@@ -79,25 +87,34 @@ export function PhotoSelectScreen() {
   const galleryEmpty = !loading && !permissionRequired && photoUnits.length === 0;
 
   useEffect(() => {
+    clearCompressedPhotos();
+  }, []);
+
+  useEffect(() => {
     if (loading) {
       motionPhotosRef.current = [];
       motionPhotoPreloader.sync([]);
+      uploadCompressionQueue.sync([]);
       return;
     }
 
-    const representatives = selection
-      ? selectedPhotoGroups(selection).map((group) => group.photos[0]!)
-      : [];
+    const selectedGroups = selection ? selectedPhotoGroups(selection) : [];
+    const representatives = selectedGroups.map((group) => group.photos[0]!);
     const next = retainMotionPhotos(motionPhotosRef.current, representatives);
     motionPhotosRef.current = next;
     motionPhotoPreloader.sync(next);
-  }, [loading, motionPhotoPreloader, selection]);
+    uploadCompressionQueue.sync(selectedGroups);
+  }, [loading, motionPhotoPreloader, selection, uploadCompressionQueue]);
 
   useEffect(
     () => () => {
-      if (!submittedRef.current) motionPhotoPreloader.clear();
+      if (!submittedRef.current) {
+        motionPhotoPreloader.clear();
+        uploadCompressionQueue.clear();
+        clearCompressedPhotos();
+      }
     },
-    [motionPhotoPreloader],
+    [motionPhotoPreloader, uploadCompressionQueue],
   );
 
   const handleSubmit = () => {
@@ -117,17 +134,21 @@ export function PhotoSelectScreen() {
     submittedRef.current = true;
 
     photoUploadService.start({
+      jobId,
       motionPhotos: preparedMotionPhotos,
       photoCount,
       prepareJob: async () => {
-        photoCompressionQueue.start(selectedGroups);
-        return prepareUploadJob({
-          jobId,
-          boardId,
-          selection,
-          compressedPhotos: await photoCompressionQueue.wait(),
-          minSubmitUnits,
-        });
+        try {
+          return prepareUploadJob({
+            jobId,
+            boardId,
+            selection,
+            compressedPhotos: await uploadCompressionQueue.wait(selectedGroups),
+            minSubmitUnits,
+          });
+        } finally {
+          uploadCompressionQueue.clear();
+        }
       },
     });
     router.replace({ pathname: '/analysis-loading', params: { boardId } });

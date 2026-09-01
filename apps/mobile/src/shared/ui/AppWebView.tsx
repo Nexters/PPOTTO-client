@@ -6,7 +6,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { useIsFocused } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, Linking, Platform } from 'react-native';
+import { BackHandler, Keyboard, Linking, Platform } from 'react-native';
 import Share, { Social } from 'react-native-share';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -20,6 +20,7 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
+import { track } from '@/shared/lib/analytics';
 import {
   recordWebQaDiagnosticMessage,
   WEB_QA_DIAGNOSTICS_SCRIPT,
@@ -134,14 +135,15 @@ export function AppWebView({
     HAPTIC: ({ type }) => {
       void Haptics.impactAsync(HAPTIC_STYLES[type]);
     },
+    TRACK_ANALYTICS_EVENT: ({ name, params }) => track(name, params),
     // 웹 스택이 루트라 더 뒤로 갈 곳이 없음 — 앱을 백그라운드로 보낸다(안드로이드 표준 동작)
     EXIT_APP: () => {
       BackHandler.exitApp();
     },
     BOARD_READY: () => markLoaded(),
-    ANALYSIS_LOADING_READY: () => {
+    ANALYSIS_LOADING_READY: (payload) => {
       markLoaded();
-      return bridgeHandlers?.ANALYSIS_LOADING_READY?.();
+      return bridgeHandlers?.ANALYSIS_LOADING_READY?.(payload);
     },
     GET_ANALYSIS_LOADING_STATE: () => {
       const handler = bridgeHandlers?.GET_ANALYSIS_LOADING_STATE;
@@ -155,7 +157,8 @@ export function AppWebView({
       if (!handler) throw new Error('analysis loading bridge handler is not configured');
       return handler(payload);
     },
-    ANALYSIS_LOADING_REVEAL_FINISHED: () => bridgeHandlers?.ANALYSIS_LOADING_REVEAL_FINISHED?.(),
+    ANALYSIS_LOADING_REVEAL_FINISHED: (payload) =>
+      bridgeHandlers?.ANALYSIS_LOADING_REVEAL_FINISHED?.(payload),
     SAVE_IMAGE: async ({ base64 }) => {
       try {
         const { status } = await MediaLibrary.requestPermissionsAsync(true, ['photo']);
@@ -211,6 +214,23 @@ export function AppWebView({
   useEffect(() => {
     if (showBoard) bridge.emit('SHOW_BOARD');
   }, [bridge, showBoard]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (e) => {
+      bridge.emit('KEYBOARD_HEIGHT_CHANGED', { height: e.endCoordinates.height });
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      bridge.emit('KEYBOARD_HEIGHT_CHANGED', { height: 0 });
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [bridge]);
 
   useEffect(() => {
     if (downloadingFromICloud === undefined) return;

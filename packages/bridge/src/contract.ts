@@ -24,6 +24,7 @@ const analysisLoadingPhaseState = z.object({
   visualProgress: z.number().min(0).max(100),
 });
 const analysisLoadingState = analysisLoadingPhaseState.extend({
+  jobId: z.string().nullable().optional(),
   // 선택 그룹은 최대 100개지만 그룹당 사진이 최대 10장이므로 실제 사진 수는 1,000장까지 가능하다.
   photoCount: z.number().int().min(0).max(1000),
   // iCloud에서 사진을 내려받는 중인지. 구버전 앱은 이 필드를 보내지 않으므로 optional
@@ -39,6 +40,8 @@ const analysisLoadingState = analysisLoadingPhaseState.extend({
     )
     .max(40),
 });
+const analyticsName = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/);
+const analyticsParams = z.record(analyticsName, z.union([z.string(), z.number()]));
 
 // web <-> RN 브릿지 계약
 export const contract = defineContract({
@@ -70,22 +73,30 @@ export const contract = defineContract({
   SET_BOARD_ACTIVE: command({ payload: z.object({ active: z.boolean() }) }),
   // 네이티브 햅틱 피드백 — 제스처를 막지 않도록 단방향 command
   HAPTIC: command({ payload: z.object({ type: z.enum(['light', 'medium', 'heavy']) }) }),
+  TRACK_ANALYTICS_EVENT: command({
+    payload: z.object({ name: analyticsName, params: analyticsParams }),
+  }),
   BOARD_READY: command(),
   GET_ANALYSIS_LOADING_STATE: request({ response: analysisLoadingState }),
-  ANALYSIS_LOADING_READY: command(),
+  ANALYSIS_LOADING_READY: command({
+    payload: z.object({ jobId: z.string().nullable() }),
+  }),
   ANALYSIS_LOADING_PHASE_STARTED: command({
-    payload: z.object({ phase: analysisLoadingPhase }),
+    payload: z.object({ jobId: z.string().nullable(), phase: analysisLoadingPhase }),
   }),
   ANALYSIS_LOADING_PHASE_FINISHED: request({
-    payload: z.object({ phase: analysisLoadingPhase }),
+    payload: z.object({ jobId: z.string().nullable(), phase: analysisLoadingPhase }),
     response: analysisLoadingPhaseState,
   }),
-  ANALYSIS_LOADING_REVEAL_FINISHED: command(),
+  ANALYSIS_LOADING_REVEAL_FINISHED: command({
+    payload: z.object({ jobId: z.string().nullable() }),
+  }),
   // iCloud 사진 다운로드 진행 여부 변경 — 초기값은 GET_ANALYSIS_LOADING_STATE에 실려 온다
   ICLOUD_DOWNLOAD_CHANGED: event({ payload: z.object({ downloading: z.boolean() }) }),
   SHOW_BOARD: event(),
   // 안드로이드 하드웨어 뒤로가기 — 네이티브가 웹에 전달하고, 웹이 시트 닫기/스택 pop을 처리한다
   NAVIGATE_BACK: event(),
+  KEYBOARD_HEIGHT_CHANGED: event({ payload: z.object({ height: z.number() }) }),
   // 웹 스택이 루트라 더 뒤로 갈 곳이 없음 — 네이티브가 앱을 백그라운드로 보낸다
   EXIT_APP: command(),
 });

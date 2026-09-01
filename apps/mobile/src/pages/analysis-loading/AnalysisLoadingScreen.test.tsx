@@ -1,19 +1,23 @@
 import type { AnalysisLoadingBridgeState, AnalysisLoadingPhaseState } from '@ppotto/bridge';
-import { act, render, screen, userEvent } from '@testing-library/react-native';
+import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnalysisLoadingScreen } from './AnalysisLoadingScreen';
 
 type LoadingBridgeHandlers = {
   GET_ANALYSIS_LOADING_STATE: () => Promise<AnalysisLoadingBridgeState>;
-  ANALYSIS_LOADING_READY: () => unknown;
+  ANALYSIS_LOADING_READY: (payload: { jobId: AnalysisLoadingBridgeState['jobId'] }) => unknown;
   ANALYSIS_LOADING_PHASE_STARTED: (payload: {
+    jobId: AnalysisLoadingBridgeState['jobId'];
     phase: AnalysisLoadingBridgeState['visiblePhase'];
   }) => Promise<void>;
   ANALYSIS_LOADING_PHASE_FINISHED: (payload: {
+    jobId: AnalysisLoadingBridgeState['jobId'];
     phase: AnalysisLoadingBridgeState['visiblePhase'];
   }) => AnalysisLoadingPhaseState;
-  ANALYSIS_LOADING_REVEAL_FINISHED: () => unknown;
+  ANALYSIS_LOADING_REVEAL_FINISHED: (payload: {
+    jobId: AnalysisLoadingBridgeState['jobId'];
+  }) => unknown;
 };
 
 let loadingBridgeHandlers: LoadingBridgeHandlers | undefined;
@@ -42,14 +46,15 @@ jest.mock('@/shared/ui/AppWebView', () => {
 });
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: {
-    beginUpload: jest.fn(),
     clearCurrent: jest.fn(),
     finish: jest.fn(),
     getCurrent: jest.fn(),
     getLastSeenLoadingPhase: jest.fn(),
+    getCurrentJobId: jest.fn(),
     getMotionPhotoCount: jest.fn(),
     getMotionPhotosForWeb: jest.fn(),
     getViewState: jest.fn(),
+    isCurrentJob: jest.fn(),
     isRecoverableError: jest.fn(),
     isStatusUnavailableError: jest.fn(),
     setLastSeenLoadingPhase: jest.fn(),
@@ -59,13 +64,14 @@ jest.mock('@/features/photo-upload', () => ({
 
 const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
   photoUploadService: {
-    beginUpload: jest.Mock;
     finish: jest.Mock;
     getCurrent: jest.Mock;
+    getCurrentJobId: jest.Mock;
     getLastSeenLoadingPhase: jest.Mock;
     getMotionPhotoCount: jest.Mock;
     getMotionPhotosForWeb: jest.Mock;
     getViewState: jest.Mock;
+    isCurrentJob: jest.Mock;
     setLastSeenLoadingPhase: jest.Mock;
   };
 };
@@ -81,13 +87,19 @@ beforeEach(() => {
   loadingBridgeHandlers = undefined;
   showingBoard = false;
   photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));
+  photoUploadService.getCurrentJobId.mockReturnValue('job-1');
   photoUploadService.getLastSeenLoadingPhase.mockResolvedValue(undefined);
   photoUploadService.getMotionPhotoCount.mockReturnValue(100);
   photoUploadService.getMotionPhotosForWeb.mockResolvedValue([
     { id: 'photo-1', uri: 'data:image/jpeg;base64,AA==', width: 1200, height: 800 },
   ]);
   photoUploadService.getViewState.mockReturnValue({ progress: 100, status: 'COMPLETED' });
+  photoUploadService.isCurrentJob.mockImplementation((jobId) => jobId === 'job-1');
   photoUploadService.setLastSeenLoadingPhase.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  jest.useRealTimers();
 });
 
 it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과를 연다', async () => {
@@ -104,10 +116,10 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
   await act(async () => {
     state = await loadingBridgeHandlers!.GET_ANALYSIS_LOADING_STATE();
   });
-  await act(async () => void loadingBridgeHandlers!.ANALYSIS_LOADING_READY());
-  expect(photoUploadService.beginUpload).toHaveBeenCalledTimes(1);
+  await act(async () => void loadingBridgeHandlers!.ANALYSIS_LOADING_READY({ jobId: 'job-1' }));
   expect(state).toEqual({
     downloadingFromICloud: false,
+    jobId: 'job-1',
     photoCount: 100,
     photos: [{ id: 'photo-1', uri: 'data:image/jpeg;base64,AA==', width: 1200, height: 800 }],
     visiblePhase: 'SCAN',
@@ -121,15 +133,21 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
     ['DECK', 'REVEAL'],
   ] as const) {
     await act(async () => {
-      await loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_STARTED({ phase: current });
-      state = loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_FINISHED({ phase: current });
+      await loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_STARTED({
+        jobId: 'job-1',
+        phase: current,
+      });
+      state = loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_FINISHED({
+        jobId: 'job-1',
+        phase: current,
+      });
     });
     expect(state?.visiblePhase).toBe(next);
   }
 
   expect(resultButton).toBeDisabled();
   await act(async () => {
-    loadingBridgeHandlers!.ANALYSIS_LOADING_REVEAL_FINISHED();
+    loadingBridgeHandlers!.ANALYSIS_LOADING_REVEAL_FINISHED({ jobId: 'job-1' });
   });
   expect(resultButton).toBeEnabled();
 
@@ -147,6 +165,7 @@ it('재접속하면 저장된 마지막 막부터 다시 시작한다', async ()
       <AnalysisLoadingScreen />
     </SafeAreaProvider>,
   );
+  await waitFor(() => expect(loadingBridgeHandlers).toBeDefined());
 
   let state: AnalysisLoadingBridgeState | AnalysisLoadingPhaseState | undefined;
   await act(async () => {
@@ -155,9 +174,43 @@ it('재접속하면 저장된 마지막 막부터 다시 시작한다', async ()
 
   expect(state?.visiblePhase).toBe('GROUP');
   await act(async () => {
-    state = loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_FINISHED({ phase: 'GROUP' });
+    state = loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_FINISHED({
+      jobId: 'job-1',
+      phase: 'GROUP',
+    });
   });
   expect(state?.visiblePhase).toBe('ASSEMBLE');
+});
+
+it('오래된 job의 로딩 브릿지 메시지는 무시한다', async () => {
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await waitFor(() => expect(loadingBridgeHandlers).toBeDefined());
+
+  let state: AnalysisLoadingBridgeState | AnalysisLoadingPhaseState | undefined;
+  await act(async () => {
+    state = await loadingBridgeHandlers!.GET_ANALYSIS_LOADING_STATE();
+  });
+  expect(state?.visiblePhase).toBe('SCAN');
+
+  await act(async () => {
+    await loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_STARTED({
+      jobId: 'old-job',
+      phase: 'SCAN',
+    });
+    state = loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_FINISHED({
+      jobId: 'old-job',
+      phase: 'SCAN',
+    });
+    loadingBridgeHandlers!.ANALYSIS_LOADING_REVEAL_FINISHED({ jobId: 'old-job' });
+  });
+
+  expect(photoUploadService.setLastSeenLoadingPhase).not.toHaveBeenCalled();
+  expect(state).toEqual({ visiblePhase: 'SCAN', visualProgress: 25 });
+  expect(screen.getByRole('button', { name: '결과 확인하기' })).toBeDisabled();
 });
 
 it('서버 progress가 오기 전에는 10까지 올리고 멈춘다', async () => {
@@ -170,15 +223,20 @@ it('서버 progress가 오기 전에는 10까지 올리고 멈춘다', async () 
     </SafeAreaProvider>,
   );
 
-  await act(async () => void loadingBridgeHandlers!.ANALYSIS_LOADING_READY());
+  await act(async () => void loadingBridgeHandlers!.ANALYSIS_LOADING_READY({ jobId: 'job-1' }));
   act(() => jest.advanceTimersByTime(20_000));
 
   let state: AnalysisLoadingPhaseState | undefined;
   act(() => {
-    state = loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_FINISHED({ phase: 'SCAN' });
+    state = loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_FINISHED({
+      jobId: 'job-1',
+      phase: 'SCAN',
+    });
   });
 
   expect(state?.visualProgress).toBe(10);
-  view.unmount();
+  act(() => {
+    view.unmount();
+  });
   jest.useRealTimers();
 });

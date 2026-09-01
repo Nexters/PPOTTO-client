@@ -412,7 +412,7 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
   setGallery(spacedAssets(100).map((photo) => ({ ...photo, width: 1200, height: 800 })));
   const { user } = await renderLoadedScreen();
 
-  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(25));
+  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(125));
   expect(mockImageResize).toHaveBeenCalledWith({ width: 640, height: 427 });
   expect(mockImageSave.mock.calls.every(([options]) => options.format === 'jpeg')).toBe(true);
 
@@ -429,9 +429,6 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
 
   const uploadJob = await startOptions.prepareJob();
   expect(uploadJob.groups).toHaveLength(100);
-  expect(mockImageSave.mock.calls.slice(25).every(([options]) => options.format === 'jpeg')).toBe(
-    true,
-  );
   expect(router.replace).toHaveBeenCalledWith({
     pathname: '/analysis-loading',
     params: { boardId: 'board-1' },
@@ -441,11 +438,11 @@ it('CTA를 누르면 업로드를 시작하고 다음 화면으로 이동한다'
 it('캐시된 대표사진을 해제하면 선택된 미캐시 대표사진 하나만 준비한다', async () => {
   setGallery(spacedAssets(100).map((photo) => ({ ...photo, width: 1200, height: 800 })));
   const { user } = await renderLoadedScreen();
-  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(25));
+  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(125));
 
   await user.press(screen.getAllByRole('checkbox')[0]!);
 
-  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(26));
+  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(126));
 });
 
 it('선처리가 진행 중이어도 CTA는 즉시 로딩 화면으로 이동한다', async () => {
@@ -455,7 +452,7 @@ it('선처리가 진행 중이어도 CTA는 즉시 로딩 화면으로 이동한
   });
   setGallery(spacedAssets(100).map((photo) => ({ ...photo, width: 1200, height: 800 })));
   const { user } = await renderLoadedScreen();
-  await waitFor(() => expect(mockImageSave).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(mockImageSave).toHaveBeenCalled());
 
   await user.press(cta());
 

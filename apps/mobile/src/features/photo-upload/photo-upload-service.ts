@@ -60,7 +60,7 @@ const dependencies: PhotoUploadServiceDependencies = {
 };
 
 let currentUpload: Promise<void> | null = null;
-let beginCurrentUpload: (() => void) | null = null;
+let currentJobId: string | null = null;
 let runId = 0;
 const listeners = new Set<() => void>();
 
@@ -73,6 +73,7 @@ export interface UploadMotionPhoto {
 }
 
 interface StartPhotoUploadOptions {
+  jobId: string;
   motionPhotos: Promise<readonly UploadMotionPhoto[]>;
   photoCount: number;
   prepareJob: () => Promise<UploadJobSnapshot>;
@@ -183,9 +184,15 @@ async function waitUntilComplete(analysisId: string) {
 }
 
 export const photoUploadService = {
-  start({ motionPhotos: preparedMotionPhotos, photoCount, prepareJob }: StartPhotoUploadOptions) {
+  start({
+    jobId,
+    motionPhotos: preparedMotionPhotos,
+    photoCount,
+    prepareJob,
+  }: StartPhotoUploadOptions) {
     const id = ++runId;
     const startedAt = Date.now();
+    currentJobId = jobId;
     viewState = { progress: 0, status: 'UPLOADING' };
     motionPhotoCount = photoCount;
     motionPhotos = [];
@@ -197,17 +204,21 @@ export const photoUploadService = {
       logPhotoUploadError('로딩 단계 초기화 실패', error),
     );
 
-    motionPhotosReady = preparedMotionPhotos.then((photos) => {
-      motionPhotos = [...photos];
-      if (!motionPhotos.length) throw new Error('로딩 화면용 사진을 준비하지 못했습니다.');
-    });
-    const loadingReady = new Promise<void>((resolve) => {
-      beginCurrentUpload = resolve;
-    });
-
+    motionPhotosReady = preparedMotionPhotos
+      .then((photos) => {
+        motionPhotos = [...photos];
+        if (!motionPhotos.length) {
+          logPhotoUploadError(
+            '로딩 화면용 사진을 준비하지 못했습니다.',
+            new Error('No motion photos'),
+          );
+        }
+      })
+      .catch((error) => {
+        motionPhotos = [];
+        logPhotoUploadError('로딩 화면용 사진 준비 실패', error);
+      });
     currentUpload = (async () => {
-      await motionPhotosReady;
-      await loadingReady;
       logPhotoUpload(`#${id} 모션 시작 — 업로드 사진 압축 시작`);
       const job = await prepareJob();
       const uploadPhotoCount = job.groups.reduce((count, group) => count + group.items.length, 0);
@@ -231,11 +242,9 @@ export const photoUploadService = {
 
   getCurrent: () => currentUpload,
 
-  beginUpload() {
-    const begin = beginCurrentUpload;
-    beginCurrentUpload = null;
-    begin?.();
-  },
+  getCurrentJobId: () => currentJobId,
+
+  isCurrentJob: (jobId: string | null) => jobId === currentJobId,
 
   getMotionPhotoCount: () => motionPhotoCount,
 
@@ -266,7 +275,6 @@ export const photoUploadService = {
 
     const id = ++runId;
     const startedAt = Date.now();
-    beginCurrentUpload = null;
     viewState = { progress: 0, status: 'UPLOADING' };
     motionPhotos = [];
     motionPhotoCount = 0;
@@ -274,7 +282,10 @@ export const photoUploadService = {
     logPhotoUpload(`#${id} 저장된 작업 재개`);
 
     const restoredJob = storage.loadJob().then((stored) => {
-      if (stored) restoreMotionPhotos(stored.snapshot);
+      if (stored) {
+        currentJobId = stored.snapshot.jobId;
+        restoreMotionPhotos(stored.snapshot);
+      }
       return stored;
     });
     motionPhotosReady = restoredJob.then(() => undefined);
@@ -322,7 +333,7 @@ export const photoUploadService = {
 
   clearCurrent() {
     currentUpload = null;
-    beginCurrentUpload = null;
+    currentJobId = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -334,7 +345,7 @@ export const photoUploadService = {
     await storage.clearJob();
     await clearLastSeenLoadingPhase();
     currentUpload = null;
-    beginCurrentUpload = null;
+    currentJobId = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -344,7 +355,7 @@ export const photoUploadService = {
 
   async discard() {
     currentUpload = null;
-    beginCurrentUpload = null;
+    currentJobId = null;
     const result = await discardSavedPhotoUpload(dependencies);
     if (result === 'DISCARDED') await clearLastSeenLoadingPhase();
     return result;
