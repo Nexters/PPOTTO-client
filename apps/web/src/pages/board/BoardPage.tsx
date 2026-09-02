@@ -34,7 +34,8 @@ const DRAW_STROKE_WIDTH_DEFAULT = (DRAW_STROKE_WIDTH_MIN + DRAW_STROKE_WIDTH_MAX
 const TEXT_FONT_SIZE_MIN = 12;
 const TEXT_FONT_SIZE_MAX = 40;
 const TEXT_FONT_SIZE_DEFAULT = (TEXT_FONT_SIZE_MIN + TEXT_FONT_SIZE_MAX) / 2;
-const TEXT_MODE_HEADER_HEIGHT = 72;
+const TEXT_MODE_HEADER_HEIGHT =
+  'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 52px)';
 
 const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
 const BOARD_BACKGROUND_COLOR = '#000';
