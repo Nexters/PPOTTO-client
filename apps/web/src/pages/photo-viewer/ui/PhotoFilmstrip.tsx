@@ -1,23 +1,30 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 
-import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 import { cn } from '@/shared/lib/cn';
 
 import type { DisplayItem } from '../model/photo-selection';
 import { useFilmstripSync } from '../model/use-filmstrip-sync';
 
+export type PhotoFilmstripImageProps = {
+  alt: string;
+  fill: true;
+  sizes: string;
+  className: string;
+};
+
 type PhotoFilmstripProps = {
-  stickerId: string;
   photos: DisplayItem[];
   selectedIndex: number;
   onSelect: (index: number) => void;
+  renderImage: (photo: DisplayItem, props: PhotoFilmstripImageProps) => ReactNode;
 };
 
 export function PhotoFilmstrip({
-  stickerId,
   photos,
   selectedIndex,
   onSelect,
+  renderImage,
 }: PhotoFilmstripProps) {
   const expandedGroupTopIndex =
     photos.find((photo) => photo.groupPosition === 'first')?.topIndex ?? null;
@@ -100,14 +107,12 @@ export function PhotoFilmstrip({
               }
               data-enter-direction={expandsFromRight ? 'right' : 'left'}
             >
-              <StickerPhotoImage
-                stickerId={stickerId}
-                src={photo.imageUrl}
-                alt=""
-                fill
-                sizes="48px"
-                className="object-cover"
-              />
+              {renderImage(photo, {
+                alt: '',
+                fill: true,
+                sizes: '48px',
+                className: 'object-cover',
+              })}
             </button>
           );
         }
@@ -124,14 +129,7 @@ export function PhotoFilmstrip({
               isSelected ? 'z-10 h-12.5 w-12.5' : 'h-10 w-10',
             )}
           >
-            <StickerPhotoImage
-              stickerId={stickerId}
-              src={photo.imageUrl}
-              alt=""
-              fill
-              sizes="40px"
-              className="object-cover"
-            />
+            {renderImage(photo, { alt: '', fill: true, sizes: '40px', className: 'object-cover' })}
           </button>
         );
       })}

@@ -1,20 +1,14 @@
 'use client';
 
 import { useFlow } from '@stackflow/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
+import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 import { cn } from '@/shared/lib/cn';
 
-import {
-  buildDisplayList,
-  buildExpandedDisplayList,
-  findFlatIndex,
-  resolveFilmstripSelection,
-  type PhotoSelection,
-} from './model/photo-selection';
-import type { ZoomEdgeDirection } from './model/photo-zoom';
 import { usePhotoDismissGesture } from './model/use-photo-dismiss-gesture';
+import { usePhotoViewerSelection } from './model/use-photo-viewer-selection';
 import { usePhotoZoomGesture } from './model/use-photo-zoom-gesture';
 import { PhotoCarousel } from './ui/PhotoCarousel';
 import { PhotoFilmstrip } from './ui/PhotoFilmstrip';
@@ -27,13 +21,27 @@ type PhotoViewerPageProps = {
 
 export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProps) {
   const { data } = useStickerQuery(stickerId);
-  const [selection, setSelection] = useState<PhotoSelection>({
-    topIndex: Number(initialIndex),
-    subIndex: 0,
-  });
   const { pop } = useFlow();
   const zoomInteractionBlockedRef = useRef(false);
-  const jumpCarouselSelectionRef = useRef(false);
+  // 순환 의존 회피용 ref
+  const resetZoomRef = useRef<() => void>(() => {});
+
+  const {
+    selection,
+    filmstripPhotos,
+    filmstripIndex,
+    carouselPhotos,
+    carouselIndex,
+    jumpCarouselSelectionRef,
+    handleFilmstripSelect,
+    handleCarouselSelect,
+    handleZoomEdgeNavigate,
+  } = usePhotoViewerSelection({
+    photos: data?.photos ?? [],
+    initialTopIndex: Number(initialIndex),
+    onSelectionChange: () => resetZoomRef.current(),
+  });
+
   const getDismissTarget = useCallback(() => {
     const recap = document.querySelector('.recap-app-screen');
     const candidates = recap?.querySelectorAll<HTMLElement>(
@@ -66,19 +74,6 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     getDismissTarget,
     () => zoomInteractionBlockedRef.current,
   );
-  const handleZoomEdgeNavigate = useCallback(
-    (direction: ZoomEdgeDirection) => {
-      if (!data) return;
-      const photos = buildExpandedDisplayList(data.photos);
-      const currentIndex = findFlatIndex(photos, selection);
-      const nextIndex = currentIndex + (direction === 'next' ? 1 : -1);
-      const photo = photos[nextIndex];
-      if (!photo) return;
-      jumpCarouselSelectionRef.current = true;
-      setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
-    },
-    [data, selection],
-  );
   const { resetZoom, handlers: zoomHandlers } = usePhotoZoomGesture(
     gestureRef,
     zoomInteractionBlockedRef,
@@ -87,35 +82,14 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     isVerticalDragActiveRef,
   );
 
+  useLayoutEffect(() => {
+    resetZoomRef.current = resetZoom;
+  });
+
   useEffect(() => {
     document.documentElement.classList.add('photo-viewer-reveal-recap');
     return () => document.documentElement.classList.remove('photo-viewer-reveal-recap');
   }, []);
-
-  const filmstripPhotos = data ? buildDisplayList(data.photos, selection.topIndex) : [];
-  const filmstripIndex = findFlatIndex(filmstripPhotos, selection);
-  const carouselPhotos = data ? buildExpandedDisplayList(data.photos) : [];
-  const carouselIndex = findFlatIndex(carouselPhotos, selection);
-
-  const handleFilmstripSelect = (newFlatIndex: number) => {
-    if (!data) return;
-    const nextSelection = resolveFilmstripSelection(data.photos, selection, newFlatIndex);
-    if (
-      nextSelection.topIndex !== selection.topIndex ||
-      nextSelection.subIndex !== selection.subIndex
-    ) {
-      resetZoom();
-      setSelection(nextSelection);
-    }
-  };
-
-  const handleCarouselSelect = (index: number) => {
-    const photo = carouselPhotos[index];
-    if (photo && (photo.topIndex !== selection.topIndex || photo.subIndex !== selection.subIndex)) {
-      resetZoom();
-      setSelection({ topIndex: photo.topIndex, subIndex: photo.subIndex });
-    }
-  };
 
   if (!data) return null;
 
@@ -136,19 +110,23 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
           {...zoomHandlers}
         >
           <PhotoCarousel
-            stickerId={stickerId}
             photos={carouselPhotos}
             selectedIndex={carouselIndex}
             jumpToSelectedRef={jumpCarouselSelectionRef}
             onSelect={handleCarouselSelect}
+            renderImage={(photo, props) => (
+              <StickerPhotoImage stickerId={stickerId} src={photo.imageUrl} {...props} />
+            )}
           />
         </div>
         <div ref={filmstripRef} className="relative z-30 will-change-opacity">
           <PhotoFilmstrip
-            stickerId={stickerId}
             photos={filmstripPhotos}
             selectedIndex={filmstripIndex}
             onSelect={handleFilmstripSelect}
+            renderImage={(photo, props) => (
+              <StickerPhotoImage stickerId={stickerId} src={photo.imageUrl} {...props} />
+            )}
           />
         </div>
       </div>

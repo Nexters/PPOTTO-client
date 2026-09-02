@@ -1,11 +1,18 @@
+'use client';
+
+import { ImageMultiple } from '@ppotto/assets';
 import Image from 'next/image';
+import { useState } from 'react';
 
 import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
-import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import type { ShareOptionKey } from '@/pages/recap/ui/RecapShareOptions';
 import { RecapStickerVisual } from '@/pages/recap/ui/RecapStickerVisual';
 import { RecapSummary } from '@/pages/recap/ui/RecapSummary';
 import { RecapThemeTags } from '@/pages/recap/ui/RecapThemeTags';
+import { cn } from '@/shared/lib/cn';
+import { hexToRgba } from '@/shared/lib/hex-to-rgba';
+
+import { SharedPhotoViewer } from './SharedPhotoViewer';
 
 type SharedRecapViewProps = {
   data: StickerRecap;
@@ -13,6 +20,7 @@ type SharedRecapViewProps = {
 };
 
 export function SharedRecapView({ data, options }: SharedRecapViewProps) {
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   const floatComments = data.comments.filter((comment) => comment.posX != null);
   const tagContents = data.comments
     .filter((comment) => comment.posX == null)
@@ -20,7 +28,7 @@ export function SharedRecapView({ data, options }: SharedRecapViewProps) {
 
   return (
     <div
-      className="flex min-h-full w-full flex-col gap-10 pb-10"
+      className={cn('mx-auto flex min-h-full w-full max-w-112.5 flex-col gap-10', 'pb-10')}
       style={{
         backgroundColor: '#000',
         backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px)',
@@ -50,13 +58,40 @@ export function SharedRecapView({ data, options }: SharedRecapViewProps) {
         </div>
       </div>
       {options.themePhotos && (
-        <div className="grid grid-cols-3 gap-3 px-5">
-          {data.photos.map((photo) => (
-            <div key={photo.id} className="rounded-8 relative aspect-square w-full overflow-hidden">
+        <div className="recap-share-photo-grid grid grid-cols-3 gap-3 px-5">
+          {data.photos.map((photo, index) => (
+            <button
+              key={photo.id}
+              type="button"
+              data-recap-photo-index={index}
+              className="rounded-8 relative aspect-square w-full overflow-hidden"
+              onClick={() => setOpenPhotoIndex(index)}
+            >
               <Image src={photo.imageUrl} alt="" fill sizes="33vw" className="object-cover" />
-            </div>
+              {photo.groupPhotos.length > 0 && (
+                <ImageMultiple
+                  width={20}
+                  height={20}
+                  viewBox="9 7 20 20"
+                  color="#fff"
+                  style={{
+                    position: 'absolute',
+                    top: 7,
+                    right: 6,
+                    filter: 'drop-shadow(0px 2.5px 10.83px rgba(0, 0, 0, 0.5))',
+                  }}
+                />
+              )}
+            </button>
           ))}
         </div>
+      )}
+      {openPhotoIndex !== null && (
+        <SharedPhotoViewer
+          photos={data.photos}
+          initialIndex={openPhotoIndex}
+          onClose={() => setOpenPhotoIndex(null)}
+        />
       )}
     </div>
   );

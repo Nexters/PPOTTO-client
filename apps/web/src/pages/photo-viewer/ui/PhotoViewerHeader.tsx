@@ -12,7 +12,7 @@ export function PhotoViewerHeader({ onBack }: PhotoViewerHeaderProps) {
         paddingTop: 'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 0.75rem)',
       }}
     >
-      <button type="button" onClick={onBack}>
+      <button type="button" aria-label="뒤로가기" onClick={onBack}>
         <ChevronLeft />
       </button>
     </div>
