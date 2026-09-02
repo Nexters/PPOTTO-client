@@ -20,7 +20,11 @@ export const boardApi = {
   },
   get: (boardId: string) => {
     if (USE_MOCK) return Promise.resolve(boardFixture);
-    return unwrapData(api.GET('/boards/{boardId}', { params: { path: { boardId } } }));
+    return unwrapData(
+      api.GET('/boards/{boardId}', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
   },
   updateLayout: (boardId: string, input: UpdateBoardLayoutInput) => {
     if (USE_MOCK) return Promise.resolve();

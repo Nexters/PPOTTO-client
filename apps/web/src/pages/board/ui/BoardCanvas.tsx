@@ -26,10 +26,14 @@ import {
   toWorldPoint,
 } from '../model/board-camera';
 import {
+  type DrawingV2Item,
   drawingZIndex,
+  isStrokeDrawing,
+  isTextDrawing,
   type ParsedDrawing,
   parseStrokePoints,
   parseStrokeZIndex,
+  parseTextDrawing,
 } from '../model/board-drawing';
 import { computeTopZIndex, needsInitialLayout } from '../model/board-layout';
 import type { ExistingSticker } from '../model/poisson-cluster';
@@ -216,17 +220,29 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     [emptyBoardStickerTitle, emptyBoardStickerTransform],
   );
 
+  // X-API-Version: 2 응답이라 항상 DrawingV2Response 형태 — BoardDetail 유니온을 여기서 좁힘
+  const drawingsV2 = useMemo(() => (data?.drawings ?? []) as DrawingV2Item[], [data?.drawings]);
+
   const baseDrawings: ParsedDrawing[] = useMemo(
     () =>
-      (data?.drawings ?? []).map((drawing) => ({
+      drawingsV2.filter(isStrokeDrawing).map((drawing) => ({
         id: drawing.id,
         points: parseStrokePoints(drawing.stroke),
         color: drawing.color,
         strokeWidth: drawing.strokeWidth,
         zIndex: parseStrokeZIndex(drawing.stroke),
       })),
-    [data?.drawings],
+    [drawingsV2],
   );
+
+  const baseTexts: LocalTextItem[] = useMemo(
+    () => drawingsV2.filter(isTextDrawing).map(parseTextDrawing),
+    [drawingsV2],
+  );
+
+  useEffect(() => {
+    setLocalTexts(baseTexts);
+  }, [baseTexts]);
 
   const {
     stickers: sessionStickers,

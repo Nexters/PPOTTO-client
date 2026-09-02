@@ -1,3 +1,5 @@
+import type { components } from '@ppotto/api';
+
 import type { BoardDetail, UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
 import { uuidv7 } from '@/shared/lib/uuidv7';
 
@@ -15,6 +17,42 @@ export type ParsedDrawing = {
   strokeWidth: number;
   zIndex: number;
 };
+
+// BoardDetail은 paths의 v1|v2 유니온이라 못 담는, v2 전용 drawings 원소 타입
+export type DrawingV2Item = components['schemas']['DrawingV2Response'];
+export type TextDrawingItem = components['schemas']['DrawingTextResponse'];
+export type StrokeDrawingItem = components['schemas']['DrawingStrokeResponse'];
+
+export type ParsedText = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  maxWidth: number;
+  zIndex: number;
+};
+
+// discriminator mapping 누락으로 생성된 type 값이 실제 응답과 달라, content 존재 여부로 구분
+export function isTextDrawing(drawing: DrawingV2Item): drawing is TextDrawingItem {
+  return 'content' in drawing;
+}
+
+export function isStrokeDrawing(drawing: DrawingV2Item): drawing is StrokeDrawingItem {
+  return 'stroke' in drawing;
+}
+
+export function parseTextDrawing(drawing: TextDrawingItem): ParsedText {
+  return {
+    id: drawing.id,
+    text: drawing.content,
+    x: drawing.posX,
+    y: drawing.posY,
+    fontSize: drawing.fontSize,
+    maxWidth: drawing.maxWidth,
+    zIndex: drawing.zIndex,
+  };
+}
 
 const STROKE_SAMPLE_MIN_DISTANCE = 2;
 
