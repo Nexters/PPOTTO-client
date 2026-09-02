@@ -6,6 +6,7 @@ import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom';
 
 import { bridge } from '@/shared/lib/bridge';
+import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
@@ -34,7 +35,8 @@ const DRAW_STROKE_WIDTH_DEFAULT = (DRAW_STROKE_WIDTH_MIN + DRAW_STROKE_WIDTH_MAX
 const TEXT_FONT_SIZE_MIN = 12;
 const TEXT_FONT_SIZE_MAX = 40;
 const TEXT_FONT_SIZE_DEFAULT = (TEXT_FONT_SIZE_MIN + TEXT_FONT_SIZE_MAX) / 2;
-const TEXT_MODE_HEADER_HEIGHT = 72;
+const TEXT_MODE_HEADER_HEIGHT =
+  'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 52px)';
 
 const DEFAULT_EYEDROPPER_COLOR = '#ffffff';
 const BOARD_BACKGROUND_COLOR = '#000';
@@ -54,7 +56,7 @@ export function BoardPage() {
   const [isAdjustingStrokeWidth, setIsAdjustingStrokeWidth] = useState(false);
   const [textDraft, setTextDraft] = useState('');
   const [textFontSize, setTextFontSize] = useState(TEXT_FONT_SIZE_DEFAULT);
-  const [keyboardHeight, setKeyboardHeight] = useState<number | null>(null);
+  const keyboardHeight = useKeyboardHeight(toolbarMode === 'text');
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [cameraScale, setCameraScale] = useState(1);
@@ -290,20 +292,11 @@ export function BoardPage() {
 
   const handleToolbarModeChange = (next: ToolbarMode) => {
     if (next === 'text') {
-      flushSync(() => {
-        changeToolbarMode(next);
-        setKeyboardHeight(null);
-      });
+      flushSync(() => changeToolbarMode(next));
       return;
     }
     changeToolbarMode(next);
   };
-
-  // keyboardHeight 초기화는 handleToolbarModeChange 담당 — 이전 세션 값 잔존 방지
-  useEffect(() => {
-    if (toolbarMode !== 'text') return;
-    return bridge.on('KEYBOARD_HEIGHT_CHANGED', (payload) => setKeyboardHeight(payload.height));
-  }, [toolbarMode]);
 
   const finishTextMode = () => {
     if (textDraft.trim()) {
@@ -427,7 +420,7 @@ export function BoardPage() {
         {toolbarMode === 'text' && (
           <div
             className="pointer-events-none fixed inset-x-0 z-55 transition-[bottom] duration-300 ease-out"
-            style={{ top: TEXT_MODE_HEADER_HEIGHT, bottom: keyboardHeight ?? 0 }}
+            style={{ top: TEXT_MODE_HEADER_HEIGHT, bottom: keyboardHeight }}
           >
             <TextInputOverlay
               value={textDraft}

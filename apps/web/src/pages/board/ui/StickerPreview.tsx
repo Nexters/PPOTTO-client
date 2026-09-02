@@ -5,13 +5,13 @@ import { useLayoutEffect, useRef } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { drawOutlinedSticker, useCachedStickerImage } from '@/shared/lib/sticker-raster';
-import { useVisualViewportInset } from '@/shared/lib/use-visual-viewport-inset';
+import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 
 import type { StickerData } from './Sticker';
 import { StickerBadge } from './StickerBadge';
 
 const HEADER_HEIGHT = 72;
-const DEFAULT_BOTTOM_RESERVE_HEIGHT = 320;
+const DEFAULT_BOTTOM_RESERVE_HEIGHT = 198;
 const PREVIEW_MAX_HEIGHT = 280;
 const PREVIEW_MAX_WIDTH = 280;
 const BADGE_HEIGHT = 30;
@@ -40,7 +40,7 @@ export function StickerPreview({
   bottomReserveHeight = DEFAULT_BOTTOM_RESERVE_HEIGHT,
 }: StickerPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const keyboardInset = useVisualViewportInset();
+  const keyboardInset = useKeyboardHeight(Boolean(isEditingTitle || followKeyboard));
 
   const photoImage = useCachedStickerImage(sticker.imageUrl ?? undefined);
 
