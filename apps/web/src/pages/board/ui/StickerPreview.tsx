@@ -11,7 +11,7 @@ import type { StickerData } from './Sticker';
 import { StickerBadge } from './StickerBadge';
 
 const HEADER_HEIGHT = 72;
-const DEFAULT_BOTTOM_RESERVE_HEIGHT = 320;
+const DEFAULT_BOTTOM_RESERVE_HEIGHT = 198;
 const PREVIEW_MAX_HEIGHT = 280;
 const PREVIEW_MAX_WIDTH = 280;
 const BADGE_HEIGHT = 30;
