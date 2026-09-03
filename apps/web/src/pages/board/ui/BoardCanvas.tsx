@@ -757,7 +757,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 key={sticker.id}
                 sticker={sticker}
                 isEditMode={isEditMode || isPointerInputSuspended}
-                onNameClick={quickMenu.startDirectEdit}
+                onOpenRecap={cameraSticker.openRecap}
               />
             ))}
           {selectedSticker && (

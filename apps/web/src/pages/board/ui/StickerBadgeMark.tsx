@@ -12,13 +12,13 @@ import { badgeZIndex, getPhotoSize, type StickerData } from './Sticker';
 type StickerBadgeMarkProps = {
   sticker: StickerData;
   isEditMode: boolean;
-  onNameClick: (stickerId: string) => void;
+  onOpenRecap: (stickerId: string) => void;
 };
 
 export const StickerBadgeMark = memo(function StickerBadgeMark({
   sticker,
   isEditMode,
-  onNameClick,
+  onOpenRecap,
 }: StickerBadgeMarkProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const { height } = getPhotoSize(photoImage, sticker.scale);
@@ -38,7 +38,7 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
         pointerEvents: isEditMode ? 'none' : 'auto',
       }}
       onPointerDown={isEditMode ? undefined : (event) => event.stopPropagation()}
-      onClick={isEditMode ? undefined : () => onNameClick(sticker.id)}
+      onClick={isEditMode ? undefined : () => onOpenRecap(sticker.id)}
     >
       <StickerBadge title={sticker.title} isNew={sticker.isNew} />
     </div>
