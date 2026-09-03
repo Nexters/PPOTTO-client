@@ -33,6 +33,7 @@ export type ParsedText = {
   fontSize: number;
   maxWidth: number;
   zIndex: number;
+  rotation: number;
 };
 
 // discriminator mapping 누락으로 생성된 type 값이 실제 응답과 달라, content 존재 여부로 구분
@@ -53,6 +54,7 @@ export function parseTextDrawing(drawing: TextDrawingItem): ParsedText {
     fontSize: drawing.fontSize,
     maxWidth: drawing.maxWidth,
     zIndex: drawing.zIndex,
+    rotation: drawing.rotation,
   };
 }
 
@@ -65,6 +67,7 @@ export function toTextCreateInput(
     fontSize: number;
     maxWidth: number;
     zIndex: number;
+    rotation?: number;
     color?: string;
   },
 ): DrawingCreateInput {
@@ -78,7 +81,7 @@ export function toTextCreateInput(
     posY: options.y,
     fontSize: options.fontSize,
     maxWidth: options.maxWidth,
-    rotation: 0,
+    rotation: options.rotation ?? 0,
     zIndex: options.zIndex,
   } as DrawingCreateInput;
 }
@@ -225,9 +228,20 @@ export function getTextBounds(text: ParsedText): DrawingBounds {
 export function hitTestTextId(point: Point, texts: ParsedText[]): string | null {
   for (let i = texts.length - 1; i >= 0; i -= 1) {
     const text = texts[i]!;
-    if (isPointInDrawingBounds(point, getTextBounds(text))) return text.id;
+    if (isPointInTextBounds(point, text)) return text.id;
   }
   return null;
+}
+
+export function isPointInTextBounds(point: Point, text: ParsedText): boolean {
+  const bounds = getTextBounds(text);
+  const rad = (-text.rotation * Math.PI) / 180;
+  const dx = point.x - bounds.x;
+  const dy = point.y - bounds.y;
+  const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
+  const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
+
+  return Math.abs(localX) <= bounds.width / 2 && Math.abs(localY) <= bounds.height / 2;
 }
 
 export const DRAWING_PINCH_SCALE_MIN = 0.3;

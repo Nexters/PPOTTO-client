@@ -7,6 +7,7 @@ import {
   type RefObject,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -54,6 +55,7 @@ import {
 import { useInitialStickerPlacement } from '../model/use-initial-sticker-placement';
 import { useMoveSession } from '../model/use-move-session';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
+import { useTextSelection } from '../model/use-text-selection';
 import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
 import type { ToolbarMode } from './BoardToolbar';
@@ -145,8 +147,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 ) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const { camera, setCamera, cameraRef, requestFocus } = useBoardCamera(boardId);
-  const [texts, setTexts] = useState<ParsedText[]>([]);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
+  // 선택 시점의 실제 텍스트 렌더 크기
+  const selectedTextMeasureRef = useRef<HTMLDivElement | null>(null);
+  const [selectedTextRenderedBaseSize, setSelectedTextRenderedBaseSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   // 삭제된 빈 스티커는 이번 세션 동안 숨긴다 — 앱 재시작 시 다시 보임
   const [isEmptyStickerHidden, setIsEmptyStickerHidden] = useState(isEmptyBoardStickerHidden);
@@ -232,19 +239,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     [drawingsV2],
   );
 
-  useEffect(() => {
-    setTexts(baseTexts);
-  }, [baseTexts]);
-
   const {
     stickers: sessionStickers,
     drawings,
+    texts,
     applyStickerChange,
     applyDrawingChange,
+    applyTextChange,
     markDrawingDeleted,
     confirm: confirmMoveSession,
     discard: discardMoveSession,
-  } = useMoveSession(boardId, baseStickers, baseDrawings);
+  } = useMoveSession(boardId, baseStickers, baseDrawings, baseTexts);
   // 선택 시 zIndex가 올라간 스티커가 바로 맨 위로 그려지도록, 세션 반영분 기준으로 정렬한다
   const stickers = useMemo(
     () => [...sessionStickers].sort((a, b) => a.zIndex - b.zIndex),
@@ -268,11 +273,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     return () => bridge.send('SET_BOARD_ACTIVE', { active: false });
   }, []);
 
-  // 스티커의 zIndex와 그림의 zIndex(stroke.zIndex)는 같은 숫자 공간을 공유한다 —
-  // "맨 위로 올리기"는 항상 이 둘을 합친 풀 기준으로 계산해야 스티커·그림이 실제로 섞여 쌓인다
+  // 스티커, 그림, 텍스트의 zIndex는 같은 숫자 공간을 공유
+  // "맨 위로 올리기"는 항상 셋을 합친 풀 기준으로 계산해야 실제로 섞여 쌓임
   const combinedZIndexPool = () => [
     ...stickersRef.current.map((s) => ({ id: s.id, zIndex: s.zIndex ?? 0 })),
     ...drawingsRef.current.map((d) => ({ id: d.id, zIndex: d.zIndex })),
+    ...textsRef.current.map((t) => ({ id: t.id, zIndex: t.zIndex })),
   ];
 
   // 롱프레스 눌림 효과를 같은 stickerId를 공유하는 요소 전체(스티커 이미지 + 제목 뱃지)에 적용하기 위한 조회
@@ -291,6 +297,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     },
   );
 
+  // useTextSelection이 아래에서 만들어지기 전에 useDrawingSelection이 그 resetSelection을
+  // 참조해야 해서, 최신 함수를 담아두는 ref로 순환 의존 해결
+  const resetTextSelectionRef = useRef<() => void>(() => {});
+
   const drawingSelection = useDrawingSelection({
     isEditMode,
     cameraRef,
@@ -300,6 +310,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     hitTestSticker,
     combinedZIndexPool,
     setSelectedStickerId,
+    resetTextSelection: () => resetTextSelectionRef.current(),
     applyDrawingChange,
     markDrawingDeleted,
     moveDrawing,
@@ -307,6 +318,53 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onDrawingDeleteArmedChange,
     onDrawingDragOverTrashChange,
   });
+
+  const textSelection = useTextSelection({
+    isEditMode,
+    cameraRef,
+    pointersRef,
+    textsRef,
+    trashButtonRef,
+    hitTestSticker,
+    combinedZIndexPool,
+    setSelectedStickerId,
+    resetDrawingSelection: drawingSelection.resetSelection,
+    applyTextChange,
+    markTextDeleted: markDrawingDeleted,
+    moveText: moveDrawing,
+    deleteText: deleteDrawing,
+    onTextDeleteArmedChange: onDrawingDeleteArmedChange,
+    onTextDragOverTrashChange: onDrawingDragOverTrashChange,
+  });
+
+  useLayoutEffect(() => {
+    resetTextSelectionRef.current = textSelection.resetSelection;
+  });
+
+  const activeTextBoxTransform =
+    textSelection.textBoxPinchPreview ?? textSelection.selectedTextBoxTransform;
+
+  const selectedText = useMemo(
+    () => texts.find((text) => text.id === textSelection.selectedTextId) ?? null,
+    [texts, textSelection.selectedTextId],
+  );
+
+  useLayoutEffect(() => {
+    const el = selectedTextMeasureRef.current;
+    if (!selectedText || !el) {
+      setSelectedTextRenderedBaseSize(null);
+      return;
+    }
+    setSelectedTextRenderedBaseSize({
+      width: el.offsetWidth,
+      height: el.offsetHeight,
+    });
+  }, [selectedText]);
+
+  const selectedTextLayoutScale =
+    selectedText && textSelection.selectedTextBaseSize
+      ? textSelection.selectedTextBaseSize.fontSize / selectedText.fontSize
+      : 1;
 
   const cameraSticker = useCameraStickerGesture({
     boardId,
@@ -340,6 +398,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     if (!isEditMode) {
       setSelectedStickerId(null);
       drawingSelection.resetSelection();
+      textSelection.resetSelection();
     }
   }
 
@@ -362,6 +421,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   // 포인터 이펙트가 등록될 때의 정적 클로저에서도 항상 최신 draw 모드/그림선택/카메라·스티커 훅 결과를 읽기 위함
   const drawModeRef = useRef(drawMode);
   const drawingSelectionRef = useRef(drawingSelection);
+  const textSelectionRef = useRef(textSelection);
   const cameraStickerRef = useRef(cameraSticker);
   // createText(useImperativeHandle)에서 뷰포트 크기를 읽어야 해서 ref로도 들고 있는다
   const containerRef = useRef(container);
@@ -378,6 +438,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     discardMoveSessionRef.current = discardMoveSession;
     drawModeRef.current = drawMode;
     drawingSelectionRef.current = drawingSelection;
+    textSelectionRef.current = textSelection;
     cameraStickerRef.current = cameraSticker;
     containerRef.current = container;
   });
@@ -394,6 +455,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     camera.scale,
     stickers,
     drawings,
+    texts,
     drawMode.draftDrawings,
     onVisualChange,
   ]);
@@ -486,9 +548,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         return;
       }
 
-      // 이동 모드: 그림 탭=이동 가능 상태, 롱프레스=삭제 가능 상태로 승격.
+      // 이동 모드: 그림/텍스트 탭=이동 가능 상태, 롱프레스=삭제 가능 상태로 승격.
       // 기본 모드: 이동 없이 롱프레스로 삭제 가능 상태 진입만 지원(스티커가 기본 모드에서 못 옮기는 것과 동일)
       if (drawingSelectionRef.current.onPointerDown(e, point)) return;
+      if (textSelectionRef.current.onPointerDown(e, point)) return;
 
       cameraStickerRef.current.onPointerDown(e, point);
     };
@@ -504,6 +567,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       }
 
       if (drawingSelectionRef.current.onPointerMove(e, point)) return;
+      if (textSelectionRef.current.onPointerMove(e, point)) return;
 
       cameraStickerRef.current.onPointerMove(e, point);
     };
@@ -519,6 +583,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       }
 
       if (drawingSelectionRef.current.onPointerUp(e)) return;
+      if (textSelectionRef.current.onPointerUp(e)) return;
 
       cameraStickerRef.current.onPointerUp(e, point);
     };
@@ -667,26 +732,47 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               </svg>
             );
           })}
-          {texts.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                position: 'absolute',
-                left: item.x,
-                top: item.y,
-                transform: 'translate(-50%, -50%)',
-                zIndex: item.zIndex,
-                fontSize: item.fontSize,
-                color: '#fff',
-                width: item.maxWidth,
-                pointerEvents: 'none',
-                ...BOARD_TEXT_STYLE,
-                whiteSpace: 'pre',
-              }}
-            >
-              {item.text}
-            </div>
-          ))}
+          {texts.map((item) => {
+            const isSelected = item.id === textSelection.selectedTextId;
+            const live = isSelected ? activeTextBoxTransform : null;
+            const baseSize = isSelected ? textSelection.selectedTextBaseSize : null;
+            const scale = live?.scale ?? 1;
+            const fontSize = baseSize?.fontSize ?? item.fontSize;
+            const maxWidth = baseSize?.maxWidth ?? item.maxWidth;
+
+            return (
+              <div
+                key={item.id}
+                style={{
+                  position: 'absolute',
+                  left: live?.x ?? item.x,
+                  top: live?.y ?? item.y,
+                  zIndex: drawingZIndex(item),
+                  pointerEvents: 'none',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'inline-block',
+                    transform: `translate(-50%, -50%) rotate(${live?.rotation ?? item.rotation}deg) scale(${scale})`,
+                  }}
+                >
+                  <div
+                    ref={isSelected ? selectedTextMeasureRef : undefined}
+                    style={{
+                      display: 'inline-block',
+                      fontSize,
+                      color: '#fff',
+                      maxWidth,
+                      ...BOARD_TEXT_STYLE,
+                    }}
+                  >
+                    {item.text}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
           {/* 이번 세션에 그린 draft — 아직 저장 전이라 선택/드래그 대상이 아니다 */}
           {drawMode.draftDrawings.map((drawing) => (
             <svg
@@ -740,6 +826,28 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               zIndex={9999}
             />
           )}
+          {textSelection.selectedTextId &&
+            selectedTextRenderedBaseSize &&
+            selectedText &&
+            textSelection.selectedTextBaseSize &&
+            activeTextBoxTransform && (
+              <SelectionBoxFrame
+                x={activeTextBoxTransform.x}
+                y={activeTextBoxTransform.y}
+                width={
+                  selectedTextRenderedBaseSize.width *
+                  selectedTextLayoutScale *
+                  activeTextBoxTransform.scale
+                }
+                height={
+                  selectedTextRenderedBaseSize.height *
+                  selectedTextLayoutScale *
+                  activeTextBoxTransform.scale
+                }
+                rotation={activeTextBoxTransform.rotation}
+                zIndex={9999}
+              />
+            )}
           {isEmptyBoardStickerVisible && !isEmptyBoardQuickMenuOpen && (
             <>
               <EmptyBoardSticker

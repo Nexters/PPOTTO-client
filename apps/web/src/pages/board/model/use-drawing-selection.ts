@@ -41,8 +41,9 @@ type UseDrawingSelectionParams = {
   hitTestSticker: (target: EventTarget | null) => HTMLElement | null;
   // 스티커의 zIndex와 그림의 zIndex는 같은 숫자 공간을 공유한다 — 그림을 선택해도 그 풀 기준으로 맨 위에 와야 한다
   combinedZIndexPool: () => { id: string; zIndex: number }[];
-  // 그림을 선택하면 스티커 선택은 해제해야 한다(교차 시스템 부수효과)
+  // 그림을 선택하면 스티커, 텍스트 선택은 해제해야 한다(교차 시스템 부수효과)
   setSelectedStickerId: Dispatch<SetStateAction<string | null>>;
+  resetTextSelection: () => void;
   applyDrawingChange: (drawingId: string, overrides: DrawingOverride) => void;
   markDrawingDeleted: (drawingId: string) => void;
   moveDrawing: (input: DrawingCreateInput) => void;
@@ -63,6 +64,7 @@ export function useDrawingSelection({
   hitTestSticker,
   combinedZIndexPool,
   setSelectedStickerId,
+  resetTextSelection,
   applyDrawingChange,
   markDrawingDeleted,
   moveDrawing,
@@ -186,6 +188,7 @@ export function useDrawingSelection({
   // 이동 모드는 세션 로컬 변경분에 반영하고, 기본 모드는(세션 개념이 없으므로) 바로 저장한다
   const selectDrawing = (drawingId: string) => {
     setSelectedStickerId(null);
+    resetTextSelection();
     setSelectedDrawingId(drawingId);
     const drawing = drawingsRef.current.find((d) => d.id === drawingId);
     const bounds = drawing && getDrawingBounds(drawing.points, drawing.strokeWidth);
