@@ -26,6 +26,7 @@ import {
   hitTestDrawingId,
   drawingZIndex,
   isPointInDrawingBounds,
+  isPointInTextBounds,
   parseStrokePoints,
   parseStrokeZIndex,
   shouldSampleStrokePoint,
@@ -297,6 +298,24 @@ describe('isPointInDrawingBounds', () => {
 
   it('세로로 경계를 벗어나면 밖으로 본다', () => {
     expect(isPointInDrawingBounds({ x: 10, y: 12.1 }, bounds)).toBe(false);
+  });
+});
+
+describe('isPointInTextBounds', () => {
+  const text = {
+    id: 'text-1',
+    text: 'hello',
+    x: 100,
+    y: 100,
+    fontSize: 10,
+    maxWidth: 40,
+    zIndex: 0,
+    rotation: 90,
+  };
+
+  it('회전된 텍스트 박스의 로컬 좌표 기준으로 히트를 판단한다', () => {
+    expect(isPointInTextBounds({ x: 100, y: 119 }, text)).toBe(true);
+    expect(isPointInTextBounds({ x: 121, y: 100 }, text)).toBe(false);
   });
 });
 

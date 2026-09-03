@@ -29,6 +29,15 @@ export function useDrawingPersistence({
     saveLayout({ boardId, input: { drawings: { deletedIds: [id] } } });
   };
 
+  // 새 그림을 캐시에 낙관적으로 추가하고 저장 요청을 보냄
+  const createDrawing = (input: DrawingCreateInput) => {
+    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
+      current ? { ...current, drawings: [...current.drawings, input] } : current,
+    );
+
+    saveLayout({ boardId, input: { drawings: { created: [input] } } });
+  };
+
   // 그림을 새 위치로 캐시에 낙관적으로 반영하고 저장 요청을 보냄
   const moveDrawing = (input: DrawingCreateInput) => {
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
@@ -57,5 +66,5 @@ export function useDrawingPersistence({
     saveLayout({ boardId, input: { drawings: { created: inputs } } });
   };
 
-  return { deleteDrawing, moveDrawing, confirmDraftDrawings };
+  return { createDrawing, deleteDrawing, moveDrawing, confirmDraftDrawings };
 }

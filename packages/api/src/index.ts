@@ -7,4 +7,4 @@ export {
   unwrapNullableData,
   unwrapVoid,
 } from './errors';
-export type { paths } from './generated/schema';
+export type { components, paths } from './generated/schema';

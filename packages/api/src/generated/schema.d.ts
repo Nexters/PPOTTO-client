@@ -121,7 +121,7 @@ export interface paths {
          * 소셜 로그인
          * @description 카카오 또는 애플 계정을 검증하고 가입과 로그인을 함께 처리함
          */
-        post: operations["login"];
+        post: operations["login_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -201,7 +201,7 @@ export interface paths {
         };
         /**
          * 보드 상세 조회
-         * @description 보드와 배치된 스티커, 그림을 함께 반환함. imageUrl은 만료가 있으므로 진입할 때마다 새로 조회함
+         * @description 보드와 배치된 스티커, 선을 함께 반환함. imageUrl은 만료가 있으므로 진입할 때마다 새로 조회함. 겹침 순서는 stroke JSON의 zIndex 키에 담겨 내려가며, 텍스트는 v2에서만 내려감
          */
         get: operations["get"];
         put?: never;
@@ -238,6 +238,26 @@ export interface paths {
          * @description 스티커 배치와 그림 생성·삭제를 하나의 트랜잭션으로 반영함. 편집 모드에서 바뀐 필드만 보냄
          */
         patch: operations["update"];
+        trace?: never;
+    };
+    "/dev/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 개발용 로그인
+         * @description 카카오로 가입된 이메일과 고정 비밀번호로 해당 유저의 실제 토큰 쌍을 발급함. 이후 API 동작은 소셜 로그인과 동일
+         */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/stickers/{stickerId}": {
@@ -484,6 +504,16 @@ export interface components {
             success: boolean;
         };
         /** @description 공통 응답 봉투 */
+        ApiResponseBoardDetailV2Response: {
+            data?: components["schemas"]["BoardDetailV2Response"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
         ApiResponseBoardResponse: {
             data?: components["schemas"]["BoardResponse"] | null;
             error?: components["schemas"]["ErrorResponse"] | null;
@@ -608,7 +638,7 @@ export interface components {
         };
         /** @description 보드와 배치된 스티커 및 그림 */
         BoardDetailResponse: {
-            /** @description 보드와 스티커 위의 그림 목록 */
+            /** @description 보드와 스티커 위의 그림 목록. v1은 선만 내려간다 */
             drawings: components["schemas"]["DrawingResponse"][];
             /**
              * Format: uuid
@@ -624,10 +654,34 @@ export interface components {
             /** @description 보드에 배치된 스티커 목록 */
             stickers: components["schemas"]["BoardStickerResponse"][];
         };
+        /** @description 보드와 배치된 스티커, 선, 텍스트 (v2) */
+        BoardDetailV2Response: {
+            /** @description 보드와 스티커 위의 선과 텍스트 목록 */
+            drawings: components["schemas"]["DrawingV2Response"][];
+            /**
+             * Format: uuid
+             * @description 보드 ID (uuidv7)
+             * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+             */
+            id: string;
+            /**
+             * @description 보드 이름
+             * @example Board 7
+             */
+            name: string;
+            /** @description 보드에 배치된 스티커 목록. v1과 동일 */
+            stickers: components["schemas"]["BoardStickerResponse"][];
+        };
         /** @description 보드 편집 결과 일괄 저장 요청. 편집 모드에서 바뀐 것만 보냄 */
         BoardLayoutRequest: {
             drawings?: components["schemas"]["DrawingChangesRequest"] | null;
             /** @description 변경된 스티커 배치 */
+            stickers?: components["schemas"]["StickerLayoutRequest"][] | null;
+        };
+        /** @description 보드 편집 결과 일괄 저장 요청 (v2). 편집 모드에서 바뀐 것만 보냄 */
+        BoardLayoutV2Request: {
+            drawings?: components["schemas"]["DrawingChangesV2Request"] | null;
+            /** @description 변경된 스티커 배치. v1과 동일 */
             stickers?: components["schemas"]["StickerLayoutRequest"][] | null;
         };
         /** @description 보드 요약 */
@@ -757,12 +811,34 @@ export interface components {
              */
             name?: string | null;
         };
+        /** @description 개발용 로그인 요청 */
+        DevLoginRequest: {
+            /**
+             * @description 카카오로 가입한 계정의 이메일
+             * @example dev@ppotto.co.kr
+             */
+            email: string;
+            /** @description 개발용 고정 비밀번호 */
+            password: string;
+        };
         /** @description 그림 생성과 삭제 변경분 */
         DrawingChangesRequest: {
             /** @description 새로 그린 선. 클라이언트가 만든 id로 upsert하므로 재시도해도 멱등 */
             created?: components["schemas"]["DrawingCreateRequest"][] | null;
             /**
              * @description 삭제할 그림 ID 목록
+             * @example [
+             *       "01983f2c-2b3c-7d4e-9f5a-6b7c8d9e0f1a"
+             *     ]
+             */
+            deletedIds?: string[] | null;
+        };
+        /** @description 선과 텍스트의 생성·삭제 변경분 */
+        DrawingChangesV2Request: {
+            /** @description 새로 만든 선과 텍스트. 클라이언트가 만든 id로 upsert하므로 재시도해도 멱등이고, 같은 id를 다시 보내면 수정이 된다 */
+            created?: components["schemas"]["DrawingCreateV2Request"][] | null;
+            /**
+             * @description 삭제할 그림 ID 목록. 선과 텍스트를 구분하지 않는다
              * @example [
              *       "01983f2c-2b3c-7d4e-9f5a-6b7c8d9e0f1a"
              *     ]
@@ -823,28 +899,28 @@ export interface components {
              */
             strokeWidth: number;
         };
-        /** @description 보드 또는 스티커 위의 그림 */
-        DrawingResponse: {
+        /** @description 새 선 */
+        DrawingCreateStrokeRequest: Omit<WithRequired<components["schemas"]["DrawingCreateV2Request"], "color" | "scope">, "type"> & {
             /**
-             * @description 선 색상
+             * @description 선 색상. #RRGGBB
              * @example #FFD400
              */
             color: string;
             /**
              * Format: uuid
-             * @description 그림 ID (uuidv7)
-             * @example 01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+             * @description 클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함
+             * @example 01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b
              */
             id: string;
             /**
-             * @description 그림이 붙는 대상
+             * @description 선이 붙는 대상
              * @example STICKER
              * @enum {string}
              */
             scope: "STICKER" | "BOARD";
             /**
              * Format: uuid
-             * @description scope=STICKER일 때만 값이 있음
+             * @description scope=STICKER일 때 필수
              * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
             stickerId?: string | null;
@@ -876,7 +952,312 @@ export interface components {
              * @example 4
              */
             strokeWidth: number;
+            /**
+             * Format: int32
+             * @description 겹침 순서. 스티커 zIndex와 같은 숫자 공간을 쓴다
+             * @example 6
+             */
+            zIndex: number;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "DrawingCreateStrokeRequest";
         };
+        /** @description 새 텍스트 */
+        DrawingCreateTextRequest: Omit<WithRequired<components["schemas"]["DrawingCreateV2Request"], "color" | "scope">, "type"> & {
+            /**
+             * @description 글자 색상. #RRGGBB
+             * @example #FFFFFF
+             */
+            color: string;
+            /**
+             * @description 표시할 문구. 최대 32자. 클라이언트가 실측한 줄바꿈이 그대로 들어오며 서버는 다시 감싸지 않음
+             * @example 여름 휴가
+             */
+            content: string;
+            /**
+             * Format: double
+             * @description 글자 크기
+             * @example 26
+             */
+            fontSize: number;
+            /**
+             * Format: uuid
+             * @description 클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함
+             * @example 01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+             */
+            id: string;
+            /**
+             * Format: double
+             * @description 줄바꿈 기준이 된 편집창 폭. 렌더 폭 보존용
+             * @example 280
+             */
+            maxWidth: number;
+            /**
+             * Format: double
+             * @description 보드 좌표 X. 텍스트 상자의 중심
+             * @example 80
+             */
+            posX: number;
+            /**
+             * Format: double
+             * @description 보드 좌표 Y. 텍스트 상자의 중심
+             * @example 290.5
+             */
+            posY: number;
+            /**
+             * Format: double
+             * @description 회전 각도(degree)
+             * @example 0
+             */
+            rotation: number;
+            /**
+             * @description 텍스트가 붙는 대상
+             * @example BOARD
+             * @enum {string}
+             */
+            scope: "STICKER" | "BOARD";
+            /**
+             * Format: uuid
+             * @description scope=STICKER일 때 필수
+             * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+             */
+            stickerId?: string | null;
+            /**
+             * Format: int32
+             * @description 겹침 순서. 스티커 zIndex와 같은 숫자 공간을 쓴다
+             * @example 7
+             */
+            zIndex: number;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "DrawingCreateTextRequest";
+        };
+        /** @description 새 선 또는 텍스트. type이 판별자다 */
+        DrawingCreateV2Request: {
+            color: string;
+            /** Format: uuid */
+            "id-axotQFY"?: string;
+            /** @enum {string} */
+            scope: "STICKER" | "BOARD";
+            /** Format: uuid */
+            "stickerId-eENHahg"?: string;
+            type: string;
+            /** Format: int32 */
+            zindex?: number;
+        } & (components["schemas"]["DrawingCreateStrokeRequest"] | components["schemas"]["DrawingCreateTextRequest"]);
+        /** @description 보드 또는 스티커 위의 그림 */
+        DrawingResponse: {
+            /**
+             * @description 선 색상
+             * @example #FFD400
+             */
+            color: string;
+            /**
+             * Format: uuid
+             * @description 그림 ID (uuidv7)
+             * @example 01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+             */
+            id: string;
+            /**
+             * @description 그림이 붙는 대상
+             * @example STICKER
+             * @enum {string}
+             */
+            scope: "STICKER" | "BOARD";
+            /**
+             * Format: uuid
+             * @description scope=STICKER일 때만 값이 있음
+             * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+             */
+            stickerId?: string | null;
+            /**
+             * @description 선 데이터. 포맷은 클라이언트 정의를 그대로 저장하며, 겹침 순서가 zIndex 키로 함께 들어 있다
+             * @example {
+             *       "points": [
+             *         [
+             *           10.5,
+             *           22
+             *         ],
+             *         [
+             *           14.2,
+             *           25.1
+             *         ],
+             *         [
+             *           19.8,
+             *           27.4
+             *         ]
+             *       ],
+             *       "zIndex": 6
+             *     }
+             */
+            stroke: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: double
+             * @description 선 굵기
+             * @example 4
+             */
+            strokeWidth: number;
+        };
+        /** @description 선 */
+        DrawingStrokeResponse: Omit<WithRequired<components["schemas"]["DrawingV2Response"], "color" | "scope">, "type"> & {
+            /**
+             * @description 선 색상
+             * @example #FFD400
+             */
+            color: string;
+            /**
+             * Format: uuid
+             * @description 그림 ID (uuidv7)
+             * @example 01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+             */
+            id: string;
+            /**
+             * @description 선이 붙는 대상
+             * @example STICKER
+             * @enum {string}
+             */
+            scope: "STICKER" | "BOARD";
+            /**
+             * Format: uuid
+             * @description scope=STICKER일 때만 값이 있음
+             * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+             */
+            stickerId?: string | null;
+            /**
+             * @description 선 데이터. 저장한 그대로 내려감
+             * @example {
+             *       "points": [
+             *         [
+             *           10.5,
+             *           22
+             *         ],
+             *         [
+             *           14.2,
+             *           25.1
+             *         ],
+             *         [
+             *           19.8,
+             *           27.4
+             *         ]
+             *       ]
+             *     }
+             */
+            stroke: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: double
+             * @description 선 굵기
+             * @example 4
+             */
+            strokeWidth: number;
+            /**
+             * Format: int32
+             * @description 겹침 순서
+             * @example 6
+             */
+            zIndex: number;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "DrawingStrokeResponse";
+        };
+        /** @description 텍스트 */
+        DrawingTextResponse: Omit<WithRequired<components["schemas"]["DrawingV2Response"], "color" | "scope">, "type"> & {
+            /**
+             * @description 글자 색상
+             * @example #FFFFFF
+             */
+            color: string;
+            /**
+             * @description 표시할 문구. 저장된 줄바꿈이 그대로 내려감
+             * @example 여름 휴가
+             */
+            content: string;
+            /**
+             * Format: double
+             * @description 글자 크기
+             * @example 26
+             */
+            fontSize: number;
+            /**
+             * Format: uuid
+             * @description 그림 ID (uuidv7)
+             * @example 01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+             */
+            id: string;
+            /**
+             * Format: double
+             * @description 줄바꿈 기준이 된 편집창 폭
+             * @example 280
+             */
+            maxWidth: number;
+            /**
+             * Format: double
+             * @description 보드 좌표 X. 텍스트 상자의 중심
+             * @example 80
+             */
+            posX: number;
+            /**
+             * Format: double
+             * @description 보드 좌표 Y. 텍스트 상자의 중심
+             * @example 290.5
+             */
+            posY: number;
+            /**
+             * Format: double
+             * @description 회전 각도(degree)
+             * @example 0
+             */
+            rotation: number;
+            /**
+             * @description 텍스트가 붙는 대상
+             * @example BOARD
+             * @enum {string}
+             */
+            scope: "STICKER" | "BOARD";
+            /**
+             * Format: uuid
+             * @description scope=STICKER일 때만 값이 있음
+             * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+             */
+            stickerId?: string | null;
+            /**
+             * Format: int32
+             * @description 겹침 순서
+             * @example 7
+             */
+            zIndex: number;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "DrawingTextResponse";
+        };
+        /** @description 보드 또는 스티커 위의 선이나 텍스트. type이 판별자다 */
+        DrawingV2Response: {
+            color: string;
+            /** Format: uuid */
+            "id-axotQFY"?: string;
+            /** @enum {string} */
+            scope: "STICKER" | "BOARD";
+            /** Format: uuid */
+            "stickerId-eENHahg"?: string;
+            type: string;
+            /** Format: int32 */
+            zindex?: number;
+        } & (components["schemas"]["DrawingStrokeResponse"] | components["schemas"]["DrawingTextResponse"]);
         /** @description 실패 응답 상세 */
         ErrorResponse: {
             /**
@@ -1477,7 +1858,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -1543,7 +1924,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -1593,7 +1974,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -1652,7 +2033,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -1711,7 +2092,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -1770,7 +2151,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -1797,7 +2178,7 @@ export interface operations {
             };
         };
     };
-    login: {
+    login_1: {
         parameters: {
             query?: never;
             header?: {
@@ -1805,7 +2186,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -1862,7 +2243,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -1897,7 +2278,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -1936,7 +2317,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -1971,7 +2352,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -2022,13 +2403,19 @@ export interface operations {
     };
     get: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description 조회할 보드 ID (uuidv7)
+                 * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+                 */
+                boardId?: string;
+            };
             header?: {
                 /**
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2047,7 +2434,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiResponseBoardDetailResponse"];
+                    "application/json": components["schemas"]["ApiResponseBoardDetailResponse"] | components["schemas"]["ApiResponseBoardDetailV2Response"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -2078,7 +2465,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2137,7 +2524,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2194,13 +2581,19 @@ export interface operations {
     };
     update: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description 편집한 보드 ID (uuidv7)
+                 * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+                 */
+                boardId?: string;
+            };
             header?: {
                 /**
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2213,7 +2606,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BoardLayoutRequest"];
+                "application/json": components["schemas"]["BoardLayoutRequest"] | components["schemas"]["BoardLayoutV2Request"];
             };
         };
         responses: {
@@ -2255,6 +2648,36 @@ export interface operations {
             };
         };
     };
+    login: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseTokenPairResponse"];
+                };
+            };
+        };
+    };
     getRecap: {
         parameters: {
             query?: never;
@@ -2263,7 +2686,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2313,7 +2736,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2363,7 +2786,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2426,7 +2849,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2489,7 +2912,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2557,7 +2980,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path: {
                 /**
@@ -2607,7 +3030,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -2642,7 +3065,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -2690,7 +3113,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -2725,7 +3148,7 @@ export interface operations {
                  * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
                  * @example 1
                  */
-                "X-API-Version"?: "1";
+                "X-API-Version"?: "1" | "2";
             };
             path?: never;
             cookie?: never;
@@ -2753,3 +3176,6 @@ export interface operations {
         };
     };
 }
+type WithRequired<T, K extends keyof T> = T & {
+    [P in K]-?: T[P];
+};

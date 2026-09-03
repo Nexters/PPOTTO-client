@@ -1,5 +1,9 @@
+import type { components } from '@ppotto/api';
+
 import type { BoardDetail, UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
 import { uuidv7 } from '@/shared/lib/uuidv7';
+
+import { BOARD_TEXT_STYLE } from '../ui/board-text-style';
 
 import type { PinchSample } from './board-transform';
 import { clamp, distance, distanceToSegment, type Point } from './geometry';
@@ -15,6 +19,72 @@ export type ParsedDrawing = {
   strokeWidth: number;
   zIndex: number;
 };
+
+// BoardDetail은 paths의 v1|v2 유니온이라 못 담는, v2 전용 drawings 원소 타입
+export type DrawingV2Item = components['schemas']['DrawingV2Response'];
+export type TextDrawingItem = components['schemas']['DrawingTextResponse'];
+export type StrokeDrawingItem = components['schemas']['DrawingStrokeResponse'];
+
+export type ParsedText = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  maxWidth: number;
+  zIndex: number;
+  rotation: number;
+};
+
+// discriminator mapping 누락으로 생성된 type 값이 실제 응답과 달라, content 존재 여부로 구분
+export function isTextDrawing(drawing: DrawingV2Item): drawing is TextDrawingItem {
+  return 'content' in drawing;
+}
+
+export function isStrokeDrawing(drawing: DrawingV2Item): drawing is StrokeDrawingItem {
+  return 'stroke' in drawing;
+}
+
+export function parseTextDrawing(drawing: TextDrawingItem): ParsedText {
+  return {
+    id: drawing.id,
+    text: drawing.content,
+    x: drawing.posX,
+    y: drawing.posY,
+    fontSize: drawing.fontSize,
+    maxWidth: drawing.maxWidth,
+    zIndex: drawing.zIndex,
+    rotation: drawing.rotation,
+  };
+}
+
+export function toTextCreateInput(
+  id: string,
+  options: {
+    text: string;
+    x: number;
+    y: number;
+    fontSize: number;
+    maxWidth: number;
+    zIndex: number;
+    rotation?: number;
+    color?: string;
+  },
+): DrawingCreateInput {
+  return {
+    id,
+    type: 'TEXT',
+    scope: 'BOARD',
+    color: options.color ?? '#FFFFFF',
+    content: options.text,
+    posX: options.x,
+    posY: options.y,
+    fontSize: options.fontSize,
+    maxWidth: options.maxWidth,
+    rotation: options.rotation ?? 0,
+    zIndex: options.zIndex,
+  } as DrawingCreateInput;
+}
 
 const STROKE_SAMPLE_MIN_DISTANCE = 2;
 
@@ -143,6 +213,35 @@ export function isPointInDrawingBounds(point: Point, bounds: DrawingBounds): boo
     Math.abs(point.x - bounds.x) <= bounds.width / 2 &&
     Math.abs(point.y - bounds.y) <= bounds.height / 2
   );
+}
+
+export function getTextBounds(text: ParsedText): DrawingBounds {
+  const lineCount = text.text.split('\n').length;
+  return {
+    x: text.x,
+    y: text.y,
+    width: text.maxWidth,
+    height: text.fontSize * BOARD_TEXT_STYLE.lineHeight * lineCount,
+  };
+}
+
+export function hitTestTextId(point: Point, texts: ParsedText[]): string | null {
+  for (let i = texts.length - 1; i >= 0; i -= 1) {
+    const text = texts[i]!;
+    if (isPointInTextBounds(point, text)) return text.id;
+  }
+  return null;
+}
+
+export function isPointInTextBounds(point: Point, text: ParsedText): boolean {
+  const bounds = getTextBounds(text);
+  const rad = (-text.rotation * Math.PI) / 180;
+  const dx = point.x - bounds.x;
+  const dy = point.y - bounds.y;
+  const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
+  const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
+
+  return Math.abs(localX) <= bounds.width / 2 && Math.abs(localY) <= bounds.height / 2;
 }
 
 export const DRAWING_PINCH_SCALE_MIN = 0.3;
