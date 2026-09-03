@@ -10,7 +10,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  BADGE_FADE_END_ZOOM,
+  BADGE_FADE_START_ZOOM,
   BOARD_ZOOM_MIN,
+  computeBadgeOpacity,
   computeBoardPinchZoom,
   computeFocusTarget,
   panCamera,
@@ -189,5 +192,23 @@ describe('computeFocusTarget', () => {
     const result = computeFocusTarget(camera, targets, viewport);
 
     expect(result.scale).toBe(1);
+  });
+});
+
+describe('computeBadgeOpacity', () => {
+  it('BADGE_FADE_END_ZOOM 이하로 축소하면 완전히 투명하다', () => {
+    expect(computeBadgeOpacity(BADGE_FADE_END_ZOOM)).toBe(0);
+    expect(computeBadgeOpacity(BOARD_ZOOM_MIN)).toBe(0);
+  });
+
+  it('BADGE_FADE_START_ZOOM 이상이면 완전히 불투명하다', () => {
+    expect(computeBadgeOpacity(BADGE_FADE_START_ZOOM)).toBe(1);
+    expect(computeBadgeOpacity(BADGE_FADE_START_ZOOM + 1)).toBe(1);
+  });
+
+  it('두 임계값 사이에서는 선형으로 보간된다', () => {
+    const midpoint = (BADGE_FADE_START_ZOOM + BADGE_FADE_END_ZOOM) / 2;
+
+    expect(computeBadgeOpacity(midpoint)).toBeCloseTo(0.5);
   });
 });
