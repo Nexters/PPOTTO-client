@@ -12,12 +12,14 @@ import { badgeZIndex, getPhotoSize, type StickerData } from './Sticker';
 type StickerBadgeMarkProps = {
   sticker: StickerData;
   isEditMode: boolean;
+  opacity: number;
   onOpenRecap: (stickerId: string) => void;
 };
 
 export const StickerBadgeMark = memo(function StickerBadgeMark({
   sticker,
   isEditMode,
+  opacity,
   onOpenRecap,
 }: StickerBadgeMarkProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
@@ -26,6 +28,7 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
   if (height <= 0) return null;
 
   const offset = rotatePoint({ x: 0, y: height / 2 }, sticker.rotation);
+  const isInteractive = !isEditMode && opacity > 0;
 
   return (
     <div
@@ -35,10 +38,11 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
         top: (sticker.posY ?? 0) + offset.y,
         zIndex: badgeZIndex(sticker),
         transform: 'translate(-50%, -50%) scale(var(--inv-camera-scale, 1))',
-        pointerEvents: isEditMode ? 'none' : 'auto',
+        opacity,
+        pointerEvents: isInteractive ? 'auto' : 'none',
       }}
-      onPointerDown={isEditMode ? undefined : (event) => event.stopPropagation()}
-      onClick={isEditMode ? undefined : () => onOpenRecap(sticker.id)}
+      onPointerDown={isInteractive ? (event) => event.stopPropagation() : undefined}
+      onClick={isInteractive ? () => onOpenRecap(sticker.id) : undefined}
     >
       <StickerBadge title={sticker.title} isNew={sticker.isNew} />
     </div>

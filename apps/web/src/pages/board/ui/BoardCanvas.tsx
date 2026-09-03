@@ -20,8 +20,8 @@ import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
 
 import {
-  BADGE_VISIBLE_MIN_ZOOM,
   BOARD_ZOOM_MIN,
+  computeBadgeOpacity,
   DOT_FADE_START_ZOOM,
   toWorldPoint,
 } from '../model/board-camera';
@@ -570,6 +570,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const dotZoomRatio = Math.max(camera.scale, DOT_FADE_START_ZOOM) / DOT_FADE_START_ZOOM;
   const dotFadeProgress = (camera.scale - BOARD_ZOOM_MIN) / (DOT_FADE_START_ZOOM - BOARD_ZOOM_MIN);
   const dotOpacity = Math.min(1, Math.max(0, dotFadeProgress));
+  const badgeOpacity = computeBadgeOpacity(camera.scale);
 
   return (
     <div
@@ -755,17 +756,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               onRasterReady={onVisualChange}
             />
           ))}
-          {camera.scale >= BADGE_VISIBLE_MIN_ZOOM &&
-            stickers
-              .filter((sticker) => sticker.id !== selectedId)
-              .map((sticker) => (
-                <StickerBadgeMark
-                  key={sticker.id}
-                  sticker={sticker}
-                  isEditMode={isEditMode || isPointerInputSuspended}
-                  onOpenRecap={cameraSticker.openRecap}
-                />
-              ))}
+          {stickers
+            .filter((sticker) => sticker.id !== selectedId)
+            .map((sticker) => (
+              <StickerBadgeMark
+                key={sticker.id}
+                sticker={sticker}
+                isEditMode={isEditMode || isPointerInputSuspended}
+                opacity={badgeOpacity}
+                onOpenRecap={cameraSticker.openRecap}
+              />
+            ))}
           {selectedSticker && (
             <SelectBox
               sticker={selectedSticker}
