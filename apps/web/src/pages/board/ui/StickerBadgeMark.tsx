@@ -12,13 +12,13 @@ import { badgeZIndex, getPhotoSize, type StickerData } from './Sticker';
 type StickerBadgeMarkProps = {
   sticker: StickerData;
   isEditMode: boolean;
-  onNameClick: (stickerId: string) => void;
+  opacity: number;
 };
 
 export const StickerBadgeMark = memo(function StickerBadgeMark({
   sticker,
   isEditMode,
-  onNameClick,
+  opacity,
 }: StickerBadgeMarkProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const { height } = getPhotoSize(photoImage, sticker.scale);
@@ -26,21 +26,24 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
   if (height <= 0) return null;
 
   const offset = rotatePoint({ x: 0, y: height / 2 }, sticker.rotation);
+  const isInteractive = !isEditMode && opacity > 0;
 
   return (
     <div
+      data-sticker-id={sticker.id}
       style={{
         position: 'absolute',
         left: (sticker.posX ?? 0) + offset.x,
         top: (sticker.posY ?? 0) + offset.y,
         zIndex: badgeZIndex(sticker),
         transform: 'translate(-50%, -50%) scale(var(--inv-camera-scale, 1))',
-        pointerEvents: isEditMode ? 'none' : 'auto',
+        opacity,
+        pointerEvents: isInteractive ? 'auto' : 'none',
       }}
-      onPointerDown={isEditMode ? undefined : (event) => event.stopPropagation()}
-      onClick={isEditMode ? undefined : () => onNameClick(sticker.id)}
     >
-      <StickerBadge title={sticker.title} isNew={sticker.isNew} />
+      <div className="sticker-long-press-visual">
+        <StickerBadge title={sticker.title} isNew={sticker.isNew} />
+      </div>
     </div>
   );
 });

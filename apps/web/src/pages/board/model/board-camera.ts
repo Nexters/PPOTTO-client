@@ -9,6 +9,13 @@ export type CameraState = {
 export const BOARD_ZOOM_MIN = 0.25;
 export const BOARD_ZOOM_MAX = 3;
 export const DOT_FADE_START_ZOOM = 0.4;
+export const BADGE_FADE_START_ZOOM = 0.4;
+export const BADGE_FADE_END_ZOOM = 0.36;
+
+export function computeBadgeOpacity(scale: number): number {
+  const progress = (scale - BADGE_FADE_END_ZOOM) / (BADGE_FADE_START_ZOOM - BADGE_FADE_END_ZOOM);
+  return Math.min(1, Math.max(0, progress));
+}
 
 const ZOOM_SPEED = 1.05;
 // 화면에 꽉 채우지 않고 살짝 여백을 두기 위한 배율 (1=딱 맞음). 첫 시도값이라 실제로 보면서 조정 필요할 수 있음

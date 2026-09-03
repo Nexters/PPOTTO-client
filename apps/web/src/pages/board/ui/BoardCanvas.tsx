@@ -19,7 +19,12 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
 
-import { BOARD_ZOOM_MIN, DOT_FADE_START_ZOOM, toWorldPoint } from '../model/board-camera';
+import {
+  BOARD_ZOOM_MIN,
+  computeBadgeOpacity,
+  DOT_FADE_START_ZOOM,
+  toWorldPoint,
+} from '../model/board-camera';
 import {
   drawingZIndex,
   type ParsedDrawing,
@@ -261,6 +266,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     ...drawingsRef.current.map((d) => ({ id: d.id, zIndex: d.zIndex })),
   ];
 
+  // 롱프레스 눌림 효과를 같은 stickerId를 공유하는 요소 전체(스티커 이미지 + 제목 뱃지)에 적용하기 위한 조회
+  const findStickerElements = (stickerId: string): HTMLElement[] =>
+    container
+      ? Array.from(
+          container.querySelectorAll<HTMLElement>(`[data-sticker-id="${CSS.escape(stickerId)}"]`),
+        )
+      : [];
+
   const { deleteDrawing, moveDrawing, confirmDraftDrawings } = useDrawingPersistence({
     boardId,
     queryClient,
@@ -294,6 +307,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     selectedId,
     emptyBoardSticker,
     hitTestSticker,
+    findStickerElements,
     combinedZIndexPool,
     setSelectedStickerId,
     applyStickerChange,
@@ -565,6 +579,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const dotZoomRatio = Math.max(camera.scale, DOT_FADE_START_ZOOM) / DOT_FADE_START_ZOOM;
   const dotFadeProgress = (camera.scale - BOARD_ZOOM_MIN) / (DOT_FADE_START_ZOOM - BOARD_ZOOM_MIN);
   const dotOpacity = Math.min(1, Math.max(0, dotFadeProgress));
+  const badgeOpacity = computeBadgeOpacity(camera.scale);
 
   return (
     <div
@@ -757,7 +772,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 key={sticker.id}
                 sticker={sticker}
                 isEditMode={isEditMode || isPointerInputSuspended}
-                onNameClick={quickMenu.startDirectEdit}
+                opacity={badgeOpacity}
               />
             ))}
           {selectedSticker && (

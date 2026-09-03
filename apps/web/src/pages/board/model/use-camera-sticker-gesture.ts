@@ -54,6 +54,7 @@ type UseCameraStickerGestureParams = {
   selectedId: string | null;
   emptyBoardSticker: StickerData;
   hitTestSticker: (target: EventTarget | null) => HTMLElement | null;
+  findStickerElements: (stickerId: string) => HTMLElement[];
   // 스티커의 zIndex와 그림의 zIndex는 같은 숫자 공간을 공유한다 — 스티커를 선택해도 그 풀 기준으로 맨 위에 와야 한다
   combinedZIndexPool: () => { id: string; zIndex: number }[];
   setSelectedStickerId: Dispatch<SetStateAction<string | null>>;
@@ -82,6 +83,7 @@ export function useCameraStickerGesture({
   selectedId,
   emptyBoardSticker,
   hitTestSticker,
+  findStickerElements,
   combinedZIndexPool,
   setSelectedStickerId,
   applyStickerChange,
@@ -107,7 +109,8 @@ export function useCameraStickerGesture({
   const lastBackgroundTapRef = useRef<{ time: number; point: Point } | null>(null);
   // 리캡 전환 중 연속 탭으로 중복 진입하는 것을 막는다. 화면이 다시 활성화되면 풀린다
   const isOpeningRecapRef = useRef(false);
-  const pressedStickerRef = useRef<HTMLElement | null>(null);
+  // 눌린 스티커의 이미지·제목 뱃지 요소 전체 — 같이 커지는 연출을 걸기 위함
+  const pressedStickerElementsRef = useRef<HTMLElement[]>([]);
   // 롱프레스가 성사된 순간부터 퀵메뉴가 닫힐 때까지 눌린 연출을 잠근다. 이 사이에
   // 포인터 업·취소 등 여러 경로가 clearPressedSticker를 부르는데, 그걸 그대로 두면
   // 메뉴가 뜨기도 전에 스티커가 원래 크기로 줄어드는 게 보인다
@@ -124,8 +127,14 @@ export function useCameraStickerGesture({
 
   const releasePressedSticker = () => {
     isPressedStickerLockedRef.current = false;
-    pressedStickerRef.current?.removeAttribute('data-pressed');
-    pressedStickerRef.current = null;
+    pressedStickerElementsRef.current.forEach((el) => el.removeAttribute('data-pressed'));
+    pressedStickerElementsRef.current = [];
+  };
+
+  const openRecap = (stickerId: string) => {
+    if (isEditMode || isOpeningRecapRef.current) return;
+    isOpeningRecapRef.current = true;
+    push('Recap', { stickerId, boardId });
   };
 
   const clearPressedSticker = () => {
@@ -183,8 +192,11 @@ export function useCameraStickerGesture({
     if (stickerId && stickerElement && !isEmptyBoardSticker && !isEditMode) {
       releasePressedSticker();
       longPress.start(point, stickerId);
-      stickerElement.dataset.pressed = 'true';
-      pressedStickerRef.current = stickerElement;
+      const elements = findStickerElements(stickerId);
+      elements.forEach((el) => {
+        el.dataset.pressed = 'true';
+      });
+      pressedStickerElementsRef.current = elements;
     }
 
     // 스티커를 처음 선택하는 순간이면 맨 위로 올리는 부수효과를 먼저 실행하고,
@@ -390,9 +402,8 @@ export function useCameraStickerGesture({
           lastBackgroundTapRef.current = { time: now, point: tap.startClient };
           if (isEditMode) setSelectedStickerId(null);
         }
-      } else if (!isEditMode && !isOpeningRecapRef.current) {
-        isOpeningRecapRef.current = true;
-        push('Recap', { stickerId: tap.stickerId, boardId });
+      } else {
+        openRecap(tap.stickerId);
       }
     }
   };

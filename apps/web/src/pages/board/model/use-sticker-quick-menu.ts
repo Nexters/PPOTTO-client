@@ -37,15 +37,6 @@ export function useStickerQuickMenu(boardId: string) {
     setReturnToQuickMenu(false);
   };
 
-  const startDirectEdit = (stickerId: string) => {
-    flushSync(() => {
-      setReturnToQuickMenu(false);
-      setQuickMenuOpenedFromEdit(false);
-      setDirectEditStickerId(stickerId);
-    });
-    focusDirectEditInput();
-  };
-
   const startRenameFromQuickMenu = () => {
     const stickerId = quickMenuStickerId;
     if (!stickerId) return;
@@ -86,7 +77,6 @@ export function useStickerQuickMenu(boardId: string) {
     closeQuickMenu,
     startRenameFromQuickMenu,
     directEditStickerId,
-    startDirectEdit,
     submitDirectEdit,
     cancelDirectEdit,
     finishDirectEditFromBackdrop,
