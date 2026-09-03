@@ -420,6 +420,5 @@ export function useCameraStickerGesture({
     onPointerUp,
     onWheel,
     releasePressedSticker,
-    openRecap,
   };
 }

@@ -13,14 +13,12 @@ type StickerBadgeMarkProps = {
   sticker: StickerData;
   isEditMode: boolean;
   opacity: number;
-  onOpenRecap: (stickerId: string) => void;
 };
 
 export const StickerBadgeMark = memo(function StickerBadgeMark({
   sticker,
   isEditMode,
   opacity,
-  onOpenRecap,
 }: StickerBadgeMarkProps) {
   const photoImage = useStickerImage(sticker.imageUrl ?? undefined);
   const { height } = getPhotoSize(photoImage, sticker.scale);
@@ -32,6 +30,7 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
 
   return (
     <div
+      data-sticker-id={sticker.id}
       style={{
         position: 'absolute',
         left: (sticker.posX ?? 0) + offset.x,
@@ -41,8 +40,6 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
         opacity,
         pointerEvents: isInteractive ? 'auto' : 'none',
       }}
-      onPointerDown={isInteractive ? (event) => event.stopPropagation() : undefined}
-      onClick={isInteractive ? () => onOpenRecap(sticker.id) : undefined}
     >
       <StickerBadge title={sticker.title} isNew={sticker.isNew} />
     </div>

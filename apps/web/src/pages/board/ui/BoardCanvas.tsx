@@ -764,7 +764,6 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 sticker={sticker}
                 isEditMode={isEditMode || isPointerInputSuspended}
                 opacity={badgeOpacity}
-                onOpenRecap={cameraSticker.openRecap}
               />
             ))}
           {selectedSticker && (
