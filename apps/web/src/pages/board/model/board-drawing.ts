@@ -3,6 +3,8 @@ import type { components } from '@ppotto/api';
 import type { BoardDetail, UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
 import { uuidv7 } from '@/shared/lib/uuidv7';
 
+import { BOARD_TEXT_STYLE } from '../ui/board-text-style';
+
 import type { PinchSample } from './board-transform';
 import { clamp, distance, distanceToSegment, type Point } from './geometry';
 
@@ -208,6 +210,24 @@ export function isPointInDrawingBounds(point: Point, bounds: DrawingBounds): boo
     Math.abs(point.x - bounds.x) <= bounds.width / 2 &&
     Math.abs(point.y - bounds.y) <= bounds.height / 2
   );
+}
+
+export function getTextBounds(text: ParsedText): DrawingBounds {
+  const lineCount = text.text.split('\n').length;
+  return {
+    x: text.x,
+    y: text.y,
+    width: text.maxWidth,
+    height: text.fontSize * BOARD_TEXT_STYLE.lineHeight * lineCount,
+  };
+}
+
+export function hitTestTextId(point: Point, texts: ParsedText[]): string | null {
+  for (let i = texts.length - 1; i >= 0; i -= 1) {
+    const text = texts[i]!;
+    if (isPointInDrawingBounds(point, getTextBounds(text))) return text.id;
+  }
+  return null;
 }
 
 export const DRAWING_PINCH_SCALE_MIN = 0.3;
