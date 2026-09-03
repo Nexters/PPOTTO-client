@@ -41,7 +41,9 @@ export const StickerBadgeMark = memo(function StickerBadgeMark({
         pointerEvents: isInteractive ? 'auto' : 'none',
       }}
     >
-      <StickerBadge title={sticker.title} isNew={sticker.isNew} />
+      <div className="sticker-long-press-visual">
+        <StickerBadge title={sticker.title} isNew={sticker.isNew} />
+      </div>
     </div>
   );
 });

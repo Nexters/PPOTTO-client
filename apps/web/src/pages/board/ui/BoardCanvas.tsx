@@ -266,6 +266,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     ...drawingsRef.current.map((d) => ({ id: d.id, zIndex: d.zIndex })),
   ];
 
+  // 롱프레스 눌림 효과를 같은 stickerId를 공유하는 요소 전체(스티커 이미지 + 제목 뱃지)에 적용하기 위한 조회
+  const findStickerElements = (stickerId: string): HTMLElement[] =>
+    container
+      ? Array.from(
+          container.querySelectorAll<HTMLElement>(`[data-sticker-id="${CSS.escape(stickerId)}"]`),
+        )
+      : [];
+
   const { deleteDrawing, moveDrawing, confirmDraftDrawings } = useDrawingPersistence({
     boardId,
     queryClient,
@@ -299,6 +307,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     selectedId,
     emptyBoardSticker,
     hitTestSticker,
+    findStickerElements,
     combinedZIndexPool,
     setSelectedStickerId,
     applyStickerChange,
