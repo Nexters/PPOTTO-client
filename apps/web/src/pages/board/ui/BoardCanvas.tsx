@@ -19,7 +19,12 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
 
-import { BOARD_ZOOM_MIN, DOT_FADE_START_ZOOM, toWorldPoint } from '../model/board-camera';
+import {
+  BADGE_VISIBLE_MIN_ZOOM,
+  BOARD_ZOOM_MIN,
+  DOT_FADE_START_ZOOM,
+  toWorldPoint,
+} from '../model/board-camera';
 import {
   drawingZIndex,
   type ParsedDrawing,
@@ -750,16 +755,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               onRasterReady={onVisualChange}
             />
           ))}
-          {stickers
-            .filter((sticker) => sticker.id !== selectedId)
-            .map((sticker) => (
-              <StickerBadgeMark
-                key={sticker.id}
-                sticker={sticker}
-                isEditMode={isEditMode || isPointerInputSuspended}
-                onOpenRecap={cameraSticker.openRecap}
-              />
-            ))}
+          {camera.scale >= BADGE_VISIBLE_MIN_ZOOM &&
+            stickers
+              .filter((sticker) => sticker.id !== selectedId)
+              .map((sticker) => (
+                <StickerBadgeMark
+                  key={sticker.id}
+                  sticker={sticker}
+                  isEditMode={isEditMode || isPointerInputSuspended}
+                  onOpenRecap={cameraSticker.openRecap}
+                />
+              ))}
           {selectedSticker && (
             <SelectBox
               sticker={selectedSticker}
