@@ -128,6 +128,12 @@ export function useCameraStickerGesture({
     pressedStickerRef.current = null;
   };
 
+  const openRecap = (stickerId: string) => {
+    if (isEditMode || isOpeningRecapRef.current) return;
+    isOpeningRecapRef.current = true;
+    push('Recap', { stickerId, boardId });
+  };
+
   const clearPressedSticker = () => {
     if (isPressedStickerLockedRef.current) return;
     releasePressedSticker();
@@ -390,9 +396,8 @@ export function useCameraStickerGesture({
           lastBackgroundTapRef.current = { time: now, point: tap.startClient };
           if (isEditMode) setSelectedStickerId(null);
         }
-      } else if (!isEditMode && !isOpeningRecapRef.current) {
-        isOpeningRecapRef.current = true;
-        push('Recap', { stickerId: tap.stickerId, boardId });
+      } else {
+        openRecap(tap.stickerId);
       }
     }
   };
@@ -415,5 +420,6 @@ export function useCameraStickerGesture({
     onPointerUp,
     onWheel,
     releasePressedSticker,
+    openRecap,
   };
 }
