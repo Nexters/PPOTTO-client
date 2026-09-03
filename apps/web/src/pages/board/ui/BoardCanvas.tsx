@@ -31,9 +31,11 @@ import {
   isStrokeDrawing,
   isTextDrawing,
   type ParsedDrawing,
+  type ParsedText,
   parseStrokePoints,
   parseStrokeZIndex,
   parseTextDrawing,
+  toTextCreateInput,
 } from '../model/board-drawing';
 import { computeTopZIndex, needsInitialLayout } from '../model/board-layout';
 import type { ExistingSticker } from '../model/poisson-cluster';
@@ -110,16 +112,6 @@ export type BoardCanvasHandle = {
   getViewportElement: () => HTMLDivElement | null;
 };
 
-type LocalTextItem = {
-  id: string;
-  text: string;
-  x: number;
-  y: number;
-  fontSize: number;
-  maxWidth: number;
-  zIndex: number;
-};
-
 export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
   return isError && !data;
 }
@@ -153,7 +145,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 ) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const { camera, setCamera, cameraRef, requestFocus } = useBoardCamera(boardId);
-  const [localTexts, setLocalTexts] = useState<LocalTextItem[]>([]);
+  const [texts, setTexts] = useState<ParsedText[]>([]);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [isEmptyBoardQuickMenuOpen, setIsEmptyBoardQuickMenuOpen] = useState(false);
   // 삭제된 빈 스티커는 이번 세션 동안 숨긴다 — 앱 재시작 시 다시 보임
@@ -235,13 +227,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     [drawingsV2],
   );
 
-  const baseTexts: LocalTextItem[] = useMemo(
+  const baseTexts: ParsedText[] = useMemo(
     () => drawingsV2.filter(isTextDrawing).map(parseTextDrawing),
     [drawingsV2],
   );
 
   useEffect(() => {
-    setLocalTexts(baseTexts);
+    setTexts(baseTexts);
   }, [baseTexts]);
 
   const {
@@ -261,6 +253,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
 
   const stickersRef = useRef(stickers);
   const drawingsRef = useRef(drawings);
+  const textsRef = useRef(texts);
   const isEditModeRef = useRef(isEditMode);
   const isDrawModeRef = useRef(isDrawMode);
   const isPointerInputSuspendedRef = useRef(isPointerInputSuspended);
@@ -290,11 +283,13 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         )
       : [];
 
-  const { deleteDrawing, moveDrawing, confirmDraftDrawings } = useDrawingPersistence({
-    boardId,
-    queryClient,
-    saveLayout,
-  });
+  const { createDrawing, deleteDrawing, moveDrawing, confirmDraftDrawings } = useDrawingPersistence(
+    {
+      boardId,
+      queryClient,
+      saveLayout,
+    },
+  );
 
   const drawingSelection = useDrawingSelection({
     isEditMode,
@@ -375,6 +370,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   useEffect(() => {
     stickersRef.current = stickers;
     drawingsRef.current = drawings;
+    textsRef.current = texts;
     isEditModeRef.current = isEditMode;
     isDrawModeRef.current = isDrawMode;
     isPointerInputSuspendedRef.current = isPointerInputSuspended;
@@ -422,10 +418,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
         const center = toWorldPoint(cameraRef.current, { x: rect.width / 2, y: rect.height / 2 });
-        setLocalTexts((prev) => [
-          ...prev,
-          {
-            id: uuidv7(),
+        createDrawing(
+          toTextCreateInput(uuidv7(), {
             text,
             x: center.x,
             y: center.y,
@@ -434,14 +428,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             zIndex: computeTopZIndex([
               ...combinedZIndexPool(),
               ...drawModeRef.current.draftDrawings,
-              ...prev,
+              ...textsRef.current,
             ]),
-          },
-        ]);
+          }),
+        );
       },
       getViewportElement: () => container,
     }),
-    [container, cameraRef],
+    [container, cameraRef, createDrawing],
   );
 
   // 빈 보드의 월드 원점(0, 0)을 화면 정중앙 1배율에 둔다. 최초 진입은 즉시 맞추고,
@@ -673,7 +667,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               </svg>
             );
           })}
-          {localTexts.map((item) => (
+          {texts.map((item) => (
             <div
               key={item.id}
               style={{

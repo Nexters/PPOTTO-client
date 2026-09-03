@@ -29,7 +29,10 @@ export const boardApi = {
   updateLayout: (boardId: string, input: UpdateBoardLayoutInput) => {
     if (USE_MOCK) return Promise.resolve();
     return unwrapVoid(
-      api.PATCH('/boards/{boardId}/layout', { params: { path: { boardId } }, body: input }),
+      api.PATCH('/boards/{boardId}/layout', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+        body: input,
+      }),
     );
   },
 };

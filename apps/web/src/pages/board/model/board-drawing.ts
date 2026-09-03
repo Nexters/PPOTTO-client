@@ -54,6 +54,33 @@ export function parseTextDrawing(drawing: TextDrawingItem): ParsedText {
   };
 }
 
+export function toTextCreateInput(
+  id: string,
+  options: {
+    text: string;
+    x: number;
+    y: number;
+    fontSize: number;
+    maxWidth: number;
+    zIndex: number;
+    color?: string;
+  },
+): DrawingCreateInput {
+  return {
+    id,
+    type: 'TEXT',
+    scope: 'BOARD',
+    color: options.color ?? '#FFFFFF',
+    content: options.text,
+    posX: options.x,
+    posY: options.y,
+    fontSize: options.fontSize,
+    maxWidth: options.maxWidth,
+    rotation: 0,
+    zIndex: options.zIndex,
+  } as DrawingCreateInput;
+}
+
 const STROKE_SAMPLE_MIN_DISTANCE = 2;
 
 export function shouldSampleStrokePoint(points: Point[], candidate: Point): boolean {
