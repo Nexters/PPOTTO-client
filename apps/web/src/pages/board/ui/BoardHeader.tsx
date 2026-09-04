@@ -6,7 +6,11 @@ import Image from 'next/image';
 
 import { cn } from '@/shared/lib/cn';
 
-export function BoardHeader() {
+type BoardHeaderProps = {
+  onRecenter?: () => void;
+};
+
+export function BoardHeader({ onRecenter }: BoardHeaderProps) {
   const { push } = useFlow();
 
   return (
@@ -21,7 +25,14 @@ export function BoardHeader() {
       }}
     >
       <div className="flex items-center justify-between w-full">
-        <Image src="/logo/Logo.svg" alt="PPOTTO" width={105} height={32} className="w-auto h-8" />
+        <button
+          type="button"
+          aria-label="가운데로 돌아가기"
+          onClick={onRecenter}
+          className="pointer-events-auto"
+        >
+          <Image src="/logo/Logo.svg" alt="PPOTTO" width={105} height={32} className="w-auto h-8" />
+        </button>
         <button
           type="button"
           aria-label="설정"
