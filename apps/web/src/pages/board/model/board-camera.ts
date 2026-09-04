@@ -79,6 +79,19 @@ export function computeFocusTarget(
   };
 }
 
+// 카메라 포커스 범위(AABB) 계산용 스티커 절반 크기 근사치. 실제 이미지 크기를 몰라서(로드해봐야
+// 알 수 있음) Sticker.tsx의 STICKER_MAX_EDGE(160)의 절반으로 근사한다. 뱃지(제목)는 줌과 무관하게
+// 고정 크기를 유지할 예정이라 이 범위 계산에는 포함하지 않는다.
+const STICKER_FIT_HALF_SIZE = 80;
+
+// 스티커 중심점 목록으로부터 computeFocusTarget에 넘길 AABB 코너 좌표를 만든다
+export function computeStickerFitTargets(stickers: { posX: number; posY: number }[]): Point[] {
+  return stickers.flatMap((sticker) => [
+    { x: sticker.posX - STICKER_FIT_HALF_SIZE, y: sticker.posY - STICKER_FIT_HALF_SIZE },
+    { x: sticker.posX + STICKER_FIT_HALF_SIZE, y: sticker.posY + STICKER_FIT_HALF_SIZE },
+  ]);
+}
+
 // 화면 좌표를 보드 world 좌표로 변환한다
 export function toWorldPoint(camera: CameraState, point: Point): Point {
   return {
