@@ -23,6 +23,8 @@ import { useToast } from '@/shared/ui/common/Toast';
 import {
   BOARD_ZOOM_MIN,
   computeBadgeOpacity,
+  computeFocusTarget,
+  computeStickerFitTargets,
   DOT_FADE_START_ZOOM,
   toWorldPoint,
 } from '../model/board-camera';
@@ -112,6 +114,8 @@ export type BoardCanvasHandle = {
   cancelMoveSession: () => void;
   createText: (text: string, fontSize: number, editWidth: number) => void;
   getViewportElement: () => HTMLDivElement | null;
+  // 무한 캔버스에서 길을 잃었을 때 내 스티커들이 있는 곳으로 카메라를 되돌린다
+  recenterCamera: () => void;
 };
 
 export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
@@ -257,6 +261,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   );
 
   const stickersRef = useRef(stickers);
+  const placedStickersRef = useRef(placedStickers);
   const drawingsRef = useRef(drawings);
   const textsRef = useRef(texts);
   const isEditModeRef = useRef(isEditMode);
@@ -429,6 +434,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   // ref들을 매 렌더 이후 최신값으로 동기화
   useEffect(() => {
     stickersRef.current = stickers;
+    placedStickersRef.current = placedStickers;
     drawingsRef.current = drawings;
     textsRef.current = texts;
     isEditModeRef.current = isEditMode;
@@ -496,8 +502,18 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         );
       },
       getViewportElement: () => container,
+      recenterCamera: () => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const viewport = { width: rect.width, height: rect.height };
+        const targets =
+          placedStickersRef.current.length > 0
+            ? computeStickerFitTargets(placedStickersRef.current)
+            : [{ x: 0, y: 0 }];
+        requestFocus(computeFocusTarget(cameraRef.current, targets, viewport));
+      },
     }),
-    [container, cameraRef, createDrawing],
+    [container, cameraRef, createDrawing, requestFocus],
   );
 
   // 빈 보드의 월드 원점(0, 0)을 화면 정중앙 1배율에 둔다. 최초 진입은 즉시 맞추고,

@@ -375,7 +375,7 @@ export function BoardPage() {
               onConfirm={finishTextMode}
             />
           ) : (
-            <BoardHeader />
+            <BoardHeader onRecenter={() => canvasRef.current?.recenterCamera()} />
           ))}
         <BoardContent
           boardId={boardId}
