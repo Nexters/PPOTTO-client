@@ -16,6 +16,7 @@ import {
   computeBadgeOpacity,
   computeBoardPinchZoom,
   computeFocusTarget,
+  computeStickerFitTargets,
   panCamera,
   zoomCamera,
   zoomCameraTo,
@@ -210,5 +211,20 @@ describe('computeBadgeOpacity', () => {
     const midpoint = (BADGE_FADE_START_ZOOM + BADGE_FADE_END_ZOOM) / 2;
 
     expect(computeBadgeOpacity(midpoint)).toBeCloseTo(0.5);
+  });
+});
+
+describe('computeStickerFitTargets', () => {
+  it('스티커마다 중심점 기준 좌상단·우하단 코너 두 점을 만든다', () => {
+    const targets = computeStickerFitTargets([{ posX: 100, posY: 200 }]);
+
+    expect(targets).toEqual([
+      { x: 20, y: 120 },
+      { x: 180, y: 280 },
+    ]);
+  });
+
+  it('스티커가 없으면 빈 배열을 반환한다', () => {
+    expect(computeStickerFitTargets([])).toEqual([]);
   });
 });
