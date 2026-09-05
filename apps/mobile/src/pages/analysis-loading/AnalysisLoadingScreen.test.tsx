@@ -56,7 +56,6 @@ jest.mock('@/features/photo-upload', () => ({
     getViewState: jest.fn(),
     isCurrentJob: jest.fn(),
     isRecoverableError: jest.fn(),
-    isStatusUnavailableError: jest.fn(),
     setLastSeenLoadingPhase: jest.fn(),
     subscribe: jest.fn(() => () => undefined),
   },

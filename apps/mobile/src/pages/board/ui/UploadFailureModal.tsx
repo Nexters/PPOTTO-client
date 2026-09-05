@@ -1,12 +1,20 @@
 import { Modal, Pressable, Text, View } from 'react-native';
 
 interface UploadFailureModalProps {
+  confirmLabel: string;
+  message: string;
   visible: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export function UploadFailureModal({ visible, onCancel, onConfirm }: UploadFailureModalProps) {
+export function UploadFailureModal({
+  confirmLabel,
+  message,
+  visible,
+  onCancel,
+  onConfirm,
+}: UploadFailureModalProps) {
   return (
     <Modal
       allowSwipeDismissal={false}
@@ -18,9 +26,7 @@ export function UploadFailureModal({ visible, onCancel, onConfirm }: UploadFailu
     >
       <View className="items-center justify-center flex-1 px-6 bg-black/70">
         <View accessibilityViewIsModal className="w-full gap-6 p-6 bg-gray-900 rounded-3xl">
-          <Text className="text-center text-white text-body-01">
-            업로드에 실패했어요.{`\n`}다시 시도해 주세요.
-          </Text>
+          <Text className="text-center text-white text-body-01">{message}</Text>
 
           <View className="flex-row gap-3">
             <Pressable
@@ -35,7 +41,7 @@ export function UploadFailureModal({ visible, onCancel, onConfirm }: UploadFailu
               className="items-center justify-center flex-1 py-3 bg-white rounded-full"
               onPress={onConfirm}
             >
-              <Text className="text-black text-body-03">확인</Text>
+              <Text className="text-black text-body-03">{confirmLabel}</Text>
             </Pressable>
           </View>
         </View>

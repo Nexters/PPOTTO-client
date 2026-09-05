@@ -20,7 +20,11 @@ import {
 } from './model/start-photo-upload';
 import { restoreUploadJob, type UploadJobSnapshot } from './model/upload-job';
 import { createUploadJobStorage } from './model/upload-storage';
-import { AnalysisStatusUnavailableError, waitForAnalysis } from './model/wait-for-analysis';
+import {
+  type AnalysisFailureKind,
+  AnalysisPollingError,
+  waitForAnalysis,
+} from './model/wait-for-analysis';
 import { sampleMotionPhotos } from './model/sample-motion-photos';
 
 const storage = createUploadJobStorage(PHOTO_UPLOAD_ROOT_URI, expoUploadFileSystem);
@@ -80,8 +84,15 @@ interface StartPhotoUploadOptions {
 }
 
 export interface PhotoUploadViewState {
+  failure?: PhotoUploadFailure;
   progress: number;
   status: 'UPLOADING' | 'ANALYZING' | 'COMPLETED' | 'FAILED';
+}
+
+export interface PhotoUploadFailure {
+  code?: string;
+  kind: AnalysisFailureKind;
+  status?: number;
 }
 
 let viewState: PhotoUploadViewState = { progress: 0, status: 'UPLOADING' };
@@ -112,6 +123,23 @@ function publish(next: PhotoUploadViewState) {
 
 function publishAnalysis(analysis: PhotoUploadViewState) {
   publish(analysis);
+}
+
+function publishFailure(error: unknown) {
+  const failure: PhotoUploadFailure | undefined =
+    error instanceof AnalysisPollingError
+      ? {
+          kind: error.kind,
+          ...(error.code ? { code: error.code } : {}),
+          ...(error.status === undefined ? {} : { status: error.status }),
+        }
+      : undefined;
+
+  publish({
+    progress: viewState.progress,
+    status: 'FAILED',
+    ...(failure ? { failure } : {}),
+  });
 }
 
 function restoreMotionPhotos(snapshot: UploadJobSnapshot) {
@@ -232,7 +260,7 @@ export const photoUploadService = {
       await waitUntilComplete(analysisId);
       logPhotoUpload(`#${id} 전체 완료 (${((Date.now() - startedAt) / 1000).toFixed(2)}초)`);
     })().catch((error) => {
-      publish({ progress: viewState.progress, status: 'FAILED' });
+      publishFailure(error);
       logPhotoUploadError(`#${id} 실패 (${((Date.now() - startedAt) / 1000).toFixed(2)}초)`, error);
       throw error;
     });
@@ -262,8 +290,6 @@ export const photoUploadService = {
   },
 
   isRecoverableError: (error: unknown) => error instanceof NetworkError,
-
-  isStatusUnavailableError: (error: unknown) => error instanceof AnalysisStatusUnavailableError,
 
   async hasPending() {
     if (await storage.loadJob()) return true;
@@ -320,7 +346,7 @@ export const photoUploadService = {
       logPhotoUpload(`#${id} 서버 분석 완료 대기 재개 (${active.id})`);
       await waitUntilComplete(active.id);
     })().catch((error) => {
-      publish({ progress: viewState.progress, status: 'FAILED' });
+      publishFailure(error);
       logPhotoUploadError(
         `#${id} 재개 실패 (${((Date.now() - startedAt) / 1000).toFixed(2)}초)`,
         error,
