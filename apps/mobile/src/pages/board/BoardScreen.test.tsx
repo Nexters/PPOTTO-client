@@ -101,6 +101,37 @@ it('실패한 작업에는 재개 확인 모달 대신 업로드 실패 모달�
   expect(photoUploadService.hasPending).not.toHaveBeenCalled();
 });
 
+it.each([
+  ['analysis-failed', '스티커 생성에 실패했어요'],
+  ['client-error', '요청을 처리하지 못했어요'],
+  ['server-error', '서버 상태를 확인하지 못했어요'],
+] as const)('%s는 종류별 공통 피드백을 표시한다', async (kind, message) => {
+  photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));
+  photoUploadService.getViewState.mockReturnValue({
+    failure: { kind },
+    progress: 30,
+    status: 'FAILED',
+  });
+
+  await render(<BoardScreen />);
+
+  expect(await screen.findByText(new RegExp(message))).toBeOnTheScreen();
+});
+
+it('등록된 에러 코드는 종류별 공통 피드백보다 우선한다', async () => {
+  photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));
+  photoUploadService.getViewState.mockReturnValue({
+    failure: { code: 'ANALYSIS-005', kind: 'client-error', status: 404 },
+    progress: 30,
+    status: 'FAILED',
+  });
+
+  await render(<BoardScreen />);
+
+  expect(await screen.findByText(/진행 중인 분석을 찾을 수 없어요/)).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '사진 다시 선택' })).toBeOnTheScreen();
+});
+
 it('재개 파라미터가 남아 있어도 실제 작업이 없으면 모달 없이 보드를 표시한다', async () => {
   mockSearchParams = { boardId: 'board-1', confirmResume: '1' };
 

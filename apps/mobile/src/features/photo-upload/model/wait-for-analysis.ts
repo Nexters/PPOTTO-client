@@ -6,6 +6,7 @@ import type { AnalysisStatus } from './upload-runner';
 const POLL_INTERVAL_MS = 2000;
 
 export interface AnalysisProgress {
+  failureCode?: string | null;
   failedReason?: string | null;
   progress: number;
   status: AnalysisStatus;
@@ -14,10 +15,21 @@ export interface AnalysisProgress {
 type GetAnalysisProgress = (analysisId: string) => Promise<AnalysisProgress>;
 type Wait = () => Promise<void>;
 
-export class AnalysisStatusUnavailableError extends Error {
-  constructor(cause: unknown) {
-    super('분석 상태를 확인하지 못했습니다.', { cause });
-    this.name = 'AnalysisStatusUnavailableError';
+export type AnalysisFailureKind = 'analysis-failed' | 'client-error' | 'server-error';
+
+export class AnalysisPollingError extends Error {
+  readonly code: string | undefined;
+  readonly status: number | undefined;
+
+  constructor(
+    readonly kind: AnalysisFailureKind,
+    message: string,
+    { cause, code, status }: { cause?: unknown; code?: string; status?: number } = {},
+  ) {
+    super(message, { cause });
+    this.name = 'AnalysisPollingError';
+    this.code = code;
+    this.status = status;
   }
 }
 
@@ -30,11 +42,15 @@ export async function waitForAnalysis(
 ): Promise<void> {
   while (true) {
     const analysis = await getProgressWithRetry(analysisId, getProgress, wait);
+    if (analysis.status === 'FAILED') {
+      throw new AnalysisPollingError(
+        'analysis-failed',
+        analysis.failedReason ?? '사진 분석에 실패했습니다.',
+        { code: analysis.failureCode ?? undefined },
+      );
+    }
     onProgress(analysis);
     if (analysis.status === 'COMPLETED') return;
-    if (analysis.status === 'FAILED') {
-      throw new Error(analysis.failedReason ?? '사진 분석에 실패했습니다.');
-    }
     await wait();
   }
 }
@@ -47,18 +63,32 @@ async function getProgressWithRetry(
   try {
     return await getProgress(analysisId);
   } catch (error) {
-    if (!isTemporaryError(error)) throw error;
+    if (!isTemporaryError(error)) throw normalizePollingError(error);
   }
 
   await wait();
   try {
     return await getProgress(analysisId);
   } catch (error) {
-    if (isTemporaryError(error)) throw new AnalysisStatusUnavailableError(error);
-    throw error;
+    throw normalizePollingError(error);
   }
 }
 
 function isTemporaryError(error: unknown) {
   return error instanceof NetworkError || (error instanceof HttpError && error.status >= 500);
+}
+
+function normalizePollingError(error: unknown) {
+  if (error instanceof AnalysisPollingError) return error;
+  if (error instanceof HttpError) {
+    return new AnalysisPollingError(
+      error.status >= 400 && error.status < 500 ? 'client-error' : 'server-error',
+      error.message,
+      { cause: error, code: error.code, status: error.status },
+    );
+  }
+  if (error instanceof NetworkError) {
+    return new AnalysisPollingError('server-error', error.message, { cause: error });
+  }
+  return error;
 }

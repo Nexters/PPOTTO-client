@@ -3,15 +3,19 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
-import { photoUploadService } from '@/features/photo-upload';
+import { photoUploadService, type PhotoUploadFailure } from '@/features/photo-upload';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { AppWebView } from '@/shared/ui/AppWebView';
 
+import { getUploadFailureFeedback } from './model/upload-failure-feedback';
 import { PendingUploadModal } from './ui/PendingUploadModal';
 import { UploadFailureModal } from './ui/UploadFailureModal';
 
 type BoardScreenState =
-  { status: 'CHECKING' } | { status: 'READY' } | { status: 'PENDING' } | { status: 'FAILED' };
+  | { status: 'CHECKING' }
+  | { status: 'READY' }
+  | { status: 'PENDING' }
+  | { failure?: PhotoUploadFailure; status: 'FAILED' };
 
 function logPendingUpload(message: string, details?: unknown) {
   if (!__DEV__ || process.env.NODE_ENV === 'test') return;
@@ -25,11 +29,15 @@ export function BoardScreen() {
   const allowPendingNavigation = useRef(false);
   const { boardId } = useLocalSearchParams<{ boardId?: string }>();
   const [screenState, setScreenState] = useState<BoardScreenState>(() => {
-    if (photoUploadService.getCurrent() && photoUploadService.getViewState().status === 'FAILED') {
-      return { status: 'FAILED' };
+    const upload = photoUploadService.getViewState();
+    if (photoUploadService.getCurrent() && upload.status === 'FAILED') {
+      return { status: 'FAILED', ...(upload.failure ? { failure: upload.failure } : {}) };
     }
     return { status: 'CHECKING' };
   });
+  const failureFeedback = getUploadFailureFeedback(
+    screenState.status === 'FAILED' ? screenState.failure : undefined,
+  );
 
   usePreventRemove(screenState.status === 'PENDING', ({ data }) => {
     if (!allowPendingNavigation.current) {
@@ -124,6 +132,8 @@ export function BoardScreen() {
       )}
       <PendingUploadModal onConfirm={confirmPending} visible={screenState.status === 'PENDING'} />
       <UploadFailureModal
+        confirmLabel={failureFeedback.confirmLabel}
+        message={failureFeedback.message}
         onCancel={() => void cancelRetry()}
         onConfirm={() => void confirmRetry()}
         visible={screenState.status === 'FAILED'}

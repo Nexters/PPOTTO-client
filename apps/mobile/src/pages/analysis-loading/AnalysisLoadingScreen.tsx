@@ -166,9 +166,6 @@ export function AnalysisLoadingScreen() {
       if (error instanceof PhotoPreparationError) {
         toast('사진을 불러오지 못했어요. 다시 업로드해 주세요.');
         photoUploadService.clearCurrent();
-      } else if (photoUploadService.isStatusUnavailableError(error)) {
-        toast('분석 상태를 확인하지 못했어요. 잠시 후 다시 확인해주세요.');
-        photoUploadService.clearCurrent();
       } else if (photoUploadService.isRecoverableError(error)) {
         photoUploadService.clearCurrent();
       } else {
