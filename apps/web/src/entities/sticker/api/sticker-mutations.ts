@@ -1,5 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 
+import { track } from '@/shared/lib/bridge';
+
 import { stickerApi, type StickerCommentPosition } from './sticker-api';
 
 export const useMarkStickerViewedMutation = () =>
@@ -15,6 +17,7 @@ export const useRegenerateStickerMutation = () =>
 export const useDeleteStickerMutation = () =>
   useMutation({
     mutationFn: (stickerId: string) => stickerApi.delete(stickerId),
+    onSuccess: () => track('sticker_deleted'),
   });
 
 type UpdateStickerTitleVariables = {

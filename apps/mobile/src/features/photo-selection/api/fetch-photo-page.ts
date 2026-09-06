@@ -1,6 +1,8 @@
 import * as MediaLibrary from 'expo-media-library';
 import { Platform } from 'react-native';
 
+import { track } from '@/shared/lib/analytics';
+
 import { fetchLocalPhotoGroupPage } from '../../../../modules/local-photo-library';
 import type { GalleryPhoto } from '../model/gallery-photo';
 import type { FetchPhotoPage } from '../model/photo-page';
@@ -15,8 +17,14 @@ const toGalleryPhoto = (asset: MediaLibrary.Asset): GalleryPhoto => ({
 
 export const getPhotoLibraryPermission = () => MediaLibrary.getPermissionsAsync(false, ['photo']);
 
-export const requestPhotoLibraryPermission = () =>
-  MediaLibrary.requestPermissionsAsync(false, ['photo']);
+export const requestPhotoLibraryPermission = async () => {
+  const permission = await MediaLibrary.requestPermissionsAsync(false, ['photo']);
+  track('photo_permission_result', {
+    access:
+      permission.accessPrivileges === 'limited' ? 'limited' : permission.granted ? 'all' : 'denied',
+  });
+  return permission;
+};
 
 export const presentPhotoLibraryPermissionPicker = () =>
   MediaLibrary.presentPermissionsPickerAsync(['photo']);

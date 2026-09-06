@@ -1,8 +1,9 @@
-import { NetworkError } from '@ppotto/api';
+import { HttpError, NetworkError } from '@ppotto/api';
 import type { AnalysisLoadingPhase } from '@ppotto/bridge';
 import { File } from 'expo-file-system';
 
 import { analysisApi } from '@/entities/analysis/api/analysis-api';
+import { track } from '@/shared/lib/analytics';
 
 import { putPhoto } from './api/put-photo';
 import {
@@ -49,7 +50,16 @@ const dependencies: PhotoUploadServiceDependencies = {
     logPhotoUpload(`GET /analysis/${analysisId} → ${status}`);
     return status;
   },
-  putPhoto,
+  putPhoto: (input) => {
+    if (uploadStartedAt === undefined) {
+      uploadStartedAt = Date.now();
+      track('photo_upload_started', {
+        photo_count: motionPhotoCount,
+        ...(uploadMode ? { upload_mode: uploadMode } : {}),
+      });
+    }
+    return putPhoto(input);
+  },
   reissueUploadUrls: async (analysisId) => {
     logPhotoUpload(`POST /analysis/${analysisId}/reissue 요청`);
     const { uploads } = await analysisApi.reissueUploadUrls(analysisId);
@@ -80,6 +90,7 @@ interface StartPhotoUploadOptions {
   jobId: string;
   motionPhotos: Promise<readonly UploadMotionPhoto[]>;
   photoCount: number;
+  uploadMode?: 'initial' | 'additional';
   prepareJob: () => Promise<UploadJobSnapshot>;
 }
 
@@ -101,6 +112,15 @@ let motionPhotoCount = 0;
 let motionPhotosReady = Promise.resolve();
 let webMotionPhotos: UploadMotionPhoto[] | null = null;
 let loadingPhaseWrite = Promise.resolve();
+let uploadMode: StartPhotoUploadOptions['uploadMode'];
+let uploadStartedAt: number | undefined;
+let analysisStartedAt: number | undefined;
+let lastStartedAnalysisId: string | undefined;
+let lastCompletedAnalysisId: string | undefined;
+
+function durationSince(startedAt: number | undefined) {
+  return startedAt === undefined ? {} : { duration_ms: Math.max(0, Date.now() - startedAt) };
+}
 
 const ANALYSIS_LOADING_PHASES = new Set<AnalysisLoadingPhase>([
   'SCAN',
@@ -121,10 +141,6 @@ function publish(next: PhotoUploadViewState) {
   listeners.forEach((listener) => listener());
 }
 
-function publishAnalysis(analysis: PhotoUploadViewState) {
-  publish(analysis);
-}
-
 function publishFailure(error: unknown) {
   const failure: PhotoUploadFailure | undefined =
     error instanceof AnalysisPollingError
@@ -135,6 +151,22 @@ function publishFailure(error: unknown) {
         }
       : undefined;
 
+  if (failure) {
+    track('analysis_failed', {
+      failure_kind: failure.kind,
+      ...(failure.code ? { error_code: failure.code } : {}),
+      ...(failure.status === undefined ? {} : { http_status: failure.status }),
+      ...durationSince(analysisStartedAt),
+    });
+  } else {
+    track('photo_upload_failed', {
+      ...(error instanceof HttpError
+        ? { http_status: error.status, ...(error.code ? { error_code: error.code } : {}) }
+        : {}),
+      ...durationSince(uploadStartedAt),
+    });
+  }
+
   publish({
     progress: viewState.progress,
     status: 'FAILED',
@@ -143,6 +175,7 @@ function publishFailure(error: unknown) {
 }
 
 function restoreMotionPhotos(snapshot: UploadJobSnapshot) {
+  uploadMode = snapshot.uploadMode;
   const previousPhotos = new Map(motionPhotos.map((photo) => [photo.id, photo]));
   const representatives = snapshot.groups.map((group) => {
     const photo = group.items.find((item) => item.isRepresentative) ?? group.items[0]!;
@@ -208,7 +241,25 @@ async function getMotionPhotosForWeb() {
 }
 
 async function waitUntilComplete(analysisId: string) {
-  await waitForAnalysis(analysisId, analysisApi.get, undefined, publishAnalysis);
+  // 현재 실행에서 파일 전송을 관측한 경우만 업로드 완료/소요 시간을 기록한다.
+  if (uploadStartedAt !== undefined) {
+    track('photo_upload_completed', {
+      photo_count: motionPhotoCount,
+      ...durationSince(uploadStartedAt),
+    });
+  }
+  await waitForAnalysis(analysisId, analysisApi.get, undefined, (analysis) => {
+    if (analysis.status === 'ANALYZING' && lastStartedAnalysisId !== analysisId) {
+      lastStartedAnalysisId = analysisId;
+      analysisStartedAt = Date.now();
+      track('analysis_started', motionPhotoCount ? { photo_count: motionPhotoCount } : {});
+    }
+    if (analysis.status === 'COMPLETED' && lastCompletedAnalysisId !== analysisId) {
+      lastCompletedAnalysisId = analysisId;
+      track('analysis_completed', durationSince(analysisStartedAt));
+    }
+    publish(analysis);
+  });
 }
 
 export const photoUploadService = {
@@ -216,9 +267,13 @@ export const photoUploadService = {
     jobId,
     motionPhotos: preparedMotionPhotos,
     photoCount,
+    uploadMode: mode,
     prepareJob,
   }: StartPhotoUploadOptions) {
     const id = ++runId;
+    uploadMode = mode;
+    uploadStartedAt = undefined;
+    analysisStartedAt = undefined;
     const startedAt = Date.now();
     currentJobId = jobId;
     viewState = { progress: 0, status: 'UPLOADING' };
@@ -252,7 +307,10 @@ export const photoUploadService = {
       const uploadPhotoCount = job.groups.reduce((count, group) => count + group.items.length, 0);
       logPhotoUpload(`#${id} 작업 준비 완료 (${job.groups.length}그룹, ${uploadPhotoCount}장)`);
 
-      const { analysisId, status } = await startPhotoUpload(job, dependencies);
+      const { analysisId, status } = await startPhotoUpload(
+        { ...job, ...(mode ? { uploadMode: mode } : {}) },
+        dependencies,
+      );
       logPhotoUpload(`#${id} 업로드 단계 종료 (${analysisId}, ${status})`);
 
       if (status !== 'ANALYZING') throw new Error('사진 업로드에 실패했습니다.');
@@ -298,6 +356,10 @@ export const photoUploadService = {
 
   resume() {
     if (currentUpload) return currentUpload;
+
+    uploadMode = undefined;
+    uploadStartedAt = undefined;
+    analysisStartedAt = undefined;
 
     const id = ++runId;
     const startedAt = Date.now();

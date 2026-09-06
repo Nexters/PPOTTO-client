@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useAgreeTermsMutation } from '@/entities/terms/api/terms-mutations';
 import { useTermsListQuery } from '@/entities/terms/api/terms-queries';
 import { cn } from '@/shared/lib/cn';
+import { track } from '@/shared/lib/bridge';
 import { Button } from '@/shared/ui/common/Button';
 
 import { TERMS_META, type TermCode } from './terms-content';
@@ -45,6 +46,9 @@ export function TermsPage() {
     try {
       await agreeTerms({
         termIds: visibleTerms.flatMap(({ serverTerm }) => (serverTerm ? [serverTerm.id] : [])),
+      });
+      track('terms_accepted', {
+        agreed_count: visibleTerms.filter(({ serverTerm }) => serverTerm).length,
       });
       replace('Board', {});
     } catch (error) {

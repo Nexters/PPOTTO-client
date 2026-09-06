@@ -14,6 +14,7 @@ import {
 import { AppWebView } from '@/shared/ui/AppWebView';
 import { Button } from '@/shared/ui/Button';
 import { useToast } from '@/shared/ui/Toast';
+import { track } from '@/shared/lib/analytics';
 
 import {
   createLoadingSequence,
@@ -180,6 +181,7 @@ export function AnalysisLoadingScreen() {
   }, [boardId, toast]);
 
   const showBoard = async () => {
+    track('analysis_result_clicked');
     await photoUploadService.finish();
     setShowingBoard(true);
   };

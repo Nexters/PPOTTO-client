@@ -20,7 +20,7 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
-import { track } from '@/shared/lib/analytics';
+import { forwardAnalyticsEvent } from '@/shared/lib/analytics';
 import {
   recordWebQaDiagnosticMessage,
   WEB_QA_DIAGNOSTICS_SCRIPT,
@@ -135,7 +135,7 @@ export function AppWebView({
     HAPTIC: ({ type }) => {
       void Haptics.impactAsync(HAPTIC_STYLES[type]);
     },
-    TRACK_ANALYTICS_EVENT: ({ name, params }) => track(name, params),
+    TRACK_ANALYTICS_EVENT: ({ name, params }) => forwardAnalyticsEvent(name, params),
     // 웹 스택이 루트라 더 뒤로 갈 곳이 없음 — 앱을 백그라운드로 보낸다(안드로이드 표준 동작)
     EXIT_APP: () => {
       BackHandler.exitApp();

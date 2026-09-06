@@ -2,7 +2,7 @@
 
 import { ImageMultiple } from '@ppotto/assets';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
 import type { ShareOptionKey } from '@/pages/recap/ui/RecapShareOptions';
@@ -11,6 +11,7 @@ import { RecapSummary } from '@/pages/recap/ui/RecapSummary';
 import { RecapThemeTags } from '@/pages/recap/ui/RecapThemeTags';
 import { cn } from '@/shared/lib/cn';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
+import { track } from '@/shared/lib/bridge';
 
 import { SharedPhotoViewer } from './SharedPhotoViewer';
 
@@ -20,6 +21,13 @@ type SharedRecapViewProps = {
 };
 
 export function SharedRecapView({ data, options }: SharedRecapViewProps) {
+  const viewedSticker = useRef<string | null>(null);
+  useEffect(() => {
+    if (viewedSticker.current === data.sticker.id) return;
+    viewedSticker.current = data.sticker.id;
+    track('screen_view', { screen_name: 'recap' });
+    track('recap_viewed', { entry_point: 'share' });
+  }, [data.sticker.id]);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   const floatComments = data.comments.filter((comment) => comment.posX != null);
   const tagContents = data.comments

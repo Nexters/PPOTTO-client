@@ -1,3 +1,4 @@
+jest.mock('@/shared/lib/analytics', () => ({ track: jest.fn() }));
 jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(),
   getItemAsync: jest.fn(),
@@ -138,6 +139,11 @@ describe('인증 세션', () => {
 
     await expect(session.loginWithKakao()).rejects.toBe(writeFailure);
     await expect(session.getAccessToken()).resolves.toBeNull();
+    const { track } = jest.requireMock('@/shared/lib/analytics');
+    expect(track.mock.calls).toEqual([
+      ['login_started', { method: 'kakao' }],
+      ['login_failed', { method: 'kakao' }],
+    ]);
   });
 
   it('저장된 refreshToken이 없으면 로그인되지 않은 상태를 반환한다', async () => {

@@ -5,7 +5,8 @@ import { useFlow } from '@stackflow/react';
 
 import { useBoardListQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
-import { bridge } from '@/shared/lib/bridge';
+import { bridge, track } from '@/shared/lib/bridge';
+import { useTrackActivityView } from '@/shared/lib/use-track-activity-view';
 import { hasCompletedFirstUpload } from '@/shared/lib/first-upload-storage';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/common/Button';
@@ -27,11 +28,16 @@ export function OnboardingPage() {
     if (isLastSlide) {
       // 업로드 이력이 있으면(스티커를 전부 지우고 온보딩을 다시 본 경우) 추가 업로드로 연다
       const mode = me && hasCompletedFirstUpload(me.id) ? 'additional' : 'initial';
-      if (boardId) bridge.send('OPEN_PHOTO_SELECT', { boardId, mode });
+      if (boardId) {
+        track('onboarding_completed');
+        bridge.send('OPEN_PHOTO_SELECT', { boardId, mode });
+      }
       return;
     }
     goNext();
   };
+
+  useTrackActivityView(true, 'onboarding_step_viewed', { step: selectedIndex + 1 });
 
   return (
     <main

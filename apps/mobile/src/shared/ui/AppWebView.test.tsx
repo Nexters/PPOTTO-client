@@ -18,7 +18,7 @@ const mockTrack = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('@/shared/lib/analytics', () => ({
-  track: (...args: unknown[]) => mockTrack(...args),
+  forwardAnalyticsEvent: (...args: unknown[]) => mockTrack(...args),
 }));
 jest.mock('@/lib/auth-session', () => ({
   getAccessToken: jest.fn(),
@@ -161,11 +161,14 @@ describe('WebView Analytics 브리지', () => {
     await render(<AppWebView />);
 
     mockBridgeHandlers.TRACK_ANALYTICS_EVENT!({
-      name: 'board_viewed',
-      params: { photo_count: 3 },
+      name: 'photo_upload_started',
+      params: { photo_count: 3, upload_mode: 'additional' },
     });
 
-    expect(mockTrack).toHaveBeenCalledWith('board_viewed', { photo_count: 3 });
+    expect(mockTrack).toHaveBeenCalledWith('photo_upload_started', {
+      photo_count: 3,
+      upload_mode: 'additional',
+    });
   });
 });
 

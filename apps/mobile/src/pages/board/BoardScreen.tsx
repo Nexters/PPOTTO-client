@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import { photoUploadService, type PhotoUploadFailure } from '@/features/photo-upload';
 import { AppBackground } from '@/shared/ui/AppBackground';
 import { AppWebView } from '@/shared/ui/AppWebView';
+import { track } from '@/shared/lib/analytics';
 
 import { getUploadFailureFeedback } from './model/upload-failure-feedback';
 import { PendingUploadModal } from './ui/PendingUploadModal';
@@ -112,6 +113,9 @@ export function BoardScreen() {
   };
 
   const confirmRetry = async () => {
+    if (screenState.status === 'FAILED' && screenState.failure) {
+      track('analysis_retry_clicked', { failure_kind: screenState.failure.kind });
+    }
     const result = await photoUploadService.discard();
     if (result === 'RETRY') return;
     if (result === 'ANALYZING') {

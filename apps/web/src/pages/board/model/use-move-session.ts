@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import type { AnalyticsTrackArgs } from '@ppotto/bridge';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { BoardDetail, UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
@@ -189,7 +190,49 @@ export function useMoveSession(
         : current,
     );
 
-    saveLayout({ boardId, input });
+    const analytics: AnalyticsTrackArgs[] = [];
+    changedStickers.forEach((sticker) => {
+      const previous = rawStickers.find((item) => item.id === sticker.id);
+      // 선택만 해 zIndex가 바뀐 경우는 변형으로 세지 않는다.
+      if (
+        previous &&
+        ['posX', 'posY', 'rotation', 'scale', 'badgeOffsetX', 'badgeOffsetY'].some(
+          (key) => previous[key as keyof StickerData] !== sticker[key as keyof StickerData],
+        )
+      )
+        analytics.push(['sticker_edit_completed', { edit_type: 'transform' }]);
+    });
+    changedDrawingIds.forEach((id) => {
+      const previous = rawDrawings.find((drawing) => drawing.id === id);
+      if (
+        previous &&
+        Object.entries(dOverrides[id]!).some(
+          ([key, value]) =>
+            key !== 'zIndex' &&
+            JSON.stringify(value) !== JSON.stringify(Reflect.get(previous, key)),
+        )
+      ) {
+        analytics.push(['board_drawing_edit_completed', { action: 'transform' }]);
+      }
+    });
+    changedTextIds.forEach((id) => {
+      const previous = rawTexts.find((text) => text.id === id);
+      if (
+        previous &&
+        Object.entries(tOverrides[id]!).some(
+          ([key, value]) => key !== 'zIndex' && value !== Reflect.get(previous, key),
+        )
+      ) {
+        analytics.push(['board_text_edit_completed', { action: 'transform' }]);
+      }
+    });
+    deletedIds.forEach((id) => {
+      if (rawTexts.some((text) => text.id === id))
+        analytics.push(['board_text_edit_completed', { action: 'delete' }]);
+      else if (rawDrawings.some((drawing) => drawing.id === id))
+        analytics.push(['board_drawing_edit_completed', { action: 'delete' }]);
+    });
+    saveLayout({ boardId, input, analytics });
     discard();
   };
 

@@ -3,6 +3,7 @@ import { HttpError, NetworkError } from '@ppotto/api';
 
 import { authApi } from '@/entities/auth/api/auth-api';
 import { userApi } from '@/entities/user/api/user-api';
+import { track } from '@/shared/lib/analytics';
 
 import { type AppleSignInCredential, signInWithApple } from './apple-auth';
 import { KakaoLoginCancelledError, signInWithKakao } from './kakao-auth';
@@ -60,39 +61,60 @@ async function refreshAccessToken(): Promise<string | null> {
 
 export type LoginResult = Pick<LoginResponse, 'isNewUser' | 'pendingTerms'> | null;
 
+async function trackLogin(method: 'apple' | 'kakao', login: () => Promise<LoginResult>) {
+  track('login_started', { method });
+  try {
+    const result = await login();
+    track(result ? 'login' : 'login_cancelled', { method });
+    return result;
+  } catch (error) {
+    track('login_failed', {
+      method,
+      ...(error instanceof HttpError
+        ? { http_status: error.status, ...(error.code ? { error_code: error.code } : {}) }
+        : {}),
+    });
+    throw error;
+  }
+}
+
 // 애플은 최초 인가 1회에만 fullName을 내려주며, 신규 가입은 서버가 name을 요구한다(AUTH-006).
 function formatAppleName(fullName: AppleSignInCredential['fullName']): string | undefined {
   const name = [fullName?.familyName, fullName?.givenName].filter(Boolean).join('');
   return name.trim() || undefined;
 }
 
-export async function loginWithApple(): Promise<LoginResult> {
-  const credential = await signInWithApple();
-  if (!credential) return null; // 사용자 취소
+export function loginWithApple(): Promise<LoginResult> {
+  return trackLogin('apple', async () => {
+    const credential = await signInWithApple();
+    if (!credential) return null; // 사용자 취소
 
-  const data = await authApi.login({
-    provider: 'APPLE',
-    identityToken: credential.identityToken,
-    authorizationCode: credential.authorizationCode,
-    rawNonce: credential.rawNonce,
-    name: formatAppleName(credential.fullName),
+    const data = await authApi.login({
+      provider: 'APPLE',
+      identityToken: credential.identityToken,
+      authorizationCode: credential.authorizationCode,
+      rawNonce: credential.rawNonce,
+      name: formatAppleName(credential.fullName),
+    });
+    await saveTokens(data);
+    return { isNewUser: data.isNewUser, pendingTerms: data.pendingTerms };
   });
-  await saveTokens(data);
-  return { isNewUser: data.isNewUser, pendingTerms: data.pendingTerms };
 }
 
-export async function loginWithKakao(): Promise<LoginResult> {
-  let kakaoAccessToken: string;
-  try {
-    kakaoAccessToken = await signInWithKakao();
-  } catch (error) {
-    if (error instanceof KakaoLoginCancelledError) return null;
-    throw error;
-  }
+export function loginWithKakao(): Promise<LoginResult> {
+  return trackLogin('kakao', async () => {
+    let kakaoAccessToken: string;
+    try {
+      kakaoAccessToken = await signInWithKakao();
+    } catch (error) {
+      if (error instanceof KakaoLoginCancelledError) return null;
+      throw error;
+    }
 
-  const data = await authApi.login({ provider: 'KAKAO', accessToken: kakaoAccessToken });
-  await saveTokens(data);
-  return { isNewUser: data.isNewUser, pendingTerms: data.pendingTerms };
+    const data = await authApi.login({ provider: 'KAKAO', accessToken: kakaoAccessToken });
+    await saveTokens(data);
+    return { isNewUser: data.isNewUser, pendingTerms: data.pendingTerms };
+  });
 }
 
 // 유효한 accessToken을 반환한다. 서버가 거부한 경우 forceRefresh로 만료 시각과 무관하게 갱신한다.
@@ -113,10 +135,12 @@ export async function getAccessToken({
 export async function logout() {
   await authApi.logout();
   await clearSession();
+  track('logout');
 }
 
 // 계정이 실제로 지워졌을 때만 세션을 정리한다. 실패했는데 토큰만 버리면 로그아웃과 구분되지 않는다.
 export async function withdraw() {
   await userApi.withdraw();
   await clearSession();
+  track('account_withdrawn');
 }

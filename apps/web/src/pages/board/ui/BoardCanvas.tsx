@@ -15,7 +15,7 @@ import {
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
-import { bridge } from '@/shared/lib/bridge';
+import { bridge, track } from '@/shared/lib/bridge';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
@@ -505,6 +505,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       recenterCamera: () => {
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
+        track('board_recenter_clicked');
         const viewport = { width: rect.width, height: rect.height };
         const targets =
           placedStickersRef.current.length > 0

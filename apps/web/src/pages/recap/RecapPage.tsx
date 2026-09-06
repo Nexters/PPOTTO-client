@@ -8,6 +8,8 @@ import { stickerQueryKeys } from '@/entities/sticker/api/sticker-query-keys';
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
+import { useTrackActivityView } from '@/shared/lib/use-track-activity-view';
+import { track } from '@/shared/lib/bridge';
 
 import { useMarkStickerViewed } from '../board/model/use-mark-sticker-viewed';
 
@@ -38,6 +40,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
   const positionedStickerIdRef = useRef<string | null>(null);
 
   useRefetchOnActive(refetch, isStale);
+  useTrackActivityView(Boolean(data), 'recap_viewed', { entry_point: 'board' });
 
   const handleInitialCommentLayout = useCallback(
     async (comments: StickerCommentPosition[]) => {
@@ -122,7 +125,10 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
           <RecapHeader
             title={data.sticker.title}
             onBack={() => pop()}
-            onShare={() => setIsShareOpen(true)}
+            onShare={() => {
+              track('recap_share_opened');
+              setIsShareOpen(true);
+            }}
           />
           <div className="flex w-full flex-col gap-6">
             <div className="flex w-full flex-col">
