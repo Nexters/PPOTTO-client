@@ -5,7 +5,7 @@ import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { saveImageToDevice } from '@/features/save-image-to-device';
 import { blobToBase64 } from '@/shared/lib/blob-to-base64';
-import { bridge } from '@/shared/lib/bridge';
+import { bridge, track } from '@/shared/lib/bridge';
 import { canvasToBlob } from '@/shared/lib/canvas-to-blob';
 import { captureElementAsBlob, captureElementAsCanvas } from '@/shared/lib/capture-element-as-blob';
 import { cropCanvasToSquare } from '@/shared/lib/crop-canvas-to-square';
@@ -51,17 +51,21 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
   const handleSaveImage = async () => {
     if (!cardRef.current || isSaving) return;
     setIsSaving(true);
+    track('recap_save_started');
     try {
       const blob = await captureElementAsBlob(cardRef.current, { skipFonts: true, pixelRatio: 3 });
       const success = await saveImageToDevice(blob);
       if (success) {
+        track('recap_save_completed');
         toast('이미지가 저장되었습니다');
         handleClose();
       } else {
+        track('recap_save_failed');
         toast('이미지 저장에 실패했습니다');
       }
     } catch (error) {
       console.error('이미지 저장 실패', error);
+      track('recap_save_failed');
       toast('이미지 저장에 실패했습니다');
     } finally {
       setIsSaving(false);
@@ -71,14 +75,19 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
   const handleInstagramShare = async () => {
     if (!cardRef.current || isSharingInstagram) return;
     setIsSharingInstagram(true);
+    track('recap_share_clicked', { method: 'instagram' });
     try {
       const blob = await captureElementAsBlob(cardRef.current, { skipFonts: true, pixelRatio: 3 });
       const base64 = await blobToBase64(blob);
       const { success } = await bridge.request('SHARE_INSTAGRAM_STORY', { base64 });
       if (success) handleClose();
-      else toast('인스타그램 공유에 실패했습니다');
+      else {
+        track('recap_share_failed', { method: 'instagram' });
+        toast('인스타그램 공유에 실패했습니다');
+      }
     } catch (error) {
       console.error('인스타그램 공유 실패', error);
+      track('recap_share_failed', { method: 'instagram' });
       toast('인스타그램 공유에 실패했습니다');
     } finally {
       setIsSharingInstagram(false);
@@ -88,6 +97,7 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
   const handleKakaoShare = async () => {
     if (!cardRef.current || !window.Kakao || isSharingKakao) return;
     setIsSharingKakao(true);
+    track('recap_share_clicked', { method: 'kakao' });
     try {
       const canvas = await captureElementAsCanvas(cardRef.current, {
         skipFonts: true,
@@ -113,9 +123,13 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
         },
       });
       if (success) handleClose();
-      else toast('카카오톡 공유에 실패했습니다');
+      else {
+        track('recap_share_failed', { method: 'kakao' });
+        toast('카카오톡 공유에 실패했습니다');
+      }
     } catch (error) {
       console.error('카카오톡 공유 실패', error);
+      track('recap_share_failed', { method: 'kakao' });
       toast('카카오톡 공유에 실패했습니다');
     } finally {
       setIsSharingKakao(false);

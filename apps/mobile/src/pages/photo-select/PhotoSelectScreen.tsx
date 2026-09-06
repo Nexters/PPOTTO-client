@@ -1,4 +1,5 @@
 import { ImageMultiple } from '@ppotto/assets';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -18,6 +19,7 @@ import {
 } from '@/features/photo-selection';
 import { MAX_MOTION_PHOTOS, photoUploadService, sampleMotionPhotos } from '@/features/photo-upload';
 import { Button } from '@/shared/ui/Button';
+import { track } from '@/shared/lib/analytics';
 import { Header } from '@/shared/ui/Header';
 
 import { createMotionPhotoPreloader } from './lib/motion-photo-preloader';
@@ -42,6 +44,13 @@ function retainMotionPhotos(
 }
 
 export function PhotoSelectScreen() {
+  const navigation = useNavigation();
+  const isFocused = useIsFocused();
+  const wasFocused = useRef(false);
+  useEffect(() => {
+    if (isFocused && !wasFocused.current) track('screen_view', { screen_name: 'photo_select' });
+    wasFocused.current = isFocused;
+  }, [isFocused]);
   const { boardId, mode: modeParam } = useLocalSearchParams<{
     boardId: string;
     mode?: string;
@@ -86,6 +95,18 @@ export function PhotoSelectScreen() {
   const canRequestPermission = permission?.canAskAgain === true;
   const galleryEmpty = !loading && !permissionRequired && photoUnits.length === 0;
 
+  useEffect(
+    () =>
+      navigation.addListener('beforeRemove', () => {
+        if (submittedRef.current) return;
+        const photoCount = selection
+          ? selectedPhotoGroups(selection).reduce((count, group) => count + group.photos.length, 0)
+          : 0;
+        track('photo_selection_cancelled', { upload_mode: mode, photo_count: photoCount });
+      }),
+    [navigation, mode, selection],
+  );
+
   useEffect(() => {
     clearCompressedPhotos();
   }, []);
@@ -118,7 +139,7 @@ export function PhotoSelectScreen() {
   );
 
   const handleSubmit = () => {
-    if (!selection || !boardId) return;
+    if (!selection || !boardId || submittedRef.current) return;
 
     const selectedGroups = selectedPhotoGroups(selection);
     const photoCount = selectedGroups.reduce((count, group) => count + group.photos.length, 0);
@@ -132,11 +153,17 @@ export function PhotoSelectScreen() {
       .finally(() => motionPhotoPreloader.clear());
     const jobId = Crypto.randomUUID();
     submittedRef.current = true;
+    track('photo_selection_confirmed', {
+      upload_mode: mode,
+      photo_count: photoCount,
+      group_count: selectedGroups.length,
+    });
 
     photoUploadService.start({
       jobId,
       motionPhotos: preparedMotionPhotos,
       photoCount,
+      uploadMode: mode,
       prepareJob: async () => {
         try {
           return prepareUploadJob({

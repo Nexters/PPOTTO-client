@@ -14,6 +14,12 @@ import { groupPhotos } from '@/features/photo-selection/model/photo-group';
 import { dragIntentAt, dragRangeDelta } from '@/features/photo-selection/ui/PhotoGrid';
 
 import { PhotoSelectScreen } from './PhotoSelectScreen';
+jest.mock('@/shared/lib/analytics', () => ({ track: jest.fn() }));
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => true,
+  useNavigation: () => ({ addListener: jest.fn(() => jest.fn()) }),
+}));
 
 let mockSearchParams: { boardId: string; mode?: string } = { boardId: 'board-1' };
 const mockImageResize = jest.fn();

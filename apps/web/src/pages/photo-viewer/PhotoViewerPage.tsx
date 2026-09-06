@@ -1,11 +1,12 @@
 'use client';
 
 import { useFlow } from '@stackflow/react';
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { StickerPhotoImage } from '@/entities/sticker/ui/StickerPhotoImage';
 import { cn } from '@/shared/lib/cn';
+import { useTrackActivityView } from '@/shared/lib/use-track-activity-view';
 
 import { usePhotoDismissGesture } from './model/use-photo-dismiss-gesture';
 import { usePhotoViewerSelection } from './model/use-photo-viewer-selection';
@@ -21,6 +22,7 @@ type PhotoViewerPageProps = {
 
 export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProps) {
   const { data } = useStickerQuery(stickerId);
+  const [loadedPhotoIds, setLoadedPhotoIds] = useState<ReadonlySet<string>>(() => new Set());
   const { pop } = useFlow();
   const zoomInteractionBlockedRef = useRef(false);
   // 순환 의존 회피용 ref
@@ -41,6 +43,16 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
     initialTopIndex: Number(initialIndex),
     onSelectionChange: () => resetZoomRef.current(),
   });
+
+  const selectedPhoto = carouselPhotos[carouselIndex];
+  useTrackActivityView(
+    Boolean(selectedPhoto && loadedPhotoIds.has(selectedPhoto.id)),
+    'recap_photo_viewed',
+    {
+      photo_index: carouselIndex + 1,
+      photo_count: carouselPhotos.length,
+    },
+  );
 
   const getDismissTarget = useCallback(() => {
     const recap = document.querySelector('.recap-app-screen');
@@ -115,7 +127,16 @@ export function PhotoViewerPage({ stickerId, initialIndex }: PhotoViewerPageProp
             jumpToSelectedRef={jumpCarouselSelectionRef}
             onSelect={handleCarouselSelect}
             renderImage={(photo, props) => (
-              <StickerPhotoImage stickerId={stickerId} src={photo.imageUrl} {...props} />
+              <StickerPhotoImage
+                stickerId={stickerId}
+                src={photo.imageUrl}
+                {...props}
+                onLoad={() =>
+                  setLoadedPhotoIds((previous) =>
+                    previous.has(photo.id) ? previous : new Set(previous).add(photo.id),
+                  )
+                }
+              />
             )}
           />
         </div>

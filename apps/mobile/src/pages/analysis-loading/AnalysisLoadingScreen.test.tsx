@@ -3,6 +3,7 @@ import { act, render, screen, userEvent, waitFor } from '@testing-library/react-
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnalysisLoadingScreen } from './AnalysisLoadingScreen';
+jest.mock('@/shared/lib/analytics', () => ({ track: jest.fn() }));
 
 type LoadingBridgeHandlers = {
   GET_ANALYSIS_LOADING_STATE: () => Promise<AnalysisLoadingBridgeState>;

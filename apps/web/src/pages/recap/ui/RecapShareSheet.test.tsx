@@ -6,6 +6,7 @@ import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
 import { RecapShareSheet } from './RecapShareSheet';
 
 const request = vi.hoisted(() => vi.fn());
+const track = vi.hoisted(() => vi.fn());
 
 vi.mock('./RecapShareCard', () => ({ RecapShareCard: () => null }));
 vi.mock('@/shared/ui/common/Toast', () => ({ useToast: () => vi.fn() }));
@@ -13,7 +14,7 @@ vi.mock('@/entities/user/api/user-queries', () => ({
   useMeQuery: () => ({ data: { name: '테스트' } }),
 }));
 vi.mock('@/shared/lib/blob-to-base64', () => ({ blobToBase64: vi.fn(() => 'image-base64') }));
-vi.mock('@/shared/lib/bridge', () => ({ bridge: { request } }));
+vi.mock('@/shared/lib/bridge', () => ({ bridge: { request }, track }));
 vi.mock('@/shared/lib/capture-element-as-blob', () => ({
   captureElementAsBlob: vi.fn(() => new Blob()),
   captureElementAsCanvas: vi.fn(() => {
@@ -36,6 +37,7 @@ const uploadImage = vi.hoisted(() =>
 
 beforeEach(() => {
   request.mockReset();
+  track.mockClear();
   uploadImage.mockClear();
   window.Kakao = { Share: { uploadImage } } as unknown as Window['Kakao'];
 });
@@ -65,6 +67,7 @@ it('인스타그램 버튼으로 합성 이미지를 네이티브에 전달한�
     }),
   );
   expect(onClose).toHaveBeenCalledOnce();
+  expect(track.mock.calls).toEqual([['recap_share_clicked', { method: 'instagram' }]]);
 });
 
 it('카카오톡 버튼으로 업로드한 이미지 URL과 템플릿 변수를 네이티브에 전달한다', async () => {

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, userEvent } from '@testing-library/react-native';
 
 import { BoardScreen } from './BoardScreen';
+jest.mock('@/shared/lib/analytics', () => ({ track: jest.fn() }));
 
 let mockSearchParams: { boardId?: string; confirmResume?: string } = { boardId: 'board-1' };
 let mockPreventRemoveCallback:

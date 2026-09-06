@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
-import { bridge } from '@/shared/lib/bridge';
+import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
@@ -259,6 +259,7 @@ export function BoardPage() {
   }, [isPickingColor, sampleAtClientPoint, scheduleSampleAtClientPoint]);
 
   const changeToolbarMode = (nextMode: ToolbarMode) => {
+    if (toolbarModeRef.current !== nextMode) track('board_tool_selected', { tool: nextMode });
     toolbarModeRef.current = nextMode;
     if (nextMode !== 'draw') {
       if (snapshotTimerRef.current) {
@@ -307,7 +308,7 @@ export function BoardPage() {
       }
     }
     setTextDraft('');
-    setToolbarMode('default');
+    changeToolbarMode('default');
   };
 
   // 헤더·툴바·배경은 보드 데이터와 무관하게 이미 그려져 있다. 스티커를 기다리지 않고
@@ -370,7 +371,7 @@ export function BoardPage() {
             <ConfirmCancelHeader
               onCancel={() => {
                 setTextDraft('');
-                setToolbarMode('default');
+                changeToolbarMode('default');
               }}
               onConfirm={finishTextMode}
             />
@@ -440,7 +441,10 @@ export function BoardPage() {
           <BoardToolbar
             mode={toolbarMode}
             onModeChange={handleToolbarModeChange}
-            onAddSticker={openPhotoSelect}
+            onAddSticker={() => {
+              track('board_add_sticker_clicked');
+              openPhotoSelect();
+            }}
             aboveModeSwitcher={
               toolbarMode === 'draw' ? (
                 <DrawingColorPalette

@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from 'react';
 
 import { loginWithDevelopmentEmail } from '@/shared/api/browser-dev-session';
+import { track } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 import { Modal } from '@/shared/ui/common/Modal';
 
@@ -23,13 +24,17 @@ export function DevelopmentLoginModal({
 
   const login = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isPending) return;
+    track('login_started', { method: 'development' });
     setHasError(false);
     setIsPending(true);
     try {
       await loginWithDevelopmentEmail(email);
+      track('login', { method: 'development' });
       onOpenChange(false);
       onSuccess();
     } catch {
+      track('login_failed', { method: 'development' });
       setHasError(true);
     } finally {
       setIsPending(false);

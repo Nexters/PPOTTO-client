@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { uuidv7 } from '@/shared/lib/uuidv7';
+import { track } from '@/shared/lib/bridge';
 
 import { type CameraState, computeBoardPinchZoom, toWorldPoint } from './board-camera';
 import { type DrawGesture, type DrawGestureResult, drawGestureReducer } from './board-draw-gesture';
@@ -187,6 +188,7 @@ export function useDrawMode({
       const current = draftDrawingsRef.current;
       if (current.length === 0) return;
       const popped = current[current.length - 1]!;
+      track('board_history_applied', { action: 'undo' });
       setDraftDrawings(current.slice(0, -1));
       setRedoDrawings((prev) => [...prev, popped]);
     },
@@ -194,6 +196,7 @@ export function useDrawMode({
       const current = redoDrawingsRef.current;
       if (current.length === 0) return;
       const restored = current[current.length - 1]!;
+      track('board_history_applied', { action: 'redo' });
       setRedoDrawings(current.slice(0, -1));
       setDraftDrawings((prev) => [...prev, restored]);
     },

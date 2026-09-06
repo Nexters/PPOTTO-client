@@ -19,6 +19,8 @@ export interface UploadJobGroup {
 export interface UploadJobSnapshot {
   jobId: string;
   boardId: string;
+  // 이전 버전에서 저장한 작업에는 없다.
+  uploadMode?: 'initial' | 'additional';
   groups: UploadJobGroup[];
 }
 
