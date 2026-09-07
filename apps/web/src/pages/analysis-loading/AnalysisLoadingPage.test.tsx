@@ -1,4 +1,5 @@
-import { render, waitFor } from '@testing-library/react';
+import type { AnalysisLoadingBridgeState } from '@ppotto/bridge';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AnalysisLoadingPage } from './AnalysisLoadingPage';
@@ -7,10 +8,11 @@ interface MotionOptions {
   boardBgSrc: string;
   speed: number;
   phase: string;
+  visualProgress: number;
   photos: Array<{ src: string; ratio: number; capturedAt: null }>;
   stickerSrcs: string[];
   onPhaseStarted: (phase: 'SCAN' | 'REVEAL') => void;
-  onPhaseFinished: (phase: 'SCAN') => Promise<unknown>;
+  onPhaseFinished: (phase: AnalysisLoadingBridgeState['visiblePhase']) => Promise<unknown>;
   onRevealFinished: () => void;
 }
 
@@ -95,7 +97,12 @@ vi.mock('@/shared/lib/sticker-raster', () => ({
 }));
 vi.mock('./ppotto-loading-motion', () => ({ createLoadingMotion: mocks.createLoadingMotion }));
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 Object.defineProperty(HTMLImageElement.prototype, 'decode', {
   configurable: true,
@@ -103,6 +110,98 @@ Object.defineProperty(HTMLImageElement.prototype, 'decode', {
 });
 
 describe('AnalysisLoadingPage', () => {
+  it('개발 브라우저에서는 목 사진 디코딩 후 모든 막을 재생하고 네이티브와 보드 API는 호출하지 않는다', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    const photos = Array.from({ length: 40 }, (_, index) => ({
+      ...mocks.state.photos[0],
+      id: `mock-photo-${index}`,
+    }));
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(Response.json({ ...mocks.state, photoCount: 40, photos })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    let finishFirstDecode: (() => void) | undefined;
+    mocks.decode.mockImplementationOnce(
+      () => new Promise<void>((resolve) => (finishFirstDecode = resolve)),
+    );
+
+    render(<AnalysisLoadingPage />);
+    await waitFor(() => expect(mocks.decode).toHaveBeenCalledTimes(50));
+    expect(mocks.start).not.toHaveBeenCalled();
+    finishFirstDecode?.();
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    expect(fetchMock).toHaveBeenCalledWith('/api/dev/analysis-loading', { cache: 'no-store' });
+
+    const options = mocks.createLoadingMotion.mock.calls[0]![0];
+    expect(options.photos).toHaveLength(40);
+    expect(options.phase).toBe('SCAN');
+    expect(options.visualProgress).toBe(25);
+    expect(options.speed).toBe(0.6);
+    for (const [phase, visiblePhase, visualProgress] of [
+      ['SCAN', 'GROUP', 50],
+      ['GROUP', 'ASSEMBLE', 75],
+      ['ASSEMBLE', 'DECK', 99],
+      ['DECK', 'REVEAL', 99],
+    ] as const) {
+      await expect(options.onPhaseFinished(phase)).resolves.toEqual({
+        visiblePhase,
+        visualProgress,
+      });
+    }
+    options.onPhaseStarted('SCAN');
+    options.onPhaseStarted('REVEAL');
+    options.onRevealFinished();
+    expect(mocks.request).not.toHaveBeenCalled();
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.boardList).not.toHaveBeenCalled();
+    expect(mocks.preloadStickerImages).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['ReactNativeWebView', { postMessage: vi.fn() }],
+    ['WebViewBridgeKit', {}],
+    ['webkit', { messageHandlers: { webviewBridgeKit: {} } }],
+  ])('개발 환경이어도 %s가 있으면 실제 네이티브 상태를 사용한다', async (name, value) => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubGlobal(name, value);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<AnalysisLoadingPage />);
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    expect(mocks.request).toHaveBeenCalledWith('GET_ANALYSIS_LOADING_STATE');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('프로덕션에서는 개발 로그인 플래그가 켜져도 목데이터를 사용하지 않는다', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEV_LOGIN', 'true');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<AnalysisLoadingPage />);
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    expect(mocks.request).toHaveBeenCalledWith('GET_ANALYSIS_LOADING_STATE');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('로컬 목데이터가 없으면 생성 안내를 보여준다', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response(null, { status: 500 }))),
+    );
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      render(<AnalysisLoadingPage />);
+      expect(await screen.findByRole('alert')).toHaveTextContent('mock/generate.mjs');
+      expect(mocks.start).not.toHaveBeenCalled();
+      expect(mocks.request).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it('RN 상태로 모션을 시작하고 막 경계와 종료를 브리지로 알린다', async () => {
     let finishFirstDecode: (() => void) | undefined;
     mocks.decode.mockImplementationOnce(

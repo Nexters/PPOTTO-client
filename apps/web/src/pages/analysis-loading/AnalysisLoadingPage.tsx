@@ -1,12 +1,17 @@
 'use client';
 
-import type { AnalysisLoadingBridgeState } from '@ppotto/bridge';
+import {
+  contract,
+  type AnalysisLoadingBridgeState,
+  type AnalysisLoadingPhaseState,
+} from '@ppotto/bridge';
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { boardApi } from '@/entities/board/api/board-api';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
+import { isDevelopmentBrowser } from '@/shared/api/browser-dev-session';
 import { bridge } from '@/shared/lib/bridge';
 import { preloadStickerImages } from '@/shared/lib/sticker-raster';
 
@@ -18,6 +23,16 @@ const STICKER_SRCS = Array.from(
   { length: 9 },
   (_, index) => `/analysis-loading/sticker${index + 1}.png`,
 );
+const MOCK_NEXT_PHASE: Record<
+  AnalysisLoadingBridgeState['visiblePhase'],
+  AnalysisLoadingPhaseState
+> = {
+  SCAN: { visiblePhase: 'GROUP', visualProgress: 50 },
+  GROUP: { visiblePhase: 'ASSEMBLE', visualProgress: 75 },
+  ASSEMBLE: { visiblePhase: 'DECK', visualProgress: 99 },
+  DECK: { visiblePhase: 'REVEAL', visualProgress: 99 },
+  REVEAL: { visiblePhase: 'REVEAL', visualProgress: 100 },
+};
 
 export function AnalysisLoadingPage() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -25,6 +40,7 @@ export function AnalysisLoadingPage() {
   const { replace } = useFlow();
   const motionRef = useRef<ReturnType<typeof createLoadingMotion>>(undefined);
   const downloadingFromICloudRef = useRef(false);
+  const [mockError, setMockError] = useState<string | null>(null);
 
   const syncICloudNotice = useCallback((downloading: boolean) => {
     downloadingFromICloudRef.current = downloading;
@@ -57,9 +73,10 @@ export function AnalysisLoadingPage() {
   useEffect(() => {
     let disposed = false;
     let motion: ReturnType<typeof createLoadingMotion> | undefined;
+    const useMock = process.env.NODE_ENV === 'development' && isDevelopmentBrowser();
+    const initialState = useMock ? loadMockState() : bridge.request('GET_ANALYSIS_LOADING_STATE');
 
-    void bridge
-      .request('GET_ANALYSIS_LOADING_STATE')
+    void initialState
       .then(async (state) => {
         if (disposed || !mountRef.current) return;
         syncICloudNotice(state.downloadingFromICloud ?? false);
@@ -78,6 +95,8 @@ export function AnalysisLoadingPage() {
           boardBgSrc: BOARD_BG_SRC,
           stickerSrcs: STICKER_SRCS,
           onPhaseStarted: (phase: AnalysisLoadingBridgeState['visiblePhase']) => {
+            // 브라우저 모션 실험에서는 실제 보드 API·스티커 사전 로딩도 실행하지 않는다.
+            if (useMock) return;
             bridge.send('ANALYSIS_LOADING_PHASE_STARTED', { jobId, phase });
             if (phase === 'REVEAL') {
               void prepareBoard().catch((error) =>
@@ -86,15 +105,24 @@ export function AnalysisLoadingPage() {
             }
           },
           onPhaseFinished: (phase: AnalysisLoadingBridgeState['visiblePhase']) =>
-            bridge.request('ANALYSIS_LOADING_PHASE_FINISHED', { jobId, phase }),
-          onRevealFinished: () => bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED', { jobId }),
+            useMock
+              ? Promise.resolve(MOCK_NEXT_PHASE[phase])
+              : bridge.request('ANALYSIS_LOADING_PHASE_FINISHED', { jobId, phase }),
+          onRevealFinished: () => {
+            if (!useMock) bridge.send('ANALYSIS_LOADING_REVEAL_FINISHED', { jobId });
+          },
         });
         motionRef.current = motion;
         motion.setICloudNotice(downloadingFromICloudRef.current);
         motion.start();
-        bridge.send('ANALYSIS_LOADING_READY', { jobId });
+        if (!useMock) bridge.send('ANALYSIS_LOADING_READY', { jobId });
       })
-      .catch((error) => console.error('[analysis-loading] 화면 시작 실패', error));
+      .catch((error) => {
+        console.error('[analysis-loading] 화면 시작 실패', error);
+        if (useMock && !disposed) {
+          setMockError(error instanceof Error ? error.message : '목데이터를 불러오지 못했어요.');
+        }
+      });
 
     return () => {
       disposed = true;
@@ -103,7 +131,27 @@ export function AnalysisLoadingPage() {
     };
   }, [prepareBoard, syncICloudNotice]);
 
-  return <main ref={mountRef} className="relative h-dvh w-full overflow-hidden bg-black" />;
+  return (
+    <main ref={mountRef} className="relative h-dvh w-full overflow-hidden bg-black">
+      {mockError && (
+        <p role="alert" className="p-6 text-white">
+          {mockError}
+        </p>
+      )}
+    </main>
+  );
+}
+
+async function loadMockState(): Promise<AnalysisLoadingBridgeState> {
+  const response = await fetch('/api/dev/analysis-loading', { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(
+      '목데이터를 불러오지 못했어요. mock/generate.mjs로 로컬 이미지 데이터를 생성해 주세요.',
+    );
+  }
+  const state = contract.GET_ANALYSIS_LOADING_STATE.response!.parse(await response.json());
+  // 서버 진행을 기다리지 않고 각 막을 한 번씩 재생한다.
+  return { ...state, visiblePhase: 'SCAN', visualProgress: 25 };
 }
 
 async function preloadImages(sources: string[]) {
