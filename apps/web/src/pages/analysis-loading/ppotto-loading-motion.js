@@ -243,7 +243,9 @@ export function createLoadingMotion(opts) {
     return d;
   }
   function setTilePhoto(el, src) {
+    if (el._pmPhotoSrc === src) return;
     el._pmPhoto.style.backgroundImage = `url(${src})`;
+    el._pmPhotoSrc = src;
   }
   function setTileBrightness(el, brightness) {
     el._pmDim.style.opacity = (1 - clamp(brightness, 0, 1)).toFixed(3);
@@ -256,11 +258,33 @@ export function createLoadingMotion(opts) {
       el.style.height = h + 'px';
       el.style.transformOrigin = '0 0';
     }
+    // 이전 숫자만 타일에 보관한다. 매 프레임 비교용 객체·문자열을 만들지 않는다.
+    const prev = (el._pmFrame ??= {});
+    if (
+      prev.x === x &&
+      prev.y === y &&
+      prev.w === w &&
+      prev.h === h &&
+      prev.rot === rot &&
+      prev.scale === scale
+    )
+      return;
+
     const sizeX = w / el._pmBaseWidth;
     const sizeY = h / el._pmBaseHeight;
     el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) rotate(${rot.toFixed(2)}deg) scale(${(sizeX * scale).toFixed(4)},${(sizeY * scale).toFixed(4)})`;
     // 바깥 박스의 비균등 스케일만 상쇄해 사진 비율은 유지한다.
-    el._pmPhoto.style.transform = `scale(${(1 / sizeX).toFixed(4)},${(1 / sizeY).toFixed(4)})`;
+    if (prev.sizeX !== sizeX || prev.sizeY !== sizeY) {
+      el._pmPhoto.style.transform = `scale(${(1 / sizeX).toFixed(4)},${(1 / sizeY).toFixed(4)})`;
+    }
+    prev.x = x;
+    prev.y = y;
+    prev.w = w;
+    prev.h = h;
+    prev.rot = rot;
+    prev.scale = scale;
+    prev.sizeX = sizeX;
+    prev.sizeY = sizeY;
   }
   function setTile(el, p, w, h, x, y, opt = {}) {
     setTilePhoto(el, p.src);

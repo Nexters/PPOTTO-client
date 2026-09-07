@@ -73,6 +73,13 @@ export function AnalysisLoadingPage() {
   useEffect(() => {
     let disposed = false;
     let motion: ReturnType<typeof createLoadingMotion> | undefined;
+    const photoUrls: string[] = [];
+    const disposeMotion = () => {
+      if (motionRef.current === motion) motionRef.current = undefined;
+      motion?.destroy();
+      motion = undefined;
+      photoUrls.splice(0).forEach((url) => URL.revokeObjectURL(url));
+    };
     const useMock = process.env.NODE_ENV === 'development' && isDevelopmentBrowser();
     const initialState = useMock ? loadMockState() : bridge.request('GET_ANALYSIS_LOADING_STATE');
 
@@ -82,7 +89,7 @@ export function AnalysisLoadingPage() {
         syncICloudNotice(state.downloadingFromICloud ?? false);
         const jobId = state.jobId ?? null;
 
-        const photos = prepareMotionPhotos(state);
+        const photos = prepareMotionPhotos(state, photoUrls);
         await preloadImages([...photos.map(({ src }) => src), BOARD_BG_SRC, ...STICKER_SRCS]);
         if (disposed || !mountRef.current) return;
 
@@ -118,6 +125,7 @@ export function AnalysisLoadingPage() {
         if (!useMock) bridge.send('ANALYSIS_LOADING_READY', { jobId });
       })
       .catch((error) => {
+        disposeMotion();
         console.error('[analysis-loading] 화면 시작 실패', error);
         if (useMock && !disposed) {
           setMockError(error instanceof Error ? error.message : '목데이터를 불러오지 못했어요.');
@@ -126,8 +134,7 @@ export function AnalysisLoadingPage() {
 
     return () => {
       disposed = true;
-      motionRef.current = undefined;
-      motion?.destroy();
+      disposeMotion();
     };
   }, [prepareBoard, syncICloudNotice]);
 
@@ -164,7 +171,37 @@ async function preloadImages(sources: string[]) {
   );
 }
 
-function prepareMotionPhotos(state: AnalysisLoadingBridgeState) {
+function createMotionPhotoSrc(uri: string, photoUrls: string[]) {
+  const prefix = /^data:(image\/[^;,]+);base64,/i.exec(uri);
+  if (!prefix) return uri;
+
+  const uint8Array = Uint8Array as Uint8ArrayConstructor & {
+    fromBase64?: (source: string) => Uint8Array<ArrayBuffer>;
+  };
+  let bytes: Uint8Array<ArrayBuffer>;
+  try {
+    const base64 = uri.slice(prefix[0].length);
+    if (typeof uint8Array.fromBase64 === 'function') {
+      bytes = uint8Array.fromBase64(base64);
+    } else {
+      // 구형 WebView에서는 기존 디코딩 방식을 유지한다.
+      const binary = atob(base64);
+      bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+    }
+  } catch {
+    // 잘못된 사진 하나가 나머지 모션까지 막지 않도록 기존 이미지 로딩에 맡긴다.
+    return uri;
+  }
+  // fetch(data:)는 WebView QA 로깅에 base64 전체를 다시 전달하므로 사용하지 않는다.
+  const url = URL.createObjectURL(new Blob([bytes], { type: prefix[1] }));
+  photoUrls.push(url);
+  return url;
+}
+
+function prepareMotionPhotos(state: AnalysisLoadingBridgeState, photoUrls: string[]) {
   return state.photos.map((photo) => {
     const hue = hash(photo.id) % 360;
     const saturation = 0.38 + (hash(`${photo.id}:s`) % 30) / 100;
@@ -173,7 +210,7 @@ function prepareMotionPhotos(state: AnalysisLoadingBridgeState) {
 
     return {
       id: photo.id,
-      src: photo.uri,
+      src: createMotionPhotoSrc(photo.uri, photoUrls),
       w: photo.width,
       h: photo.height,
       ratio: photo.width / photo.height,
