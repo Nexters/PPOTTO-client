@@ -121,7 +121,27 @@ export interface paths {
          * 소셜 로그인
          * @description 카카오 또는 애플 계정을 검증하고 가입과 로그인을 함께 처리함
          */
-        post: operations["login_1"];
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login/web": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 웹 소셜 로그인 (가입 겸용)
+         * @description 브라우저가 provider 인가 페이지를 거쳐 받은 authorization code를 서버가 토큰으로 교환해 로그인함. 앱 로그인과 같은 계정으로 이어지며 현재 KAKAO만 지원함
+         */
+        post: operations["webLogin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -240,7 +260,7 @@ export interface paths {
         patch: operations["update"];
         trace?: never;
     };
-    "/dev/auth/login": {
+    "/device-tokens": {
         parameters: {
             query?: never;
             header?: never;
@@ -250,11 +270,15 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 개발용 로그인
-         * @description 카카오로 가입된 이메일과 고정 비밀번호로 해당 유저의 실제 토큰 쌍을 발급함. 이후 API 동작은 소셜 로그인과 동일
+         * 디바이스 토큰 등록/갱신
+         * @description deviceId 기준으로 upsert함. FCM 토큰이 회전돼도 같은 deviceId를 보내면 같은 기기 행이 갱신됨
          */
-        post: operations["login"];
-        delete?: never;
+        post: operations["register-5qyZsBA"];
+        /**
+         * 디바이스 토큰 해제
+         * @description 로그아웃 등으로 더 이상 알림을 받지 않을 기기의 토큰을 삭제함
+         */
+        delete: operations["unregister-5qyZsBA"];
         options?: never;
         head?: never;
         patch?: never;
@@ -810,16 +834,6 @@ export interface components {
              * @example 여름 휴가
              */
             name?: string | null;
-        };
-        /** @description 개발용 로그인 요청 */
-        DevLoginRequest: {
-            /**
-             * @description 카카오로 가입한 계정의 이메일
-             * @example dev@ppotto.co.kr
-             */
-            email: string;
-            /** @description 개발용 고정 비밀번호 */
-            password: string;
         };
         /** @description 그림 생성과 삭제 변경분 */
         DrawingChangesRequest: {
@@ -1545,6 +1559,21 @@ export interface components {
              */
             refreshToken: string;
         };
+        /** @description 디바이스 토큰 등록/갱신 요청 */
+        RegisterDeviceTokenRequest: {
+            /**
+             * @description 클라이언트가 생성해 로컬에 영속시키는 안정적인 기기 식별자. FCM 토큰이 회전돼도 같은 값을 보내면 같은 기기로 upsert됨
+             * @example 3F2504E0-4F89-11D3-9A0C-0305E82C3301
+             */
+            deviceId: string;
+            /** @description FCM 토큰 */
+            fcmToken: string;
+            /**
+             * @description 기기 플랫폼
+             * @enum {string}
+             */
+            platform: "IOS" | "ANDROID";
+        };
         /** @description 재발급된 사진별 업로드 URL */
         ReissueUploadUrlsResponse: {
             /** @description 재발급 대상(PENDING) 사진의 업로드 URL 목록 */
@@ -1840,6 +1869,25 @@ export interface components {
              * @enum {string}
              */
             provider: "KAKAO" | "APPLE";
+        };
+        /** @description 웹 소셜 로그인 요청 */
+        WebLoginRequest: {
+            /**
+             * @description provider 인가 페이지가 redirect URI로 돌려준 authorization code. 1회, 수 분 안에만 유효
+             * @example sample-kakao-authorization-code
+             */
+            authorizationCode: string;
+            /**
+             * @description 소셜 로그인 제공자. 현재 KAKAO만 지원
+             * @example KAKAO
+             * @enum {string|null}
+             */
+            provider: "KAKAO" | "APPLE" | null;
+            /**
+             * @description 인가 요청에 사용한 redirect URI. provider 콘솔에 등록된 값과 정확히 같아야 함
+             * @example https://ppotto.co.kr/oauth/kakao
+             */
+            redirectUri: string;
         };
     };
     responses: never;
@@ -2178,7 +2226,7 @@ export interface operations {
             };
         };
     };
-    login_1: {
+    login: {
         parameters: {
             query?: never;
             header?: {
@@ -2225,6 +2273,63 @@ export interface operations {
                 };
             };
             /** @description 가입에 필요한 동의가 부족함 (AUTH-004) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    webLogin: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description 로그인 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseLoginResponse"];
+                };
+            };
+            /** @description 요청 값이 올바르지 않음 (COMMON-001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description authorization code 교환 또는 소셜 로그인 검증에 실패함 (AUTH-001, AUTH-008) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 가입에 필요한 동의가 부족함 (AUTH-004, AUTH-005) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2648,7 +2753,7 @@ export interface operations {
             };
         };
     };
-    login: {
+    "register-5qyZsBA": {
         parameters: {
             query?: never;
             header?: {
@@ -2663,17 +2768,67 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DevLoginRequest"];
+                "application/json": components["schemas"]["RegisterDeviceTokenRequest"];
             };
         };
         responses: {
-            /** @description OK */
+            /** @description 처리 완료. data는 항상 null */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiResponseTokenPairResponse"];
+                    "application/json": components["schemas"]["ApiResponseUnit"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    "unregister-5qyZsBA": {
+        parameters: {
+            query: {
+                /**
+                 * @description 해제할 기기 식별자
+                 * @example 3F2504E0-4F89-11D3-9A0C-0305E82C3301
+                 */
+                deviceId: string;
+            };
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 처리 완료. data는 항상 null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseUnit"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
