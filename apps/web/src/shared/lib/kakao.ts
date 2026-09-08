@@ -3,6 +3,9 @@ declare global {
     Kakao?: {
       init: (key: string) => void;
       isInitialized: () => boolean;
+      Auth: {
+        authorize: (params: { redirectUri: string; state?: string }) => void;
+      };
       Share: {
         uploadImage: (params: { file: File[] | FileList }) => Promise<{
           infos: { original: { url: string } };

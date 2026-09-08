@@ -1,5 +1,7 @@
+import { initKakao } from '@/shared/lib/kakao';
+
 const REFRESH_TOKEN_KEY = 'ppotto.dev.refresh-token';
-const DEV_PASSWORD = 'password1!';
+const KAKAO_REDIRECT_PATH = '/login';
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
 
 let accessToken: string | null = null;
@@ -90,11 +92,29 @@ async function requestTokens(path: string, body: Record<string, string>) {
   return data;
 }
 
-export async function loginWithDevelopmentEmail(email: string) {
+function requireDevelopmentBrowser() {
   if (!isDevelopmentBrowser()) throw new Error('일반 브라우저 개발 환경에서만 사용할 수 있습니다.');
-  const tokens = await requestTokens('/dev/auth/login', {
-    email: email.trim(),
-    password: DEV_PASSWORD,
+}
+
+// 인가 요청과 code 교환에 같은 값을 보내야 카카오가 code를 받아준다.
+function kakaoRedirectUri() {
+  return `${window.location.origin}${KAKAO_REDIRECT_PATH}`;
+}
+
+// 카카오 인가 페이지로 이동한다. 로그인이 끝나면 /login?code=... 로 돌아오고 completeKakaoLogin이 이어받는다.
+export function startKakaoLogin() {
+  requireDevelopmentBrowser();
+  initKakao();
+  if (!window.Kakao?.isInitialized()) throw new Error('카카오 SDK가 아직 준비되지 않았습니다.');
+  window.Kakao.Auth.authorize({ redirectUri: kakaoRedirectUri() });
+}
+
+export async function completeKakaoLogin(authorizationCode: string) {
+  requireDevelopmentBrowser();
+  const tokens = await requestTokens('/auth/login/web', {
+    provider: 'KAKAO',
+    authorizationCode,
+    redirectUri: kakaoRedirectUri(),
   });
   saveTokens(tokens);
 }
@@ -126,15 +146,19 @@ export async function getDevelopmentAccessToken({ forceRefresh = false } = {}) {
   return refreshPromise;
 }
 
-export async function logoutDevelopmentSession() {
+async function endSession(path: string, method: 'POST' | 'DELETE') {
   const token = await getDevelopmentAccessToken();
   if (token === undefined) throw new Error('개발 로그인 세션이 없습니다.');
   if (token === null) return;
 
-  const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-    method: 'POST',
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) throw await responseError(response);
   clearDevelopmentSession();
 }
+
+export const logoutDevelopmentSession = () => endSession('/auth/logout', 'POST');
+
+export const withdrawDevelopmentSession = () => endSession('/users/me', 'DELETE');
