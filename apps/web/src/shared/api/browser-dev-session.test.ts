@@ -1,14 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  completeKakaoLogin,
-  getDevelopmentAccessToken,
-  hasDevelopmentSession,
-  isDevelopmentBrowser,
-  logoutDevelopmentSession,
-  startKakaoLogin,
-  withdrawDevelopmentSession,
-} from './browser-dev-session';
+const REDIRECT_URI = 'http://localhost:3000/login';
 
 const tokenResponse = (accessToken: string, refreshToken: string, accessTokenExpiresIn: number) =>
   new Response(
@@ -20,11 +12,26 @@ const tokenResponse = (accessToken: string, refreshToken: string, accessTokenExp
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   );
 
-const REDIRECT_URI = 'http://localhost:3000/login';
+const errorResponse = (status: number, code: string) =>
+  new Response(JSON.stringify({ success: false, data: null, error: { code } }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const requestAt = (fetchMock: ReturnType<typeof vi.fn<typeof fetch>>, index: number) =>
+  fetchMock.mock.calls[index]![0] as Request;
+
+// openapi-fetch는 클라이언트를 만들 때 global fetch를 붙잡으므로 stub 뒤에 모듈을 새로 불러온다.
+async function loadSession(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>) {
+  vi.stubGlobal('fetch', fetchMock);
+  vi.resetModules();
+  return import('./browser-dev-session');
+}
 
 describe('browser dev session', () => {
   beforeEach(() => {
     vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test');
     localStorage.clear();
   });
 
@@ -32,33 +39,6 @@ describe('browser dev session', () => {
     localStorage.clear();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
-    delete window.Kakao;
-  });
-
-  it('production에서는 명시적 플래그가 있을 때만 개발 브라우저를 허용한다', () => {
-    vi.stubEnv('NODE_ENV', 'production');
-    expect(isDevelopmentBrowser()).toBe(false);
-
-    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEV_LOGIN', 'true');
-    expect(isDevelopmentBrowser()).toBe(true);
-  });
-
-  it('카카오 인가 페이지로 보낼 때 /login을 redirect URI로 넘긴다', () => {
-    vi.stubEnv('NEXT_PUBLIC_KAKAO_JS_KEY', 'js-key');
-    const authorize = vi.fn();
-    let initialized = false;
-    window.Kakao = {
-      init: () => {
-        initialized = true;
-      },
-      isInitialized: () => initialized,
-      Auth: { authorize },
-      Share: { uploadImage: vi.fn() },
-    };
-
-    startKakaoLogin();
-
-    expect(authorize).toHaveBeenCalledWith({ redirectUri: REDIRECT_URI });
   });
 
   it('인가 code로 로그인한 뒤 만료 토큰을 한 번만 갱신하고 로그아웃한다', async () => {
@@ -67,31 +47,45 @@ describe('browser dev session', () => {
       .mockResolvedValueOnce(tokenResponse('login-access', 'login-refresh', 0))
       .mockResolvedValueOnce(tokenResponse('fresh-access', 'fresh-refresh', 3600))
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
+    const session = await loadSession(fetchMock);
 
-    await completeKakaoLogin('kakao-code');
+    await session.completeKakaoLogin('kakao-code', REDIRECT_URI);
 
-    const [loginUrl, loginInit] = fetchMock.mock.calls[0]!;
-    expect(String(loginUrl)).toMatch(/\/auth\/login\/web$/);
-    expect(JSON.parse(String(loginInit?.body))).toEqual({
+    const login = requestAt(fetchMock, 0);
+    expect(login.url).toBe('http://api.test/auth/login/web');
+    expect(login.method).toBe('POST');
+    await expect(login.json()).resolves.toEqual({
       provider: 'KAKAO',
       authorizationCode: 'kakao-code',
       redirectUri: REDIRECT_URI,
     });
-    expect(hasDevelopmentSession()).toBe(true);
+    expect(session.hasDevelopmentSession()).toBe(true);
 
     await expect(
-      Promise.all([getDevelopmentAccessToken(), getDevelopmentAccessToken()]),
+      Promise.all([session.getDevelopmentAccessToken(), session.getDevelopmentAccessToken()]),
     ).resolves.toEqual(['fresh-access', 'fresh-access']);
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
-    await logoutDevelopmentSession();
+    await session.logoutDevelopmentSession();
 
-    const [logoutUrl, logoutInit] = fetchMock.mock.calls[2]!;
-    expect(String(logoutUrl)).toMatch(/\/auth\/logout$/);
-    expect(logoutInit?.method).toBe('POST');
-    expect(logoutInit?.headers).toEqual({ Authorization: 'Bearer fresh-access' });
-    expect(hasDevelopmentSession()).toBe(false);
+    const logout = requestAt(fetchMock, 2);
+    expect(logout.url).toBe('http://api.test/auth/logout');
+    expect(logout.method).toBe('POST');
+    expect(logout.headers.get('Authorization')).toBe('Bearer fresh-access');
+    expect(session.hasDevelopmentSession()).toBe(false);
+  });
+
+  it('refresh token이 만료되면(AUTH-002) 세션을 버리고 null을 돌려준다', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(tokenResponse('login-access', 'login-refresh', 0))
+      .mockResolvedValueOnce(errorResponse(401, 'AUTH-002'));
+    const session = await loadSession(fetchMock);
+
+    await session.completeKakaoLogin('kakao-code', REDIRECT_URI);
+
+    await expect(session.getDevelopmentAccessToken()).resolves.toBeNull();
+    expect(session.hasDevelopmentSession()).toBe(false);
   });
 
   it('탈퇴하면 계정을 지우고 세션을 정리한다', async () => {
@@ -99,16 +93,16 @@ describe('browser dev session', () => {
       .fn<typeof fetch>()
       .mockResolvedValueOnce(tokenResponse('login-access', 'login-refresh', 3600))
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
+    const session = await loadSession(fetchMock);
 
-    await completeKakaoLogin('kakao-code');
-    await withdrawDevelopmentSession();
+    await session.completeKakaoLogin('kakao-code', REDIRECT_URI);
+    await session.withdrawDevelopmentSession();
 
-    const [withdrawUrl, withdrawInit] = fetchMock.mock.calls[1]!;
-    expect(String(withdrawUrl)).toMatch(/\/users\/me$/);
-    expect(withdrawInit?.method).toBe('DELETE');
-    expect(withdrawInit?.headers).toEqual({ Authorization: 'Bearer login-access' });
-    expect(hasDevelopmentSession()).toBe(false);
+    const withdraw = requestAt(fetchMock, 1);
+    expect(withdraw.url).toBe('http://api.test/users/me');
+    expect(withdraw.method).toBe('DELETE');
+    expect(withdraw.headers.get('Authorization')).toBe('Bearer login-access');
+    expect(session.hasDevelopmentSession()).toBe(false);
   });
 
   it('탈퇴가 거절되면 세션을 유지한다', async () => {
@@ -116,11 +110,11 @@ describe('browser dev session', () => {
       .fn<typeof fetch>()
       .mockResolvedValueOnce(tokenResponse('login-access', 'login-refresh', 3600))
       .mockResolvedValueOnce(new Response(null, { status: 500 }));
-    vi.stubGlobal('fetch', fetchMock);
+    const session = await loadSession(fetchMock);
 
-    await completeKakaoLogin('kakao-code');
+    await session.completeKakaoLogin('kakao-code', REDIRECT_URI);
 
-    await expect(withdrawDevelopmentSession()).rejects.toThrow();
-    expect(hasDevelopmentSession()).toBe(true);
+    await expect(session.withdrawDevelopmentSession()).rejects.toThrow();
+    expect(session.hasDevelopmentSession()).toBe(true);
   });
 });

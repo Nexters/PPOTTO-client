@@ -2,17 +2,14 @@
 
 import { AppleLogo, KakaoLogo, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
-import Script from 'next/script';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 
-import {
-  completeKakaoLogin,
-  isDevelopmentBrowser,
-  startKakaoLogin,
-} from '@/shared/api/browser-dev-session';
-import { bridge, track } from '@/shared/lib/bridge';
+import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
-import { initKakao } from '@/shared/lib/kakao';
+import { isDevelopmentBrowser } from '@/shared/lib/runtime-environment';
+import { KakaoSdkScript } from '@/shared/ui/KakaoSdkScript';
+
+import { useDevelopmentKakaoLogin } from './model/use-development-kakao-login';
 
 const subscribeToBrowserEnvironment = () => () => undefined;
 
@@ -29,25 +26,7 @@ export function LoginPage() {
       typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search).get('nativePlatform') === 'android',
   );
-  const [authorizationCode] = useState(() =>
-    typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('code'),
-  );
-
-  // 카카오 인가 페이지에서 code를 들고 돌아온 경우. code는 1회용이라 URL에서 바로 지운다.
-  useEffect(() => {
-    if (!isDevelopment || !authorizationCode) return;
-    window.history.replaceState(null, '', window.location.pathname);
-    track('login_started', { method: 'development' });
-    completeKakaoLogin(authorizationCode)
-      .then(() => {
-        track('login', { method: 'development' });
-        replace('Board', {});
-      })
-      .catch((error: unknown) => {
-        track('login_failed', { method: 'development' });
-        console.error('로그인 실패', error);
-      });
-  }, [authorizationCode, isDevelopment, replace]);
+  const developmentKakaoLogin = useDevelopmentKakaoLogin(isDevelopment);
 
   const login = async (channel: 'APPLE_LOGIN' | 'KAKAO_LOGIN') => {
     try {
@@ -60,25 +39,12 @@ export function LoginPage() {
     }
   };
 
-  const loginWithKakao = () => {
-    if (!isDevelopment) return void login('KAKAO_LOGIN');
-    try {
-      startKakaoLogin();
-    } catch (error) {
-      console.error('로그인 실패', error);
-    }
-  };
+  const loginWithKakao = () =>
+    isDevelopment ? developmentKakaoLogin.start() : void login('KAKAO_LOGIN');
 
   return (
     <main className="flex min-h-dvh flex-col items-center px-7.5 pt-52.5 pb-14">
-      {isDevelopment && (
-        <Script
-          src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.2/kakao.min.js"
-          strategy="afterInteractive"
-          crossOrigin="anonymous"
-          onLoad={initKakao}
-        />
-      )}
+      {isDevelopment && <KakaoSdkScript />}
 
       <Logo width={261} height={80} />
 
