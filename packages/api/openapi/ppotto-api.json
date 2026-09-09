@@ -17,12 +17,12 @@
   ],
   "tags": [
     {
-      "name": "인증",
-      "description": "소셜 로그인과 서비스 토큰 관리"
+      "name": "디바이스 토큰",
+      "description": "푸시 알림 발송을 위한 FCM 디바이스 토큰 등록/해제"
     },
     {
-      "name": "개발용 인증",
-      "description": "개발 환경 전용. 카카오 가입 이메일로 실제 서비스 토큰을 발급함"
+      "name": "인증",
+      "description": "소셜 로그인과 서비스 토큰 관리"
     },
     {
       "name": "분석",
@@ -554,12 +554,12 @@
         ]
       }
     },
-    "/dev/auth/login": {
+    "/device-tokens": {
       "post": {
-        "tags": ["개발용 인증"],
-        "summary": "개발용 로그인",
-        "description": "카카오로 가입된 이메일과 고정 비밀번호로 해당 유저의 실제 토큰 쌍을 발급함. 이후 API 동작은 소셜 로그인과 동일",
-        "operationId": "login",
+        "tags": ["디바이스 토큰"],
+        "summary": "디바이스 토큰 등록/갱신",
+        "description": "deviceId 기준으로 upsert함. FCM 토큰이 회전돼도 같은 deviceId를 보내면 같은 기기 행이 갱신됨",
+        "operationId": "register-5qyZsBA",
         "parameters": [
           {
             "name": "X-API-Version",
@@ -578,7 +578,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DevLoginRequest"
+                "$ref": "#/components/schemas/RegisterDeviceTokenRequest"
+              },
+              "examples": {
+                "iOS 기기 등록": {
+                  "description": "iOS 기기 등록",
+                  "value": {
+                    "deviceId": "3F2504E0-4F89-11D3-9A0C-0305E82C3301",
+                    "platform": "IOS",
+                    "fcmToken": "dGhpcyBpcyBhIGRlbW8gZmNtIHRva2Vu"
+                  }
+                }
               }
             }
           },
@@ -586,16 +596,130 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "처리 완료. data는 항상 null",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTokenPairResponse"
+                  "$ref": "#/components/schemas/ApiResponseUnit"
+                },
+                "examples": {
+                  "성공": {
+                    "description": "성공",
+                    "value": {
+                      "success": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
                 }
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["디바이스 토큰"],
+        "summary": "디바이스 토큰 해제",
+        "description": "로그아웃 등으로 더 이상 알림을 받지 않을 기기의 토큰을 삭제함",
+        "operationId": "unregister-5qyZsBA",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "query",
+            "description": "해제할 기기 식별자",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "3F2504E0-4F89-11D3-9A0C-0305E82C3301"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "처리 완료. data는 항상 null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUnit"
+                },
+                "examples": {
+                  "성공": {
+                    "description": "성공",
+                    "value": {
+                      "success": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/boards": {
@@ -994,7 +1118,7 @@
         "tags": ["인증"],
         "summary": "소셜 로그인",
         "description": "카카오 또는 애플 계정을 검증하고 가입과 로그인을 함께 처리함",
-        "operationId": "login_1",
+        "operationId": "login",
         "parameters": [
           {
             "name": "X-API-Version",
@@ -1213,6 +1337,225 @@
           },
           "403": {
             "description": "가입에 필요한 동의가 부족함 (AUTH-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "AUTH-004": {
+                    "summary": "카카오 이메일 동의 필요. account_email 추가 동의 후 재시도",
+                    "description": "AUTH-004",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "AUTH-004",
+                        "message": "이메일 제공에 동의해야 가입할 수 있습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "AUTH-005": {
+                    "summary": "카카오 닉네임 동의 필요. profile_nickname 추가 동의 후 재시도",
+                    "description": "AUTH-005",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "AUTH-005",
+                        "message": "닉네임 제공에 동의해야 가입할 수 있습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login/web": {
+      "post": {
+        "tags": ["인증"],
+        "summary": "웹 소셜 로그인 (가입 겸용)",
+        "description": "브라우저가 provider 인가 페이지를 거쳐 받은 authorization code를 서버가 토큰으로 교환해 로그인함. 앱 로그인과 같은 계정으로 이어지며 현재 KAKAO만 지원함",
+        "operationId": "webLogin",
+        "parameters": [
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebLoginRequest"
+              },
+              "examples": {
+                "카카오 웹 로그인": {
+                  "description": "카카오 웹 로그인",
+                  "value": {
+                    "provider": "KAKAO",
+                    "authorizationCode": "sample-kakao-authorization-code",
+                    "redirectUri": "https://ppotto.co.kr/oauth/kakao"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "로그인 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLoginResponse"
+                },
+                "examples": {
+                  "신규 가입 - 약관 동의 필요": {
+                    "description": "신규 가입 - 약관 동의 필요",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "accessToken": "eyJhbGciOiJIUzI1NiJ9.sample-access-token.sample-signature",
+                        "refreshToken": "sample-refresh-token-01983f2a7c317b02",
+                        "accessTokenExpiresIn": 3600,
+                        "isNewUser": true,
+                        "pendingTerms": [
+                          {
+                            "id": "01983f2a-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                            "code": "TOS",
+                            "version": "1.0",
+                            "isRequired": true,
+                            "contentUrl": "https://nexters.notion.site/ppotto-tos",
+                            "agreed": false
+                          },
+                          {
+                            "id": "01983f2a-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                            "code": "PRIVACY",
+                            "version": "1.0",
+                            "isRequired": true,
+                            "contentUrl": "https://nexters.notion.site/ppotto-privacy",
+                            "agreed": false
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "재로그인 - 바로 보드 진입": {
+                    "description": "재로그인 - 바로 보드 진입",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "accessToken": "eyJhbGciOiJIUzI1NiJ9.sample-access-token.sample-signature",
+                        "refreshToken": "sample-refresh-token-01983f2a6b207a01",
+                        "accessTokenExpiresIn": 3600,
+                        "isNewUser": false,
+                        "pendingTerms": []
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청 값이 올바르지 않음 (COMMON-001)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-001": {
+                    "summary": "요청 바디 검증 실패",
+                    "description": "COMMON-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-001",
+                        "message": "잘못된 입력입니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "COMMON-001 (필드 오류)": {
+                    "summary": "필드별 검증 실패 상세가 함께 내려가는 경우",
+                    "description": "COMMON-001 (필드 오류)",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-001",
+                        "message": "잘못된 입력입니다.",
+                        "fieldErrors": [
+                          {
+                            "field": "name",
+                            "value": "열자가넘는아주긴보드이름",
+                            "reason": "크기가 1에서 10 사이여야 합니다"
+                          }
+                        ],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "authorization code 교환 또는 소셜 로그인 검증에 실패함 (AUTH-001, AUTH-008)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "AUTH-008": {
+                    "summary": "카카오 authorization code 교환 실패 (만료, 재사용, redirect URI 불일치)",
+                    "description": "AUTH-008",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "AUTH-008",
+                        "message": "카카오 인증 코드 교환에 실패했습니다. 다시 로그인해 주세요.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "AUTH-001": {
+                    "summary": "provider 토큰 검증 실패 (만료, 위조, aud/app_id 불일치, nonce 불일치)",
+                    "description": "AUTH-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "AUTH-001",
+                        "message": "소셜 로그인 검증에 실패했습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "가입에 필요한 동의가 부족함 (AUTH-004, AUTH-005)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4304,78 +4647,28 @@
           "type"
         ]
       },
-      "DevLoginRequest": {
+      "RegisterDeviceTokenRequest": {
         "type": "object",
-        "description": "개발용 로그인 요청",
+        "description": "디바이스 토큰 등록/갱신 요청",
         "properties": {
-          "email": {
+          "deviceId": {
             "type": "string",
-            "description": "카카오로 가입한 계정의 이메일",
-            "example": "dev@ppotto.co.kr",
+            "description": "클라이언트가 생성해 로컬에 영속시키는 안정적인 기기 식별자. FCM 토큰이 회전돼도 같은 값을 보내면 같은 기기로 upsert됨",
+            "example": "3F2504E0-4F89-11D3-9A0C-0305E82C3301",
             "minLength": 1
           },
-          "password": {
+          "platform": {
             "type": "string",
-            "description": "개발용 고정 비밀번호",
+            "description": "기기 플랫폼",
+            "enum": ["IOS", "ANDROID"]
+          },
+          "fcmToken": {
+            "type": "string",
+            "description": "FCM 토큰",
             "minLength": 1
           }
         },
-        "required": ["email", "password"]
-      },
-      "ApiResponseTokenPairResponse": {
-        "type": "object",
-        "description": "공통 응답 봉투",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "요청 성공 여부",
-            "example": true
-          },
-          "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/TokenPairResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "error": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ErrorResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": ["success"]
-      },
-      "TokenPairResponse": {
-        "type": "object",
-        "description": "재발급된 서비스 토큰",
-        "properties": {
-          "accessToken": {
-            "type": "string",
-            "description": "JWT. Authorization Bearer 헤더에 넣음",
-            "example": "eyJhbGciOiJIUzI1NiJ9.sample-access-token.sample-signature"
-          },
-          "refreshToken": {
-            "type": "string",
-            "description": "서버가 생성한 랜덤 값 (JWT 아님). Keychain 등 보안 저장소에 보관",
-            "example": "sample-refresh-token-01983f2a4d5e7f6a"
-          },
-          "accessTokenExpiresIn": {
-            "type": "integer",
-            "format": "int64",
-            "description": "accessToken 만료까지 남은 초",
-            "example": 3600
-          }
-        },
-        "required": ["accessToken", "accessTokenExpiresIn", "refreshToken"]
+        "required": ["deviceId", "fcmToken", "platform"]
       },
       "CreateBoardRequest": {
         "type": "object",
@@ -4452,6 +4745,61 @@
           }
         },
         "required": ["refreshToken"]
+      },
+      "ApiResponseTokenPairResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TokenPairResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "TokenPairResponse": {
+        "type": "object",
+        "description": "재발급된 서비스 토큰",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "JWT. Authorization Bearer 헤더에 넣음",
+            "example": "eyJhbGciOiJIUzI1NiJ9.sample-access-token.sample-signature"
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "서버가 생성한 랜덤 값 (JWT 아님). Keychain 등 보안 저장소에 보관",
+            "example": "sample-refresh-token-01983f2a4d5e7f6a"
+          },
+          "accessTokenExpiresIn": {
+            "type": "integer",
+            "format": "int64",
+            "description": "accessToken 만료까지 남은 초",
+            "example": 3600
+          }
+        },
+        "required": ["accessToken", "accessTokenExpiresIn", "refreshToken"]
       },
       "LoginRequest": {
         "type": "object",
@@ -4603,6 +4951,31 @@
           }
         },
         "required": ["agreed", "code", "id", "isRequired", "version"]
+      },
+      "WebLoginRequest": {
+        "type": "object",
+        "description": "웹 소셜 로그인 요청",
+        "properties": {
+          "provider": {
+            "type": ["string", "null"],
+            "description": "소셜 로그인 제공자. 현재 KAKAO만 지원",
+            "enum": ["KAKAO", "APPLE"],
+            "example": "KAKAO"
+          },
+          "authorizationCode": {
+            "type": "string",
+            "description": "provider 인가 페이지가 redirect URI로 돌려준 authorization code. 1회, 수 분 안에만 유효",
+            "example": "sample-kakao-authorization-code",
+            "minLength": 1
+          },
+          "redirectUri": {
+            "type": "string",
+            "description": "인가 요청에 사용한 redirect URI. provider 콘솔에 등록된 값과 정확히 같아야 함",
+            "example": "https://ppotto.co.kr/oauth/kakao",
+            "minLength": 1
+          }
+        },
+        "required": ["authorizationCode", "provider", "redirectUri"]
       },
       "CreateAnalysisRequest": {
         "type": "object",

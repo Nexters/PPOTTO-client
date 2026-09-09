@@ -1,4 +1,3 @@
-import Script from 'next/script';
 import { useRef, useState } from 'react';
 
 import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
@@ -9,8 +8,8 @@ import { bridge, track } from '@/shared/lib/bridge';
 import { canvasToBlob } from '@/shared/lib/canvas-to-blob';
 import { captureElementAsBlob, captureElementAsCanvas } from '@/shared/lib/capture-element-as-blob';
 import { cropCanvasToSquare } from '@/shared/lib/crop-canvas-to-square';
-import { initKakao } from '@/shared/lib/kakao';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
+import { KakaoSdkScript } from '@/shared/ui/KakaoSdkScript';
 import { useToast } from '@/shared/ui/common/Toast';
 
 import { buildRecapShareLink } from '../model/build-recap-share-link';
@@ -140,12 +139,7 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
 
   return (
     <>
-      <Script
-        src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.2/kakao.min.js"
-        strategy="lazyOnload"
-        crossOrigin="anonymous"
-        onLoad={initKakao}
-      />
+      <KakaoSdkScript strategy="lazyOnload" />
       <BottomSheet isOpen={isOpen} onClose={handleClose} overlayClassName="bg-black/50">
         {screen === 'list' ? (
           <RecapShareList

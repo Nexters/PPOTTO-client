@@ -1,8 +1,9 @@
 import { createApiClient } from '@ppotto/api';
 
 import { bridge } from '@/shared/lib/bridge';
+import { isDevelopmentBrowser } from '@/shared/lib/runtime-environment';
 
-import { getDevelopmentAccessToken, isDevelopmentBrowser } from './browser-dev-session';
+import { getDevelopmentAccessToken } from './browser-dev-session';
 
 async function getAccessToken(forceRefresh: boolean) {
   const developmentToken = await getDevelopmentAccessToken({ forceRefresh });

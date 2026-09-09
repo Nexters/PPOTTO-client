@@ -11,8 +11,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { boardApi } from '@/entities/board/api/board-api';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
-import { isDevelopmentBrowser } from '@/shared/api/browser-dev-session';
 import { bridge } from '@/shared/lib/bridge';
+import { isDevelopmentBrowser } from '@/shared/lib/runtime-environment';
 import { preloadStickerImages } from '@/shared/lib/sticker-raster';
 
 import { createLoadingMotion } from './ppotto-loading-motion';

@@ -6,8 +6,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { useMeQuery } from '@/entities/user/api/user-queries';
-import { hasDevelopmentSession, logoutDevelopmentSession } from '@/shared/api/browser-dev-session';
-import { bridge } from '@/shared/lib/bridge';
+import { logout, withdraw } from '@/shared/api/session';
 import { cn } from '@/shared/lib/cn';
 import { clearStickerImageCache } from '@/shared/lib/sticker-raster';
 import { Modal } from '@/shared/ui/common/Modal';
@@ -31,12 +30,7 @@ const CONFIRM: Record<
     failure: '로그아웃에 실패했습니다.',
     run: async () => {
       await clearStickerImageCache();
-      if (hasDevelopmentSession()) {
-        await logoutDevelopmentSession();
-        window.location.assign('/login');
-        return;
-      }
-      await bridge.request('LOGOUT');
+      await logout();
     },
   },
   withdraw: {
@@ -51,7 +45,7 @@ const CONFIRM: Record<
     failure: '탈퇴에 실패했습니다.',
     run: async () => {
       await clearStickerImageCache();
-      await bridge.request('WITHDRAW');
+      await withdraw();
     },
   },
 };
