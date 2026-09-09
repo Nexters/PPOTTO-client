@@ -58,7 +58,7 @@ const state = {
 const output = new URL('./loading-state.local.json', import.meta.url);
 const json = `${JSON.stringify(state, null, 2)}\n`;
 await writeFile(output, json);
-console.log(
-  `Validated ${photos.length} photos; JPEG ${(jpegBytes / 1024).toFixed(1)} KiB; JSON ${(Buffer.byteLength(json) / 1024).toFixed(1)} KiB`,
+process.stdout.write(
+  `Validated ${photos.length} photos; JPEG ${(jpegBytes / 1024).toFixed(1)} KiB; JSON ${(Buffer.byteLength(json) / 1024).toFixed(1)} KiB\n`,
 );
-console.log(fileURLToPath(output));
+process.stdout.write(`${fileURLToPath(output)}\n`);
