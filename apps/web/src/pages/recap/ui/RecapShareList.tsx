@@ -1,13 +1,18 @@
 import { Download, Filter, Instagram, Kakaotalk } from '@ppotto/assets';
 
+import { cn } from '@/shared/lib/cn';
+
 type RecapShareListProps = {
   isSaving: boolean;
   isSharingInstagram: boolean;
   isSharingKakao: boolean;
+  isShared: boolean;
+  isUnsharing: boolean;
   onSaveImage: () => void;
   onInstagramShare: () => void;
   onKakaoShare: () => void;
   onOptionsClick: () => void;
+  onUnshare: () => void;
 };
 
 // 저장/공유 상태와 실행은 RecapShareSheet가 들고 있다 — 시트가 닫히면 이 컴포넌트는
@@ -16,10 +21,13 @@ export function RecapShareList({
   isSaving,
   isSharingInstagram,
   isSharingKakao,
+  isShared,
+  isUnsharing,
   onSaveImage,
   onInstagramShare,
   onKakaoShare,
   onOptionsClick,
+  onUnshare,
 }: RecapShareListProps) {
   return (
     <>
@@ -67,6 +75,22 @@ export function RecapShareList({
           <span className="text-caption-01 w-full text-center">공유 설정</span>
         </button>
       </div>
+      {isShared && (
+        <button
+          type="button"
+          disabled={isUnsharing}
+          className={cn(
+            'flex w-full items-center justify-between',
+            'border-t border-gray-800 pt-4 disabled:opacity-50',
+          )}
+          onClick={onUnshare}
+        >
+          <span className="text-body-04 font-medium text-white">공유 중인 링크 끄기</span>
+          <span className="text-caption-01 text-gray-400">
+            {isUnsharing ? '끄는 중...' : '해제'}
+          </span>
+        </button>
+      )}
     </>
   );
 }

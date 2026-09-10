@@ -3,18 +3,18 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { stickerApi } from '@/entities/sticker/api/sticker-api';
-import { verifyShareOptions } from '@/shared/lib/recap-share-signature';
+import { decodeShareOptions } from '@/pages/recap/model/share-options';
 
 import { SharedRecapView } from './SharedRecapView';
 
 type PageProps = {
-  params: Promise<{ stickerId: string }>;
-  searchParams: Promise<{ o?: string; sig?: string }>;
+  params: Promise<{ shareToken: string }>;
+  searchParams: Promise<{ o?: string }>;
 };
 
-async function loadRecap(stickerId: string) {
+async function loadRecap(shareToken: string) {
   try {
-    return await stickerApi.getPublic(stickerId);
+    return await stickerApi.getShared(shareToken);
   } catch (error) {
     if (error instanceof HttpError && error.status === 404) return null;
     throw error;
@@ -22,12 +22,10 @@ async function loadRecap(stickerId: string) {
 }
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
-  const { stickerId } = await params;
-  const { o, sig } = await searchParams;
-  const options = verifyShareOptions(stickerId, o ?? null, sig ?? null);
-  if (!options) return { title: '리캡을 찾을 수 없어요 | ppotto' };
+  const { shareToken } = await params;
+  const options = decodeShareOptions((await searchParams).o);
 
-  const recap = await loadRecap(stickerId);
+  const recap = await loadRecap(shareToken);
   if (!recap) return { title: '리캡을 찾을 수 없어요 | ppotto' };
 
   return {
@@ -42,12 +40,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 }
 
 export default async function Page({ params, searchParams }: PageProps) {
-  const { stickerId } = await params;
-  const { o, sig } = await searchParams;
-  const options = verifyShareOptions(stickerId, o ?? null, sig ?? null);
-  if (!options) notFound();
+  const { shareToken } = await params;
+  const options = decodeShareOptions((await searchParams).o);
 
-  const recap = await loadRecap(stickerId);
+  const recap = await loadRecap(shareToken);
   if (!recap) notFound();
 
   return <SharedRecapView data={recap} options={options} />;

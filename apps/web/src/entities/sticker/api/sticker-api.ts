@@ -20,9 +20,26 @@ export const stickerApi = {
     if (USE_MOCK) return Promise.resolve(stickerFixture);
     return unwrapData(api.GET('/stickers/{stickerId}', { params: { path: { stickerId } } }));
   },
-  getPublic: (stickerId: string) => {
+  getShared: (shareToken: string) => {
     if (USE_MOCK) return Promise.resolve(stickerFixture);
-    return unwrapData(publicApi.GET('/stickers/{stickerId}', { params: { path: { stickerId } } }));
+    return unwrapData(
+      publicApi.GET('/stickers/shared/{shareToken}', { params: { path: { shareToken } } }),
+    );
+  },
+  share: (stickerId: string, includePhotos: boolean) => {
+    if (USE_MOCK) return Promise.resolve({ shareToken: 'mock-share-token', includePhotos });
+    return unwrapData(
+      api.POST('/stickers/{stickerId}/share', {
+        params: { path: { stickerId } },
+        body: { includePhotos },
+      }),
+    );
+  },
+  unshare: (stickerId: string) => {
+    if (USE_MOCK) return Promise.resolve();
+    return unwrapVoid(
+      api.DELETE('/stickers/{stickerId}/share', { params: { path: { stickerId } } }),
+    );
   },
   markViewed: (stickerId: string) => {
     if (USE_MOCK) return Promise.resolve();

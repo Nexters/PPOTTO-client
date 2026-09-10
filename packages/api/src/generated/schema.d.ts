@@ -293,7 +293,7 @@ export interface paths {
         };
         /**
          * 리캡 상세 조회
-         * @description 스티커 정보와 분석 코멘트, 관련 사진을 반환함. 인증 없이 누구나 조회할 수 있고 isNew는 본인 스티커일 때만 true가 됨. 빨간 점 제거는 /view를 따로 호출함
+         * @description 내 스티커 정보와 분석 코멘트, 관련 사진을 반환함. 본인 스티커만 조회할 수 있고 빨간 점 제거는 /view를 따로 호출함. 현재 공유 중이면 share 객체가 함께 내려옴
          */
         get: operations["getRecap"];
         put?: never;
@@ -352,6 +352,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stickers/{stickerId}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 리캡 공유 시작
+         * @description 내 리캡의 공유 링크 토큰을 발급함. 이미 공유 중이면 같은 토큰을 유지한 채 사진 포함 여부만 갱신하므로 이미 보낸 링크가 끊기지 않음
+         */
+        post: operations["share"];
+        /**
+         * 리캡 공유 해제
+         * @description 공유 토큰을 즉시 무효화함. 이미 공유 중이 아니어도 같은 결과를 보장함
+         */
+        delete: operations["unshare"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/stickers/{stickerId}/view": {
         parameters: {
             query?: never;
@@ -366,6 +390,26 @@ export interface paths {
          * @description 새 리캡 표시(빨간 점)를 제거하며 여러 번 호출해도 같은 결과를 보장함
          */
         post: operations["markViewed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stickers/shared/{shareToken}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공유된 리캡 조회
+         * @description 공유 토큰으로 리캡을 조회함. 인증이 필요 없는 유일한 리캡 경로이며, 공유가 해제되었거나 없는 토큰은 STICKER-001로 응답함. 공유할 때 사진을 포함하지 않았다면 photos는 항상 빈 배열이고 isNew는 항상 false임
+         */
+        get: operations["getSharedRecap"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -602,6 +646,16 @@ export interface components {
         /** @description 공통 응답 봉투 */
         ApiResponseReissueUploadUrlsResponse: {
             data?: components["schemas"]["ReissueUploadUrlsResponse"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
+        ApiResponseShareRecapResponse: {
+            data?: components["schemas"]["ShareRecapResponse"] | null;
             error?: components["schemas"]["ErrorResponse"] | null;
             /**
              * @description 요청 성공 여부
@@ -1494,6 +1548,7 @@ export interface components {
             comments: components["schemas"]["RecapCommentResponse"][];
             /** @description 리캡 사진. takenAt, id 오름차순. 연사 그룹은 대표 사진 1장만 포함 */
             photos: components["schemas"]["RecapPhotoResponse"][];
+            share?: components["schemas"]["RecapShareStateResponse"] | null;
             /** @description 리캡 대상 스티커 */
             sticker: components["schemas"]["StickerResponse"];
             /**
@@ -1551,6 +1606,14 @@ export interface components {
              */
             takenAt: string;
         };
+        /** @description 리캡 공유 상태. 이 객체가 있으면 공유 중이다 */
+        RecapShareStateResponse: {
+            /**
+             * @description 이 공유 링크가 리캡 사진을 포함하는지 여부
+             * @example true
+             */
+            photos: boolean;
+        };
         /** @description 토큰 재발급 요청 */
         RefreshRequest: {
             /**
@@ -1586,6 +1649,27 @@ export interface components {
              * @example 뽀또의 보드
              */
             name: string;
+        };
+        /** @description 리캡 공유 요청 */
+        ShareRecapRequest: {
+            /**
+             * @description 리캡 사진(테마 속 사진)을 공유 링크에 포함할지 여부. false면 서버가 사진 URL을 발급하지 않음
+             * @example true
+             */
+            includePhotos: boolean;
+        };
+        /** @description 발급된 리캡 공유 정보 */
+        ShareRecapResponse: {
+            /**
+             * @description 이 공유 링크가 리캡 사진을 포함하는지 여부
+             * @example true
+             */
+            includePhotos: boolean;
+            /**
+             * @description 공유 링크 토큰. 공유를 해제하기 전까지 유효하며 다시 공유해도 같은 값이 유지됨
+             * @example 01983f30-0000-7000-8000-000000000000
+             */
+            shareToken: string;
         };
         /** @description 사진 업로드 확인 결과 */
         StartUploadResponse: {
@@ -2863,7 +2947,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseRecapDetailResponse"];
                 };
             };
-            /** @description 전달한 access token이 유효하지 않음 (COMMON-004) */
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3127,6 +3211,110 @@ export interface operations {
             };
         };
     };
+    share: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 공유할 스티커 ID (uuidv7)
+                 * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+                 */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareRecapRequest"];
+            };
+        };
+        responses: {
+            /** @description 발급된 공유 정보 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseShareRecapResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 스티커를 찾을 수 없음 (STICKER-001) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    unshare: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 공유를 해제할 스티커 ID (uuidv7)
+                 * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+                 */
+                stickerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 처리 완료. data는 항상 null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseUnit"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 스티커를 찾을 수 없음 (STICKER-001) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
     markViewed: {
         parameters: {
             query?: never;
@@ -3164,6 +3352,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 스티커를 찾을 수 없음 (STICKER-001) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getSharedRecap: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 공유 링크 토큰
+                 * @example 01983f30-0000-7000-8000-000000000000
+                 */
+                shareToken: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 공유된 리캡 상세 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseRecapDetailResponse"];
                 };
             };
             /** @description 스티커를 찾을 수 없음 (STICKER-001) */
