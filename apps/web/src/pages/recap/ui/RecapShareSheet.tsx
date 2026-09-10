@@ -1,6 +1,8 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 
-import type { StickerRecap } from '@/entities/sticker/api/sticker-api';
+import { stickerApi, type StickerRecap } from '@/entities/sticker/api/sticker-api';
+import { stickerQueryKeys } from '@/entities/sticker/api/sticker-query-keys';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { saveImageToDevice } from '@/features/save-image-to-device';
 import { blobToBase64 } from '@/shared/lib/blob-to-base64';
@@ -12,7 +14,7 @@ import { BottomSheet } from '@/shared/ui/BottomSheet';
 import { KakaoSdkScript } from '@/shared/ui/KakaoSdkScript';
 import { useToast } from '@/shared/ui/common/Toast';
 
-import { buildRecapShareLink } from '../model/build-recap-share-link';
+import { encodeShareOptions } from '../model/share-options';
 
 import { RecapShareCard } from './RecapShareCard';
 import { RecapShareList } from './RecapShareList';
@@ -27,19 +29,23 @@ type RecapShareSheetProps = {
 
 export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShareSheetProps) {
   const toast = useToast();
+  const queryClient = useQueryClient();
   const { data: me } = useMeQuery();
   const [screen, setScreen] = useState<'list' | 'options'>('list');
+  // 이미 공유 중이면 그때 고른 사진 포함 여부로 시작한다 — 기본값 true로 두면
+  // 사진 없이 공유해 둔 링크가 다시 공유할 때 조용히 사진을 켜 버린다
   const [options, setOptions] = useState<Record<ShareOptionKey, boolean>>({
     image: true,
     summary: true,
     themeAnalysis: true,
-    themePhotos: true,
+    themePhotos: data.share?.photos ?? true,
   });
   // 저장/공유 진행 상태는 시트가 닫혀도 살아있는 이 컴포넌트가 든다 —
   // 시트 내용물은 닫힐 때 언마운트되므로, 거기 두면 다시 열었을 때 초기화돼 보인다
   const [isSaving, setIsSaving] = useState(false);
   const [isSharingInstagram, setIsSharingInstagram] = useState(false);
   const [isSharingKakao, setIsSharingKakao] = useState(false);
+  const [isUnsharing, setIsUnsharing] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleClose = () => {
@@ -110,7 +116,9 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
       const tags = data.comments
         .filter((comment) => comment.posX == null)
         .map((comment) => comment.content);
-      const webLink = await buildRecapShareLink(stickerId, options);
+      const { shareToken } = await stickerApi.share(stickerId, options.themePhotos);
+      await queryClient.invalidateQueries({ queryKey: stickerQueryKeys.detail(stickerId) });
+      const webLink = `${window.location.origin}/share/recap/${shareToken}?o=${encodeShareOptions(options)}`;
 
       const { success } = await bridge.request('SHARE_KAKAO', {
         templateArgs: {
@@ -135,6 +143,22 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
     }
   };
 
+  const handleUnshare = async () => {
+    if (isUnsharing) return;
+    setIsUnsharing(true);
+    try {
+      await stickerApi.unshare(stickerId);
+      await queryClient.invalidateQueries({ queryKey: stickerQueryKeys.detail(stickerId) });
+      toast('공유 링크를 껐습니다');
+      handleClose();
+    } catch (error) {
+      console.error('공유 해제 실패', error);
+      toast('공유 해제에 실패했습니다');
+    } finally {
+      setIsUnsharing(false);
+    }
+  };
+
   const isCapturing = isSaving || isSharingInstagram || isSharingKakao;
 
   return (
@@ -146,10 +170,13 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
             isSaving={isSaving}
             isSharingInstagram={isSharingInstagram}
             isSharingKakao={isSharingKakao}
+            isShared={data.share != null}
+            isUnsharing={isUnsharing}
             onSaveImage={() => void handleSaveImage()}
             onInstagramShare={() => void handleInstagramShare()}
             onKakaoShare={() => void handleKakaoShare()}
             onOptionsClick={() => setScreen('options')}
+            onUnshare={() => void handleUnshare()}
           />
         ) : (
           <RecapShareOptions

@@ -2136,7 +2136,7 @@
       "get": {
         "tags": ["스티커"],
         "summary": "리캡 상세 조회",
-        "description": "스티커 정보와 분석 코멘트, 관련 사진을 반환함. 인증 없이 누구나 조회할 수 있고 isNew는 본인 스티커일 때만 true가 됨. 빨간 점 제거는 /view를 따로 호출함",
+        "description": "내 스티커 정보와 분석 코멘트, 관련 사진을 반환함. 본인 스티커만 조회할 수 있고 빨간 점 제거는 /view를 따로 호출함. 현재 공유 중이면 share 객체가 함께 내려옴",
         "operationId": "getRecap",
         "parameters": [
           {
@@ -2281,7 +2281,7 @@
             }
           },
           "401": {
-            "description": "전달한 access token이 유효하지 않음 (COMMON-004)",
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2330,7 +2330,6 @@
           }
         },
         "security": [
-          {},
           {
             "bearerAuth": []
           }
@@ -2549,6 +2548,414 @@
                         ],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "스티커를 찾을 수 없음 (STICKER-001)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "STICKER-001": {
+                    "summary": "스티커 없음 또는 소유자 불일치",
+                    "description": "STICKER-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "STICKER-001",
+                        "message": "스티커를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/stickers/shared/{shareToken}": {
+      "get": {
+        "tags": ["스티커"],
+        "summary": "공유된 리캡 조회",
+        "description": "공유 토큰으로 리캡을 조회함. 인증이 필요 없는 유일한 리캡 경로이며, 공유가 해제되었거나 없는 토큰은 STICKER-001로 응답함. 공유할 때 사진을 포함하지 않았다면 photos는 항상 빈 배열이고 isNew는 항상 false임",
+        "operationId": "getSharedRecap",
+        "parameters": [
+          {
+            "name": "shareToken",
+            "in": "path",
+            "description": "공유 링크 토큰",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "01983f30-0000-7000-8000-000000000000"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "공유된 리캡 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecapDetailResponse"
+                },
+                "examples": {
+                  "이미지 스티커 리캡": {
+                    "description": "이미지 스티커 리캡",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "sticker": {
+                          "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                          "title": "동물 밈 짤줍",
+                          "isNew": false,
+                          "type": "IMAGE",
+                          "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
+                          "mainColor": "#FF6B6B",
+                          "posX": 62.5,
+                          "posY": 318,
+                          "scale": 0.8,
+                          "rotation": -12,
+                          "zIndex": 3,
+                          "badgeOffsetX": -24,
+                          "badgeOffsetY": 96,
+                          "badgeRotation": 0
+                        },
+                        "summary": "웃기고 귀여우면 일단 주워요",
+                        "comments": [
+                          {
+                            "id": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                            "content": "야옹~",
+                            "posX": -96,
+                            "posY": -150
+                          },
+                          {
+                            "id": "01983f2d-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                            "content": "또 주웠네!",
+                            "posX": -104,
+                            "posY": 62
+                          },
+                          {
+                            "id": "01983f2d-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                            "content": "복슬복슬",
+                            "posX": 98,
+                            "posY": 18
+                          },
+                          {
+                            "id": "01983f2d-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
+                            "content": "냥집사"
+                          },
+                          {
+                            "id": "01983f2d-5e6f-7a7b-c8d9-0e1f2a3b4c5d",
+                            "content": "웃긴 동물들"
+                          },
+                          {
+                            "id": "01983f2d-6f7a-7b8c-d9e0-1f2a3b4c5d6e",
+                            "content": "당신은 밈 수집가!"
+                          },
+                          {
+                            "id": "01983f2d-7a8b-7c9d-e0f1-2a3b4c5d6e7f",
+                            "content": "복슬복슬"
+                          },
+                          {
+                            "id": "01983f2d-8b9c-7d0e-f1a2-3b4c5d6e7f8a",
+                            "content": "저장한 동물 짤 중 62%가 고양이다냥!"
+                          },
+                          {
+                            "id": "01983f2d-9c0d-7e1f-a2b3-4c5d6e7f8a9b",
+                            "content": "감도 높은 취향"
+                          },
+                          {
+                            "id": "01983f2d-a0d1-7f2a-b3c4-5d6e7f8a9b0c",
+                            "content": "밈잘알"
+                          },
+                          {
+                            "id": "01983f2d-b1e2-7a3b-c4d5-6e7f8a9b0c1d",
+                            "content": "밈 고르는 안목 보소"
+                          },
+                          {
+                            "id": "01983f2d-c2f3-7b4c-d5e6-7f8a9b0c1d2e",
+                            "content": "근데 소랑 돌고래가 같이 나는 사진은 뭐임?"
+                          }
+                        ],
+                        "photos": [
+                          {
+                            "id": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                            "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample",
+                            "takenAt": "2026-06-14T04:22:10Z",
+                            "isGroup": true,
+                            "groupId": "01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b",
+                            "groupPhotos": [
+                              {
+                                "id": "01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                                "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-3c.jpg?X-Goog-Signature=smpl",
+                                "takenAt": "2026-06-14T04:22:11Z"
+                              }
+                            ]
+                          },
+                          {
+                            "id": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                            "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample",
+                            "takenAt": "2026-07-02T10:05:44Z",
+                            "isGroup": false,
+                            "groupPhotos": []
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "스티커를 찾을 수 없음 (STICKER-001)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "STICKER-001": {
+                    "summary": "스티커 없음 또는 소유자 불일치",
+                    "description": "STICKER-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "STICKER-001",
+                        "message": "스티커를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stickers/{stickerId}/share": {
+      "post": {
+        "tags": ["스티커"],
+        "summary": "리캡 공유 시작",
+        "description": "내 리캡의 공유 링크 토큰을 발급함. 이미 공유 중이면 같은 토큰을 유지한 채 사진 포함 여부만 갱신하므로 이미 보낸 링크가 끊기지 않음",
+        "operationId": "share",
+        "parameters": [
+          {
+            "name": "stickerId",
+            "in": "path",
+            "description": "공유할 스티커 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareRecapRequest"
+              },
+              "examples": {
+                "사진까지 공유": {
+                  "summary": "테마 속 사진을 공유 링크에 포함",
+                  "description": "사진까지 공유",
+                  "value": {
+                    "includePhotos": true
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "발급된 공유 정보",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseShareRecapResponse"
+                },
+                "examples": {
+                  "공유 시작됨": {
+                    "description": "공유 시작됨",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "shareToken": "01983f30-0000-7000-8000-000000000000",
+                        "includePhotos": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "스티커를 찾을 수 없음 (STICKER-001)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "STICKER-001": {
+                    "summary": "스티커 없음 또는 소유자 불일치",
+                    "description": "STICKER-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "STICKER-001",
+                        "message": "스티커를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["스티커"],
+        "summary": "리캡 공유 해제",
+        "description": "공유 토큰을 즉시 무효화함. 이미 공유 중이 아니어도 같은 결과를 보장함",
+        "operationId": "unshare",
+        "parameters": [
+          {
+            "name": "stickerId",
+            "in": "path",
+            "description": "공유를 해제할 스티커 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "처리 완료. data는 항상 null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUnit"
+                },
+                "examples": {
+                  "성공": {
+                    "description": "성공",
+                    "value": {
+                      "success": true
                     }
                   }
                 }
@@ -4462,6 +4869,16 @@
             "type": "string",
             "description": "한 줄 요약. 스티커당 1개인 강조 문장",
             "example": "웃기고 귀여우면 일단 주워요"
+          },
+          "share": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RecapShareStateResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "comments": {
             "type": "array",
@@ -6451,6 +6868,79 @@
           }
         },
         "required": ["success"]
+      },
+      "ShareRecapRequest": {
+        "type": "object",
+        "description": "리캡 공유 요청",
+        "properties": {
+          "includePhotos": {
+            "type": "boolean",
+            "description": "리캡 사진(테마 속 사진)을 공유 링크에 포함할지 여부. false면 서버가 사진 URL을 발급하지 않음",
+            "example": true
+          }
+        },
+        "required": ["includePhotos"]
+      },
+      "ShareRecapResponse": {
+        "type": "object",
+        "description": "발급된 리캡 공유 정보",
+        "properties": {
+          "shareToken": {
+            "type": "string",
+            "description": "공유 링크 토큰. 공유를 해제하기 전까지 유효하며 다시 공유해도 같은 값이 유지됨",
+            "example": "01983f30-0000-7000-8000-000000000000"
+          },
+          "includePhotos": {
+            "type": "boolean",
+            "description": "이 공유 링크가 리캡 사진을 포함하는지 여부",
+            "example": true
+          }
+        },
+        "required": ["includePhotos", "shareToken"]
+      },
+      "ApiResponseShareRecapResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ShareRecapResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "RecapShareStateResponse": {
+        "type": "object",
+        "description": "리캡 공유 상태. 이 객체가 있으면 공유 중이다",
+        "properties": {
+          "photos": {
+            "type": "boolean",
+            "description": "이 공유 링크가 리캡 사진을 포함하는지 여부",
+            "example": true
+          }
+        },
+        "required": ["photos"]
       }
     },
     "securitySchemes": {
