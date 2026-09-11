@@ -599,7 +599,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         return;
       }
 
-      if (drawingSelectionRef.current.onPointerUp(e)) return;
+      if (drawingSelectionRef.current.onPointerUp(e, point)) return;
       if (textSelectionRef.current.onPointerUp(e)) return;
 
       cameraStickerRef.current.onPointerUp(e, point);
@@ -656,8 +656,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     (sticker) => sticker.id === quickMenu.directEditStickerId,
   );
   const shouldBlurBoard = Boolean(quickMenuSticker || directEditSticker);
-  const activeDrawingBoxTransform =
-    drawingSelection.drawingBoxPinchPreview ?? drawingSelection.selectedDrawingBoxTransform;
+  const activeDrawingBoxTransform = drawingSelection.selectedDrawingBoxTransform;
   const isEmptyBoardStickerVisible = stickers.length === 0 && !isEmptyStickerHidden;
   const activeEmptyBoardStickerTransform =
     cameraSticker.dragTransform?.id === EMPTY_BOARD_STICKER_ID
@@ -676,6 +675,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   return (
     <div
       ref={setContainer}
+      data-board-canvas
       className="relative w-full h-full overflow-hidden touch-none"
       style={{ backgroundColor: '#000' }}
     >
@@ -718,34 +718,26 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         >
           {drawings.map((drawing) => {
             const isSelected = drawing.id === activeSelectedDrawingId;
-            const isDragging = isSelected && drawingSelection.drawingDragOffset !== null;
-            const pinchPreview = isSelected ? drawingSelection.drawingPinchPreview : null;
 
             return (
               <svg
                 key={drawing.id}
+                ref={isSelected ? drawingSelection.drawingPreviewElementRef : undefined}
+                data-pinch-target={isEditMode && isSelected ? drawing.id : undefined}
                 style={{
                   position: 'absolute',
                   inset: 0,
                   overflow: 'visible',
                   pointerEvents: 'none',
                   zIndex: drawingZIndex(drawing),
-                  willChange: 'transform',
+                  transformOrigin: '0 0',
                 }}
               >
-                <g
-                  transform={
-                    isDragging
-                      ? `translate(${drawingSelection.drawingDragOffset!.x}, ${drawingSelection.drawingDragOffset!.y})`
-                      : undefined
-                  }
-                >
-                  <DrawingStroke
-                    points={pinchPreview?.points ?? drawing.points}
-                    color={drawing.color}
-                    strokeWidth={pinchPreview?.strokeWidth ?? drawing.strokeWidth}
-                  />
-                </g>
+                <DrawingStroke
+                  points={drawing.points}
+                  color={drawing.color}
+                  strokeWidth={drawing.strokeWidth}
+                />
               </svg>
             );
           })}
@@ -830,18 +822,29 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             </svg>
           )}
           {drawingSelection.selectedDrawingBaseSize && activeDrawingBoxTransform && (
-            <SelectionBoxFrame
-              x={activeDrawingBoxTransform.x + (drawingSelection.drawingDragOffset?.x ?? 0)}
-              y={activeDrawingBoxTransform.y + (drawingSelection.drawingDragOffset?.y ?? 0)}
-              width={
-                drawingSelection.selectedDrawingBaseSize.width * activeDrawingBoxTransform.scale
-              }
-              height={
-                drawingSelection.selectedDrawingBaseSize.height * activeDrawingBoxTransform.scale
-              }
-              rotation={activeDrawingBoxTransform.rotation}
-              zIndex={9999}
-            />
+            <div
+              ref={drawingSelection.drawingBoxPreviewElementRef}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                transformOrigin: '0 0',
+                pointerEvents: 'none',
+                zIndex: 9999,
+              }}
+            >
+              <SelectionBoxFrame
+                x={activeDrawingBoxTransform.x}
+                y={activeDrawingBoxTransform.y}
+                width={
+                  drawingSelection.selectedDrawingBaseSize.width * activeDrawingBoxTransform.scale
+                }
+                height={
+                  drawingSelection.selectedDrawingBaseSize.height * activeDrawingBoxTransform.scale
+                }
+                rotation={activeDrawingBoxTransform.rotation}
+                zIndex={9999}
+              />
+            </div>
           )}
           {textSelection.selectedTextId &&
             selectedTextRenderedBaseSize &&

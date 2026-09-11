@@ -247,6 +247,28 @@ export function isPointInTextBounds(point: Point, text: ParsedText): boolean {
 export const DRAWING_PINCH_SCALE_MIN = 0.3;
 export const DRAWING_PINCH_SCALE_MAX = 4;
 
+export type DrawingBoxTransform = { x: number; y: number; rotation: number; scale: number };
+
+// SVG CSS transform과 최종 좌표에 같은 보드 좌표계 변환을 적용한다.
+export function transformDrawingPoint(point: Point, transform: DrawingBoxTransform): Point {
+  const rad = (transform.rotation * Math.PI) / 180;
+  const a = Math.cos(rad) * transform.scale;
+  const b = Math.sin(rad) * transform.scale;
+  return { x: a * point.x - b * point.y + transform.x, y: b * point.x + a * point.y + transform.y };
+}
+
+// base 다음에 next를 적용한다. 핀치→드래그→재핀치도 점 배열 변환 없이 이어간다.
+export function composeDrawingTransform(
+  base: DrawingBoxTransform,
+  next: DrawingBoxTransform,
+): DrawingBoxTransform {
+  return {
+    ...transformDrawingPoint(base, next),
+    rotation: base.rotation + next.rotation,
+    scale: base.scale * next.scale,
+  };
+}
+
 export function computeDrawingPinchTransform(
   basePoints: Point[],
   baseStrokeWidth: number,
@@ -254,32 +276,16 @@ export function computeDrawingPinchTransform(
   current: PinchSample,
 ): { points: Point[]; strokeWidth: number } {
   if (start.distance === 0) return { points: basePoints, strokeWidth: baseStrokeWidth };
-
-  const scaleRatio = clamp(
-    current.distance / start.distance,
-    DRAWING_PINCH_SCALE_MIN,
-    DRAWING_PINCH_SCALE_MAX,
+  const transform = computeDrawingBoxPinchTransform(
+    { x: 0, y: 0, rotation: 0, scale: 1 },
+    start,
+    current,
   );
-  const rad = ((current.angle - start.angle) * Math.PI) / 180;
-  const dx = current.centroid.x - start.centroid.x;
-  const dy = current.centroid.y - start.centroid.y;
-
-  const transformPoint = (point: Point): Point => {
-    const vx = point.x - start.centroid.x;
-    const vy = point.y - start.centroid.y;
-    return {
-      x: start.centroid.x + (vx * Math.cos(rad) - vy * Math.sin(rad)) * scaleRatio + dx,
-      y: start.centroid.y + (vx * Math.sin(rad) + vy * Math.cos(rad)) * scaleRatio + dy,
-    };
-  };
-
   return {
-    points: basePoints.map(transformPoint),
-    strokeWidth: baseStrokeWidth * scaleRatio,
+    points: basePoints.map((point) => transformDrawingPoint(point, transform)),
+    strokeWidth: baseStrokeWidth * transform.scale,
   };
 }
-
-export type DrawingBoxTransform = { x: number; y: number; rotation: number; scale: number };
 
 export function computeDrawingBoxPinchTransform(
   base: DrawingBoxTransform,
