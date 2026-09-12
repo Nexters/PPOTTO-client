@@ -93,9 +93,6 @@ export function shouldSampleStrokePoint(points: Point[], candidate: Point): bool
   return !last || distance(last, candidate) >= STROKE_SAMPLE_MIN_DISTANCE;
 }
 
-// scope는 항상 'BOARD' — 스티커 귀속(scope='STICKER')은 귀속 기준이 아직 정해지지 않아 별도 이슈로 미룸.
-// zIndex는 API 스키마에 없는 필드라, stroke가 자유 형식 JSON이라는 점을 이용해 points와 함께 담는다 —
-// 스티커의 zIndex와 같은 숫자 공간을 공유해서 그림/스티커를 섞어 쌓을 수 있게 하기 위함(백엔드 변경 없음)
 function toDrawingInput(
   id: string,
   points: Point[],
@@ -103,11 +100,13 @@ function toDrawingInput(
 ): DrawingCreateInput {
   return {
     id,
+    type: 'STROKE',
     scope: 'BOARD',
-    stroke: { points: points.map((point) => [point.x, point.y]), zIndex: options.zIndex ?? 0 },
+    stroke: { points: points.map((point) => [point.x, point.y]) },
     color: options.color,
     strokeWidth: options.strokeWidth,
-  };
+    zIndex: options.zIndex ?? 0,
+  } as DrawingCreateInput;
 }
 
 export function toDrawingCreateInput(
@@ -140,13 +139,6 @@ export function parseStrokePoints(stroke: unknown): Point[] {
         typeof point[1] === 'number',
     )
     .map(([x, y]) => ({ x, y }));
-}
-
-// 저장된 그림의 stroke(자유 형식 JSON)에서 zIndex를 복원한다.
-export function parseStrokeZIndex(stroke: unknown): number {
-  if (!stroke || typeof stroke !== 'object' || !('zIndex' in stroke)) return 0;
-  const { zIndex } = stroke as { zIndex: unknown };
-  return typeof zIndex === 'number' ? zIndex : 0;
 }
 
 // Sticker.tsx의 stickerZIndex(=zIndex*2)와 같은 배율을 써서, 스티커 뱃지가 자기 스티커

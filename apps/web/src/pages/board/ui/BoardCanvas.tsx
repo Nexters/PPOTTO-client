@@ -36,7 +36,6 @@ import {
   type ParsedDrawing,
   type ParsedText,
   parseStrokePoints,
-  parseStrokeZIndex,
   parseTextDrawing,
   toTextCreateInput,
 } from '../model/board-drawing';
@@ -233,7 +232,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
         points: parseStrokePoints(drawing.stroke),
         color: drawing.color,
         strokeWidth: drawing.strokeWidth,
-        zIndex: parseStrokeZIndex(drawing.stroke),
+        zIndex: drawing.zIndex,
       })),
     [drawingsV2],
   );

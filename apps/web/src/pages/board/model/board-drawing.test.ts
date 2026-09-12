@@ -28,7 +28,6 @@ import {
   isPointInDrawingBounds,
   isPointInTextBounds,
   parseStrokePoints,
-  parseStrokeZIndex,
   shouldSampleStrokePoint,
   toDrawingCreateInput,
   toPathData,
@@ -69,6 +68,12 @@ describe('toDrawingCreateInput', () => {
     expect(result.scope).toBe('BOARD');
   });
 
+  it('X-API-Version: 2가 요구하는 type 판별자를 담는다', () => {
+    const result = toDrawingCreateInput([{ x: 0, y: 0 }], { color: '#FFD400', strokeWidth: 4 });
+
+    expect(result.type).toBe('STROKE');
+  });
+
   it('점 배열을 [x, y] 쌍 배열로 변환해 stroke.points에 담는다', () => {
     const points = [
       { x: 10.5, y: 22 },
@@ -82,24 +87,23 @@ describe('toDrawingCreateInput', () => {
         [10.5, 22],
         [14.2, 25.1],
       ],
-      zIndex: 0,
     });
   });
 
-  it('zIndex를 넘기면 stroke.zIndex에 그대로 담는다', () => {
+  it('zIndex를 넘기면 최상위 zIndex 필드에 그대로 담는다', () => {
     const result = toDrawingCreateInput([{ x: 0, y: 0 }], {
       color: '#FFD400',
       strokeWidth: 4,
       zIndex: 7,
     });
 
-    expect(result.stroke).toEqual({ points: [[0, 0]], zIndex: 7 });
+    expect(result.zIndex).toBe(7);
   });
 
   it('zIndex를 안 넘기면 0으로 취급한다', () => {
     const result = toDrawingCreateInput([{ x: 0, y: 0 }], { color: '#FFD400', strokeWidth: 4 });
 
-    expect(result.stroke).toMatchObject({ zIndex: 0 });
+    expect(result.zIndex).toBe(0);
   });
 
   it('color/strokeWidth를 그대로 전달한다', () => {
@@ -174,25 +178,6 @@ describe('parseStrokePoints', () => {
       { x: 1, y: 2 },
       { x: 4, y: 5 },
     ]);
-  });
-});
-
-describe('parseStrokeZIndex', () => {
-  it('toDrawingCreateInput이 만든 zIndex를 복원한다', () => {
-    expect(parseStrokeZIndex({ zIndex: 7 })).toBe(7);
-  });
-
-  it('zIndex 필드가 없으면 0을 반환한다', () => {
-    expect(parseStrokeZIndex({})).toBe(0);
-  });
-
-  it('stroke가 null/undefined면 0을 반환한다', () => {
-    expect(parseStrokeZIndex(null)).toBe(0);
-    expect(parseStrokeZIndex(undefined)).toBe(0);
-  });
-
-  it('zIndex가 숫자가 아니면 0을 반환한다', () => {
-    expect(parseStrokeZIndex({ zIndex: 'invalid' })).toBe(0);
   });
 });
 
