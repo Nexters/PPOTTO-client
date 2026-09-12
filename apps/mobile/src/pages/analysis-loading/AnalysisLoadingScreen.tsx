@@ -11,6 +11,7 @@ import {
   photoUploadService,
   type UploadMotionPhoto,
 } from '@/features/photo-upload';
+import { EnablePushNotificationButton } from '@/features/push-notification';
 import { AppWebView } from '@/shared/ui/AppWebView';
 import { Button } from '@/shared/ui/Button';
 import { useToast } from '@/shared/ui/Toast';
@@ -201,15 +202,13 @@ export function AnalysisLoadingScreen() {
           className="absolute right-[18px] bottom-0 left-[18px] pb-12"
           style={Platform.OS === 'android' ? { paddingBottom: insets.bottom + 48 } : undefined}
         >
-          <Button disabled={!sequence.revealFinished} onPress={showBoard} size="large">
-            <Text
-              className={
-                sequence.revealFinished ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'
-              }
-            >
-              결과 확인하기
-            </Text>
-          </Button>
+          {sequence.revealFinished ? (
+            <Button onPress={showBoard} size="large">
+              <Text className="text-body-03 text-black">결과 확인하기</Text>
+            </Button>
+          ) : (
+            <EnablePushNotificationButton />
+          )}
         </View>
       )}
     </View>

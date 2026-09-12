@@ -4,6 +4,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnalysisLoadingScreen } from './AnalysisLoadingScreen';
 jest.mock('@/shared/lib/analytics', () => ({ track: jest.fn() }));
+jest.mock('@/features/push-notification', () => {
+  const { Text } = jest.requireActual('react-native') as typeof import('react-native');
+  return { EnablePushNotificationButton: () => <Text>결과 알림 받기</Text> };
+});
 
 type LoadingBridgeHandlers = {
   GET_ANALYSIS_LOADING_STATE: () => Promise<AnalysisLoadingBridgeState>;
@@ -109,8 +113,8 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
       <AnalysisLoadingScreen />
     </SafeAreaProvider>,
   );
-  const resultButton = screen.getByRole('button', { name: '결과 확인하기' });
-  expect(resultButton).toBeDisabled();
+  expect(screen.getByText('결과 알림 받기')).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: '결과 확인하기' })).not.toBeOnTheScreen();
 
   let state: AnalysisLoadingBridgeState | AnalysisLoadingPhaseState | undefined;
   await act(async () => {
@@ -145,10 +149,11 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
     expect(state?.visiblePhase).toBe(next);
   }
 
-  expect(resultButton).toBeDisabled();
+  expect(screen.getByText('결과 알림 받기')).toBeOnTheScreen();
   await act(async () => {
     loadingBridgeHandlers!.ANALYSIS_LOADING_REVEAL_FINISHED({ jobId: 'job-1' });
   });
+  const resultButton = screen.getByRole('button', { name: '결과 확인하기' });
   expect(resultButton).toBeEnabled();
 
   await user.press(resultButton);
@@ -210,7 +215,8 @@ it('오래된 job의 로딩 브릿지 메시지는 무시한다', async () => {
 
   expect(photoUploadService.setLastSeenLoadingPhase).not.toHaveBeenCalled();
   expect(state).toEqual({ visiblePhase: 'SCAN', visualProgress: 25 });
-  expect(screen.getByRole('button', { name: '결과 확인하기' })).toBeDisabled();
+  expect(screen.getByText('결과 알림 받기')).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: '결과 확인하기' })).not.toBeOnTheScreen();
 });
 
 it('서버 progress가 오기 전에는 10까지 올리고 멈춘다', async () => {
