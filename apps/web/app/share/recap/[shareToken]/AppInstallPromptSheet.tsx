@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
@@ -9,7 +9,9 @@ import { BottomSheet } from '@/shared/ui/BottomSheet';
 const GOOGLE_PLAY_URL =
   'https://play.google.com/store/apps/details?id=com.ppotto.mobile&pcampaignid=web_share';
 const APP_STORE_URL = 'https://apps.apple.com/kr/app/id6796674900';
+const APP_SCHEME_URL = 'mobile://';
 const SHOW_DELAY_MS = 3_000;
+const APP_OPEN_FALLBACK_MS = 1_500;
 
 function isIOSDevice(): boolean {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -17,16 +19,48 @@ function isIOSDevice(): boolean {
 
 export function AppInstallPromptSheet() {
   const [isOpen, setIsOpen] = useState(false);
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelFallbackRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsOpen(true), SHOW_DELAY_MS);
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    return () => cancelFallbackRef.current?.();
+  }, []);
+
   const handleStayInWeb = () => setIsOpen(false);
   const isIOS = isIOSDevice();
   const storeName = isIOS ? '앱스토어' : '플레이스토어';
   const storeUrl = isIOS ? APP_STORE_URL : GOOGLE_PLAY_URL;
+
+  const handleOpenApp = (event: React.MouseEvent) => {
+    event.preventDefault();
+    cancelFallbackRef.current?.();
+
+    const onVisibilityChange = () => {
+      if (document.hidden) cancel();
+    };
+    const onPageHide = () => cancel();
+    const cancel = () => {
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+      cancelFallbackRef.current = null;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+    cancelFallbackRef.current = cancel;
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', onPageHide);
+
+    fallbackTimerRef.current = setTimeout(() => {
+      cancel();
+      window.location.href = storeUrl;
+    }, APP_OPEN_FALLBACK_MS);
+    window.location.href = APP_SCHEME_URL;
+  };
 
   return (
     <BottomSheet
@@ -55,6 +89,7 @@ export function AppInstallPromptSheet() {
         <div className="flex w-full flex-col items-center gap-3">
           <a
             href={storeUrl}
+            onClick={handleOpenApp}
             className={cn(
               'flex h-13 w-full items-center justify-center rounded-2xl',
               'bg-white text-body-03 font-semibold text-black',
