@@ -11,8 +11,8 @@ const GOOGLE_PLAY_URL =
 const APP_STORE_URL = 'https://apps.apple.com/kr/app/id6796674900';
 const SHOW_DELAY_MS = 3_000;
 
-function storeUrlForCurrentDevice(): string {
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent) ? APP_STORE_URL : GOOGLE_PLAY_URL;
+function isIOSDevice(): boolean {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 export function AppInstallPromptSheet() {
@@ -24,6 +24,9 @@ export function AppInstallPromptSheet() {
   }, []);
 
   const handleStayInWeb = () => setIsOpen(false);
+  const isIOS = isIOSDevice();
+  const storeName = isIOS ? '앱스토어' : '플레이스토어';
+  const storeUrl = isIOS ? APP_STORE_URL : GOOGLE_PLAY_URL;
 
   return (
     <BottomSheet
@@ -46,12 +49,12 @@ export function AppInstallPromptSheet() {
             뽀또 앱에서 더 많은 기능을 이용해보세요!
           </p>
           <p className="text-center text-sm leading-5 font-medium tracking-[-0.03em] text-gray-500">
-            앱스토어에서 다운로드하세요
+            {storeName}에서 다운로드하세요
           </p>
         </div>
         <div className="flex w-full flex-col items-center gap-3">
           <a
-            href={storeUrlForCurrentDevice()}
+            href={storeUrl}
             className={cn(
               'flex h-13 w-full items-center justify-center rounded-2xl',
               'bg-white text-body-03 font-semibold text-black',
