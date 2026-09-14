@@ -35,7 +35,7 @@ export function BottomSheet({
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => e.preventDefault()}
         className={cn(
-          'fixed inset-x-0 bottom-0 z-50',
+          'fixed bottom-0 left-0 right-(--removed-body-scroll-bar-size,0px) z-50',
           'flex flex-col gap-5 rounded-t-3xl bg-gray-900 pt-4',
           'pr-6 pl-6',
           contentClassName,
