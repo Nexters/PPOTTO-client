@@ -16,6 +16,9 @@ jest.mock('@/entities/user/api/user-api', () => ({
     withdraw: jest.fn(),
   },
 }));
+jest.mock('@/features/push-notification', () => ({
+  unregisterPushNotification: jest.fn(),
+}));
 jest.mock('./apple-auth', () => ({ signInWithApple: jest.fn() }));
 jest.mock('./kakao-auth', () => ({
   KakaoLoginCancelledError: class KakaoLoginCancelledError extends Error {},
@@ -74,16 +77,29 @@ function setupSession(storedRefreshToken: string | null = 'stored-refresh') {
   const { signInWithApple } = jest.requireMock('./apple-auth') as {
     signInWithApple: jest.Mock;
   };
+  const { unregisterPushNotification } = jest.requireMock('@/features/push-notification') as {
+    unregisterPushNotification: jest.Mock;
+  };
 
   jest.clearAllMocks();
   secureStore.getItemAsync.mockResolvedValue(storedRefreshToken);
   secureStore.setItemAsync.mockResolvedValue(undefined);
   secureStore.deleteItemAsync.mockResolvedValue(undefined);
+  unregisterPushNotification.mockResolvedValue(undefined);
 
   const api = jest.requireActual<typeof import('@ppotto/api')>('@ppotto/api');
   const session = jest.requireActual<Session>('./auth-session');
 
-  return { api, authApi, secureStore, session, signInWithApple, signInWithKakao, userApi };
+  return {
+    api,
+    authApi,
+    secureStore,
+    session,
+    signInWithApple,
+    signInWithKakao,
+    unregisterPushNotification,
+    userApi,
+  };
 }
 
 function appleCredential(
@@ -112,6 +128,7 @@ async function login(
 
 afterEach(() => {
   jest.useRealTimers();
+  jest.restoreAllMocks();
 });
 
 describe('인증 세션', () => {
@@ -225,7 +242,15 @@ describe('인증 세션', () => {
     ['로그아웃', (session: Session) => session.logout()],
     ['탈퇴', (session: Session) => session.withdraw()],
   ])('%s API가 실패하면 세션을 유지해 다시 시도할 수 있게 한다', async (_, run) => {
-    const { api, authApi, secureStore, session, signInWithKakao, userApi } = setupSession();
+    const {
+      api,
+      authApi,
+      secureStore,
+      session,
+      signInWithKakao,
+      unregisterPushNotification,
+      userApi,
+    } = setupSession();
     await login(session, authApi, signInWithKakao, tokenBundle('live'));
     const failure = new api.NetworkError(new TypeError('offline'));
     authApi.logout.mockRejectedValue(failure);
@@ -234,7 +259,37 @@ describe('인증 세션', () => {
     await expect(run(session)).rejects.toMatchObject({ name: failure.name });
 
     expect(secureStore.deleteItemAsync).not.toHaveBeenCalled();
+    expect(unregisterPushNotification).not.toHaveBeenCalled();
     await expect(session.getAccessToken()).resolves.toBe('live-access');
+  });
+
+  it('로그아웃 성공 시 현재 기기의 푸시 토큰 등록을 해제한다', async () => {
+    const { authApi, session, unregisterPushNotification } = setupSession();
+    authApi.logout.mockResolvedValue(undefined);
+
+    await session.logout();
+
+    expect(unregisterPushNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it('회원 탈퇴 성공 시 현재 기기의 푸시 토큰 등록을 해제한다', async () => {
+    const { session, unregisterPushNotification, userApi } = setupSession();
+    userApi.withdraw.mockResolvedValue(undefined);
+
+    await session.withdraw();
+
+    expect(unregisterPushNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it('푸시 토큰 등록 해제 실패가 로그아웃을 막지 않는다', async () => {
+    const { authApi, secureStore, session, unregisterPushNotification } = setupSession();
+    authApi.logout.mockResolvedValue(undefined);
+    unregisterPushNotification.mockRejectedValue(new Error('network error'));
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(session.logout()).resolves.toBeUndefined();
+
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledTimes(1);
   });
 
   it('애플 최초 로그인이면 fullName을 성+이름 순서로 조합해 name으로 보낸다', async () => {

@@ -3,6 +3,7 @@ import { HttpError, NetworkError } from '@ppotto/api';
 
 import { authApi } from '@/entities/auth/api/auth-api';
 import { userApi } from '@/entities/user/api/user-api';
+import { unregisterPushNotification } from '@/features/push-notification';
 import { track } from '@/shared/lib/analytics';
 
 import { type AppleSignInCredential, signInWithApple } from './apple-auth';
@@ -131,9 +132,16 @@ export async function getAccessToken({
   return refreshPromise;
 }
 
+async function unregisterPushNotificationSafely() {
+  await unregisterPushNotification().catch((error: unknown) => {
+    console.error('[push-notification] device token unregister failed', error);
+  });
+}
+
 // 서버 세션을 먼저 끊고 기기 토큰을 지운다. API가 실패하면 세션을 유지해 다시 시도할 수 있게 한다.
 export async function logout() {
   await authApi.logout();
+  await unregisterPushNotificationSafely();
   await clearSession();
   track('logout');
 }
@@ -141,6 +149,7 @@ export async function logout() {
 // 계정이 실제로 지워졌을 때만 세션을 정리한다. 실패했는데 토큰만 버리면 로그아웃과 구분되지 않는다.
 export async function withdraw() {
   await userApi.withdraw();
+  await unregisterPushNotificationSafely();
   await clearSession();
   track('account_withdrawn');
 }

@@ -3,8 +3,12 @@ import * as SecureStore from 'expo-secure-store';
 
 const DEVICE_ID_KEY = 'ppotto.notification-device-id';
 
+export function getDeviceId(): Promise<string | null> {
+  return SecureStore.getItemAsync(DEVICE_ID_KEY);
+}
+
 export async function getOrCreateDeviceId(): Promise<string> {
-  const savedDeviceId = await SecureStore.getItemAsync(DEVICE_ID_KEY);
+  const savedDeviceId = await getDeviceId();
   if (savedDeviceId) return savedDeviceId;
 
   const deviceId = Crypto.randomUUID();

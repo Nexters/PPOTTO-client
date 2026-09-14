@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 
-import { getOrCreateDeviceId } from './device-id';
+import { getDeviceId, getOrCreateDeviceId } from './device-id';
 
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
 jest.mock('expo-secure-store', () => ({
@@ -15,6 +15,14 @@ const randomUUID = jest.mocked(Crypto.randomUUID);
 
 beforeEach(() => {
   jest.clearAllMocks();
+});
+
+it('저장된 기기 식별자를 생성하지 않고 조회한다', async () => {
+  getItemAsync.mockResolvedValue('saved-device-id');
+
+  await expect(getDeviceId()).resolves.toBe('saved-device-id');
+  expect(randomUUID).not.toHaveBeenCalled();
+  expect(setItemAsync).not.toHaveBeenCalled();
 });
 
 it('저장된 기기 식별자를 재사용한다', async () => {
