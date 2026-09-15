@@ -17,13 +17,19 @@ function isIOSDevice(): boolean {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+type Platform = 'ios' | 'android';
+
 export function AppInstallPromptSheet() {
+  const [platform, setPlatform] = useState<Platform | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelFallbackRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsOpen(true), SHOW_DELAY_MS);
+    const timer = setTimeout(() => {
+      setPlatform(isIOSDevice() ? 'ios' : 'android');
+      setIsOpen(true);
+    }, SHOW_DELAY_MS);
     return () => clearTimeout(timer);
   }, []);
 
@@ -32,7 +38,10 @@ export function AppInstallPromptSheet() {
   }, []);
 
   const handleStayInWeb = () => setIsOpen(false);
-  const isIOS = isIOSDevice();
+
+  if (platform === null) return null;
+
+  const isIOS = platform === 'ios';
   const storeName = isIOS ? '앱스토어' : '플레이스토어';
   const storeUrl = isIOS ? APP_STORE_URL : GOOGLE_PLAY_URL;
 
