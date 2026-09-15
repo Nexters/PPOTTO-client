@@ -8,7 +8,9 @@ type BottomSheetProps = {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  title?: string;
   overlayClassName?: string;
+  contentClassName?: string;
   animateOverlay?: boolean;
   animateContent?: boolean;
 };
@@ -17,7 +19,9 @@ export function BottomSheet({
   isOpen,
   onClose,
   children,
+  title = '스티커 퀵메뉴',
   overlayClassName = 'backdrop-blur-[30px]',
+  contentClassName,
   animateOverlay = true,
   animateContent = true,
 }: BottomSheetProps) {
@@ -31,9 +35,10 @@ export function BottomSheet({
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => e.preventDefault()}
         className={cn(
-          'fixed inset-x-0 bottom-0 z-50',
+          'fixed bottom-0 left-0 right-(--removed-body-scroll-bar-size,0px) z-50',
           'flex flex-col gap-5 rounded-t-3xl bg-gray-900 pt-4',
           'pr-6 pl-6',
+          contentClassName,
         )}
         style={{
           paddingBottom:
@@ -41,7 +46,7 @@ export function BottomSheet({
           ...(animateContent ? undefined : { animation: 'none' }),
         }}
       >
-        <Drawer.Title className="sr-only">스티커 퀵메뉴</Drawer.Title>
+        <Drawer.Title className="sr-only">{title}</Drawer.Title>
         <div className="mx-auto h-1 w-14 shrink-0 rounded-full bg-gray-700" />
         {children}
       </Drawer.Content>

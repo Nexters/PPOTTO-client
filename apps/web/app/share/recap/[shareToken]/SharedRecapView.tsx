@@ -13,6 +13,7 @@ import { cn } from '@/shared/lib/cn';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import { track } from '@/shared/lib/bridge';
 
+import { AppInstallPromptSheet } from './AppInstallPromptSheet';
 import { SharedPhotoViewer } from './SharedPhotoViewer';
 
 type SharedRecapViewProps = {
@@ -101,6 +102,7 @@ export function SharedRecapView({ data, options }: SharedRecapViewProps) {
           onClose={() => setOpenPhotoIndex(null)}
         />
       )}
+      <AppInstallPromptSheet />
     </div>
   );
 }
