@@ -18,8 +18,14 @@ function setAnchorRect(rect: Rect) {
   rectsByTestId.set('anchor', rect);
 }
 
-function TestTip({ anchor }: { anchor: Element | null }) {
-  const { pillRef, arrowRef, position } = useAnchoredTipPosition(anchor);
+function TestTip({
+  anchor,
+  arrowEdgePadding,
+}: {
+  anchor: Element | null;
+  arrowEdgePadding?: number;
+}) {
+  const { pillRef, arrowRef, position } = useAnchoredTipPosition(anchor, arrowEdgePadding);
   return (
     <div
       ref={pillRef}
@@ -133,6 +139,19 @@ describe('useAnchoredTipPosition', () => {
     const arrowAbsoluteCenterX = pillLeft + arrowLeft + ARROW_SIZE.width / 2;
 
     expect(arrowAbsoluteCenterX).toBe(1000);
+  });
+
+  it('arrowEdgePadding을 주면 화살표가 pill 모서리(rounded corner) 근처까지 가지 않는다', async () => {
+    // anchor 중심 x = 1000 — padding 없이는 화살표가 pill 우측 끝(284)까지 붙는 케이스(위 테스트)
+    setAnchorRect({ x: 990, y: 300, width: 20, height: 20 });
+    const edgePadding = 8;
+
+    const { getByTestId } = render(<TestTip anchor={anchor} arrowEdgePadding={edgePadding} />);
+
+    await waitFor(() => expect(getByTestId('pill').style.left).not.toBe(NOT_POSITIONED_LEFT));
+
+    const arrowLeft = parseFloat(getByTestId('arrow').style.left);
+    expect(arrowLeft).toBeLessThanOrEqual(PILL_SIZE.width - ARROW_SIZE.width - edgePadding);
   });
 
   it('anchor가 없으면 위치를 계산하지 않는다', () => {

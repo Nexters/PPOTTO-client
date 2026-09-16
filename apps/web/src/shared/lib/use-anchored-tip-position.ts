@@ -10,7 +10,7 @@ type TipPosition = {
   arrowX: number | null;
 };
 
-export function useAnchoredTipPosition(anchorElement: Element | null) {
+export function useAnchoredTipPosition(anchorElement: Element | null, arrowEdgePadding = 0) {
   const arrowRef = useRef<HTMLDivElement>(null);
 
   const { refs, x, y, middlewareData, isPositioned } = useFloating({
@@ -21,7 +21,7 @@ export function useAnchoredTipPosition(anchorElement: Element | null) {
       offset(GAP_PX),
       shift({ padding: VIEWPORT_PADDING_PX }),
       // eslint-disable-next-line react-hooks/refs -- floating-ui의 문서화된 arrow 옵션 형태이며, ref.current는 렌더 중이 아니라 computePosition 실행 시점에 읽힘
-      arrow({ element: arrowRef }),
+      arrow({ element: arrowRef, padding: arrowEdgePadding }),
     ],
     whileElementsMounted: (reference, floating, update) =>
       autoUpdate(reference, floating, update, { animationFrame: true }),
