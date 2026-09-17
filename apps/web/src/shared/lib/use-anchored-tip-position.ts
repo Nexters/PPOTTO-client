@@ -1,4 +1,4 @@
-import { arrow, autoUpdate, offset, shift, useFloating } from '@floating-ui/react';
+import { arrow, offset, shift, useFloating } from '@floating-ui/react';
 import { useRef } from 'react';
 
 const DEFAULT_GAP_PX = 8;
@@ -31,8 +31,6 @@ export function useAnchoredTipPosition(
       // eslint-disable-next-line react-hooks/refs -- floating-ui의 문서화된 arrow 옵션 형태이며, ref.current는 렌더 중이 아니라 computePosition 실행 시점에 읽힘
       arrow({ element: arrowRef, padding: arrowEdgePadding }),
     ],
-    whileElementsMounted: (reference, floating, update) =>
-      autoUpdate(reference, floating, update, { animationFrame: true }),
   });
 
   const position: TipPosition | null = isPositioned
