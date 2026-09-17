@@ -6,8 +6,8 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/shared/lib/cn';
 import { useAnchoredTipPosition } from '@/shared/lib/use-anchored-tip-position';
 
-// pill의 rounded-8과 맞춰서, 화살표가 둥근 모서리 위로 올라가 붙을 표면을 잃지 않게 한다.
 const PILL_BORDER_RADIUS_PX = 8;
+const GAP_PX = 28;
 
 type CoachMarkTipProps = {
   anchorElement: Element | null;
@@ -16,10 +16,10 @@ type CoachMarkTipProps = {
 };
 
 export function CoachMarkTip({ anchorElement, message, onDismiss }: CoachMarkTipProps) {
-  const { pillRef, arrowRef, position } = useAnchoredTipPosition(
-    anchorElement,
-    PILL_BORDER_RADIUS_PX,
-  );
+  const { pillRef, arrowRef, position } = useAnchoredTipPosition(anchorElement, {
+    gap: GAP_PX,
+    arrowEdgePadding: PILL_BORDER_RADIUS_PX,
+  });
 
   if (!anchorElement) return null;
 

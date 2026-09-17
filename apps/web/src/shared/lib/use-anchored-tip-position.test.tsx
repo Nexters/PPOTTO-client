@@ -20,12 +20,17 @@ function setAnchorRect(rect: Rect) {
 
 function TestTip({
   anchor,
+  gap,
   arrowEdgePadding,
 }: {
   anchor: Element | null;
+  gap?: number;
   arrowEdgePadding?: number;
 }) {
-  const { pillRef, arrowRef, position } = useAnchoredTipPosition(anchor, arrowEdgePadding);
+  const { pillRef, arrowRef, position } = useAnchoredTipPosition(anchor, {
+    gap,
+    arrowEdgePadding,
+  });
   return (
     <div
       ref={pillRef}
@@ -112,6 +117,17 @@ describe('useAnchoredTipPosition', () => {
     await waitFor(() => expect(getByTestId('pill').style.left).not.toBe(NOT_POSITIONED_LEFT));
 
     expect(getByTestId('pill').style.left).toBe('362px');
+  });
+
+  it('gap을 주면 anchor 아래쪽 간격이 그만큼 벌어진다', async () => {
+    // anchor 하단 y = 340 (y:300 + height:40)
+    setAnchorRect({ x: 462, y: 300, width: 100, height: 40 });
+
+    const { getByTestId } = render(<TestTip anchor={anchor} gap={20} />);
+
+    await waitFor(() => expect(getByTestId('pill').style.left).not.toBe(NOT_POSITIONED_LEFT));
+
+    expect(getByTestId('pill').style.top).toBe('360px');
   });
 
   it('anchor가 화면 오른쪽 끝에 있으면 pill이 뷰포트 밖으로 나가지 않게 clamp된다', async () => {
