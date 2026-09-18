@@ -101,7 +101,9 @@ function PillContent({ arrowRef, arrowX, message, onDismiss }: PillContentProps)
         <span className="shrink-0">
           <Tip />
         </span>
-        <p className="text-body-06 line-clamp-2 max-w-50 text-gray-100 [word-break:break-word]">
+        <p
+          className={cn('text-body-06 line-clamp-2 w-50', 'text-gray-100 [word-break:break-word]')}
+        >
           {message}
         </p>
       </div>
