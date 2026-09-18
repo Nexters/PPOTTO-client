@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -104,6 +104,27 @@ describe('CoachMarkTip', () => {
     await user.click(screen.getByRole('button', { name: '닫기' }));
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('pill 위에서 pointerdown하면 바깥으로 전파되지 않는다', async () => {
+    const onOuterPointerDown = vi.fn();
+    document.addEventListener('pointerdown', onOuterPointerDown);
+
+    render(
+      <CoachMarkTip
+        anchorElement={anchor}
+        message="안내 문구"
+        onDismiss={vi.fn()}
+        camera={IDENTITY_CAMERA}
+      />,
+    );
+
+    const pill = await screen.findByRole('tooltip');
+    fireEvent.pointerDown(pill, { pointerId: 1 });
+
+    expect(onOuterPointerDown).not.toHaveBeenCalled();
+
+    document.removeEventListener('pointerdown', onOuterPointerDown);
   });
 
   describe('보드 월드 좌표 배치', () => {

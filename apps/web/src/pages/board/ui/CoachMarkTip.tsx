@@ -64,6 +64,7 @@ export function CoachMarkTip({ anchorElement, message, onDismiss, camera }: Coac
           role="tooltip"
           data-testid="coach-mark-pill"
           className="absolute"
+          onPointerDownCapture={(event) => event.stopPropagation()}
           style={{
             left: worldPosition.x,
             top: worldPosition.y,
