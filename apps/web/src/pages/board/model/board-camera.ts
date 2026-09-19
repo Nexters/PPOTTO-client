@@ -79,6 +79,23 @@ export function computeFocusTarget(
   };
 }
 
+type SimpleRect = { left: number; top: number; right: number; bottom: number };
+
+// anchor의 bounding box가 padding만큼 여유를 두고 컨테이너 안에 완전히 들어와 있는지 —
+// 하나라도 걸쳐 있으면 카메라를 옮겨서 보여줘야 한다는 뜻
+export function isRectFullyVisible(
+  rect: SimpleRect,
+  containerRect: SimpleRect,
+  padding: number,
+): boolean {
+  return (
+    rect.left >= containerRect.left + padding &&
+    rect.top >= containerRect.top + padding &&
+    rect.right <= containerRect.right - padding &&
+    rect.bottom <= containerRect.bottom - padding
+  );
+}
+
 // 카메라 포커스 범위(AABB) 계산용 스티커 절반 크기 근사치. 실제 이미지 크기를 몰라서(로드해봐야
 // 알 수 있음) Sticker.tsx의 STICKER_MAX_EDGE(160)의 절반으로 근사한다. 뱃지(제목)는 줌과 무관하게
 // 고정 크기를 유지할 예정이라 이 범위 계산에는 포함하지 않는다.
