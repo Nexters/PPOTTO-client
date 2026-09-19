@@ -42,7 +42,7 @@ export function useBoardCamera(boardId: string) {
 
   // target으로 카메라를 부드럽게 이동시킨다. 이미 진행 중인 포커스 애니메이션이 있으면 취소하고 새로 시작한다.
   // ref만 참조해서 렌더와 무관하게 항상 같은 함수 정체성을 유지한다 — 호출자가 deps 배열에 넣어도 안전
-  const requestFocus = useCallback((target: CameraState) => {
+  const requestFocus = useCallback((target: CameraState, onComplete?: () => void) => {
     if (focusFrameRef.current !== null) cancelAnimationFrame(focusFrameRef.current);
 
     const startCamera = cameraRef.current;
@@ -56,7 +56,12 @@ export function useBoardCamera(boardId: string) {
         x: startCamera.x + (target.x - startCamera.x) * eased,
         y: startCamera.y + (target.y - startCamera.y) * eased,
       });
-      focusFrameRef.current = progress < 1 ? requestAnimationFrame(animate) : null;
+      if (progress < 1) {
+        focusFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        focusFrameRef.current = null;
+        onComplete?.();
+      }
     };
     focusFrameRef.current = requestAnimationFrame(animate);
   }, []);

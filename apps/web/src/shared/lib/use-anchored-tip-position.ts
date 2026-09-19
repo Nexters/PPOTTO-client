@@ -2,7 +2,9 @@ import { arrow, offset, shift, useFloating } from '@floating-ui/react';
 import { useRef } from 'react';
 
 const DEFAULT_GAP_PX = 8;
-const VIEWPORT_PADDING_PX = 16;
+// anchor가 화면 이 정도 여유를 두고 완전히 들어와 있어야 clamp 없이 그대로 보여줄 수 있다.
+// 호출부가 "카메라를 움직여서라도 anchor를 보여줄지" 판단할 때도 같은 기준을 쓴다.
+export const VIEWPORT_PADDING_PX = 16;
 
 type TipPosition = {
   x: number;

@@ -15,9 +15,12 @@ import {
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
+import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge, track } from '@/shared/lib/bridge';
+import { hasSeenCoachMark, markCoachMarkSeen } from '@/shared/lib/coach-mark-storage';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { uuidv7 } from '@/shared/lib/uuidv7';
+import { VIEWPORT_PADDING_PX } from '@/shared/lib/use-anchored-tip-position';
 import { useToast } from '@/shared/ui/common/Toast';
 
 import {
@@ -61,6 +64,7 @@ import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
 import type { ToolbarMode } from './BoardToolbar';
 import { BOARD_TEXT_STYLE } from './board-text-style';
+import { CoachMarkTip } from './CoachMarkTip';
 import { DrawingStroke } from './DrawingStroke';
 import {
   EmptyBoardSticker,
@@ -80,6 +84,8 @@ import { StickerPreview } from './StickerPreview';
 import { StickerQuickMenu } from './StickerQuickMenu';
 
 const DOT_SPACING_AT_MIN_ZOOM = 18;
+const DRAWING_DELETE_COACH_MARK_ID = 'drawing-delete';
+const DRAWING_DELETE_COACH_MARK_MESSAGE = '그림을 꾹 눌러서 삭제할 수 있어요.';
 
 type BoardCanvasProps = {
   boardId: string;
@@ -119,6 +125,23 @@ export type BoardCanvasHandle = {
 
 export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
   return isError && !data;
+}
+
+type SimpleRect = { left: number; top: number; right: number; bottom: number };
+
+// anchor의 bounding box가 padding만큼 여유를 두고 컨테이너 안에 완전히 들어와 있는지 —
+// 하나라도 걸쳐 있으면 카메라를 옮겨서 보여줘야 한다는 뜻
+export function isRectFullyVisible(
+  rect: SimpleRect,
+  containerRect: SimpleRect,
+  padding: number,
+): boolean {
+  return (
+    rect.left >= containerRect.left + padding &&
+    rect.top >= containerRect.top + padding &&
+    rect.right <= containerRect.right - padding &&
+    rect.bottom <= containerRect.bottom - padding
+  );
 }
 
 // 그리는 도중인 선의 실시간 미리보기는 스티커·그림 zIndex 값과 무관하게 항상 맨 위에 그려져야 한다
@@ -167,6 +190,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     EMPTY_BOARD_STICKER_INITIAL_TRANSFORM,
   );
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
+  const { data: me } = useMeQuery();
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
   const { isActive } = useActivity();
@@ -406,6 +430,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     }
   }
 
+  const [drawingCoachMarkAnchor, setDrawingCoachMarkAnchor] = useState<Element | null>(null);
+  const [drawingCoachMarkKey, setDrawingCoachMarkKey] = useState(0);
+
   const drawMode = useDrawMode({
     isDrawMode,
     cameraRef,
@@ -418,6 +445,40 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onDrawingActiveChange,
     onCanUndoChange,
     onCanRedoChange,
+    onDrawModeExited: (drafts) => {
+      if (!me || hasSeenCoachMark(DRAWING_DELETE_COACH_MARK_ID, me.id) || !container) return;
+      const latest = drafts[drafts.length - 1];
+      if (!latest) return;
+
+      // draft가 확정되면서 draft SVG는 사라지고 확정된 그림 목록의 SVG로 바뀐다(id는 유지됨).
+      // 그 리렌더가 DOM에 반영된 뒤에 조회해야, 곧 사라질 draft 엘리먼트를 anchor로 잡아
+      // 허공에 붕 뜬(detached) 상태가 되는 걸 피할 수 있다
+      requestAnimationFrame(() => {
+        const findShapeElement = () =>
+          container.querySelector(
+            `[data-drawing-id="${CSS.escape(latest.id)}"] path, [data-drawing-id="${CSS.escape(latest.id)}"] circle`,
+          );
+
+        const showCoachMark = () => {
+          const shapeElement = findShapeElement();
+          if (!shapeElement) return;
+          setDrawingCoachMarkAnchor(shapeElement);
+          setDrawingCoachMarkKey((key) => key + 1);
+          markCoachMarkSeen(DRAWING_DELETE_COACH_MARK_ID, me.id);
+        };
+
+        const containerRect = container.getBoundingClientRect();
+        const shapeRect = findShapeElement()?.getBoundingClientRect();
+
+        if (shapeRect && isRectFullyVisible(shapeRect, containerRect, VIEWPORT_PADDING_PX)) {
+          showCoachMark();
+          return;
+        }
+
+        const viewport = { width: containerRect.width, height: containerRect.height };
+        requestFocus(computeFocusTarget(cameraRef.current, latest.points, viewport), showCoachMark);
+      });
+    },
   });
 
   const confirmMoveSessionRef = useRef(confirmMoveSession);
@@ -723,6 +784,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 key={drawing.id}
                 ref={isSelected ? drawingSelection.drawingPreviewElementRef : undefined}
                 data-pinch-target={isEditMode && isSelected ? drawing.id : undefined}
+                data-drawing-id={drawing.id}
                 style={{
                   position: 'absolute',
                   inset: 0,
@@ -785,6 +847,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           {drawMode.draftDrawings.map((drawing) => (
             <svg
               key={drawing.id}
+              data-drawing-id={drawing.id}
               style={{
                 position: 'absolute',
                 inset: 0,
@@ -920,6 +983,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                   ? cameraSticker.dragTransform
                   : undefined
               }
+            />
+          )}
+          {drawingCoachMarkAnchor && (
+            <CoachMarkTip
+              key={drawingCoachMarkKey}
+              anchorElement={drawingCoachMarkAnchor}
+              message={DRAWING_DELETE_COACH_MARK_MESSAGE}
+              onDismiss={() => setDrawingCoachMarkAnchor(null)}
+              camera={camera}
             />
           )}
         </div>

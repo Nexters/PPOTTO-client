@@ -29,6 +29,7 @@ type UseDrawModeParams = {
   onDrawingActiveChange?: (active: boolean) => void;
   onCanUndoChange?: (canUndo: boolean) => void;
   onCanRedoChange?: (canRedo: boolean) => void;
+  onDrawModeExited?: (drafts: ParsedDrawing[]) => void;
 };
 
 // draw 모드의 포인터 처리(그리기/두 손가락 핀치줌)와 draft 상태(undo/redo, 모드 종료 시 일괄 저장)를
@@ -46,6 +47,7 @@ export function useDrawMode({
   onDrawingActiveChange,
   onCanUndoChange,
   onCanRedoChange,
+  onDrawModeExited,
 }: UseDrawModeParams) {
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null);
   const [draftDrawings, setDraftDrawings] = useState<ParsedDrawing[]>([]);
@@ -57,11 +59,13 @@ export function useDrawMode({
   const isDrawingActiveRef = useRef(false);
   // 모드 종료 이펙트에서 최신 함수를 읽어야 해서 ref로도 들고 있는다(이펙트 deps를 isDrawMode로만 좁게 유지하기 위함)
   const confirmDraftDrawingsRef = useRef(confirmDraftDrawings);
+  const onDrawModeExitedRef = useRef(onDrawModeExited);
 
   useEffect(() => {
     draftDrawingsRef.current = draftDrawings;
     redoDrawingsRef.current = redoDrawings;
     confirmDraftDrawingsRef.current = confirmDraftDrawings;
+    onDrawModeExitedRef.current = onDrawModeExited;
   });
 
   // 실행취소할 그림이 있는지 여부를 부모에 알림 — 이번 세션에 그린 draft 기준(이미 확정된 그림은 대상 아님)
@@ -85,6 +89,7 @@ export function useDrawMode({
     if (drafts.length === 0) return;
     setDraftDrawings([]);
     confirmDraftDrawingsRef.current(drafts);
+    onDrawModeExitedRef.current?.(drafts);
     // confirmDraftDrawings는 매 렌더 새로 만들어지는 함수라 deps에 넣으면 이 이펙트가 draw 모드와
     // 무관하게 매번 재실행된다 — isDrawMode 전환 시점에만 실행되도록 의도적으로 deps에서 제외
   }, [isDrawMode]);
