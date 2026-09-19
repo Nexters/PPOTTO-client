@@ -1,10 +1,8 @@
-import { type RefObject, useState } from 'react';
+import type { RefObject } from 'react';
 
-import { hasSeenCoachMark, markCoachMarkSeen } from '@/shared/lib/coach-mark-storage';
-import { VIEWPORT_PADDING_PX } from '@/shared/lib/use-anchored-tip-position';
-
-import { type CameraState, computeFocusTarget, isRectFullyVisible } from './board-camera';
+import { type CameraState } from './board-camera';
 import type { ParsedDrawing } from './board-drawing';
+import { useCoachMarkAnchor } from './use-coach-mark-anchor';
 
 const DRAWING_DELETE_COACH_MARK_ID = 'drawing-delete';
 
@@ -23,48 +21,36 @@ export function useDrawingCoachMark({
   requestFocus,
   userId,
 }: UseDrawingCoachMarkParams) {
-  const [anchorElement, setAnchorElement] = useState<Element | null>(null);
-  const [anchorKey, setAnchorKey] = useState(0);
+  const coachMark = useCoachMarkAnchor({
+    coachMarkId: DRAWING_DELETE_COACH_MARK_ID,
+    userId,
+    container,
+    cameraRef,
+    requestFocus,
+  });
 
   const onDrawModeExited = (drafts: ParsedDrawing[]) => {
-    if (!userId || hasSeenCoachMark(DRAWING_DELETE_COACH_MARK_ID, userId) || !container) return;
     const latest = drafts[drafts.length - 1];
-    if (!latest) return;
+    if (!latest || !container) return;
 
     // draft가 확정되면서 draft SVG는 사라지고 확정된 그림 목록의 SVG로 바뀐다(id는 유지됨).
     // 그 리렌더가 DOM에 반영된 뒤에 조회해야, 곧 사라질 draft 엘리먼트를 anchor로 잡아
     // 허공에 붕 뜬(detached) 상태가 되는 걸 피할 수 있다
     requestAnimationFrame(() => {
-      const findShapeElement = () =>
-        container.querySelector(
-          `[data-drawing-id="${CSS.escape(latest.id)}"] path, [data-drawing-id="${CSS.escape(latest.id)}"] circle`,
-        );
-
-      const showCoachMark = () => {
-        const shapeElement = findShapeElement();
-        if (!shapeElement) return;
-        setAnchorElement(shapeElement);
-        setAnchorKey((key) => key + 1);
-        markCoachMarkSeen(DRAWING_DELETE_COACH_MARK_ID, userId);
-      };
-
-      const containerRect = container.getBoundingClientRect();
-      const shapeRect = findShapeElement()?.getBoundingClientRect();
-
-      if (shapeRect && isRectFullyVisible(shapeRect, containerRect, VIEWPORT_PADDING_PX)) {
-        showCoachMark();
-        return;
-      }
-
-      const viewport = { width: containerRect.width, height: containerRect.height };
-      requestFocus(computeFocusTarget(cameraRef.current, latest.points, viewport), showCoachMark);
+      coachMark.show(
+        () =>
+          container.querySelector(
+            `[data-drawing-id="${CSS.escape(latest.id)}"] path, [data-drawing-id="${CSS.escape(latest.id)}"] circle`,
+          ),
+        latest.points,
+      );
     });
   };
 
   return {
-    anchorElement,
-    anchorKey,
-    onDismiss: () => setAnchorElement(null),
+    anchorElement: coachMark.anchorElement,
+    anchorKey: coachMark.anchorKey,
+    onDismiss: coachMark.onDismiss,
     onDrawModeExited,
   };
 }
