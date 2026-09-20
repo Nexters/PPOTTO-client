@@ -19,6 +19,11 @@ export const analysisApi = {
   start: (analysisId: string) =>
     unwrapData(api.POST('/analysis/{analysisId}/start', { params: { path: { analysisId } } })),
 
+  requestNotification: (analysisId: string) =>
+    unwrapVoid(
+      api.POST('/analysis/{analysisId}/notifications', { params: { path: { analysisId } } }),
+    ),
+
   cancel: (analysisId: string) =>
     unwrapVoid(api.DELETE('/analysis/{analysisId}', { params: { path: { analysisId } } })),
 };
