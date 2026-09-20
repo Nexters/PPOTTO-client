@@ -12,6 +12,7 @@ type UseCoachMarkAnchorParams = {
   container: HTMLDivElement | null;
   cameraRef: RefObject<CameraState>;
   requestFocus: (target: CameraState, onComplete?: () => void) => void;
+  dismissWhen?: boolean;
 };
 
 export function useCoachMarkAnchor({
@@ -20,9 +21,14 @@ export function useCoachMarkAnchor({
   container,
   cameraRef,
   requestFocus,
+  dismissWhen,
 }: UseCoachMarkAnchorParams) {
   const [anchorElement, setAnchorElement] = useState<Element | null>(null);
   const [anchorKey, setAnchorKey] = useState(0);
+
+  if (dismissWhen && anchorElement) {
+    setAnchorElement(null);
+  }
 
   const show = (findElement: () => Element | null, focusPoints: Point[]) => {
     if (!userId || hasSeenCoachMark(coachMarkId, userId) || !container) return;

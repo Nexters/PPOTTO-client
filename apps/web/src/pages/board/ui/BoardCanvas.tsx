@@ -418,6 +418,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     cameraRef,
     requestFocus,
     userId: me?.id,
+    selectedDrawingId: drawingSelection.selectedDrawingId,
+    isDrawingDeleteArmed: drawingSelection.isDrawingDeleteArmed,
   });
 
   const stickerCoachMark = useStickerCoachMark({
@@ -428,6 +430,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     isActive,
     stickers,
     findStickerElements,
+    quickMenuStickerId: quickMenu.quickMenuStickerId,
   });
 
   const drawMode = useDrawMode({
