@@ -1,6 +1,6 @@
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { StickerCommentPosition, StickerRecap } from '@/entities/sticker/api/sticker-api';
 import { useUpdateStickerCommentPositionsMutation } from '@/entities/sticker/api/sticker-mutations';
@@ -11,6 +11,7 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { useTrackActivityView } from '@/shared/lib/use-track-activity-view';
 import { track } from '@/shared/lib/bridge';
 
+import { setLastViewedRecapSticker } from '../board/model/last-viewed-recap-sticker';
 import { useMarkStickerViewed } from '../board/model/use-mark-sticker-viewed';
 
 import { RecapHeader } from './ui/RecapHeader';
@@ -41,6 +42,10 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
 
   useRefetchOnActive(refetch, isStale);
   useTrackActivityView(Boolean(data), 'recap_viewed', { entry_point: 'board' });
+
+  useEffect(() => {
+    setLastViewedRecapSticker(stickerId);
+  }, [stickerId]);
 
   const handleInitialCommentLayout = useCallback(
     async (comments: StickerCommentPosition[]) => {

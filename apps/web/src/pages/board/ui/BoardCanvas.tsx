@@ -15,6 +15,7 @@ import {
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { useBoardQuery } from '@/entities/board/api/board-queries';
+import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge, track } from '@/shared/lib/bridge';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { uuidv7 } from '@/shared/lib/uuidv7';
@@ -47,6 +48,7 @@ import { useBoardCamera } from '../model/use-board-camera';
 import { useCameraStickerGesture } from '../model/use-camera-sticker-gesture';
 import { useDeleteSticker } from '../model/use-delete-sticker';
 import { useDrawMode } from '../model/use-draw-mode';
+import { useDrawingCoachMark } from '../model/use-drawing-coach-mark';
 import { useDrawingPersistence } from '../model/use-drawing-persistence';
 import { useDrawingSelection } from '../model/use-drawing-selection';
 import {
@@ -56,11 +58,13 @@ import {
 import { useInitialStickerPlacement } from '../model/use-initial-sticker-placement';
 import { useMoveSession } from '../model/use-move-session';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
+import { useStickerCoachMark } from '../model/use-sticker-coach-mark';
 import { useTextSelection } from '../model/use-text-selection';
 import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
 import type { ToolbarMode } from './BoardToolbar';
 import { BOARD_TEXT_STYLE } from './board-text-style';
+import { CoachMarkTip } from './CoachMarkTip';
 import { DrawingStroke } from './DrawingStroke';
 import {
   EmptyBoardSticker,
@@ -80,6 +84,8 @@ import { StickerPreview } from './StickerPreview';
 import { StickerQuickMenu } from './StickerQuickMenu';
 
 const DOT_SPACING_AT_MIN_ZOOM = 18;
+const DRAWING_DELETE_COACH_MARK_MESSAGE = '그림을 꾹 눌러서 삭제할 수 있어요.';
+const STICKER_MENU_COACH_MARK_MESSAGE = '스티커를 꾹 누르면 스티커 메뉴에 진입할 수 있어요.';
 
 type BoardCanvasProps = {
   boardId: string;
@@ -167,6 +173,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     EMPTY_BOARD_STICKER_INITIAL_TRANSFORM,
   );
   const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
+  const { data: me } = useMeQuery();
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
   const { isActive } = useActivity();
@@ -406,6 +413,26 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     }
   }
 
+  const drawingCoachMark = useDrawingCoachMark({
+    container,
+    cameraRef,
+    requestFocus,
+    userId: me?.id,
+    selectedDrawingId: drawingSelection.selectedDrawingId,
+    isDrawingDeleteArmed: drawingSelection.isDrawingDeleteArmed,
+  });
+
+  const stickerCoachMark = useStickerCoachMark({
+    container,
+    cameraRef,
+    requestFocus,
+    userId: me?.id,
+    isActive,
+    stickers,
+    findStickerElements,
+    quickMenuStickerId: quickMenu.quickMenuStickerId,
+  });
+
   const drawMode = useDrawMode({
     isDrawMode,
     cameraRef,
@@ -418,6 +445,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onDrawingActiveChange,
     onCanUndoChange,
     onCanRedoChange,
+    onDrawModeExited: drawingCoachMark.onDrawModeExited,
   });
 
   const confirmMoveSessionRef = useRef(confirmMoveSession);
@@ -723,6 +751,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 key={drawing.id}
                 ref={isSelected ? drawingSelection.drawingPreviewElementRef : undefined}
                 data-pinch-target={isEditMode && isSelected ? drawing.id : undefined}
+                data-drawing-id={drawing.id}
                 style={{
                   position: 'absolute',
                   inset: 0,
@@ -785,6 +814,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
           {drawMode.draftDrawings.map((drawing) => (
             <svg
               key={drawing.id}
+              data-drawing-id={drawing.id}
               style={{
                 position: 'absolute',
                 inset: 0,
@@ -920,6 +950,24 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                   ? cameraSticker.dragTransform
                   : undefined
               }
+            />
+          )}
+          {stickerCoachMark.anchorElement && (
+            <CoachMarkTip
+              key={stickerCoachMark.anchorKey}
+              anchorElement={stickerCoachMark.anchorElement}
+              message={STICKER_MENU_COACH_MARK_MESSAGE}
+              onDismiss={stickerCoachMark.onDismiss}
+              camera={camera}
+            />
+          )}
+          {drawingCoachMark.anchorElement && (
+            <CoachMarkTip
+              key={drawingCoachMark.anchorKey}
+              anchorElement={drawingCoachMark.anchorElement}
+              message={DRAWING_DELETE_COACH_MARK_MESSAGE}
+              onDismiss={drawingCoachMark.onDismiss}
+              camera={camera}
             />
           )}
         </div>

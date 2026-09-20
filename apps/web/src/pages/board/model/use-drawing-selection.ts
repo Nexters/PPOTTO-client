@@ -485,6 +485,7 @@ export function useDrawingSelection({
 
   return {
     selectedDrawingId,
+    isDrawingDeleteArmed,
     drawingPreviewElementRef,
     drawingBoxPreviewElementRef,
     selectedDrawingBaseSize,
