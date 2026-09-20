@@ -37,6 +37,7 @@ const dependencies: PhotoUploadServiceDependencies = {
     logPhotoUpload(`POST /analysis 요청 (${input.photos.length}그룹, ${photoCount}장)`);
     const result = await analysisApi.create(input);
     logPhotoUpload(`POST /analysis 완료 (${result.analysisId}, URL ${result.uploads.length}개)`);
+    setAnalysisId(result.analysisId);
     return result;
   },
   cancelAnalysis: async (analysisId) => {
@@ -95,7 +96,9 @@ interface StartPhotoUploadOptions {
 }
 
 export interface PhotoUploadViewState {
+  analysisId: string | null;
   failure?: PhotoUploadFailure;
+  notificationRequested: boolean;
   progress: number;
   status: 'UPLOADING' | 'ANALYZING' | 'COMPLETED' | 'FAILED';
 }
@@ -106,7 +109,12 @@ export interface PhotoUploadFailure {
   status?: number;
 }
 
-let viewState: PhotoUploadViewState = { progress: 0, status: 'UPLOADING' };
+let viewState: PhotoUploadViewState = {
+  analysisId: null,
+  notificationRequested: false,
+  progress: 0,
+  status: 'UPLOADING',
+};
 let motionPhotos: UploadMotionPhoto[] = [];
 let motionPhotoCount = 0;
 let motionPhotosReady = Promise.resolve();
@@ -129,6 +137,18 @@ const ANALYSIS_LOADING_PHASES = new Set<AnalysisLoadingPhase>([
   'DECK',
   'REVEAL',
 ]);
+
+function setAnalysisMeta(analysisId: string, notificationRequested: boolean) {
+  viewState = { ...viewState, analysisId, notificationRequested };
+  listeners.forEach((listener) => listener());
+}
+
+function setAnalysisId(analysisId: string) {
+  setAnalysisMeta(
+    analysisId,
+    viewState.analysisId === analysisId ? viewState.notificationRequested : false,
+  );
+}
 
 function publish(next: PhotoUploadViewState) {
   viewState = {
@@ -168,6 +188,8 @@ function publishFailure(error: unknown) {
   }
 
   publish({
+    analysisId: viewState.analysisId,
+    notificationRequested: viewState.notificationRequested,
     progress: viewState.progress,
     status: 'FAILED',
     ...(failure ? { failure } : {}),
@@ -248,18 +270,35 @@ async function waitUntilComplete(analysisId: string) {
       ...durationSince(uploadStartedAt),
     });
   }
-  await waitForAnalysis(analysisId, analysisApi.get, undefined, (analysis) => {
-    if (analysis.status === 'ANALYZING' && lastStartedAnalysisId !== analysisId) {
-      lastStartedAnalysisId = analysisId;
-      analysisStartedAt = Date.now();
-      track('analysis_started', motionPhotoCount ? { photo_count: motionPhotoCount } : {});
-    }
-    if (analysis.status === 'COMPLETED' && lastCompletedAnalysisId !== analysisId) {
-      lastCompletedAnalysisId = analysisId;
-      track('analysis_completed', durationSince(analysisStartedAt));
-    }
-    publish(analysis);
-  });
+  let latestAnalysisId = analysisId;
+  let latestNotificationRequested = viewState.notificationRequested;
+  await waitForAnalysis(
+    analysisId,
+    async (id) => {
+      const analysis = await analysisApi.get(id);
+      latestAnalysisId = analysis.id;
+      latestNotificationRequested = analysis.notificationRequested;
+      return analysis;
+    },
+    undefined,
+    (analysis) => {
+      if (analysis.status === 'ANALYZING' && lastStartedAnalysisId !== analysisId) {
+        lastStartedAnalysisId = analysisId;
+        analysisStartedAt = Date.now();
+        track('analysis_started', motionPhotoCount ? { photo_count: motionPhotoCount } : {});
+      }
+      if (analysis.status === 'COMPLETED' && lastCompletedAnalysisId !== analysisId) {
+        lastCompletedAnalysisId = analysisId;
+        track('analysis_completed', durationSince(analysisStartedAt));
+      }
+      publish({
+        analysisId: latestAnalysisId,
+        notificationRequested: latestNotificationRequested,
+        progress: analysis.progress,
+        status: analysis.status,
+      });
+    },
+  );
 }
 
 export const photoUploadService = {
@@ -276,7 +315,12 @@ export const photoUploadService = {
     analysisStartedAt = undefined;
     const startedAt = Date.now();
     currentJobId = jobId;
-    viewState = { progress: 0, status: 'UPLOADING' };
+    viewState = {
+      analysisId: null,
+      notificationRequested: false,
+      progress: 0,
+      status: 'UPLOADING',
+    };
     motionPhotoCount = photoCount;
     motionPhotos = [];
     webMotionPhotos = null;
@@ -312,6 +356,7 @@ export const photoUploadService = {
         dependencies,
       );
       logPhotoUpload(`#${id} 업로드 단계 종료 (${analysisId}, ${status})`);
+      setAnalysisId(analysisId);
 
       if (status !== 'ANALYZING') throw new Error('사진 업로드에 실패했습니다.');
       logPhotoUpload(`#${id} 분석 완료 대기 시작 (${analysisId})`);
@@ -363,7 +408,12 @@ export const photoUploadService = {
 
     const id = ++runId;
     const startedAt = Date.now();
-    viewState = { progress: 0, status: 'UPLOADING' };
+    viewState = {
+      analysisId: null,
+      notificationRequested: false,
+      progress: 0,
+      status: 'UPLOADING',
+    };
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -381,9 +431,11 @@ export const photoUploadService = {
     currentUpload = (async () => {
       const stored = await restoredJob;
       const storedState = stored ? restoreUploadJob(stored.snapshot, stored.events) : null;
+      if (storedState?.analysisId) setAnalysisId(storedState.analysisId);
       if (storedState?.phase === 'PREPARING') {
         const active = await analysisApi.getActive();
         if (active?.status === 'ANALYZING') {
+          setAnalysisMeta(active.id, active.notificationRequested);
           await waitUntilComplete(active.id);
           return;
         }
@@ -405,6 +457,7 @@ export const photoUploadService = {
         throw new Error('업로드를 복구할 로컬 작업이 없습니다.');
       }
 
+      setAnalysisMeta(active.id, active.notificationRequested);
       logPhotoUpload(`#${id} 서버 분석 완료 대기 재개 (${active.id})`);
       await waitUntilComplete(active.id);
     })().catch((error) => {
@@ -426,7 +479,12 @@ export const photoUploadService = {
     motionPhotoCount = 0;
     webMotionPhotos = null;
     motionPhotosReady = Promise.resolve();
-    viewState = { progress: 0, status: 'UPLOADING' };
+    viewState = {
+      analysisId: null,
+      notificationRequested: false,
+      progress: 0,
+      status: 'UPLOADING',
+    };
   },
 
   async finish() {
@@ -438,20 +496,30 @@ export const photoUploadService = {
     motionPhotoCount = 0;
     webMotionPhotos = null;
     motionPhotosReady = Promise.resolve();
-    viewState = { progress: 0, status: 'UPLOADING' };
+    viewState = {
+      analysisId: null,
+      notificationRequested: false,
+      progress: 0,
+      status: 'UPLOADING',
+    };
   },
 
   async discard() {
     currentUpload = null;
     currentJobId = null;
     const result = await discardSavedPhotoUpload(dependencies);
-    if (result === 'DISCARDED') await clearLastSeenLoadingPhase();
+    if (result === 'DISCARDED') {
+      await clearLastSeenLoadingPhase();
+      viewState = { ...viewState, analysisId: null, notificationRequested: false };
+      listeners.forEach((listener) => listener());
+    }
     return result;
   },
 };
 
 async function waitForStartedAnalysis(id: number, result: StartedPhotoUpload) {
   logPhotoUpload(`#${id} 업로드 단계 종료 (${result.analysisId}, ${result.status})`);
+  setAnalysisId(result.analysisId);
   if (result.status !== 'ANALYZING') throw new Error('사진 업로드에 실패했습니다.');
 
   logPhotoUpload(`#${id} 분석 완료 대기 시작 (${result.analysisId})`);
