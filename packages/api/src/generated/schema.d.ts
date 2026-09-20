@@ -48,6 +48,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analysis/{analysisId}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 분석 완료 알림 신청
+         * @description 현재 진행 중인 분석의 완료 또는 실패 결과 푸시 알림을 분석별로 신청합니다. 같은 분석에 대한 재요청은 동일하게 성공합니다.
+         */
+        post: operations["requestAnalysisCompletionNotification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/analysis/{analysisId}/reissue": {
         parameters: {
             query?: never;
@@ -520,6 +540,11 @@ export interface components {
              * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
             id: string;
+            /**
+             * @description 현재 분석의 완료 알림 신청 여부
+             * @example true
+             */
+            notificationRequested: boolean;
             /**
              * Format: int32
              * @description 진행률 0~100
@@ -2147,6 +2172,65 @@ export interface operations {
                 };
             };
             /** @description 취소할 수 없는 상태의 분석임 (ANALYSIS-004) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    requestAnalysisCompletionNotification: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 분석 ID (uuidv7)
+                 * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+                 */
+                analysisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 처리 완료. data는 항상 null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseUnit"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 분석을 찾을 수 없음 (ANALYSIS-005) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 알림을 신청할 수 없는 분석 상태 (ANALYSIS-018) */
             409: {
                 headers: {
                     [name: string]: unknown;
