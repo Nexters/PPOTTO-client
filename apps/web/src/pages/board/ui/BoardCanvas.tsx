@@ -58,6 +58,7 @@ import {
 import { useInitialStickerPlacement } from '../model/use-initial-sticker-placement';
 import { useMoveSession } from '../model/use-move-session';
 import { useRegenerateSticker } from '../model/use-regenerate-sticker';
+import { useStickerCoachMark } from '../model/use-sticker-coach-mark';
 import { useTextSelection } from '../model/use-text-selection';
 import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
@@ -84,6 +85,7 @@ import { StickerQuickMenu } from './StickerQuickMenu';
 
 const DOT_SPACING_AT_MIN_ZOOM = 18;
 const DRAWING_DELETE_COACH_MARK_MESSAGE = '그림을 꾹 눌러서 삭제할 수 있어요.';
+const STICKER_MENU_COACH_MARK_MESSAGE = '스티커를 꾹 누르면 스티커 메뉴에 진입할 수 있어요.';
 
 type BoardCanvasProps = {
   boardId: string;
@@ -416,6 +418,16 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     cameraRef,
     requestFocus,
     userId: me?.id,
+  });
+
+  const stickerCoachMark = useStickerCoachMark({
+    container,
+    cameraRef,
+    requestFocus,
+    userId: me?.id,
+    isActive,
+    stickers,
+    findStickerElements,
   });
 
   const drawMode = useDrawMode({
@@ -935,6 +947,15 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                   ? cameraSticker.dragTransform
                   : undefined
               }
+            />
+          )}
+          {stickerCoachMark.anchorElement && (
+            <CoachMarkTip
+              key={stickerCoachMark.anchorKey}
+              anchorElement={stickerCoachMark.anchorElement}
+              message={STICKER_MENU_COACH_MARK_MESSAGE}
+              onDismiss={stickerCoachMark.onDismiss}
+              camera={camera}
             />
           )}
           {drawingCoachMark.anchorElement && (

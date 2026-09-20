@@ -4,6 +4,10 @@ export function setLastViewedRecapSticker(stickerId: string) {
   lastViewedRecapStickerId = stickerId;
 }
 
+export function peekLastViewedRecapSticker(): string | null {
+  return lastViewedRecapStickerId;
+}
+
 export function consumeLastViewedRecapSticker(): string | null {
   const stickerId = lastViewedRecapStickerId;
   lastViewedRecapStickerId = null;
