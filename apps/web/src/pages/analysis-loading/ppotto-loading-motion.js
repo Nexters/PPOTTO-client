@@ -323,6 +323,7 @@ export function createLoadingMotion(opts) {
   let progressElapsed = 0;
   let progressDuration = TIMING[ACT_NAME[initialPhase].toLowerCase()].min;
   let progressFading = false;
+  let phaseRequestVersion = 0;
 
   function setProgressTarget(value, duration) {
     progressFrom = progressShown;
@@ -1488,13 +1489,15 @@ export function createLoadingMotion(opts) {
     if (tl.checking || tl.exiting || destroyed) return;
     tl.checking = true;
     const phase = ACT_NAME[tl.actIndex];
+    const requestVersion = phaseRequestVersion;
 
     try {
       const nextState = await opts.onPhaseFinished(phase);
-      if (destroyed) return;
+      if (destroyed || requestVersion !== phaseRequestVersion) return;
       if (ACT[nextState.visiblePhase] > tl.actIndex) beginAdvance(nextState);
       else repeatCurrent(nextState);
     } catch (error) {
+      if (destroyed || requestVersion !== phaseRequestVersion) return;
       console.error('[loading-motion] 다음 막 확인 실패', error);
       repeatCurrent({ visiblePhase: phase, visualProgress: progressTarget * 100 });
     }
@@ -1566,6 +1569,37 @@ export function createLoadingMotion(opts) {
     raf = requestAnimationFrame(tick);
   }
 
+  function resync(nextState) {
+    if (destroyed) return;
+    const nextIndex = ACT[nextState.visiblePhase];
+    if (nextIndex === undefined || nextIndex < tl.actIndex) return;
+
+    phaseRequestVersion += 1;
+    if (nextIndex !== tl.actIndex) {
+      acts[tl.actIndex].exit && acts[tl.actIndex].exit();
+      tl.actIndex = nextIndex;
+      tl.finished = false;
+      tl.checking = false;
+      enterCurrentAct(nextState);
+    } else {
+      tl.checking = false;
+    }
+
+    progressShown = Math.max(progressShown, clamp(nextState.visualProgress / 100, 0, 1));
+    progressFrom = progressShown;
+    progressTarget = progressShown;
+    progressElapsed = 0;
+    elProgressFill.style.transform = `scaleX(${progressShown.toFixed(4)})`;
+
+    if (nextState.visiblePhase === 'REVEAL' && nextState.visualProgress >= 100) {
+      const act = acts[tl.actIndex];
+      tl.actT = act.dur();
+      act.update(tl.actT, tl.actT);
+      tl.finished = true;
+      opts.onRevealFinished && opts.onRevealFinished();
+    }
+  }
+
   function destroy() {
     destroyed = true;
     cancelAnimationFrame(raf);
@@ -1577,6 +1611,7 @@ export function createLoadingMotion(opts) {
   return {
     el: root,
     start,
+    resync,
     destroy,
     setICloudNotice(visible) {
       icloudNoticeOn = visible;

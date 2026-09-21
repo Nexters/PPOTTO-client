@@ -299,6 +299,14 @@ describe('분석 로딩 브리지', () => {
 
     expect(mockEmit).toHaveBeenCalledWith('SHOW_BOARD');
   });
+
+  it('분석 로딩 동기화 상태를 현재 웹뷰에 보낸다', async () => {
+    const resync = { visiblePhase: 'DECK' as const, visualProgress: 85 };
+
+    await render(<AppWebView analysisLoadingResync={resync} path="/analysis-loading" />);
+
+    expect(mockEmit).toHaveBeenCalledWith('ANALYSIS_LOADING_RESYNC', resync);
+  });
 });
 
 describe('사진 선택 화면 이동', () => {

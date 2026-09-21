@@ -1,7 +1,7 @@
 import type { AnalysisLoadingBridgeState, AnalysisLoadingPhaseState } from '@ppotto/bridge';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Platform, Text, View } from 'react-native';
+import { AppState, Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // 배럴(index) 대신 직접 import — PhotoGrid(reanimated)까지 끌어오지 않기 위함
@@ -48,6 +48,7 @@ export function AnalysisLoadingScreen() {
   );
   const [motionReady, setMotionReady] = useState(false);
   const [showingBoard, setShowingBoard] = useState(false);
+  const [resyncState, setResyncState] = useState<AnalysisLoadingPhaseState>();
   const sequenceRef = useRef(sequence);
 
   const commitSequence = useCallback((next: LoadingSequenceState) => {
@@ -146,6 +147,32 @@ export function AnalysisLoadingScreen() {
   }, [updateSequence, upload]);
 
   useEffect(() => {
+    let previousAppState = AppState.currentState;
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      const cameToForeground =
+        previousAppState.match(/inactive|background/) && nextAppState === 'active';
+      previousAppState = nextAppState;
+      if (!cameToForeground || sequenceRef.current.revealFinished) return;
+
+      void photoUploadService
+        .refreshNow()
+        .then(() => {
+          const latest = photoUploadService.getViewState();
+          if (!latest.analysisId) return;
+          const next = updateSequence({
+            type: 'FOREGROUND_RESYNCED',
+            progress: latest.progress,
+            completed: latest.status === 'COMPLETED',
+          });
+          setResyncState(toBridgePhaseState(next));
+        })
+        .catch(() => undefined);
+    });
+
+    return () => subscription.remove();
+  }, [updateSequence]);
+
+  useEffect(() => {
     if (!motionReady || upload.status !== 'UPLOADING' || upload.progress > 0) return;
 
     const timer = setInterval(() => {
@@ -191,6 +218,7 @@ export function AnalysisLoadingScreen() {
     <View className="flex-1 bg-black">
       <AppWebView
         bridgeHandlers={bridgeHandlers}
+        analysisLoadingResync={resyncState}
         downloadingFromICloud={downloadingFromICloud}
         path="/analysis-loading"
         showBoard={showingBoard}

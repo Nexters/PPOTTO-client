@@ -42,10 +42,12 @@ const mocks = vi.hoisted(() => {
   const start = vi.fn();
   const destroy = vi.fn();
   const setICloudNotice = vi.fn();
+  const resync = vi.fn();
   const createLoadingMotion = vi.fn((_options: MotionOptions) => ({
     start,
     destroy,
     setICloudNotice,
+    resync,
   }));
   const replace = vi.fn();
   const boardList = vi.fn(() => Promise.resolve([{ id: 'board-1', name: '보드' }]));
@@ -62,8 +64,8 @@ const mocks = vi.hoisted(() => {
   const preloadStickerImages = vi.fn(() => Promise.resolve());
   const fetchQuery = vi.fn(({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn());
   const queryClient = { fetchQuery };
-  const eventHandlers = new Map<string, () => void>();
-  const on = vi.fn((message: string, handler: () => void) => {
+  const eventHandlers = new Map<string, (payload?: unknown) => void>();
+  const on = vi.fn((message: string, handler: (payload?: unknown) => void) => {
     eventHandlers.set(message, handler);
     return () => eventHandlers.delete(message);
   });
@@ -83,6 +85,7 @@ const mocks = vi.hoisted(() => {
     queryClient,
     replace,
     request,
+    resync,
     revokeObjectURL,
     send,
     start,
@@ -301,6 +304,10 @@ describe('AnalysisLoadingPage', () => {
     expect(mocks.send).toHaveBeenCalledWith('ANALYSIS_LOADING_REVEAL_FINISHED', {
       jobId: 'job-1',
     });
+
+    const resyncState = { visiblePhase: 'DECK' as const, visualProgress: 85 };
+    mocks.eventHandlers.get('ANALYSIS_LOADING_RESYNC')?.(resyncState);
+    expect(mocks.resync).toHaveBeenCalledWith(resyncState);
     expect(mocks.boardList).toHaveBeenCalledTimes(1);
     expect(mocks.boardGet).toHaveBeenCalledWith('board-1');
 
@@ -409,6 +416,26 @@ describe('AnalysisLoadingPage', () => {
     expect(mocks.send).not.toHaveBeenCalled();
     expect(mocks.createObjectURL).toHaveBeenCalledTimes(20);
     expect(mocks.revokeObjectURL).toHaveBeenCalledTimes(20);
+  });
+
+  it('모션 준비 전에 받은 복귀 상태를 모션 생성 직후 반영한다', async () => {
+    let finishDecode!: () => void;
+    mocks.decode.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDecode = resolve;
+        }),
+    );
+    render(<AnalysisLoadingPage />);
+    await waitFor(() => expect(mocks.decode).toHaveBeenCalledTimes(30));
+
+    const resyncState = { visiblePhase: 'DECK' as const, visualProgress: 85 };
+    mocks.eventHandlers.get('ANALYSIS_LOADING_RESYNC')?.(resyncState);
+    expect(mocks.resync).not.toHaveBeenCalled();
+
+    await act(async () => finishDecode());
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    expect(mocks.resync).toHaveBeenCalledWith(resyncState);
   });
 
   it('상태 응답 전 이탈하면 늦은 응답으로 URL을 만들지 않는다', async () => {

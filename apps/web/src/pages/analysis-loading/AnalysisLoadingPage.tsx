@@ -39,6 +39,7 @@ export function AnalysisLoadingPage() {
   const queryClient = useQueryClient();
   const { replace } = useFlow();
   const motionRef = useRef<ReturnType<typeof createLoadingMotion>>(undefined);
+  const pendingResyncRef = useRef<AnalysisLoadingPhaseState | undefined>(undefined);
   const downloadingFromICloudRef = useRef(false);
   const [mockError, setMockError] = useState<string | null>(null);
 
@@ -68,6 +69,18 @@ export function AnalysisLoadingPage() {
   useEffect(
     () => bridge.on('ICLOUD_DOWNLOAD_CHANGED', ({ downloading }) => syncICloudNotice(downloading)),
     [syncICloudNotice],
+  );
+
+  useEffect(
+    () =>
+      bridge.on('ANALYSIS_LOADING_RESYNC', (state) => {
+        if (motionRef.current) {
+          motionRef.current.resync(state);
+          return;
+        }
+        pendingResyncRef.current = state;
+      }),
+    [],
   );
 
   useEffect(() => {
@@ -122,6 +135,10 @@ export function AnalysisLoadingPage() {
         motionRef.current = motion;
         motion.setICloudNotice(downloadingFromICloudRef.current);
         motion.start();
+        if (pendingResyncRef.current) {
+          motion.resync(pendingResyncRef.current);
+          pendingResyncRef.current = undefined;
+        }
         if (!useMock) bridge.send('ANALYSIS_LOADING_READY', { jobId });
       })
       .catch((error) => {

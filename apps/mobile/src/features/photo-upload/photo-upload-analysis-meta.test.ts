@@ -216,3 +216,40 @@ it.each([
     expect(photoUploadService.getViewState()).toMatchObject({ analysisId, notificationRequested });
   },
 );
+
+it('현재 분석이 없으면 서버 상태를 조회하지 않는다', async () => {
+  const { analysisApi, photoUploadService } = setup();
+
+  await photoUploadService.refreshNow();
+
+  expect(analysisApi.get).not.toHaveBeenCalled();
+});
+
+it('현재 분석의 최신 상태를 서버에서 다시 받아 반영한다', async () => {
+  const { analysisApi, photoUploadService, start } = setup();
+  analysisApi.create.mockResolvedValue({ analysisId: 'analysis-1', uploads: [] });
+  analysisApi.get.mockResolvedValue({
+    id: 'analysis-1',
+    status: 'COMPLETED',
+    progress: 100,
+    notificationRequested: false,
+  });
+
+  await start();
+
+  analysisApi.get.mockResolvedValue({
+    id: 'analysis-1',
+    status: 'COMPLETED',
+    progress: 100,
+    notificationRequested: true,
+  });
+  await photoUploadService.refreshNow();
+
+  expect(analysisApi.get).toHaveBeenLastCalledWith('analysis-1');
+  expect(photoUploadService.getViewState()).toMatchObject({
+    analysisId: 'analysis-1',
+    status: 'COMPLETED',
+    progress: 100,
+    notificationRequested: true,
+  });
+});

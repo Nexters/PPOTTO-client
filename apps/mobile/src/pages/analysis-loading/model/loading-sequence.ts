@@ -20,7 +20,8 @@ export interface LoadingSequenceState {
 export type LoadingSequenceAction =
   | { type: 'SERVER_PROGRESS_UPDATED'; progress: number }
   | { type: 'PHASE_FINISHED'; phase: LoadingPhase }
-  | { type: 'REVEAL_FINISHED' };
+  | { type: 'REVEAL_FINISHED' }
+  | { type: 'FOREGROUND_RESYNCED'; progress: number; completed: boolean };
 
 export function createLoadingSequence({
   serverProgress,
@@ -46,6 +47,29 @@ export function loadingSequenceReducer(
   action: LoadingSequenceAction,
 ): LoadingSequenceState {
   if (state.revealFinished) return state;
+
+  if (action.type === 'FOREGROUND_RESYNCED') {
+    if (action.completed) {
+      return {
+        ...state,
+        serverProgress: 100,
+        targetPhase: 'REVEAL',
+        visiblePhase: 'REVEAL',
+        visualProgress: 100,
+        revealFinished: true,
+      };
+    }
+
+    const serverProgress = Math.max(state.serverProgress, clampProgress(action.progress));
+    const targetPhase = loadingPhaseFor(serverProgress);
+    return {
+      ...state,
+      serverProgress,
+      targetPhase,
+      visiblePhase: targetPhase,
+      visualProgress: visualProgressFor(targetPhase, targetPhase, serverProgress),
+    };
+  }
 
   if (action.type === 'SERVER_PROGRESS_UPDATED') {
     const serverProgress = Math.max(state.serverProgress, clampProgress(action.progress));

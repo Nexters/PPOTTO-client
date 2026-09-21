@@ -392,6 +392,17 @@ export const photoUploadService = {
     return () => listeners.delete(listener);
   },
 
+  async refreshNow() {
+    if (!viewState.analysisId) return;
+    const analysis = await analysisApi.get(viewState.analysisId);
+    publish({
+      analysisId: analysis.id,
+      notificationRequested: analysis.notificationRequested,
+      progress: analysis.progress,
+      status: analysis.status,
+    });
+  },
+
   isRecoverableError: (error: unknown) => error instanceof NetworkError,
 
   async hasPending() {
