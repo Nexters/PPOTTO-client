@@ -4,6 +4,22 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnalysisLoadingScreen } from './AnalysisLoadingScreen';
 jest.mock('@/shared/lib/analytics', () => ({ track: jest.fn() }));
+jest.mock('@/features/push-notification', () => {
+  const { Text } = jest.requireActual('react-native') as typeof import('react-native');
+  return { EnablePushNotificationButton: () => <Text>결과 알림 받기</Text> };
+});
+
+let appStateChangeHandler: ((state: string) => void) | undefined;
+jest.mock('react-native/Libraries/AppState/AppState', () => ({
+  __esModule: true,
+  default: {
+    currentState: 'background',
+    addEventListener: jest.fn((_event: string, handler: (state: string) => void) => {
+      appStateChangeHandler = handler;
+      return { remove: jest.fn() };
+    }),
+  },
+}));
 
 type LoadingBridgeHandlers = {
   GET_ANALYSIS_LOADING_STATE: () => Promise<AnalysisLoadingBridgeState>;
@@ -23,6 +39,7 @@ type LoadingBridgeHandlers = {
 
 let loadingBridgeHandlers: LoadingBridgeHandlers | undefined;
 let showingBoard = false;
+let analysisLoadingResync: AnalysisLoadingPhaseState | undefined;
 
 jest.mock('expo-router', () => ({
   router: { replace: jest.fn() },
@@ -35,12 +52,15 @@ jest.mock('@/shared/ui/AppWebView', () => {
     AppWebView: ({
       bridgeHandlers,
       showBoard,
+      analysisLoadingResync: nextResync,
     }: {
       bridgeHandlers: LoadingBridgeHandlers;
       showBoard?: boolean;
+      analysisLoadingResync?: AnalysisLoadingPhaseState;
     }) => {
       loadingBridgeHandlers = bridgeHandlers;
       showingBoard = showBoard ?? false;
+      analysisLoadingResync = nextResync;
       return <Text>분석 로딩 웹뷰</Text>;
     },
   };
@@ -56,7 +76,9 @@ jest.mock('@/features/photo-upload', () => ({
     getMotionPhotosForWeb: jest.fn(),
     getViewState: jest.fn(),
     isCurrentJob: jest.fn(),
+    isCompletedRecovery: jest.fn(),
     isRecoverableError: jest.fn(),
+    refreshNow: jest.fn(),
     setLastSeenLoadingPhase: jest.fn(),
     subscribe: jest.fn(() => () => undefined),
   },
@@ -72,6 +94,8 @@ const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
     getMotionPhotosForWeb: jest.Mock;
     getViewState: jest.Mock;
     isCurrentJob: jest.Mock;
+    isCompletedRecovery: jest.Mock;
+    refreshNow: jest.Mock;
     setLastSeenLoadingPhase: jest.Mock;
   };
 };
@@ -86,6 +110,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   loadingBridgeHandlers = undefined;
   showingBoard = false;
+  analysisLoadingResync = undefined;
+  appStateChangeHandler = undefined;
   photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));
   photoUploadService.getCurrentJobId.mockReturnValue('job-1');
   photoUploadService.getLastSeenLoadingPhase.mockResolvedValue(undefined);
@@ -95,11 +121,26 @@ beforeEach(() => {
   ]);
   photoUploadService.getViewState.mockReturnValue({ progress: 100, status: 'COMPLETED' });
   photoUploadService.isCurrentJob.mockImplementation((jobId) => jobId === 'job-1');
+  photoUploadService.isCompletedRecovery.mockReturnValue(false);
+  photoUploadService.refreshNow.mockResolvedValue(undefined);
   photoUploadService.setLastSeenLoadingPhase.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
   jest.useRealTimers();
+});
+
+it('완료 상태로 복구하면 결과 확인 버튼을 바로 표시한다', async () => {
+  photoUploadService.isCompletedRecovery.mockReturnValue(true);
+
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  expect(screen.getByRole('button', { name: '결과 확인하기' })).toBeOnTheScreen();
+  expect(screen.queryByText('결과 알림 받기')).not.toBeOnTheScreen();
 });
 
 it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과를 연다', async () => {
@@ -109,8 +150,8 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
       <AnalysisLoadingScreen />
     </SafeAreaProvider>,
   );
-  const resultButton = screen.getByRole('button', { name: '결과 확인하기' });
-  expect(resultButton).toBeDisabled();
+  expect(screen.getByText('결과 알림 받기')).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: '결과 확인하기' })).not.toBeOnTheScreen();
 
   let state: AnalysisLoadingBridgeState | AnalysisLoadingPhaseState | undefined;
   await act(async () => {
@@ -145,10 +186,11 @@ it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과
     expect(state?.visiblePhase).toBe(next);
   }
 
-  expect(resultButton).toBeDisabled();
+  expect(screen.getByText('결과 알림 받기')).toBeOnTheScreen();
   await act(async () => {
     loadingBridgeHandlers!.ANALYSIS_LOADING_REVEAL_FINISHED({ jobId: 'job-1' });
   });
+  const resultButton = screen.getByRole('button', { name: '결과 확인하기' });
   expect(resultButton).toBeEnabled();
 
   await user.press(resultButton);
@@ -210,7 +252,81 @@ it('오래된 job의 로딩 브릿지 메시지는 무시한다', async () => {
 
   expect(photoUploadService.setLastSeenLoadingPhase).not.toHaveBeenCalled();
   expect(state).toEqual({ visiblePhase: 'SCAN', visualProgress: 25 });
-  expect(screen.getByRole('button', { name: '결과 확인하기' })).toBeDisabled();
+  expect(screen.getByText('결과 알림 받기')).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: '결과 확인하기' })).not.toBeOnTheScreen();
+});
+
+it('백그라운드에서 복귀하면 서버 상태를 다시 조회해 완료됐으면 연출 없이 결과 확인 버튼을 보여준다', async () => {
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await waitFor(() => expect(screen.getByText('결과 알림 받기')).toBeOnTheScreen());
+  expect(appStateChangeHandler).toBeDefined();
+
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 100,
+    status: 'COMPLETED',
+  });
+
+  await act(async () => {
+    appStateChangeHandler!('active');
+  });
+
+  expect(photoUploadService.refreshNow).toHaveBeenCalledTimes(1);
+  expect(await screen.findByRole('button', { name: '결과 확인하기' })).toBeEnabled();
+  expect(analysisLoadingResync).toEqual({ visiblePhase: 'REVEAL', visualProgress: 100 });
+});
+
+it('복귀 시 서버 조회가 실패하면 기존 로딩 상태를 유지한다', async () => {
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  photoUploadService.refreshNow.mockRejectedValue(new Error('network'));
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await waitFor(() => expect(appStateChangeHandler).toBeDefined());
+
+  await act(async () => appStateChangeHandler!('active'));
+
+  expect(photoUploadService.refreshNow).toHaveBeenCalledTimes(1);
+  expect(analysisLoadingResync).toBeUndefined();
+});
+
+it('실제로 백그라운드에서 돌아온 게 아니면 상태를 다시 조회하지 않는다', async () => {
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await waitFor(() => expect(appStateChangeHandler).toBeDefined());
+
+  await act(async () => {
+    appStateChangeHandler!('inactive');
+  });
+
+  expect(photoUploadService.refreshNow).not.toHaveBeenCalled();
 });
 
 it('서버 progress가 오기 전에는 10까지 올리고 멈춘다', async () => {

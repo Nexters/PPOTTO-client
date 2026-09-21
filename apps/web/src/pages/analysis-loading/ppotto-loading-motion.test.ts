@@ -25,6 +25,37 @@ const createPhotos = (length = 20) =>
   }));
 
 describe('ppotto loading motion', () => {
+  it('복귀 동기화 시 중간 막을 건너뛰고 완료 상태를 즉시 반영한다', () => {
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn(() => 1),
+    );
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const mount = document.createElement('div');
+    const onRevealFinished = vi.fn();
+    const motion = createLoadingMotion({
+      mount,
+      photos: createPhotos(),
+      phase: 'SCAN',
+      visualProgress: 10,
+      reducedMotion: false,
+      onPhaseFinished: vi.fn(),
+      onRevealFinished,
+    });
+
+    motion.start();
+    motion.resync({ visiblePhase: 'DECK', visualProgress: 85 });
+    expect(mount.querySelector('.pm-deck')?.classList.contains('hidden')).toBe(false);
+    expect(motion.progress).toBe(0.85);
+
+    motion.resync({ visiblePhase: 'REVEAL', visualProgress: 100 });
+    expect(motion.finished).toBe(true);
+    expect(motion.progress).toBe(1);
+    expect(onRevealFinished).toHaveBeenCalledTimes(1);
+
+    motion.destroy();
+  });
+
   it('서버가 이미 완료됐어도 모든 막을 순서대로 한 번씩 재생한다', async () => {
     let now = 0;
     let nextFrameId = 0;

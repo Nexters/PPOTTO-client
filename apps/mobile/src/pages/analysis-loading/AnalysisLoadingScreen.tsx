@@ -1,7 +1,7 @@
 import type { AnalysisLoadingBridgeState, AnalysisLoadingPhaseState } from '@ppotto/bridge';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Platform, Text, View } from 'react-native';
+import { AppState, Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // 배럴(index) 대신 직접 import — PhotoGrid(reanimated)까지 끌어오지 않기 위함
@@ -11,6 +11,7 @@ import {
   photoUploadService,
   type UploadMotionPhoto,
 } from '@/features/photo-upload';
+import { EnablePushNotificationButton } from '@/features/push-notification';
 import { AppWebView } from '@/shared/ui/AppWebView';
 import { Button } from '@/shared/ui/Button';
 import { useToast } from '@/shared/ui/Toast';
@@ -43,10 +44,14 @@ export function AnalysisLoadingScreen() {
   const uploadRef = useRef(upload);
   const bridgePhotosRef = useRef<UploadMotionPhoto[]>([]);
   const [sequence, setSequence] = useState(() =>
-    createLoadingSequence({ serverProgress: upload.progress }),
+    createLoadingSequence({
+      serverProgress: upload.progress,
+      completed: photoUploadService.isCompletedRecovery(),
+    }),
   );
   const [motionReady, setMotionReady] = useState(false);
   const [showingBoard, setShowingBoard] = useState(false);
+  const [resyncState, setResyncState] = useState<AnalysisLoadingPhaseState>();
   const sequenceRef = useRef(sequence);
 
   const commitSequence = useCallback((next: LoadingSequenceState) => {
@@ -88,6 +93,7 @@ export function AnalysisLoadingScreen() {
         createLoadingSequence({
           serverProgress: uploadRef.current.progress,
           lastSeenPhase,
+          completed: photoUploadService.isCompletedRecovery(),
         }),
       ),
     );
@@ -145,6 +151,32 @@ export function AnalysisLoadingScreen() {
   }, [updateSequence, upload]);
 
   useEffect(() => {
+    let previousAppState = AppState.currentState;
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      const cameToForeground =
+        previousAppState.match(/inactive|background/) && nextAppState === 'active';
+      previousAppState = nextAppState;
+      if (!cameToForeground || sequenceRef.current.revealFinished) return;
+
+      void photoUploadService
+        .refreshNow()
+        .then(() => {
+          const latest = photoUploadService.getViewState();
+          if (!latest.analysisId) return;
+          const next = updateSequence({
+            type: 'FOREGROUND_RESYNCED',
+            progress: latest.progress,
+            completed: latest.status === 'COMPLETED',
+          });
+          setResyncState(toBridgePhaseState(next));
+        })
+        .catch(() => undefined);
+    });
+
+    return () => subscription.remove();
+  }, [updateSequence]);
+
+  useEffect(() => {
     if (!motionReady || upload.status !== 'UPLOADING' || upload.progress > 0) return;
 
     const timer = setInterval(() => {
@@ -190,6 +222,7 @@ export function AnalysisLoadingScreen() {
     <View className="flex-1 bg-black">
       <AppWebView
         bridgeHandlers={bridgeHandlers}
+        analysisLoadingResync={resyncState}
         downloadingFromICloud={downloadingFromICloud}
         path="/analysis-loading"
         showBoard={showingBoard}
@@ -201,15 +234,16 @@ export function AnalysisLoadingScreen() {
           className="absolute right-[18px] bottom-0 left-[18px] pb-12"
           style={Platform.OS === 'android' ? { paddingBottom: insets.bottom + 48 } : undefined}
         >
-          <Button disabled={!sequence.revealFinished} onPress={showBoard} size="large">
-            <Text
-              className={
-                sequence.revealFinished ? 'text-body-03 text-black' : 'text-body-03 text-gray-500'
-              }
-            >
-              결과 확인하기
-            </Text>
-          </Button>
+          {sequence.revealFinished ? (
+            <Button onPress={showBoard} size="large">
+              <Text className="text-body-03 text-black">결과 확인하기</Text>
+            </Button>
+          ) : (
+            <EnablePushNotificationButton
+              analysisId={upload.analysisId}
+              notificationRequested={upload.notificationRequested}
+            />
+          )}
         </View>
       )}
     </View>

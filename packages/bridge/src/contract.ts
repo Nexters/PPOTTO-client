@@ -91,6 +91,8 @@ export const contract = defineContract({
   ANALYSIS_LOADING_REVEAL_FINISHED: command({
     payload: z.object({ jobId: z.string().nullable() }),
   }),
+  // 백그라운드 복귀 시 서버의 현재 단계로 로딩 모션 동기화
+  ANALYSIS_LOADING_RESYNC: event({ payload: analysisLoadingPhaseState }),
   // iCloud 사진 다운로드 진행 여부 변경 — 초기값은 GET_ANALYSIS_LOADING_STATE에 실려 온다
   ICLOUD_DOWNLOAD_CHANGED: event({ payload: z.object({ downloading: z.boolean() }) }),
   SHOW_BOARD: event(),

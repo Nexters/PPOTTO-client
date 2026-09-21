@@ -1,4 +1,4 @@
-import { contract, type BridgeContract } from '@ppotto/bridge';
+import { contract, type AnalysisLoadingPhaseState, type BridgeContract } from '@ppotto/bridge';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
@@ -76,6 +76,7 @@ interface AppWebViewProps {
   waitForBoardReady?: boolean;
   showBoard?: boolean;
   downloadingFromICloud?: boolean;
+  analysisLoadingResync?: AnalysisLoadingPhaseState;
 }
 
 // 앱 표준 웹뷰
@@ -87,6 +88,7 @@ export function AppWebView({
   waitForBoardReady = false,
   showBoard = false,
   downloadingFromICloud,
+  analysisLoadingResync,
 }: AppWebViewProps) {
   const qaToolEnabled = isQaToolEnabled();
   const ref = useRef<WebView>(null);
@@ -236,6 +238,11 @@ export function AppWebView({
     if (downloadingFromICloud === undefined) return;
     bridge.emit('ICLOUD_DOWNLOAD_CHANGED', { downloading: downloadingFromICloud });
   }, [bridge, downloadingFromICloud]);
+
+  useEffect(() => {
+    if (!analysisLoadingResync) return;
+    bridge.emit('ANALYSIS_LOADING_RESYNC', analysisLoadingResync);
+  }, [analysisLoadingResync, bridge]);
 
   // 안드로이드 하드웨어 뒤로가기를 웹으로 전달한다
   // 네이티브 화면(사진 선택 등)이 위에 있을 땐 expo-router 기본 pop이 동작하게 한다
