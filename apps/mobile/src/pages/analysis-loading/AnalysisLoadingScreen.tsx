@@ -44,7 +44,10 @@ export function AnalysisLoadingScreen() {
   const uploadRef = useRef(upload);
   const bridgePhotosRef = useRef<UploadMotionPhoto[]>([]);
   const [sequence, setSequence] = useState(() =>
-    createLoadingSequence({ serverProgress: upload.progress }),
+    createLoadingSequence({
+      serverProgress: upload.progress,
+      completed: photoUploadService.isCompletedRecovery(),
+    }),
   );
   const [motionReady, setMotionReady] = useState(false);
   const [showingBoard, setShowingBoard] = useState(false);
@@ -90,6 +93,7 @@ export function AnalysisLoadingScreen() {
         createLoadingSequence({
           serverProgress: uploadRef.current.progress,
           lastSeenPhase,
+          completed: photoUploadService.isCompletedRecovery(),
         }),
       ),
     );

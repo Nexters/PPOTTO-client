@@ -125,6 +125,7 @@ let uploadStartedAt: number | undefined;
 let analysisStartedAt: number | undefined;
 let lastStartedAnalysisId: string | undefined;
 let lastCompletedAnalysisId: string | undefined;
+let completedRecovery = false;
 
 function durationSince(startedAt: number | undefined) {
   return startedAt === undefined ? {} : { duration_ms: Math.max(0, Date.now() - startedAt) };
@@ -310,6 +311,7 @@ export const photoUploadService = {
     prepareJob,
   }: StartPhotoUploadOptions) {
     const id = ++runId;
+    completedRecovery = false;
     uploadMode = mode;
     uploadStartedAt = undefined;
     analysisStartedAt = undefined;
@@ -379,6 +381,8 @@ export const photoUploadService = {
 
   getMotionPhotoCount: () => motionPhotoCount,
 
+  isCompletedRecovery: () => completedRecovery,
+
   getMotionPhotosForWeb,
 
   getLastSeenLoadingPhase,
@@ -405,14 +409,34 @@ export const photoUploadService = {
 
   isRecoverableError: (error: unknown) => error instanceof NetworkError,
 
-  async hasPending() {
-    if (await storage.loadJob()) return true;
-    return Boolean(await analysisApi.getActive());
+  async getRecoveryStatus(): Promise<'NONE' | 'PENDING' | 'COMPLETED'> {
+    const stored = await storage.loadJob();
+    if (!stored) return (await analysisApi.getActive()) ? 'PENDING' : 'NONE';
+
+    const restored = restoreUploadJob(stored.snapshot, stored.events);
+    if (!restored.analysisId) return 'PENDING';
+
+    const analysis = await analysisApi.get(restored.analysisId);
+    if (analysis.status !== 'COMPLETED') return 'PENDING';
+
+    currentJobId = stored.snapshot.jobId;
+    completedRecovery = true;
+    restoreMotionPhotos(stored.snapshot);
+    motionPhotosReady = Promise.resolve();
+    currentUpload = Promise.resolve();
+    publish({
+      analysisId: analysis.id,
+      notificationRequested: analysis.notificationRequested,
+      progress: analysis.progress,
+      status: analysis.status,
+    });
+    return 'COMPLETED';
   },
 
   resume() {
     if (currentUpload) return currentUpload;
 
+    completedRecovery = false;
     uploadMode = undefined;
     uploadStartedAt = undefined;
     analysisStartedAt = undefined;
@@ -484,6 +508,7 @@ export const photoUploadService = {
   },
 
   clearCurrent() {
+    completedRecovery = false;
     currentUpload = null;
     currentJobId = null;
     motionPhotos = [];
@@ -499,6 +524,7 @@ export const photoUploadService = {
   },
 
   async finish() {
+    completedRecovery = false;
     await storage.clearJob();
     await clearLastSeenLoadingPhase();
     currentUpload = null;
@@ -516,6 +542,7 @@ export const photoUploadService = {
   },
 
   async discard() {
+    completedRecovery = false;
     currentUpload = null;
     currentJobId = null;
     const result = await discardSavedPhotoUpload(dependencies);

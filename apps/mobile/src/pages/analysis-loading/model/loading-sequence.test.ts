@@ -1,6 +1,16 @@
 import { createLoadingSequence, loadingSequenceReducer } from './loading-sequence';
 import type { LoadingPhase } from './loading-phase';
 
+it('복구 시 이미 완료된 분석은 완료 화면 상태로 시작한다', () => {
+  expect(createLoadingSequence({ serverProgress: 100, completed: true })).toEqual({
+    serverProgress: 100,
+    targetPhase: 'REVEAL',
+    visiblePhase: 'REVEAL',
+    visualProgress: 100,
+    revealFinished: true,
+  });
+});
+
 it('서버가 완료됐어도 현재 막부터 모든 막을 한 번씩 마친 뒤 REVEAL을 끝낸다', () => {
   let state = createLoadingSequence({ serverProgress: 100 });
   const played: LoadingPhase[] = [state.visiblePhase];

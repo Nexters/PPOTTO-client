@@ -58,11 +58,18 @@ export function BoardScreen() {
     }
 
     let active = true;
-    void photoUploadService.hasPending().then(
-      (hasPending) => {
+    void photoUploadService.getRecoveryStatus().then(
+      (recoveryStatus) => {
         if (!active) return;
-        if (!hasPending) {
+        if (recoveryStatus === 'NONE') {
           setScreenState({ status: 'READY' });
+          return;
+        }
+        if (recoveryStatus === 'COMPLETED') {
+          router.replace({
+            pathname: '/analysis-loading',
+            params: boardId ? { boardId } : undefined,
+          });
           return;
         }
         setScreenState({ status: 'PENDING' });

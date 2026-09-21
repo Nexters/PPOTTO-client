@@ -1,5 +1,7 @@
 import type { PhotoUploadServiceDependencies } from './model/start-photo-upload';
 
+const mockLoadJob = jest.fn();
+
 jest.mock('@/shared/lib/analytics', () => ({ track: jest.fn() }));
 jest.mock('@/entities/analysis/api/analysis-api', () => ({
   analysisApi: {
@@ -25,7 +27,7 @@ jest.mock('./lib/expo-upload-file-system', () => ({
   },
 }));
 jest.mock('./model/upload-storage', () => ({
-  createUploadJobStorage: () => ({ loadJob: jest.fn(async () => null), clearJob: jest.fn() }),
+  createUploadJobStorage: () => ({ loadJob: mockLoadJob, clearJob: jest.fn() }),
 }));
 jest.mock('./model/start-photo-upload', () => ({
   startPhotoUpload: jest.fn(),
@@ -35,6 +37,7 @@ jest.mock('./model/start-photo-upload', () => ({
 
 function setup() {
   jest.resetModules();
+  mockLoadJob.mockReset().mockResolvedValue(null);
   const { analysisApi } = jest.requireMock('@/entities/analysis/api/analysis-api') as {
     analysisApi: {
       create: jest.Mock;
@@ -251,5 +254,52 @@ it('현재 분석의 최신 상태를 서버에서 다시 받아 반영한다', 
     status: 'COMPLETED',
     progress: 100,
     notificationRequested: true,
+  });
+});
+
+it('저장된 분석이 완료됐으면 완료 상태를 복구한다', async () => {
+  const { analysisApi, photoUploadService } = setup();
+  mockLoadJob.mockResolvedValue({
+    snapshot: {
+      jobId: 'job-1',
+      boardId: 'board-1',
+      groups: [
+        {
+          items: [
+            {
+              clientPhotoId: 'photo-1',
+              fileUri: 'file:///photo-1.jpg',
+              contentType: 'image/jpeg',
+              takenAt: '2026-09-21T00:00:00Z',
+              isRepresentative: true,
+            },
+          ],
+        },
+      ],
+    },
+    events: [
+      {
+        type: 'ANALYSIS_CREATED',
+        analysisId: 'analysis-1',
+        photoIds: { 'photo-1': 'server-photo-1' },
+      },
+      { type: 'START_REQUESTED' },
+    ],
+  });
+  analysisApi.get.mockResolvedValue({
+    id: 'analysis-1',
+    status: 'COMPLETED',
+    progress: 100,
+    notificationRequested: true,
+  });
+
+  await expect(photoUploadService.getRecoveryStatus()).resolves.toBe('COMPLETED');
+  expect(photoUploadService.getCurrent()).not.toBeNull();
+  expect(photoUploadService.getCurrentJobId()).toBe('job-1');
+  expect(photoUploadService.getViewState()).toMatchObject({
+    analysisId: 'analysis-1',
+    notificationRequested: true,
+    progress: 100,
+    status: 'COMPLETED',
   });
 });

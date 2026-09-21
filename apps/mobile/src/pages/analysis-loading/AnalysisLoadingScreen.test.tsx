@@ -76,6 +76,7 @@ jest.mock('@/features/photo-upload', () => ({
     getMotionPhotosForWeb: jest.fn(),
     getViewState: jest.fn(),
     isCurrentJob: jest.fn(),
+    isCompletedRecovery: jest.fn(),
     isRecoverableError: jest.fn(),
     refreshNow: jest.fn(),
     setLastSeenLoadingPhase: jest.fn(),
@@ -93,6 +94,7 @@ const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
     getMotionPhotosForWeb: jest.Mock;
     getViewState: jest.Mock;
     isCurrentJob: jest.Mock;
+    isCompletedRecovery: jest.Mock;
     refreshNow: jest.Mock;
     setLastSeenLoadingPhase: jest.Mock;
   };
@@ -119,12 +121,26 @@ beforeEach(() => {
   ]);
   photoUploadService.getViewState.mockReturnValue({ progress: 100, status: 'COMPLETED' });
   photoUploadService.isCurrentJob.mockImplementation((jobId) => jobId === 'job-1');
+  photoUploadService.isCompletedRecovery.mockReturnValue(false);
   photoUploadService.refreshNow.mockResolvedValue(undefined);
   photoUploadService.setLastSeenLoadingPhase.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
   jest.useRealTimers();
+});
+
+it('완료 상태로 복구하면 결과 확인 버튼을 바로 표시한다', async () => {
+  photoUploadService.isCompletedRecovery.mockReturnValue(true);
+
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  expect(screen.getByRole('button', { name: '결과 확인하기' })).toBeOnTheScreen();
+  expect(screen.queryByText('결과 알림 받기')).not.toBeOnTheScreen();
 });
 
 it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과를 연다', async () => {

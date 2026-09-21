@@ -34,7 +34,7 @@ jest.mock('@/features/photo-upload', () => ({
     getCurrent: jest.fn(),
     getMotionPhotosForWeb: jest.fn(),
     getViewState: jest.fn(),
-    hasPending: jest.fn(),
+    getRecoveryStatus: jest.fn(),
     resume: jest.fn(),
   },
 }));
@@ -48,7 +48,7 @@ const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
     getCurrent: jest.Mock;
     getMotionPhotosForWeb: jest.Mock;
     getViewState: jest.Mock;
-    hasPending: jest.Mock;
+    getRecoveryStatus: jest.Mock;
     resume: jest.Mock;
   };
 };
@@ -60,11 +60,11 @@ beforeEach(() => {
   photoUploadService.getCurrent.mockReturnValue(null);
   photoUploadService.getMotionPhotosForWeb.mockResolvedValue([]);
   photoUploadService.getViewState.mockReturnValue({ progress: 0, status: 'UPLOADING' });
-  photoUploadService.hasPending.mockResolvedValue(false);
+  photoUploadService.getRecoveryStatus.mockResolvedValue('NONE');
 });
 
 it('저장된 작업은 미리 준비하고 확인하기 전까지 로딩 화면으로 이동하지 않는다', async () => {
-  photoUploadService.hasPending.mockResolvedValue(true);
+  photoUploadService.getRecoveryStatus.mockResolvedValue('PENDING');
 
   await render(<BoardScreen />);
 
@@ -91,6 +91,19 @@ it('저장된 작업은 미리 준비하고 확인하기 전까지 로딩 화면
   });
 }, 10000);
 
+it('완료된 분석은 진행 중 모달 없이 로딩 완료 화면으로 이동한다', async () => {
+  photoUploadService.getRecoveryStatus.mockResolvedValue('COMPLETED');
+
+  await render(<BoardScreen />);
+
+  expect(router.replace).toHaveBeenCalledWith({
+    pathname: '/analysis-loading',
+    params: { boardId: 'board-1' },
+  });
+  expect(screen.queryByText(/분석 중인 사진들이 있어요/)).not.toBeOnTheScreen();
+  expect(photoUploadService.resume).not.toHaveBeenCalled();
+});
+
 it('실패한 작업에는 재개 확인 모달 대신 업로드 실패 모달만 표시한다', async () => {
   photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));
   photoUploadService.getViewState.mockReturnValue({ progress: 30, status: 'FAILED' });
@@ -99,7 +112,7 @@ it('실패한 작업에는 재개 확인 모달 대신 업로드 실패 모달�
 
   expect(await screen.findByText(/업로드에 실패했어요/)).toBeOnTheScreen();
   expect(screen.queryByText(/분석 중인 사진들이 있어요/)).not.toBeOnTheScreen();
-  expect(photoUploadService.hasPending).not.toHaveBeenCalled();
+  expect(photoUploadService.getRecoveryStatus).not.toHaveBeenCalled();
 });
 
 it.each([
@@ -140,7 +153,7 @@ it('재개 파라미터가 남아 있어도 실제 작업이 없으면 모달 �
 
   expect(await screen.findByText('보드 웹뷰')).toBeOnTheScreen();
   expect(screen.queryByText(/분석 중인 사진들이 있어요/)).not.toBeOnTheScreen();
-  expect(photoUploadService.hasPending).toHaveBeenCalledTimes(1);
+  expect(photoUploadService.getRecoveryStatus).toHaveBeenCalledTimes(1);
   expect(photoUploadService.resume).not.toHaveBeenCalled();
 });
 

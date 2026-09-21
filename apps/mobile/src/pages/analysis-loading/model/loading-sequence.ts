@@ -26,10 +26,22 @@ export type LoadingSequenceAction =
 export function createLoadingSequence({
   serverProgress,
   lastSeenPhase = 'SCAN',
+  completed = false,
 }: {
   serverProgress: number;
   lastSeenPhase?: LoadingPhase;
+  completed?: boolean;
 }): LoadingSequenceState {
+  if (completed) {
+    return {
+      serverProgress: 100,
+      targetPhase: 'REVEAL',
+      visiblePhase: 'REVEAL',
+      visualProgress: 100,
+      revealFinished: true,
+    };
+  }
+
   const progress = clampProgress(serverProgress);
   const targetPhase = loadingPhaseFor(progress);
 
