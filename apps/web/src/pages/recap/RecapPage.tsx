@@ -7,7 +7,9 @@ import { useUpdateStickerCommentPositionsMutation } from '@/entities/sticker/api
 import { stickerQueryKeys } from '@/entities/sticker/api/sticker-query-keys';
 import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
+import { addNavigationBreadcrumb } from '@/shared/lib/navigation-breadcrumb';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
+import { useSinglePop } from '@/shared/lib/use-single-pop';
 import { useTrackActivityView } from '@/shared/lib/use-track-activity-view';
 import { track } from '@/shared/lib/bridge';
 
@@ -37,6 +39,13 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
   const { mutateAsync: updateCommentPositions } = useUpdateStickerCommentPositionsMutation();
   const queryClient = useQueryClient();
   const { pop } = useFlow();
+
+  const goBack = useSinglePop(
+    useCallback(() => {
+      addNavigationBreadcrumb('리캡 뒤로가기 버튼');
+      pop();
+    }, [pop]),
+  );
   const [isShareOpen, setIsShareOpen] = useState(false);
   const positionedStickerIdRef = useRef<string | null>(null);
 
@@ -91,7 +100,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
         }}
       >
         <div className="flex w-full flex-col gap-10 px-5">
-          <RecapHeaderSkeleton onBack={() => pop()} />
+          <RecapHeaderSkeleton onBack={goBack} />
           <div className="flex w-full flex-col gap-6">
             <div className="flex w-full flex-col">
               <RecapStickerVisualSkeleton />
@@ -129,7 +138,7 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
         <div className="relative flex w-full flex-col gap-10 px-5">
           <RecapHeader
             title={data.sticker.title}
-            onBack={() => pop()}
+            onBack={goBack}
             onShare={() => {
               track('recap_share_opened');
               setIsShareOpen(true);
