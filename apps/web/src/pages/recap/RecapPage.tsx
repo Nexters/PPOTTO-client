@@ -9,6 +9,7 @@ import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import { addNavigationBreadcrumb } from '@/shared/lib/navigation-breadcrumb';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
+import { useSinglePop } from '@/shared/lib/use-single-pop';
 import { useTrackActivityView } from '@/shared/lib/use-track-activity-view';
 import { track } from '@/shared/lib/bridge';
 
@@ -39,10 +40,12 @@ export function RecapPage({ stickerId, boardId }: RecapPageProps) {
   const queryClient = useQueryClient();
   const { pop } = useFlow();
 
-  const goBack = useCallback(() => {
-    addNavigationBreadcrumb('리캡 뒤로가기 버튼');
-    pop();
-  }, [pop]);
+  const goBack = useSinglePop(
+    useCallback(() => {
+      addNavigationBreadcrumb('리캡 뒤로가기 버튼');
+      pop();
+    }, [pop]),
+  );
   const [isShareOpen, setIsShareOpen] = useState(false);
   const positionedStickerIdRef = useRef<string | null>(null);
 
