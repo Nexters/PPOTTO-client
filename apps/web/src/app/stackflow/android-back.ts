@@ -1,6 +1,7 @@
 import type { StackflowReactPlugin } from '@stackflow/react';
 
 import { bridge } from '@/shared/lib/bridge';
+import { addNavigationBreadcrumb } from '@/shared/lib/navigation-breadcrumb';
 
 // 살아있는(화면에 존재하는) 액티비티 수 — 플러그인 훅으로 스택 변화를 따라간다
 let aliveActivityCount = 0;
@@ -44,13 +45,18 @@ function closeOpenLayer(): boolean {
  * ① 열린 시트/모달 닫기 → ② 스택 pop → ③ 루트면 네이티브에 앱 이탈 위임
  */
 export function handleNavigateBack(pop: () => void) {
-  if (closeOpenLayer()) return;
+  if (closeOpenLayer()) {
+    addNavigationBreadcrumb('android back: 오버레이 닫기', { aliveActivityCount });
+    return;
+  }
 
   if (aliveActivityCount > 1) {
+    addNavigationBreadcrumb('android back: pop', { aliveActivityCount });
     pop();
     return;
   }
 
+  addNavigationBreadcrumb('android back: 앱 이탈', { aliveActivityCount });
   bridge.send('EXIT_APP');
 }
 

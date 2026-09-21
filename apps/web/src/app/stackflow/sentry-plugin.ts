@@ -12,6 +12,10 @@ import {
 } from '@sentry/nextjs';
 import type { StackflowReactPlugin } from '@stackflow/react';
 
+import { addNavigationBreadcrumb } from '@/shared/lib/navigation-breadcrumb';
+
+import { summarizeStack } from './stack-summary';
+
 const SPAN_ORIGIN = 'auto.navigation.stackflow';
 
 function renamePageLoadSpan(activityName: string) {
@@ -44,14 +48,29 @@ export const sentryPlugin: StackflowReactPlugin = () => ({
     const activeActivity = actions.getStack().activities.find((activity) => activity.isActive);
     if (activeActivity) renamePageLoadSpan(activeActivity.name);
   },
-  onBeforePush({ actionParams }) {
+  onBeforePush({ actionParams, actions }) {
+    addNavigationBreadcrumb(
+      `push ${actionParams.activityName}`,
+      summarizeStack(actions.getStack()),
+    );
     startNavigationSpan(actionParams.activityName, 'stackflow.push');
   },
-  onBeforeReplace({ actionParams }) {
+  onBeforeReplace({ actionParams, actions }) {
+    addNavigationBreadcrumb(
+      `replace ${actionParams.activityName}`,
+      summarizeStack(actions.getStack()),
+    );
     startNavigationSpan(actionParams.activityName, 'stackflow.replace');
   },
+
+  onBeforePop({ actions }) {
+    addNavigationBreadcrumb('pop', summarizeStack(actions.getStack()));
+  },
   onPopped({ actions }) {
-    const activeActivity = actions.getStack().activities.find((activity) => activity.isActive);
+    const stack = actions.getStack();
+    addNavigationBreadcrumb('popped', summarizeStack(stack));
+
+    const activeActivity = stack.activities.find((activity) => activity.isActive);
     if (activeActivity) startNavigationSpan(activeActivity.name, 'stackflow.pop');
   },
 });
