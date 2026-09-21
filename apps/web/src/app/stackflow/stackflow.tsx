@@ -21,6 +21,7 @@ import { useTrackActivityView } from '@/shared/lib/use-track-activity-view';
 
 import { androidBackPlugin, registerAndroidBackHandler } from './android-back';
 import { config } from './config';
+import { rootPopGuardPlugin } from './root-pop-guard';
 import { sentryPlugin } from './sentry-plugin';
 
 function ScreenView({ name }: { name: AnalyticsEvents['screen_view']['screen_name'] }) {
@@ -117,6 +118,7 @@ export const { Stack, actions } = stackflow({
     }),
     historySyncPlugin({ config, fallbackActivity: () => 'Login' }),
     sentryPlugin,
+    rootPopGuardPlugin(),
     androidBackPlugin(),
   ],
 });
