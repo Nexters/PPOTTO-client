@@ -21,6 +21,7 @@ import { useTrackActivityView } from '@/shared/lib/use-track-activity-view';
 
 import { androidBackPlugin, registerAndroidBackHandler } from './android-back';
 import { config } from './config';
+import { emptyStackRecoveryPlugin } from './empty-stack-recovery';
 import { rootPopGuardPlugin } from './root-pop-guard';
 import { sentryPlugin } from './sentry-plugin';
 
@@ -119,6 +120,7 @@ export const { Stack, actions } = stackflow({
     historySyncPlugin({ config, fallbackActivity: () => 'Login' }),
     sentryPlugin,
     rootPopGuardPlugin(),
+    emptyStackRecoveryPlugin(),
     androidBackPlugin(),
   ],
 });
