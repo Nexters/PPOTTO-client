@@ -1,3 +1,4 @@
+import { analysisApi } from '@/entities/analysis/api/analysis-api';
 import { deviceTokenApi } from '@/entities/notification';
 
 import { getOrCreateDeviceId } from '../lib/device-id';
@@ -16,5 +17,15 @@ export async function registerPushNotification(): Promise<PushNotificationRegist
 
   const [deviceId, fcmToken] = await Promise.all([getOrCreateDeviceId(), getFcmToken()]);
   await deviceTokenApi.register({ deviceId, platform: 'ANDROID', fcmToken });
+  return { status: 'registered' };
+}
+
+export async function requestAnalysisNotification(
+  analysisId: string,
+): Promise<PushNotificationRegistrationResult> {
+  const result = await registerPushNotification();
+  if (result.status !== 'registered') return result;
+
+  await analysisApi.requestNotification(analysisId);
   return { status: 'registered' };
 }

@@ -207,7 +207,10 @@ export function AnalysisLoadingScreen() {
               <Text className="text-body-03 text-black">결과 확인하기</Text>
             </Button>
           ) : (
-            <EnablePushNotificationButton />
+            <EnablePushNotificationButton
+              analysisId={upload.analysisId}
+              notificationRequested={upload.notificationRequested}
+            />
           )}
         </View>
       )}
