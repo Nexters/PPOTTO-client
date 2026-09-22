@@ -5,3 +5,4 @@ export {
 } from './model/push-notification-registration';
 export { unregisterPushNotification } from './model/push-notification-lifecycle';
 export { EnablePushNotificationButton } from './ui/EnablePushNotificationButton';
+export { NotificationRequestedSnackbar } from './ui/NotificationRequestedSnackbar';
