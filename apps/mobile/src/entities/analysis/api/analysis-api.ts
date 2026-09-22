@@ -24,6 +24,11 @@ export const analysisApi = {
       api.POST('/analysis/{analysisId}/notifications', { params: { path: { analysisId } } }),
     ),
 
+  cancelNotification: (analysisId: string) =>
+    unwrapVoid(
+      api.DELETE('/analysis/{analysisId}/notifications', { params: { path: { analysisId } } }),
+    ),
+
   cancel: (analysisId: string) =>
     unwrapVoid(api.DELETE('/analysis/{analysisId}', { params: { path: { analysisId } } })),
 };
