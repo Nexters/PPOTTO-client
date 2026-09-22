@@ -1,11 +1,15 @@
-import { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, Easing, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
 
 const AUTO_DISMISS_MS = 3000;
+const ENTER_MS = 200;
+const EXIT_MS = 200;
+const VISIBLE_MS = AUTO_DISMISS_MS - ENTER_MS - EXIT_MS;
+const SLIDE_OFFSET = -8;
 
 type NotificationRequestedSnackbarProps = {
   visible: boolean;
@@ -21,22 +25,69 @@ export function NotificationRequestedSnackbar({
   onDismiss,
 }: NotificationRequestedSnackbarProps) {
   const insets = useSafeAreaInsets();
+  const [opacity] = useState(() => new Animated.Value(0));
+  const [translateY] = useState(() => new Animated.Value(SLIDE_OFFSET));
 
   useEffect(() => {
-    if (!visible) return;
-    const timer = setTimeout(onDismiss, AUTO_DISMISS_MS);
-    return () => clearTimeout(timer);
-  }, [visible, variant, onDismiss]);
+    if (!visible) {
+      opacity.setValue(0);
+      translateY.setValue(SLIDE_OFFSET);
+      return;
+    }
+
+    const animation = Animated.sequence([
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: ENTER_MS,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: ENTER_MS,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.delay(VISIBLE_MS),
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: EXIT_MS,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: SLIDE_OFFSET,
+          duration: EXIT_MS,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]);
+
+    animation.start(({ finished }) => {
+      if (finished) onDismiss();
+    });
+    return () => animation.stop();
+  }, [visible, variant, onDismiss, opacity, translateY]);
 
   if (!visible) return null;
 
   return (
-    <View
+    <Animated.View
       className={cn(
         'absolute right-[18px] left-[18px] h-14 flex-row items-center justify-between',
         'rounded-8 bg-gray-900 pt-2 pr-3 pb-2 pl-4',
       )}
-      style={{ top: insets.top + 8, zIndex: 10, elevation: 10 }}
+      style={{
+        top: insets.top + 8,
+        zIndex: 10,
+        elevation: 10,
+        opacity,
+        transform: [{ translateY }],
+      }}
     >
       <Text className="text-body-05 flex-1 text-gray-200">
         {variant === 'requested'
@@ -48,6 +99,6 @@ export function NotificationRequestedSnackbar({
           <Text className="text-caption-01 text-white">알림취소</Text>
         </Button>
       )}
-    </View>
+    </Animated.View>
   );
 }
