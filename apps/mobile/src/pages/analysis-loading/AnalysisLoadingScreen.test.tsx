@@ -5,9 +5,47 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AnalysisLoadingScreen } from './AnalysisLoadingScreen';
 jest.mock('@/shared/lib/analytics', () => ({ track: jest.fn() }));
 jest.mock('@/features/push-notification', () => {
-  const { Text } = jest.requireActual('react-native') as typeof import('react-native');
-  return { EnablePushNotificationButton: () => <Text>결과 알림 받기</Text> };
+  const { Pressable, Text } = jest.requireActual('react-native') as typeof import('react-native');
+  return {
+    EnablePushNotificationButton: ({
+      analysisId,
+      notificationRequested,
+      onRegistered,
+    }: {
+      analysisId: string | null;
+      notificationRequested: boolean;
+      onRegistered?: (analysisId: string) => void;
+    }) => (
+      <Pressable
+        disabled={notificationRequested || !analysisId}
+        onPress={() => analysisId && onRegistered?.(analysisId)}
+      >
+        <Text>{notificationRequested ? '알림 신청 완료' : '결과 알림 받기'}</Text>
+      </Pressable>
+    ),
+    NotificationRequestedSnackbar: ({
+      visible,
+      variant,
+      onCancel,
+    }: {
+      visible: boolean;
+      variant?: 'requested' | 'cancelFailed';
+      onCancel: () => void;
+    }) =>
+      visible ? (
+        variant === 'cancelFailed' ? (
+          <Text>알림 신청을 취소하지 못했습니다.</Text>
+        ) : (
+          <Pressable onPress={onCancel}>
+            <Text>알림취소</Text>
+          </Pressable>
+        )
+      ) : null,
+  };
 });
+jest.mock('@/entities/analysis/api/analysis-api', () => ({
+  analysisApi: { cancelNotification: jest.fn() },
+}));
 
 let appStateChangeHandler: ((state: string) => void) | undefined;
 jest.mock('react-native/Libraries/AppState/AppState', () => ({
@@ -45,7 +83,8 @@ jest.mock('expo-router', () => ({
   router: { replace: jest.fn() },
   useLocalSearchParams: () => ({ boardId: 'board-1' }),
 }));
-jest.mock('@/shared/ui/Toast', () => ({ useToast: () => jest.fn() }));
+const mockToast = jest.fn();
+jest.mock('@/shared/ui/Toast', () => ({ useToast: () => mockToast }));
 jest.mock('@/shared/ui/AppWebView', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');
   return {
@@ -327,6 +366,218 @@ it('실제로 백그라운드에서 돌아온 게 아니면 상태를 다시 조
   });
 
   expect(photoUploadService.refreshNow).not.toHaveBeenCalled();
+});
+
+it('알림 신청에 성공하면 스낵바를 보여준다', async () => {
+  const user = userEvent.setup();
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  await user.press(screen.getByText('결과 알림 받기'));
+
+  expect(screen.getByText('알림취소')).toBeOnTheScreen();
+});
+
+it('스낵바에서 알림취소를 누르면 취소 API를 호출하고 스낵바를 숨긴다', async () => {
+  const user = userEvent.setup();
+  const { analysisApi } = jest.requireMock('@/entities/analysis/api/analysis-api') as {
+    analysisApi: { cancelNotification: jest.Mock };
+  };
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await user.press(screen.getByText('결과 알림 받기'));
+
+  await user.press(screen.getByText('알림취소'));
+
+  await waitFor(() => expect(analysisApi.cancelNotification).toHaveBeenCalledWith('analysis-1'));
+  expect(screen.queryByText('알림취소')).not.toBeOnTheScreen();
+  expect(screen.getByText('결과 알림 받기')).toBeOnTheScreen();
+});
+
+it('알림취소 요청 중에는 취소 API를 중복 호출하지 않는다', async () => {
+  const user = userEvent.setup();
+  const { analysisApi } = jest.requireMock('@/entities/analysis/api/analysis-api') as {
+    analysisApi: { cancelNotification: jest.Mock };
+  };
+  let completeCancel: () => void = () => undefined;
+  analysisApi.cancelNotification.mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        completeCancel = resolve;
+      }),
+  );
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await user.press(screen.getByText('결과 알림 받기'));
+
+  await user.press(screen.getByText('알림취소'));
+
+  expect(analysisApi.cancelNotification).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('알림취소')).not.toBeOnTheScreen();
+  await act(async () => completeCancel());
+});
+
+it('알림취소가 실패하면 신청 완료 상태를 유지하고 실패를 안내한다', async () => {
+  const user = userEvent.setup();
+  const { analysisApi } = jest.requireMock('@/entities/analysis/api/analysis-api') as {
+    analysisApi: { cancelNotification: jest.Mock };
+  };
+  analysisApi.cancelNotification.mockRejectedValue(new Error('network'));
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await user.press(screen.getByText('결과 알림 받기'));
+
+  await user.press(screen.getByText('알림취소'));
+
+  expect(await screen.findByText('알림 신청을 취소하지 못했습니다.')).toBeOnTheScreen();
+  expect(mockToast).not.toHaveBeenCalled();
+  expect(screen.getByText('알림 신청 완료')).toBeOnTheScreen();
+  expect(screen.queryByText('알림취소')).not.toBeOnTheScreen();
+});
+
+it('취소 요청 중 다른 분석으로 전환되면 늦게 도착한 실패 응답이 새 분석의 스낵바를 지우지 않는다', async () => {
+  const user = userEvent.setup();
+  const { analysisApi } = jest.requireMock('@/entities/analysis/api/analysis-api') as {
+    analysisApi: { cancelNotification: jest.Mock };
+  };
+  let rejectCancel: (error: Error) => void = () => undefined;
+  analysisApi.cancelNotification.mockImplementation(
+    () =>
+      new Promise<void>((_resolve, reject) => {
+        rejectCancel = reject;
+      }),
+  );
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  const { rerender } = await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await user.press(screen.getByText('결과 알림 받기'));
+  await user.press(screen.getByText('알림취소'));
+
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-2',
+    notificationRequested: false,
+    progress: 5,
+    status: 'UPLOADING',
+  });
+  await rerender(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await user.press(screen.getByText('결과 알림 받기'));
+  expect(screen.getByText('알림취소')).toBeOnTheScreen();
+
+  await act(async () => rejectCancel(new Error('network')));
+
+  expect(screen.getByText('알림취소')).toBeOnTheScreen();
+  expect(screen.queryByText('알림 신청을 취소하지 못했습니다.')).not.toBeOnTheScreen();
+});
+
+it('스낵바가 떠 있는 동안 분석이 완료되면 스낵바를 먼저 숨긴다', async () => {
+  const user = userEvent.setup();
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  const { rerender } = await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await user.press(screen.getByText('결과 알림 받기'));
+  expect(screen.getByText('알림취소')).toBeOnTheScreen();
+
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: true,
+    progress: 100,
+    status: 'COMPLETED',
+  });
+  await rerender(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  expect(screen.queryByText('알림취소')).not.toBeOnTheScreen();
+});
+
+it('스낵바가 떠 있는 동안 다른 분석으로 전환되면 이전 스낵바를 숨긴다', async () => {
+  const user = userEvent.setup();
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 40,
+    status: 'ANALYZING',
+  });
+  const { rerender } = await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await user.press(screen.getByText('결과 알림 받기'));
+  expect(screen.getByText('알림취소')).toBeOnTheScreen();
+
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-2',
+    notificationRequested: false,
+    progress: 5,
+    status: 'UPLOADING',
+  });
+  await rerender(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  expect(screen.queryByText('알림취소')).not.toBeOnTheScreen();
+  expect(screen.getByText('결과 알림 받기')).toBeOnTheScreen();
 });
 
 it('서버 progress가 오기 전에는 10까지 올리고 멈춘다', async () => {

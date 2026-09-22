@@ -9,12 +9,14 @@ const AUTO_DISMISS_MS = 3000;
 
 type NotificationRequestedSnackbarProps = {
   visible: boolean;
+  variant?: 'requested' | 'cancelFailed';
   onCancel: () => void;
   onDismiss: () => void;
 };
 
 export function NotificationRequestedSnackbar({
   visible,
+  variant = 'requested',
   onCancel,
   onDismiss,
 }: NotificationRequestedSnackbarProps) {
@@ -24,7 +26,7 @@ export function NotificationRequestedSnackbar({
     if (!visible) return;
     const timer = setTimeout(onDismiss, AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [visible, onDismiss]);
+  }, [visible, variant, onDismiss]);
 
   if (!visible) return null;
 
@@ -37,11 +39,15 @@ export function NotificationRequestedSnackbar({
       style={{ top: insets.top + 8, zIndex: 10, elevation: 10 }}
     >
       <Text className="text-body-05 flex-1 text-gray-200">
-        스티커 생성 완료 알림이 설정되었습니다.
+        {variant === 'requested'
+          ? '스티커 생성 완료 알림이 설정되었습니다.'
+          : '알림 신청을 취소하지 못했습니다.'}
       </Text>
-      <Button onPress={onCancel} size="small">
-        <Text className="text-caption-01 text-white">알림취소</Text>
-      </Button>
+      {variant === 'requested' && (
+        <Button onPress={onCancel} size="small">
+          <Text className="text-caption-01 text-white">알림취소</Text>
+        </Button>
+      )}
     </View>
   );
 }

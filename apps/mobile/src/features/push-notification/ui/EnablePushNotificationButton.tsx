@@ -36,11 +36,13 @@ const DISABLED_STATES: ReadonlySet<RegistrationState> = new Set([
 type EnablePushNotificationButtonProps = {
   analysisId: string | null;
   notificationRequested: boolean;
+  onRegistered?: (analysisId: string) => void;
 };
 
 export function EnablePushNotificationButton({
   analysisId,
   notificationRequested,
+  onRegistered,
 }: EnablePushNotificationButtonProps) {
   const [state, setState] = useState<RegistrationState>('idle');
 
@@ -60,13 +62,19 @@ export function EnablePushNotificationButton({
 
     let active = true;
     void resolveRegistrationState(analysisId).then((nextState) => {
-      if (active) setState(nextState);
+      if (!active) return;
+      if (nextState === 'registered' && onRegistered) {
+        setState('idle');
+        onRegistered(analysisId);
+        return;
+      }
+      setState(nextState);
     });
 
     return () => {
       active = false;
     };
-  }, [state, analysisId]);
+  }, [state, analysisId, onRegistered]);
 
   const handlePress = async () => {
     if (DISABLED_STATES.has(state)) return;

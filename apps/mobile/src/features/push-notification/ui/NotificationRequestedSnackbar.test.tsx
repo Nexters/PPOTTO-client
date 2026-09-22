@@ -8,7 +8,12 @@ const SAFE_AREA_METRICS = {
   insets: { top: 47, left: 0, right: 0, bottom: 34 },
 };
 
-function renderSnackbar(props: { visible: boolean; onCancel: () => void; onDismiss: () => void }) {
+function renderSnackbar(props: {
+  visible: boolean;
+  variant?: 'requested' | 'cancelFailed';
+  onCancel: () => void;
+  onDismiss: () => void;
+}) {
   return render(
     <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
       <NotificationRequestedSnackbar {...props} />
@@ -41,6 +46,18 @@ it('알림취소를 누르면 onCancel을 호출한다', async () => {
   await user.press(screen.getByText('알림취소'));
 
   expect(onCancel).toHaveBeenCalledTimes(1);
+});
+
+it('취소에 실패하면 실패 문구만 보여준다', async () => {
+  await renderSnackbar({
+    visible: true,
+    variant: 'cancelFailed',
+    onCancel: jest.fn(),
+    onDismiss: jest.fn(),
+  });
+
+  expect(screen.getByText('알림 신청을 취소하지 못했습니다.')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '알림취소' })).toBeNull();
 });
 
 it('3초가 지나면 onDismiss를 자동으로 호출한다', async () => {
