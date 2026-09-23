@@ -24,8 +24,17 @@ import { Header } from '@/shared/ui/Header';
 
 import { createMotionPhotoPreloader } from './lib/motion-photo-preloader';
 import { prepareUploadJob } from './lib/prepare-upload-job';
+import { AlbumDropdown } from './ui/AlbumDropdown';
 
 const TARGET_UNITS = 100;
+
+const ALBUM_OPTIONS = [
+  { value: 'RECENT', label: '최근 항목' },
+  { value: 'FAVORITES', label: '즐겨찾기' },
+  { value: 'SCREENSHOTS', label: '스크린샷' },
+] as const;
+
+type AlbumKey = (typeof ALBUM_OPTIONS)[number]['value'];
 
 function retainMotionPhotos(
   previous: readonly GalleryPhoto[],
@@ -57,6 +66,7 @@ export function PhotoSelectScreen() {
   }>();
   const mode = modeParam === 'additional' ? 'additional' : 'initial';
   const minSubmitUnits = mode === 'additional' ? 20 : 90;
+  const [album, setAlbum] = useState<AlbumKey>('RECENT');
   const [motionPhotoPreloader] = useState(createMotionPhotoPreloader);
   const [uploadCompressionQueue] = useState(() =>
     createUploadPhotoCompressionQueue(compressPhoto, {
@@ -85,7 +95,7 @@ export function PhotoSelectScreen() {
     toggleEverything,
     toggleUnit,
   } = usePhotoSelection({
-    album: 'RECENT',
+    album,
     autoSelectUnits: mode === 'additional' ? minSubmitUnits : TARGET_UNITS,
     targetUnits: TARGET_UNITS,
     minSubmitUnits,
@@ -236,9 +246,9 @@ export function PhotoSelectScreen() {
           </View>
         ) : (
           <>
-            {/* 앨범 전환 기능 미구현으로 드롭다운 임시 숨김 — 기능 붙일 때 justify-between으로 복구 */}
             {!galleryEmpty && (
-              <View className="flex-row items-start justify-end px-6 pb-4">
+              <View className="flex-row items-start justify-between px-6 pb-4">
+                <AlbumDropdown options={ALBUM_OPTIONS} onSelect={setAlbum} selected={album} />
                 <Button onPress={toggleEverything} size="small">
                   <Text className="text-white text-caption-01">
                     {everythingSelected ? '전체 취소' : '자동 선택'}
