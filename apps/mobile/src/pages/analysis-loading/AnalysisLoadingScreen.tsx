@@ -1,9 +1,11 @@
+import { HttpError } from '@ppotto/api';
 import type { AnalysisLoadingBridgeState, AnalysisLoadingPhaseState } from '@ppotto/bridge';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { AppState, Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { analysisApi } from '@/entities/analysis/api/analysis-api';
 // 배럴(index) 대신 직접 import — PhotoGrid(reanimated)까지 끌어오지 않기 위함
 import { icloudDownloadStatus } from '@/features/photo-selection/model/icloud-download-status';
 import {
@@ -11,7 +13,10 @@ import {
   photoUploadService,
   type UploadMotionPhoto,
 } from '@/features/photo-upload';
-import { EnablePushNotificationButton } from '@/features/push-notification';
+import {
+  EnablePushNotificationButton,
+  NotificationRequestedSnackbar,
+} from '@/features/push-notification';
 import { AppWebView } from '@/shared/ui/AppWebView';
 import { Button } from '@/shared/ui/Button';
 import { useToast } from '@/shared/ui/Toast';
@@ -52,6 +57,15 @@ export function AnalysisLoadingScreen() {
   const [motionReady, setMotionReady] = useState(false);
   const [showingBoard, setShowingBoard] = useState(false);
   const [resyncState, setResyncState] = useState<AnalysisLoadingPhaseState>();
+  const [notificationOverride, setNotificationOverride] = useState<{
+    analysisId: string;
+    requested: boolean;
+  } | null>(null);
+  const [notificationSnackbar, setNotificationSnackbar] = useState<{
+    analysisId: string;
+    variant: 'requested' | 'cancelFailed';
+  } | null>(null);
+  const [cancelingNotification, setCancelingNotification] = useState(false);
   const sequenceRef = useRef(sequence);
 
   const commitSequence = useCallback((next: LoadingSequenceState) => {
@@ -218,6 +232,49 @@ export function AnalysisLoadingScreen() {
     setShowingBoard(true);
   };
 
+  const handleNotificationRegistered = useCallback((analysisId: string) => {
+    if (uploadRef.current.analysisId !== analysisId) return;
+    setNotificationOverride({ analysisId, requested: true });
+    setNotificationSnackbar({ analysisId, variant: 'requested' });
+  }, []);
+
+  const dismissNotificationSnackbar = useCallback(() => {
+    setNotificationSnackbar(null);
+  }, []);
+
+  const cancelNotification = async () => {
+    const analysisId = notificationSnackbar?.analysisId;
+    if (!analysisId || cancelingNotification) return;
+
+    setCancelingNotification(true);
+    setNotificationSnackbar(null);
+    try {
+      await analysisApi.cancelNotification(analysisId);
+      if (uploadRef.current.analysisId === analysisId) {
+        setNotificationOverride({ analysisId, requested: false });
+      }
+    } catch (error) {
+      if (
+        uploadRef.current.analysisId === analysisId &&
+        !(error instanceof HttpError && error.status === 409)
+      ) {
+        setNotificationSnackbar({ analysisId, variant: 'cancelFailed' });
+      }
+    } finally {
+      setCancelingNotification(false);
+    }
+  };
+
+  const notificationRequested =
+    notificationOverride !== null && notificationOverride.analysisId === upload.analysisId
+      ? notificationOverride.requested
+      : upload.notificationRequested;
+  const notificationSnackbarVisible =
+    notificationSnackbar !== null &&
+    notificationSnackbar.analysisId === upload.analysisId &&
+    upload.status !== 'COMPLETED' &&
+    !sequence.revealFinished;
+
   return (
     <View className="flex-1 bg-black">
       <AppWebView
@@ -230,21 +287,30 @@ export function AnalysisLoadingScreen() {
       />
 
       {!showingBoard && (
-        <View
-          className="absolute right-[18px] bottom-0 left-[18px] pb-12"
-          style={Platform.OS === 'android' ? { paddingBottom: insets.bottom + 48 } : undefined}
-        >
-          {sequence.revealFinished ? (
-            <Button onPress={showBoard} size="large">
-              <Text className="text-body-03 text-black">결과 확인하기</Text>
-            </Button>
-          ) : (
-            <EnablePushNotificationButton
-              analysisId={upload.analysisId}
-              notificationRequested={upload.notificationRequested}
-            />
-          )}
-        </View>
+        <>
+          <NotificationRequestedSnackbar
+            onCancel={() => void cancelNotification()}
+            onDismiss={dismissNotificationSnackbar}
+            variant={notificationSnackbar?.variant}
+            visible={notificationSnackbarVisible}
+          />
+          <View
+            className="absolute right-[18px] bottom-0 left-[18px] pb-12"
+            style={Platform.OS === 'android' ? { paddingBottom: insets.bottom + 48 } : undefined}
+          >
+            {sequence.revealFinished ? (
+              <Button onPress={showBoard} size="large">
+                <Text className="text-body-03 text-black">결과 확인하기</Text>
+              </Button>
+            ) : (
+              <EnablePushNotificationButton
+                analysisId={upload.analysisId}
+                notificationRequested={notificationRequested}
+                onRegistered={handleNotificationRegistered}
+              />
+            )}
+          </View>
+        </>
       )}
     </View>
   );

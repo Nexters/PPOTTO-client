@@ -4719,6 +4719,135 @@
             "bearerAuth": []
           }
         ]
+      },
+      "delete": {
+        "tags": ["분석"],
+        "summary": "분석 완료 알림 신청 취소",
+        "description": "현재 진행 중인 분석의 완료 또는 실패 결과 알림 신청을 분석별로 취소합니다. 같은 분석에 대한 재취소 요청도 동일하게 성공합니다.",
+        "operationId": "cancelAnalysisCompletionNotification",
+        "parameters": [
+          {
+            "name": "analysisId",
+            "in": "path",
+            "description": "분석 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "처리 완료. data는 항상 null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUnit"
+                },
+                "examples": {
+                  "성공": {
+                    "description": "성공",
+                    "value": {
+                      "success": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "분석을 찾을 수 없음 (ANALYSIS-005)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "ANALYSIS-005": {
+                    "summary": "분석 없음 또는 소유자 불일치",
+                    "description": "ANALYSIS-005",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "ANALYSIS-005",
+                        "message": "분석을 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "알림을 신청할 수 없는 분석 상태 (ANALYSIS-018)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "ANALYSIS-018": {
+                    "summary": "진행 중이 아닌 분석",
+                    "description": "ANALYSIS-018",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "ANALYSIS-018",
+                        "message": "진행 중인 분석에만 결과 알림을 신청할 수 있습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/analysis/active": {

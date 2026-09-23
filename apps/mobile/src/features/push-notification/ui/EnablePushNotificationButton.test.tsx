@@ -83,6 +83,37 @@ it('이미 신청된 분석이면 처음부터 완료 상태로 보여준다', a
   expect(requestNotification).not.toHaveBeenCalled();
 });
 
+it('신청에 성공하면 onRegistered를 호출한다', async () => {
+  const user = userEvent.setup();
+  const onRegistered = jest.fn();
+  requestNotification.mockResolvedValue({ status: 'registered' });
+  await render(
+    <EnablePushNotificationButton
+      analysisId="analysis-1"
+      notificationRequested={false}
+      onRegistered={onRegistered}
+    />,
+  );
+
+  await user.press(screen.getByRole('button', { name: '결과 알림 받기' }));
+
+  await waitFor(() => expect(onRegistered).toHaveBeenCalledWith('analysis-1'));
+});
+
+it('이미 신청된 상태로 마운트되면 onRegistered를 호출하지 않는다', async () => {
+  const onRegistered = jest.fn();
+  await render(
+    <EnablePushNotificationButton
+      analysisId="analysis-1"
+      notificationRequested
+      onRegistered={onRegistered}
+    />,
+  );
+
+  expect(await screen.findByRole('button', { name: '알림 신청 완료' })).toBeDisabled();
+  expect(onRegistered).not.toHaveBeenCalled();
+});
+
 it('다른 분석으로 전환되면 이전 분석의 완료 상태를 물려받지 않는다', async () => {
   const user = userEvent.setup();
   requestNotification.mockResolvedValue({ status: 'registered' });
