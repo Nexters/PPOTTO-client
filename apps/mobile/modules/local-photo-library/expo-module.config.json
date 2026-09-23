@@ -1,6 +1,9 @@
 {
-  "platforms": ["ios"],
+  "platforms": ["ios", "android"],
   "ios": {
     "modules": ["LocalPhotoLibraryModule"]
+  },
+  "android": {
+    "modules": ["com.ppotto.localphotolibrary.LocalPhotoLibraryModule"]
   }
 }
