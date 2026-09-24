@@ -1,7 +1,7 @@
 {
   "name": "local-photo-library",
   "version": "0.1.0",
-  "description": "Local-only iOS PhotoKit group paging",
+  "description": "Local photo library paging with album filters (PhotoKit / MediaStore)",
   "main": "index.ts",
   "private": true,
   "license": "MIT",

@@ -11,6 +11,8 @@ import { clamp, distance, distanceToSegment, type Point } from './geometry';
 type DrawingChanges = NonNullable<UpdateBoardLayoutInput['drawings']>;
 export type DrawingCreateInput = NonNullable<NonNullable<DrawingChanges['created']>[number]>;
 export type DrawingItem = BoardDetail['drawings'][number];
+type StrokeCreateInput = components['schemas']['DrawingCreateStrokeRequest'];
+type TextCreateInput = components['schemas']['DrawingCreateTextRequest'];
 
 export type ParsedDrawing = {
   id: string;
@@ -20,8 +22,7 @@ export type ParsedDrawing = {
   zIndex: number;
 };
 
-// BoardDetail은 paths의 v1|v2 유니온이라 못 담는, v2 전용 drawings 원소 타입
-export type DrawingV2Item = components['schemas']['DrawingV2Response'];
+export type DrawingV2Item = DrawingItem;
 export type TextDrawingItem = components['schemas']['DrawingTextResponse'];
 export type StrokeDrawingItem = components['schemas']['DrawingStrokeResponse'];
 
@@ -70,7 +71,7 @@ export function toTextCreateInput(
     rotation?: number;
     color?: string;
   },
-): DrawingCreateInput {
+): TextCreateInput {
   return {
     id,
     type: 'TEXT',
@@ -83,7 +84,7 @@ export function toTextCreateInput(
     maxWidth: options.maxWidth,
     rotation: options.rotation ?? 0,
     zIndex: options.zIndex,
-  } as DrawingCreateInput;
+  };
 }
 
 const STROKE_SAMPLE_MIN_DISTANCE = 2;
@@ -97,7 +98,7 @@ function toDrawingInput(
   id: string,
   points: Point[],
   options: { color: string; strokeWidth: number; zIndex?: number },
-): DrawingCreateInput {
+): StrokeCreateInput {
   return {
     id,
     type: 'STROKE',
@@ -106,13 +107,13 @@ function toDrawingInput(
     color: options.color,
     strokeWidth: options.strokeWidth,
     zIndex: options.zIndex ?? 0,
-  } as DrawingCreateInput;
+  };
 }
 
 export function toDrawingCreateInput(
   points: Point[],
   options: { color: string; strokeWidth: number; zIndex?: number },
-): DrawingCreateInput {
+): StrokeCreateInput {
   return toDrawingInput(uuidv7(), points, options);
 }
 
@@ -120,7 +121,7 @@ export function toDrawingMoveInput(
   id: string,
   points: Point[],
   options: { color: string; strokeWidth: number; zIndex?: number },
-): DrawingCreateInput {
+): StrokeCreateInput {
   return toDrawingInput(id, points, options);
 }
 
