@@ -246,16 +246,17 @@ export function PhotoSelectScreen() {
           </View>
         ) : (
           <>
-            {!galleryEmpty && (
-              <View className="flex-row items-start justify-between px-6 pb-4">
-                <AlbumDropdown options={ALBUM_OPTIONS} onSelect={setAlbum} selected={album} />
+            {/* 앨범에 사진이 없어도 다른 앨범으로 돌아갈 수 있어야 하므로 드롭다운은 항상 보인다 */}
+            <View className="flex-row items-start justify-between px-6 pb-4">
+              <AlbumDropdown options={ALBUM_OPTIONS} onSelect={setAlbum} selected={album} />
+              {!galleryEmpty && (
                 <Button onPress={toggleEverything} size="small">
                   <Text className="text-white text-caption-01">
                     {everythingSelected ? '전체 취소' : '자동 선택'}
                   </Text>
                 </Button>
-              </View>
-            )}
+              )}
+            </View>
 
             {permission?.accessPrivileges === 'limited' ? (
               <View className="flex-row items-center gap-3 px-4 py-3 mx-6 mb-3 bg-gray-900 rounded-xl">
@@ -277,7 +278,9 @@ export function PhotoSelectScreen() {
                       사용할 수 있는 사진이 없어요
                     </Text>
                     <Text className="text-center text-gray-400 text-body-06">
-                      사진 앱에서 사진을 기기에 저장한 후{`\n`}이 화면에 다시 들어와 주세요.
+                      {album === 'RECENT'
+                        ? `사진 앱에서 사진을 기기에 저장한 후\n이 화면에 다시 들어와 주세요.`
+                        : '다른 앨범을 선택해 보세요.'}
                     </Text>
                   </View>
                 </View>
