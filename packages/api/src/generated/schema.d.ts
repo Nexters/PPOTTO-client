@@ -17,7 +17,7 @@ export interface paths {
          * 분석 생성
          * @description 보드를 지정하고 사진 그룹을 펼친 총 90~100장의 업로드 URL(만료 15분)을 한 번에 발급함
          */
-        post: operations["create_1"];
+        post: operations["createAnalysis"];
         delete?: never;
         options?: never;
         head?: never;
@@ -35,14 +35,14 @@ export interface paths {
          * 분석 상태 조회
          * @description 로딩 화면에서 2~3초 간격으로 폴링함. COMPLETED가 되면 보드를 다시 조회함
          */
-        get: operations["get_1"];
+        get: operations["getAnalysis"];
         put?: never;
         post?: never;
         /**
          * 분석 취소
          * @description 업로드 중(UPLOADING)인 분석을 취소함. 분석과 사진 상태를 FAILED로 닫고, 업로드된 원본 이미지는 커밋 후 비동기로 정리함
          */
-        delete: operations["cancel"];
+        delete: operations["cancelAnalysis"];
         options?: never;
         head?: never;
         patch?: never;
@@ -85,7 +85,7 @@ export interface paths {
          * 업로드 URL 재발급
          * @description 분석 생성 응답을 유실했거나 업로드 URL(15분)이 만료됐을 때 호출함. PENDING 사진의 URL만 재발급하며 UPLOADING 상태에서만 사용 가능
          */
-        post: operations["reissue"];
+        post: operations["reissueUploadUrls"];
         delete?: never;
         options?: never;
         head?: never;
@@ -105,7 +105,7 @@ export interface paths {
          * 분석 시작
          * @description GCS 오브젝트 존재를 확인해 없는 사진은 제외하고 분석 파이프라인을 시작함
          */
-        post: operations["start"];
+        post: operations["startAnalysis"];
         delete?: never;
         options?: never;
         head?: never;
@@ -123,7 +123,7 @@ export interface paths {
          * 진행 중 분석 조회
          * @description 앱 재진입 또는 분석 생성 충돌 이후 복구할 진행 중 분석을 조회함. 없으면 data가 null
          */
-        get: operations["getActive"];
+        get: operations["getActiveAnalysis"];
         put?: never;
         post?: never;
         delete?: never;
@@ -254,7 +254,7 @@ export interface paths {
          * 보드 삭제
          * @description 보드와 그 위의 스티커, 리캡, 그림을 함께 삭제함. 마지막 보드나 분석 중인 보드는 삭제할 수 없음
          */
-        delete: operations["delete_1"];
+        delete: operations["deleteBoard"];
         options?: never;
         head?: never;
         /**
@@ -297,12 +297,12 @@ export interface paths {
          * 디바이스 토큰 등록/갱신
          * @description deviceId 기준으로 upsert함. FCM 토큰이 회전돼도 같은 deviceId를 보내면 같은 기기 행이 갱신됨
          */
-        post: operations["register-5qyZsBA"];
+        post: operations["register"];
         /**
          * 디바이스 토큰 해제
          * @description 로그아웃 등으로 더 이상 알림을 받지 않을 기기의 토큰을 삭제함
          */
-        delete: operations["unregister-5qyZsBA"];
+        delete: operations["unregister"];
         options?: never;
         head?: never;
         patch?: never;
@@ -521,11 +521,7 @@ export interface components {
         };
         /** @description 분석 상태 */
         AnalysisStatusResponse: {
-            /**
-             * Format: uuid
-             * @description 결과 스티커가 붙을 보드 ID
-             * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
-             */
+            /** Format: uuid */
             boardId: string;
             /**
              * Format: date-time
@@ -534,15 +530,17 @@ export interface components {
              */
             completedAt?: string | null;
             /**
+             * @description 분석 실패 코드. 실패 전 또는 원인을 구분할 수 없는 기존 이력은 생략
+             * @example ANALYSIS-017
+             * @enum {string|null}
+             */
+            failedCode?: "ANALYSIS-001" | "ANALYSIS-002" | "ANALYSIS-003" | "ANALYSIS-004" | "ANALYSIS-005" | "ANALYSIS-007" | "ANALYSIS-008" | "ANALYSIS-009" | "ANALYSIS-010" | "ANALYSIS-011" | "ANALYSIS-012" | "ANALYSIS-013" | "ANALYSIS-014" | "ANALYSIS-015" | "ANALYSIS-016" | "ANALYSIS-017" | "ANALYSIS-018" | null;
+            /**
              * @description 실패 사유
              * @example AI 분석 호출이 반복 실패했습니다.
              */
             failedReason?: string | null;
-            /**
-             * Format: uuid
-             * @description 분석 ID (uuidv7)
-             * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
-             */
+            /** Format: uuid */
             id: string;
             /**
              * @description 현재 분석의 완료 알림 신청 여부
@@ -901,19 +899,15 @@ export interface components {
         };
         /** @description 생성된 분석과 사진별 업로드 URL */
         CreateAnalysisResponse: {
-            /**
-             * Format: uuid
-             * @description 생성된 분석 ID (uuidv7)
-             * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
-             */
+            /** Format: uuid */
             analysisId: string;
             /** @description 요청 photos와 같은 순서의 업로드 URL 목록 */
-            uploads: components["schemas"]["PhotoUploadUrlItem"][];
+            uploads: components["schemas"]["PhotoUploadUrlResponse"][];
         };
         /** @description 보드 생성 요청 */
         CreateBoardRequest: {
             /**
-             * @description 보드 이름. 생략하면 기본 이름을 생성함
+             * @description 보드 이름. 공백만으로는 만들 수 없고 최대 10자. 생략하면 기본 이름을 생성함
              * @example 여름 휴가
              */
             name?: string | null;
@@ -997,7 +991,7 @@ export interface components {
             strokeWidth: number;
         };
         /** @description 새 선 */
-        DrawingCreateStrokeRequest: Omit<WithRequired<components["schemas"]["DrawingCreateV2Request"], "color" | "scope">, "type"> & {
+        DrawingCreateStrokeRequest: {
             /**
              * @description 선 색상. #RRGGBB
              * @example #FFD400
@@ -1050,20 +1044,19 @@ export interface components {
              */
             strokeWidth: number;
             /**
+             * @description 판별자. 항상 STROKE (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "STROKE";
+            /**
              * Format: int32
              * @description 겹침 순서. 스티커 zIndex와 같은 숫자 공간을 쓴다
              * @example 6
              */
             zIndex: number;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "DrawingCreateStrokeRequest";
         };
         /** @description 새 텍스트 */
-        DrawingCreateTextRequest: Omit<WithRequired<components["schemas"]["DrawingCreateV2Request"], "color" | "scope">, "type"> & {
+        DrawingCreateTextRequest: {
             /**
              * @description 글자 색상. #RRGGBB
              * @example #FFFFFF
@@ -1123,31 +1116,19 @@ export interface components {
              */
             stickerId?: string | null;
             /**
+             * @description 판별자. 항상 TEXT (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "TEXT";
+            /**
              * Format: int32
              * @description 겹침 순서. 스티커 zIndex와 같은 숫자 공간을 쓴다
              * @example 7
              */
             zIndex: number;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "DrawingCreateTextRequest";
         };
         /** @description 새 선 또는 텍스트. type이 판별자다 */
-        DrawingCreateV2Request: {
-            color: string;
-            /** Format: uuid */
-            "id-axotQFY"?: string;
-            /** @enum {string} */
-            scope: "STICKER" | "BOARD";
-            /** Format: uuid */
-            "stickerId-eENHahg"?: string;
-            type: string;
-            /** Format: int32 */
-            zindex?: number;
-        } & (components["schemas"]["DrawingCreateStrokeRequest"] | components["schemas"]["DrawingCreateTextRequest"]);
+        DrawingCreateV2Request: components["schemas"]["DrawingCreateStrokeRequest"] | components["schemas"]["DrawingCreateTextRequest"];
         /** @description 보드 또는 스티커 위의 그림 */
         DrawingResponse: {
             /**
@@ -1204,7 +1185,7 @@ export interface components {
             strokeWidth: number;
         };
         /** @description 선 */
-        DrawingStrokeResponse: Omit<WithRequired<components["schemas"]["DrawingV2Response"], "color" | "scope">, "type"> & {
+        DrawingStrokeResponse: {
             /**
              * @description 선 색상
              * @example #FFD400
@@ -1257,20 +1238,19 @@ export interface components {
              */
             strokeWidth: number;
             /**
+             * @description 판별자. 항상 STROKE (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "STROKE";
+            /**
              * Format: int32
              * @description 겹침 순서
              * @example 6
              */
             zIndex: number;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "DrawingStrokeResponse";
         };
         /** @description 텍스트 */
-        DrawingTextResponse: Omit<WithRequired<components["schemas"]["DrawingV2Response"], "color" | "scope">, "type"> & {
+        DrawingTextResponse: {
             /**
              * @description 글자 색상
              * @example #FFFFFF
@@ -1330,31 +1310,19 @@ export interface components {
              */
             stickerId?: string | null;
             /**
+             * @description 판별자. 항상 TEXT (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "TEXT";
+            /**
              * Format: int32
              * @description 겹침 순서
              * @example 7
              */
             zIndex: number;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "DrawingTextResponse";
         };
         /** @description 보드 또는 스티커 위의 선이나 텍스트. type이 판별자다 */
-        DrawingV2Response: {
-            color: string;
-            /** Format: uuid */
-            "id-axotQFY"?: string;
-            /** @enum {string} */
-            scope: "STICKER" | "BOARD";
-            /** Format: uuid */
-            "stickerId-eENHahg"?: string;
-            type: string;
-            /** Format: int32 */
-            zindex?: number;
-        } & (components["schemas"]["DrawingStrokeResponse"] | components["schemas"]["DrawingTextResponse"]);
+        DrawingV2Response: components["schemas"]["DrawingStrokeResponse"] | components["schemas"]["DrawingTextResponse"];
         /** @description 실패 응답 상세 */
         ErrorResponse: {
             /**
@@ -1501,7 +1469,6 @@ export interface components {
              * @enum {string}
              */
             contentType: "image/jpeg" | "image/png" | "image/webp";
-            /** @description 연사 그룹 내 대표 사진 여부 */
             isRepresentative: boolean;
             /**
              * Format: date-time
@@ -1511,12 +1478,8 @@ export interface components {
             takenAt: string;
         };
         /** @description 사진 ID와 GCS 업로드 URL */
-        PhotoUploadUrlItem: {
-            /**
-             * Format: uuid
-             * @description 사진 ID (uuidv7)
-             * @example 01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f
-             */
+        PhotoUploadUrlResponse: {
+            /** Format: uuid */
             photoId: string;
             /**
              * @description GCS 업로드용 signed URL (만료 15분, 장당 15MB 제한)
@@ -1669,12 +1632,12 @@ export interface components {
         /** @description 재발급된 사진별 업로드 URL */
         ReissueUploadUrlsResponse: {
             /** @description 재발급 대상(PENDING) 사진의 업로드 URL 목록 */
-            uploads: components["schemas"]["PhotoUploadUrlItem"][];
+            uploads: components["schemas"]["PhotoUploadUrlResponse"][];
         };
         /** @description 보드 이름 변경 요청 */
         RenameBoardRequest: {
             /**
-             * @description 새 보드 이름. 최대 10자
+             * @description 새 보드 이름. 공백만으로는 바꿀 수 없고 최대 10자
              * @example 뽀또의 보드
              */
             name: string;
@@ -2011,7 +1974,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    create_1: {
+    createAnalysis: {
         parameters: {
             query?: never;
             header?: {
@@ -2039,7 +2002,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseCreateAnalysisResponse"];
                 };
             };
-            /** @description 요청 값이 올바르지 않음 (COMMON-001, ANALYSIS-001, ANALYSIS-009) */
+            /** @description 요청 값이 올바르지 않음 (COMMON-001, ANALYSIS-001, ANALYSIS-009, ANALYSIS-010) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2077,7 +2040,7 @@ export interface operations {
             };
         };
     };
-    get_1: {
+    getAnalysis: {
         parameters: {
             query?: never;
             header?: {
@@ -2089,7 +2052,7 @@ export interface operations {
             };
             path: {
                 /**
-                 * @description 조회할 분석 ID (uuidv7)
+                 * @description 분석 ID (uuidv7)
                  * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
                  */
                 analysisId: string;
@@ -2127,7 +2090,7 @@ export interface operations {
             };
         };
     };
-    cancel: {
+    cancelAnalysis: {
         parameters: {
             query?: never;
             header?: {
@@ -2139,7 +2102,7 @@ export interface operations {
             };
             path: {
                 /**
-                 * @description 취소할 분석 ID (uuidv7)
+                 * @description 분석 ID (uuidv7)
                  * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
                  */
                 analysisId: string;
@@ -2304,7 +2267,7 @@ export interface operations {
             };
         };
     };
-    reissue: {
+    reissueUploadUrls: {
         parameters: {
             query?: never;
             header?: {
@@ -2316,7 +2279,7 @@ export interface operations {
             };
             path: {
                 /**
-                 * @description 재발급할 분석 ID (uuidv7)
+                 * @description 분석 ID (uuidv7)
                  * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
                  */
                 analysisId: string;
@@ -2363,7 +2326,7 @@ export interface operations {
             };
         };
     };
-    start: {
+    startAnalysis: {
         parameters: {
             query?: never;
             header?: {
@@ -2375,7 +2338,7 @@ export interface operations {
             };
             path: {
                 /**
-                 * @description 시작할 분석 ID (uuidv7)
+                 * @description 분석 ID (uuidv7)
                  * @example 01983f2f-1a2b-7c3d-8e4f-5a6b7c8d9e0f
                  */
                 analysisId: string;
@@ -2422,7 +2385,7 @@ export interface operations {
             };
         };
     };
-    getActive: {
+    getActiveAnalysis: {
         parameters: {
             query?: never;
             header?: {
@@ -2485,7 +2448,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseLoginResponse"];
                 };
             };
-            /** @description 요청 값이 올바르지 않음 (COMMON-001) */
+            /** @description 요청 값이 올바르지 않거나 가입에 필요한 값이 없음 (COMMON-001, AUTH-006, AUTH-007) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2494,7 +2457,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description 소셜 로그인 검증에 실패함 (AUTH-001, AUTH-003) */
+            /** @description 소셜 로그인 검증 또는 애플 authorization code 교환에 실패함 (AUTH-001, AUTH-003) */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2503,7 +2466,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description 가입에 필요한 동의가 부족함 (AUTH-004) */
+            /** @description 가입에 필요한 동의가 부족함 (AUTH-004, AUTH-005) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2551,7 +2514,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description authorization code 교환 또는 소셜 로그인 검증에 실패함 (AUTH-001, AUTH-008) */
+            /** @description 카카오 authorization code 교환 또는 소셜 로그인 검증에 실패함 (AUTH-001, AUTH-008) */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2726,15 +2689,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description 현재 상태와 요청이 충돌함 (COMMON-006) */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponse"];
-                };
-            };
         };
     };
     get: {
@@ -2793,7 +2747,7 @@ export interface operations {
             };
         };
     };
-    delete_1: {
+    deleteBoard: {
         parameters: {
             query?: never;
             header?: {
@@ -2821,6 +2775,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseUnit"];
+                };
+            };
+            /** @description 삭제할 수 없는 스티커가 포함됨 (STICKER-007) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -2955,7 +2918,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
-            /** @description 요청 값이 올바르지 않음 (COMMON-001, BOARD-001) */
+            /** @description 요청 값이 올바르지 않음 (COMMON-001, BOARD-001, STICKER-008) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2984,7 +2947,7 @@ export interface operations {
             };
         };
     };
-    "register-5qyZsBA": {
+    register: {
         parameters: {
             query?: never;
             header?: {
@@ -3023,7 +2986,7 @@ export interface operations {
             };
         };
     };
-    "unregister-5qyZsBA": {
+    unregister: {
         parameters: {
             query: {
                 /**
@@ -3261,7 +3224,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
-            /** @description 요청 값이 올바르지 않음 (COMMON-001) */
+            /** @description 요청 값이 올바르지 않음 (COMMON-001, STICKER-004) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3320,7 +3283,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseRecapDetailResponse"];
                 };
             };
-            /** @description 요청 값이 올바르지 않음 (COMMON-001) */
+            /** @description 재생성할 수 없는 스티커임 (STICKER-005, STICKER-006) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3349,6 +3312,15 @@ export interface operations {
             };
             /** @description 같은 스티커에 대한 재생성이 이미 진행 중임 (STICKER-002) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 원본 사진 읽기 또는 배경 제거·크롭 실패 (ANALYSIS-011) */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3390,6 +3362,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseShareRecapResponse"];
+                };
+            };
+            /** @description 요청 값이 올바르지 않음 (COMMON-001) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
@@ -3616,7 +3597,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiResponseUnit"];
                 };
             };
-            /** @description 요청 값이 올바르지 않음 (COMMON-001, TERM-001) */
+            /** @description 요청 값이 올바르지 않음 (COMMON-001) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3707,6 +3688,3 @@ export interface operations {
         };
     };
 }
-type WithRequired<T, K extends keyof T> = T & {
-    [P in K]-?: T[P];
-};

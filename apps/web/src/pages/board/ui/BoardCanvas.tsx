@@ -30,7 +30,6 @@ import {
   toWorldPoint,
 } from '../model/board-camera';
 import {
-  type DrawingV2Item,
   drawingZIndex,
   isStrokeDrawing,
   isTextDrawing,
@@ -229,8 +228,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     [emptyBoardStickerTitle, emptyBoardStickerTransform],
   );
 
-  // X-API-Version: 2 응답이라 항상 DrawingV2Response 형태 — BoardDetail 유니온을 여기서 좁힘
-  const drawingsV2 = useMemo(() => (data?.drawings ?? []) as DrawingV2Item[], [data?.drawings]);
+  const drawingsV2 = useMemo(() => data?.drawings ?? [], [data?.drawings]);
 
   const baseDrawings: ParsedDrawing[] = useMemo(
     () =>
