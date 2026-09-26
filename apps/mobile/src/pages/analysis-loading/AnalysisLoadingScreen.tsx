@@ -2,7 +2,7 @@ import { HttpError } from '@ppotto/api';
 import type { AnalysisLoadingBridgeState, AnalysisLoadingPhaseState } from '@ppotto/bridge';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { AppState, Platform, Text, View } from 'react-native';
+import { AppState, BackHandler, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { analysisApi } from '@/entities/analysis/api/analysis-api';
@@ -28,6 +28,7 @@ import {
   type LoadingSequenceAction,
   type LoadingSequenceState,
 } from './model/loading-sequence';
+import { CancelAnalysisModal } from './ui/CancelAnalysisModal';
 
 const PRE_ANALYSIS_PROGRESS_MAX = 10;
 const PRE_ANALYSIS_PROGRESS_INTERVAL_MS = 1_000;
@@ -66,6 +67,8 @@ export function AnalysisLoadingScreen() {
     variant: 'requested' | 'cancelFailed';
   } | null>(null);
   const [cancelingNotification, setCancelingNotification] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelingAnalysis, setCancelingAnalysis] = useState(false);
   const sequenceRef = useRef(sequence);
 
   const commitSequence = useCallback((next: LoadingSequenceState) => {
@@ -153,6 +156,7 @@ export function AnalysisLoadingScreen() {
       ANALYSIS_LOADING_PHASE_FINISHED: finishPhase,
       ANALYSIS_LOADING_REVEAL_FINISHED: ({ jobId }: { jobId: string | null }) => {
         if (!photoUploadService.isCurrentJob(jobId)) return;
+        setCancelModalVisible(false);
         updateSequence({ type: 'REVEAL_FINISHED' });
       },
     }),
@@ -204,12 +208,14 @@ export function AnalysisLoadingScreen() {
 
   useEffect(() => {
     const current = photoUploadService.getCurrent();
+    const jobId = photoUploadService.getCurrentJobId();
     if (!current) {
       router.replace({ pathname: '/board', params: boardId ? { boardId } : undefined });
       return;
     }
 
     void current.catch((error) => {
+      if (!photoUploadService.isCurrentJob(jobId)) return;
       if (error instanceof PhotoPreparationError) {
         toast('사진을 불러오지 못했어요. 다시 업로드해 주세요.');
         photoUploadService.clearCurrent();
@@ -226,10 +232,62 @@ export function AnalysisLoadingScreen() {
     });
   }, [boardId, toast]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'android' || sequence.revealFinished) return;
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (cancelingAnalysis) return true;
+      if (cancelModalVisible) {
+        setCancelModalVisible(false);
+      } else {
+        setCancelModalVisible(true);
+      }
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [cancelModalVisible, cancelingAnalysis, sequence.revealFinished]);
+
   const showBoard = async () => {
     track('analysis_result_clicked');
     await photoUploadService.finish();
     setShowingBoard(true);
+  };
+
+  const cancelAnalysis = async () => {
+    if (cancelingAnalysis || sequenceRef.current.revealFinished) return;
+
+    setCancelingAnalysis(true);
+    try {
+      const result = await photoUploadService.discard();
+      setCancelModalVisible(false);
+      if (result === 'DISCARDED') {
+        router.replace({ pathname: '/photo-select', params: boardId ? { boardId } : undefined });
+        return;
+      }
+      if (result === 'RETRY') {
+        toast('작업을 종료하지 못했어요. 다시 시도해 주세요.');
+        return;
+      }
+
+      await photoUploadService.refreshNow();
+      const latest = photoUploadService.getViewState();
+      if (latest.status === 'FAILED') {
+        router.replace({ pathname: '/board', params: boardId ? { boardId } : undefined });
+        return;
+      }
+      const next = updateSequence({
+        type: 'FOREGROUND_RESYNCED',
+        progress: latest.progress,
+        completed: latest.status === 'COMPLETED',
+      });
+      setResyncState(toBridgePhaseState(next));
+    } catch {
+      setCancelModalVisible(false);
+      toast('작업을 종료하지 못했어요. 다시 시도해 주세요.');
+    } finally {
+      setCancelingAnalysis(false);
+    }
   };
 
   const handleNotificationRegistered = useCallback((analysisId: string) => {
@@ -295,7 +353,7 @@ export function AnalysisLoadingScreen() {
             visible={notificationSnackbarVisible}
           />
           <View
-            className="absolute right-[18px] bottom-0 left-[18px] pb-12"
+            className="absolute right-[18px] bottom-0 left-[18px] gap-2 pb-12"
             style={Platform.OS === 'android' ? { paddingBottom: insets.bottom + 48 } : undefined}
           >
             {sequence.revealFinished ? (
@@ -303,13 +361,28 @@ export function AnalysisLoadingScreen() {
                 <Text className="text-body-03 text-black">결과 확인하기</Text>
               </Button>
             ) : (
-              <EnablePushNotificationButton
-                analysisId={upload.analysisId}
-                notificationRequested={notificationRequested}
-                onRegistered={handleNotificationRegistered}
-              />
+              <>
+                <EnablePushNotificationButton
+                  analysisId={upload.analysisId}
+                  notificationRequested={notificationRequested}
+                  onRegistered={handleNotificationRegistered}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  className="items-center justify-center w-full py-3 rounded-full"
+                  onPress={() => setCancelModalVisible(true)}
+                >
+                  <Text className="text-gray-600 text-body-05">뒤로가기</Text>
+                </Pressable>
+              </>
             )}
           </View>
+          <CancelAnalysisModal
+            canceling={cancelingAnalysis}
+            onCancel={() => setCancelModalVisible(false)}
+            onConfirm={() => void cancelAnalysis()}
+            visible={cancelModalVisible && !sequence.revealFinished}
+          />
         </>
       )}
     </View>
