@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import { analysisApi } from '@/entities/analysis/api/analysis-api';
 import { deviceTokenApi } from '@/entities/notification';
 
@@ -44,18 +46,26 @@ it.each(['denied', 'blocked', 'unsupported'] as const)(
   },
 );
 
-it('알림 권한을 허용하면 FCM 토큰을 Android 기기로 등록한다', async () => {
+it.each([
+  ['android', 'ANDROID'],
+  ['ios', 'IOS'],
+] as const)('알림 권한을 허용하면 FCM 토큰을 %s 기기로 등록한다', async (os, platform) => {
+  const platformReplacement = jest.replaceProperty(Platform, 'OS', os);
   requestPermission.mockResolvedValue('granted');
   getDeviceId.mockResolvedValue('device-id');
   getToken.mockResolvedValue('fcm-token');
   registerDeviceToken.mockResolvedValue(undefined);
 
-  await expect(registerPushNotification()).resolves.toEqual({ status: 'registered' });
-  expect(registerDeviceToken).toHaveBeenCalledWith({
-    deviceId: 'device-id',
-    platform: 'ANDROID',
-    fcmToken: 'fcm-token',
-  });
+  try {
+    await expect(registerPushNotification()).resolves.toEqual({ status: 'registered' });
+    expect(registerDeviceToken).toHaveBeenCalledWith({
+      deviceId: 'device-id',
+      platform,
+      fcmToken: 'fcm-token',
+    });
+  } finally {
+    platformReplacement.restore();
+  }
 });
 
 it.each(['denied', 'blocked', 'unsupported'] as const)(
