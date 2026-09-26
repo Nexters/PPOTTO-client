@@ -257,12 +257,19 @@ export function AnalysisLoadingScreen() {
   const cancelAnalysis = async () => {
     if (cancelingAnalysis || sequenceRef.current.revealFinished) return;
 
+    const uploadMode = photoUploadService.getUploadMode();
     setCancelingAnalysis(true);
     try {
       const result = await photoUploadService.discard();
       setCancelModalVisible(false);
       if (result === 'DISCARDED') {
-        router.replace({ pathname: '/photo-select', params: boardId ? { boardId } : undefined });
+        router.replace({
+          pathname: '/photo-select',
+          params: {
+            ...(boardId ? { boardId } : {}),
+            ...(uploadMode === 'additional' ? { mode: 'additional' } : {}),
+          },
+        });
         return;
       }
       if (result === 'RETRY') {

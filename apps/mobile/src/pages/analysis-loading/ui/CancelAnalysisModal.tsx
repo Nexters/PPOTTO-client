@@ -27,11 +27,11 @@ export function CancelAnalysisModal({
           accessibilityViewIsModal
           className="w-full max-w-[312px] gap-4 p-4 bg-gray-900 rounded-2xl"
         >
-          <View className="w-full gap-2 px-6 py-2">
-            <Text className="text-center text-white text-body-03">
+          <View className="items-center w-full gap-2 py-2">
+            <Text className="w-full text-center text-white font-sans text-body-03">
               정말 스티커 생성을 종료하시겠습니까?
             </Text>
-            <Text className="text-center text-gray-500 text-caption-01">
+            <Text className="max-w-[232px] text-center text-gray-500 font-sans text-caption-01">
               {'종료를 누르시면 모든 작업이 즉시 중단되며,\n이 상태는 복구할 수 없습니다.'}
             </Text>
           </View>
@@ -43,7 +43,7 @@ export function CancelAnalysisModal({
               disabled={canceling}
               onPress={onCancel}
             >
-              <Text className="text-white text-body-03">취소</Text>
+              <Text className="text-white font-sans text-body-03">취소</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -51,7 +51,7 @@ export function CancelAnalysisModal({
               disabled={canceling}
               onPress={onConfirm}
             >
-              <Text className="text-black text-body-03">종료</Text>
+              <Text className="text-black font-sans text-body-03">종료</Text>
             </Pressable>
           </View>
         </View>

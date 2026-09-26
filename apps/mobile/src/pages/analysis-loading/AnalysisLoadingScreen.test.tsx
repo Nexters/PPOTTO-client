@@ -114,6 +114,7 @@ jest.mock('@/features/photo-upload', () => ({
     getLastSeenLoadingPhase: jest.fn(),
     getCurrentJobId: jest.fn(),
     getMotionPhotoCount: jest.fn(),
+    getUploadMode: jest.fn(),
     getMotionPhotosForWeb: jest.fn(),
     getViewState: jest.fn(),
     isCurrentJob: jest.fn(),
@@ -133,6 +134,7 @@ const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
     getCurrentJobId: jest.Mock;
     getLastSeenLoadingPhase: jest.Mock;
     getMotionPhotoCount: jest.Mock;
+    getUploadMode: jest.Mock;
     getMotionPhotosForWeb: jest.Mock;
     getViewState: jest.Mock;
     isCurrentJob: jest.Mock;
@@ -158,6 +160,7 @@ beforeEach(() => {
   photoUploadService.getCurrentJobId.mockReturnValue('job-1');
   photoUploadService.getLastSeenLoadingPhase.mockResolvedValue(undefined);
   photoUploadService.getMotionPhotoCount.mockReturnValue(100);
+  photoUploadService.getUploadMode.mockReturnValue(undefined);
   photoUploadService.getMotionPhotosForWeb.mockResolvedValue([
     { id: 'photo-1', uri: 'data:image/jpeg;base64,AA==', width: 1200, height: 800 },
   ]);
@@ -267,6 +270,26 @@ it('분석 취소가 완료되면 빈 사진 선택 화면으로 이동한다', 
     expect(router.replace).toHaveBeenCalledWith({
       pathname: '/photo-select',
       params: { boardId: 'board-1' },
+    });
+  });
+});
+
+it('추가 업로드 취소 후에는 추가 사진 선택 화면으로 이동한다', async () => {
+  const user = userEvent.setup();
+  photoUploadService.getUploadMode.mockReturnValue('additional');
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  await user.press(screen.getByRole('button', { name: '뒤로가기' }));
+  await user.press(screen.getByRole('button', { name: '종료' }));
+
+  await waitFor(() => {
+    expect(router.replace).toHaveBeenCalledWith({
+      pathname: '/photo-select',
+      params: { boardId: 'board-1', mode: 'additional' },
     });
   });
 });

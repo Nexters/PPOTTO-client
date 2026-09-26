@@ -381,6 +381,8 @@ export const photoUploadService = {
 
   getMotionPhotoCount: () => motionPhotoCount,
 
+  getUploadMode: () => uploadMode,
+
   isCompletedRecovery: () => completedRecovery,
 
   getMotionPhotosForWeb,
@@ -509,6 +511,7 @@ export const photoUploadService = {
 
   clearCurrent() {
     completedRecovery = false;
+    uploadMode = undefined;
     currentUpload = null;
     currentJobId = null;
     motionPhotos = [];
@@ -527,6 +530,7 @@ export const photoUploadService = {
     completedRecovery = false;
     await storage.clearJob();
     await clearLastSeenLoadingPhase();
+    uploadMode = undefined;
     currentUpload = null;
     currentJobId = null;
     motionPhotos = [];
@@ -545,6 +549,7 @@ export const photoUploadService = {
     const result = await discardSavedPhotoUpload(dependencies, viewState.analysisId);
     if (result === 'DISCARDED') {
       completedRecovery = false;
+      uploadMode = undefined;
       await clearLastSeenLoadingPhase().catch((error) =>
         logPhotoUploadError('취소된 분석의 로딩 단계 정리 실패', error),
       );
