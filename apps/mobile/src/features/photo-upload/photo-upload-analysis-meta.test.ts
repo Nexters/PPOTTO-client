@@ -225,6 +225,55 @@ it.each([
   },
 );
 
+it('취소된 작업의 지연 실패를 무시한다', async () => {
+  const { analysisApi, photoUploadService, start, discardSavedPhotoUpload } = setup();
+  const { logPhotoUploadError } = jest.requireMock('./lib/photo-upload-log') as {
+    logPhotoUploadError: jest.Mock;
+  };
+  analysisApi.create.mockResolvedValue({ analysisId: 'analysis-1', uploads: [] });
+
+  let resolvePoll: (analysis: {
+    id: string;
+    notificationRequested: boolean;
+    progress: number;
+    status: 'FAILED';
+  }) => void = () => undefined;
+  let reachedPoll: () => void = () => undefined;
+  const reachedPollPromise = new Promise<void>((resolve) => {
+    reachedPoll = resolve;
+  });
+  analysisApi.get.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        resolvePoll = resolve;
+        reachedPoll();
+      }),
+  );
+
+  const upload = start();
+  await reachedPollPromise;
+  discardSavedPhotoUpload.mockResolvedValue('DISCARDED');
+  await photoUploadService.discard();
+
+  resolvePoll({
+    id: 'analysis-1',
+    notificationRequested: false,
+    progress: 100,
+    status: 'FAILED',
+  });
+  await expect(upload).rejects.toThrow();
+
+  expect(photoUploadService.getViewState()).toMatchObject({
+    analysisId: null,
+    progress: 0,
+    status: 'UPLOADING',
+  });
+  expect(logPhotoUploadError).not.toHaveBeenCalledWith(
+    expect.stringMatching(/^#\d+ 실패/),
+    expect.anything(),
+  );
+});
+
 it('현재 분석이 없으면 서버 상태를 조회하지 않는다', async () => {
   const { analysisApi, photoUploadService } = setup();
 
