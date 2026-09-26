@@ -112,7 +112,7 @@ export function BoardScreen() {
   const cancelRetry = async () => {
     const result = await photoUploadService.discard();
     if (result === 'RETRY') return;
-    if (result === 'ANALYZING') {
+    if (result === 'NO_LONGER_ACTIVE') {
       openLoadingScreen();
       return;
     }
@@ -125,7 +125,7 @@ export function BoardScreen() {
     }
     const result = await photoUploadService.discard();
     if (result === 'RETRY') return;
-    if (result === 'ANALYZING') {
+    if (result === 'NO_LONGER_ACTIVE') {
       openLoadingScreen();
       return;
     }

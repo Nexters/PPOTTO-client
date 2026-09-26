@@ -161,7 +161,7 @@ it('실패 후 서버 분석이 이미 시작됐다면 로컬 작업을 보존�
   const user = userEvent.setup();
   photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));
   photoUploadService.getViewState.mockReturnValue({ progress: 30, status: 'FAILED' });
-  photoUploadService.discard.mockResolvedValue('ANALYZING');
+  photoUploadService.discard.mockResolvedValue('NO_LONGER_ACTIVE');
 
   await render(<BoardScreen />);
   await user.press(screen.getByRole('button', { name: '취소' }));

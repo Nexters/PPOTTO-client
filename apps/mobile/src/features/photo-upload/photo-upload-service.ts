@@ -542,13 +542,24 @@ export const photoUploadService = {
   },
 
   async discard() {
-    completedRecovery = false;
-    currentUpload = null;
-    currentJobId = null;
     const result = await discardSavedPhotoUpload(dependencies);
     if (result === 'DISCARDED') {
-      await clearLastSeenLoadingPhase();
-      viewState = { ...viewState, analysisId: null, notificationRequested: false };
+      completedRecovery = false;
+      await clearLastSeenLoadingPhase().catch((error) =>
+        logPhotoUploadError('취소된 분석의 로딩 단계 정리 실패', error),
+      );
+      currentUpload = null;
+      currentJobId = null;
+      motionPhotos = [];
+      motionPhotoCount = 0;
+      webMotionPhotos = null;
+      motionPhotosReady = Promise.resolve();
+      viewState = {
+        analysisId: null,
+        notificationRequested: false,
+        progress: 0,
+        status: 'UPLOADING',
+      };
       listeners.forEach((listener) => listener());
     }
     return result;

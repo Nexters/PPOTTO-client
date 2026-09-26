@@ -197,11 +197,12 @@ it('재진입 직후, 폴링 응답 전에도 서버의 신청 상태를 즉시 
 });
 
 it.each([
-  ['DISCARDED', null, false],
-  ['ANALYZING', 'analysis-1', true],
+  ['DISCARDED', null, false, false, null, 0],
+  ['NO_LONGER_ACTIVE', 'analysis-1', true, true, 'job-1', 1],
+  ['RETRY', 'analysis-1', true, true, 'job-1', 1],
 ] as const)(
   '폐기 결과가 %s이면 분석 정보를 그에 맞게 처리한다',
-  async (result, analysisId, notificationRequested) => {
+  async (result, analysisId, notificationRequested, hasCurrent, jobId, photoCount) => {
     const { analysisApi, photoUploadService, start, discardSavedPhotoUpload } = setup();
     analysisApi.create.mockResolvedValue({ analysisId: 'analysis-1', uploads: [] });
     analysisApi.get.mockResolvedValue({
@@ -217,6 +218,9 @@ it.each([
     await photoUploadService.discard();
 
     expect(photoUploadService.getViewState()).toMatchObject({ analysisId, notificationRequested });
+    expect(photoUploadService.getCurrent() !== null).toBe(hasCurrent);
+    expect(photoUploadService.getCurrentJobId()).toBe(jobId);
+    expect(photoUploadService.getMotionPhotoCount()).toBe(photoCount);
   },
 );
 
