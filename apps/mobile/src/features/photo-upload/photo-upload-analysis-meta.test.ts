@@ -197,11 +197,12 @@ it('재진입 직후, 폴링 응답 전에도 서버의 신청 상태를 즉시 
 });
 
 it.each([
-  ['DISCARDED', null, false],
-  ['ANALYZING', 'analysis-1', true],
+  ['DISCARDED', null, false, false, null, 0],
+  ['NO_LONGER_ACTIVE', 'analysis-1', true, true, 'job-1', 1],
+  ['RETRY', 'analysis-1', true, true, 'job-1', 1],
 ] as const)(
   '폐기 결과가 %s이면 분석 정보를 그에 맞게 처리한다',
-  async (result, analysisId, notificationRequested) => {
+  async (result, analysisId, notificationRequested, hasCurrent, jobId, photoCount) => {
     const { analysisApi, photoUploadService, start, discardSavedPhotoUpload } = setup();
     analysisApi.create.mockResolvedValue({ analysisId: 'analysis-1', uploads: [] });
     analysisApi.get.mockResolvedValue({
@@ -216,9 +217,62 @@ it.each([
     discardSavedPhotoUpload.mockResolvedValue(result);
     await photoUploadService.discard();
 
+    expect(discardSavedPhotoUpload).toHaveBeenCalledWith(expect.any(Object), 'analysis-1');
     expect(photoUploadService.getViewState()).toMatchObject({ analysisId, notificationRequested });
+    expect(photoUploadService.getCurrent() !== null).toBe(hasCurrent);
+    expect(photoUploadService.getCurrentJobId()).toBe(jobId);
+    expect(photoUploadService.getMotionPhotoCount()).toBe(photoCount);
   },
 );
+
+it('취소된 작업의 지연 실패를 무시한다', async () => {
+  const { analysisApi, photoUploadService, start, discardSavedPhotoUpload } = setup();
+  const { logPhotoUploadError } = jest.requireMock('./lib/photo-upload-log') as {
+    logPhotoUploadError: jest.Mock;
+  };
+  analysisApi.create.mockResolvedValue({ analysisId: 'analysis-1', uploads: [] });
+
+  let resolvePoll: (analysis: {
+    id: string;
+    notificationRequested: boolean;
+    progress: number;
+    status: 'FAILED';
+  }) => void = () => undefined;
+  let reachedPoll: () => void = () => undefined;
+  const reachedPollPromise = new Promise<void>((resolve) => {
+    reachedPoll = resolve;
+  });
+  analysisApi.get.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        resolvePoll = resolve;
+        reachedPoll();
+      }),
+  );
+
+  const upload = start();
+  await reachedPollPromise;
+  discardSavedPhotoUpload.mockResolvedValue('DISCARDED');
+  await photoUploadService.discard();
+
+  resolvePoll({
+    id: 'analysis-1',
+    notificationRequested: false,
+    progress: 100,
+    status: 'FAILED',
+  });
+  await expect(upload).rejects.toThrow();
+
+  expect(photoUploadService.getViewState()).toMatchObject({
+    analysisId: null,
+    progress: 0,
+    status: 'UPLOADING',
+  });
+  expect(logPhotoUploadError).not.toHaveBeenCalledWith(
+    expect.stringMatching(/^#\d+ 실패/),
+    expect.anything(),
+  );
+});
 
 it('현재 분석이 없으면 서버 상태를 조회하지 않는다', async () => {
   const { analysisApi, photoUploadService } = setup();

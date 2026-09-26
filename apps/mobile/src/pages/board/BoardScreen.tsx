@@ -112,7 +112,7 @@ export function BoardScreen() {
   const cancelRetry = async () => {
     const result = await photoUploadService.discard();
     if (result === 'RETRY') return;
-    if (result === 'ANALYZING') {
+    if (result === 'NO_LONGER_ACTIVE') {
       openLoadingScreen();
       return;
     }
@@ -123,13 +123,22 @@ export function BoardScreen() {
     if (screenState.status === 'FAILED' && screenState.failure) {
       track('analysis_retry_clicked', { failure_kind: screenState.failure.kind });
     }
+    const uploadMode = photoUploadService.getUploadMode();
     const result = await photoUploadService.discard();
     if (result === 'RETRY') return;
-    if (result === 'ANALYZING') {
+    if (result === 'NO_LONGER_ACTIVE') {
       openLoadingScreen();
       return;
     }
-    if (boardId) router.replace({ pathname: '/photo-select', params: { boardId } });
+    if (boardId) {
+      router.replace({
+        pathname: '/photo-select',
+        params: {
+          boardId,
+          ...(uploadMode === 'additional' ? { mode: 'additional' } : {}),
+        },
+      });
+    }
   };
 
   const confirmPending = openLoadingScreen;

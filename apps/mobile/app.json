@@ -12,7 +12,10 @@
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.ppotto.mobile",
       "buildNumber": "1",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "entitlements": {
+        "aps-environment": "production"
+      }
     },
     "android": {
       "icon": "./assets/ppotto-icon.png",

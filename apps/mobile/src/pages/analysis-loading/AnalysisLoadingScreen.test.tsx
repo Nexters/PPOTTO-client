@@ -1,5 +1,6 @@
 import type { AnalysisLoadingBridgeState, AnalysisLoadingPhaseState } from '@ppotto/bridge';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
+import { BackHandler, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnalysisLoadingScreen } from './AnalysisLoadingScreen';
@@ -107,11 +108,13 @@ jest.mock('@/shared/ui/AppWebView', () => {
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: {
     clearCurrent: jest.fn(),
+    discard: jest.fn(),
     finish: jest.fn(),
     getCurrent: jest.fn(),
     getLastSeenLoadingPhase: jest.fn(),
     getCurrentJobId: jest.fn(),
     getMotionPhotoCount: jest.fn(),
+    getUploadMode: jest.fn(),
     getMotionPhotosForWeb: jest.fn(),
     getViewState: jest.fn(),
     isCurrentJob: jest.fn(),
@@ -125,11 +128,13 @@ jest.mock('@/features/photo-upload', () => ({
 
 const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
   photoUploadService: {
+    discard: jest.Mock;
     finish: jest.Mock;
     getCurrent: jest.Mock;
     getCurrentJobId: jest.Mock;
     getLastSeenLoadingPhase: jest.Mock;
     getMotionPhotoCount: jest.Mock;
+    getUploadMode: jest.Mock;
     getMotionPhotosForWeb: jest.Mock;
     getViewState: jest.Mock;
     isCurrentJob: jest.Mock;
@@ -155,6 +160,7 @@ beforeEach(() => {
   photoUploadService.getCurrentJobId.mockReturnValue('job-1');
   photoUploadService.getLastSeenLoadingPhase.mockResolvedValue(undefined);
   photoUploadService.getMotionPhotoCount.mockReturnValue(100);
+  photoUploadService.getUploadMode.mockReturnValue(undefined);
   photoUploadService.getMotionPhotosForWeb.mockResolvedValue([
     { id: 'photo-1', uri: 'data:image/jpeg;base64,AA==', width: 1200, height: 800 },
   ]);
@@ -162,6 +168,7 @@ beforeEach(() => {
   photoUploadService.isCurrentJob.mockImplementation((jobId) => jobId === 'job-1');
   photoUploadService.isCompletedRecovery.mockReturnValue(false);
   photoUploadService.refreshNow.mockResolvedValue(undefined);
+  photoUploadService.discard.mockResolvedValue('DISCARDED');
   photoUploadService.setLastSeenLoadingPhase.mockResolvedValue(undefined);
 });
 
@@ -180,6 +187,192 @@ it('완료 상태로 복구하면 결과 확인 버튼을 바로 표시한다', 
 
   expect(screen.getByRole('button', { name: '결과 확인하기' })).toBeOnTheScreen();
   expect(screen.queryByText('결과 알림 받기')).not.toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: '뒤로가기' })).not.toBeOnTheScreen();
+});
+
+it('로딩 중 뒤로가기 버튼을 누르면 종료 확인 모달을 표시하고 취소로 닫는다', async () => {
+  const user = userEvent.setup();
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await user.press(screen.getByRole('button', { name: '뒤로가기' }));
+  expect(screen.getByText('정말 스티커 생성을 종료하시겠습니까?')).toBeOnTheScreen();
+
+  await user.press(screen.getByRole('button', { name: '취소' }));
+  expect(screen.queryByText('정말 스티커 생성을 종료하시겠습니까?')).not.toBeOnTheScreen();
+  expect(photoUploadService.discard).not.toHaveBeenCalled();
+});
+
+it('종료 모달이 열린 동안 로딩 연출이 완료되면 모달을 닫고 취소를 차단한다', async () => {
+  const user = userEvent.setup();
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await act(async () => {
+    await loadingBridgeHandlers!.GET_ANALYSIS_LOADING_STATE();
+    for (const phase of ['SCAN', 'GROUP', 'ASSEMBLE', 'DECK'] as const) {
+      loadingBridgeHandlers!.ANALYSIS_LOADING_PHASE_FINISHED({ jobId: 'job-1', phase });
+    }
+  });
+
+  await user.press(screen.getByRole('button', { name: '뒤로가기' }));
+  expect(screen.getByText('정말 스티커 생성을 종료하시겠습니까?')).toBeOnTheScreen();
+  await act(async () => {
+    loadingBridgeHandlers!.ANALYSIS_LOADING_REVEAL_FINISHED({ jobId: 'job-1' });
+  });
+
+  expect(screen.queryByText('정말 스티커 생성을 종료하시겠습니까?')).not.toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '결과 확인하기' })).toBeOnTheScreen();
+  expect(photoUploadService.discard).not.toHaveBeenCalled();
+});
+
+it('Android 하드웨어 뒤로가기도 종료 확인 모달로 연결한다', async () => {
+  let hardwareBackHandler: (() => boolean | null | undefined) | undefined;
+  const platformReplacement = jest.replaceProperty(Platform, 'OS', 'android');
+  const backHandlerSpy = jest
+    .spyOn(BackHandler, 'addEventListener')
+    .mockImplementation((_event, handler) => {
+      hardwareBackHandler = handler;
+      return { remove: jest.fn() };
+    });
+
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  try {
+    await waitFor(() => expect(hardwareBackHandler).toBeDefined());
+    await act(async () => void hardwareBackHandler?.());
+    expect(screen.getByText('정말 스티커 생성을 종료하시겠습니까?')).toBeOnTheScreen();
+  } finally {
+    backHandlerSpy.mockRestore();
+    platformReplacement.restore();
+  }
+});
+
+it('분석 취소가 완료되면 빈 사진 선택 화면으로 이동한다', async () => {
+  const user = userEvent.setup();
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  await user.press(screen.getByRole('button', { name: '뒤로가기' }));
+  await user.press(screen.getByRole('button', { name: '종료' }));
+
+  await waitFor(() => {
+    expect(router.replace).toHaveBeenCalledWith({
+      pathname: '/photo-select',
+      params: { boardId: 'board-1' },
+    });
+  });
+});
+
+it('추가 업로드 취소 후에는 추가 사진 선택 화면으로 이동한다', async () => {
+  const user = userEvent.setup();
+  photoUploadService.getUploadMode.mockReturnValue('additional');
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  await user.press(screen.getByRole('button', { name: '뒤로가기' }));
+  await user.press(screen.getByRole('button', { name: '종료' }));
+
+  await waitFor(() => {
+    expect(router.replace).toHaveBeenCalledWith({
+      pathname: '/photo-select',
+      params: { boardId: 'board-1', mode: 'additional' },
+    });
+  });
+});
+
+it('분석 종료 요청 중에는 중복 요청을 보내지 않는다', async () => {
+  const user = userEvent.setup();
+  photoUploadService.discard.mockReturnValue(new Promise(() => undefined));
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  await user.press(screen.getByRole('button', { name: '뒤로가기' }));
+  const confirmButton = screen.getByRole('button', { name: '종료' });
+  await user.press(confirmButton);
+  await user.press(confirmButton);
+
+  expect(photoUploadService.discard).toHaveBeenCalledTimes(1);
+});
+
+it('취소 전에 분석이 종료됐으면 최신 서버 상태를 다시 반영한다', async () => {
+  const user = userEvent.setup();
+  photoUploadService.discard.mockResolvedValue('NO_LONGER_ACTIVE');
+  photoUploadService.getViewState.mockReturnValue({
+    analysisId: 'analysis-1',
+    notificationRequested: false,
+    progress: 100,
+    status: 'COMPLETED',
+  });
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  await user.press(screen.getByRole('button', { name: '뒤로가기' }));
+  await user.press(screen.getByRole('button', { name: '종료' }));
+
+  await waitFor(() => expect(photoUploadService.refreshNow).toHaveBeenCalledTimes(1));
+  expect(mockToast).toHaveBeenCalledWith('이미 스티커 생성이 완료되었어요.');
+  expect(router.replace).not.toHaveBeenCalledWith(
+    expect.objectContaining({ pathname: '/photo-select' }),
+  );
+});
+
+it('분석 취소에 실패하면 현재 화면을 유지하고 다시 시도하도록 안내한다', async () => {
+  const user = userEvent.setup();
+  photoUploadService.discard.mockResolvedValue('RETRY');
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  await user.press(screen.getByRole('button', { name: '뒤로가기' }));
+  await user.press(screen.getByRole('button', { name: '종료' }));
+
+  await waitFor(() =>
+    expect(mockToast).toHaveBeenCalledWith('작업을 종료하지 못했어요. 다시 시도해 주세요.'),
+  );
+  expect(router.replace).not.toHaveBeenCalledWith(
+    expect.objectContaining({ pathname: '/photo-select' }),
+  );
+});
+
+it('이전 작업이 늦게 실패해도 현재 화면을 이동시키지 않는다', async () => {
+  let rejectCurrent: (error: Error) => void = () => undefined;
+  photoUploadService.getCurrent.mockReturnValue(
+    new Promise<void>((_resolve, reject) => {
+      rejectCurrent = reject;
+    }),
+  );
+  photoUploadService.isCurrentJob.mockReturnValue(false);
+
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+  await act(async () => rejectCurrent(new Error('stale polling failure')));
+
+  expect(router.replace).not.toHaveBeenCalled();
 });
 
 it('서버가 완료돼도 모든 막을 순서대로 재생한 뒤에만 결과를 연다', async () => {

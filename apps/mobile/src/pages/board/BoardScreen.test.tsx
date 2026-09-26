@@ -33,6 +33,7 @@ jest.mock('@/features/photo-upload', () => ({
     discard: jest.fn(),
     getCurrent: jest.fn(),
     getMotionPhotosForWeb: jest.fn(),
+    getUploadMode: jest.fn(),
     getViewState: jest.fn(),
     getRecoveryStatus: jest.fn(),
     resume: jest.fn(),
@@ -47,6 +48,7 @@ const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
     discard: jest.Mock;
     getCurrent: jest.Mock;
     getMotionPhotosForWeb: jest.Mock;
+    getUploadMode: jest.Mock;
     getViewState: jest.Mock;
     getRecoveryStatus: jest.Mock;
     resume: jest.Mock;
@@ -59,6 +61,7 @@ beforeEach(() => {
   mockSearchParams = { boardId: 'board-1' };
   photoUploadService.getCurrent.mockReturnValue(null);
   photoUploadService.getMotionPhotosForWeb.mockResolvedValue([]);
+  photoUploadService.getUploadMode.mockReturnValue(undefined);
   photoUploadService.getViewState.mockReturnValue({ progress: 0, status: 'UPLOADING' });
   photoUploadService.getRecoveryStatus.mockResolvedValue('NONE');
 });
@@ -161,7 +164,7 @@ it('실패 후 서버 분석이 이미 시작됐다면 로컬 작업을 보존�
   const user = userEvent.setup();
   photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));
   photoUploadService.getViewState.mockReturnValue({ progress: 30, status: 'FAILED' });
-  photoUploadService.discard.mockResolvedValue('ANALYZING');
+  photoUploadService.discard.mockResolvedValue('NO_LONGER_ACTIVE');
 
   await render(<BoardScreen />);
   await user.press(screen.getByRole('button', { name: '취소' }));
@@ -170,5 +173,21 @@ it('실패 후 서버 분석이 이미 시작됐다면 로컬 작업을 보존�
   expect(router.replace).toHaveBeenCalledWith({
     pathname: '/analysis-loading',
     params: { boardId: 'board-1' },
+  });
+});
+
+it('추가 업로드 실패 후에는 추가 사진 선택 화면으로 이동한다', async () => {
+  const user = userEvent.setup();
+  photoUploadService.getCurrent.mockReturnValue(new Promise(() => undefined));
+  photoUploadService.getViewState.mockReturnValue({ progress: 30, status: 'FAILED' });
+  photoUploadService.getUploadMode.mockReturnValue('additional');
+  photoUploadService.discard.mockResolvedValue('DISCARDED');
+
+  await render(<BoardScreen />);
+  await user.press(screen.getByRole('button', { name: '다시 시도' }));
+
+  expect(router.replace).toHaveBeenCalledWith({
+    pathname: '/photo-select',
+    params: { boardId: 'board-1', mode: 'additional' },
   });
 });

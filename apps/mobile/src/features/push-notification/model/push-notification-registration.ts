@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import { analysisApi } from '@/entities/analysis/api/analysis-api';
 import { deviceTokenApi } from '@/entities/notification';
 
@@ -16,7 +18,11 @@ export async function registerPushNotification(): Promise<PushNotificationRegist
   if (permission !== 'granted') return { status: permission };
 
   const [deviceId, fcmToken] = await Promise.all([getOrCreateDeviceId(), getFcmToken()]);
-  await deviceTokenApi.register({ deviceId, platform: 'ANDROID', fcmToken });
+  await deviceTokenApi.register({
+    deviceId,
+    platform: Platform.OS === 'ios' ? 'IOS' : 'ANDROID',
+    fcmToken,
+  });
   return { status: 'registered' };
 }
 

@@ -1,8 +1,25 @@
+import {
+  AuthorizationStatus,
+  getMessaging,
+  requestPermission,
+} from '@react-native-firebase/messaging';
 import { Linking, PermissionsAndroid, Platform } from 'react-native';
 
 export type NotificationPermission = 'granted' | 'denied' | 'blocked' | 'unsupported';
 
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (Platform.OS === 'ios') {
+    const status = await requestPermission(getMessaging());
+    if (
+      status === AuthorizationStatus.AUTHORIZED ||
+      status === AuthorizationStatus.PROVISIONAL ||
+      status === AuthorizationStatus.EPHEMERAL
+    ) {
+      return 'granted';
+    }
+    return status === AuthorizationStatus.DENIED ? 'blocked' : 'denied';
+  }
+
   if (Platform.OS !== 'android') return 'unsupported';
   if (Number(Platform.Version) < 33) return 'granted';
 

@@ -1,4 +1,4 @@
-import { NetworkError } from '@ppotto/api';
+import { HttpError, NetworkError } from '@ppotto/api';
 
 import {
   createUploadAnalysis,
@@ -28,7 +28,7 @@ export interface StartedPhotoUpload {
   status: UploadRunResult;
 }
 
-export type DiscardUploadResult = 'DISCARDED' | 'ANALYZING' | 'RETRY';
+export type DiscardUploadResult = 'DISCARDED' | 'NO_LONGER_ACTIVE' | 'RETRY';
 
 /** 새 작업을 영속 저장한 뒤 분석 생성부터 사진 업로드와 분석 시작까지 실행한다. */
 export async function startPhotoUpload(
@@ -63,18 +63,22 @@ export async function resumeSavedPhotoUpload(
 /** 서버 active 상태와 대조해 진행 전 작업만 취소하고 로컬 작업을 정리한다. */
 export async function discardSavedPhotoUpload(
   dependencies: PhotoUploadServiceDependencies,
+  currentAnalysisId?: string | null,
 ): Promise<DiscardUploadResult> {
-  let active: Awaited<ReturnType<PhotoUploadServiceDependencies['getActiveAnalysis']>>;
+  let targetAnalysisId = currentAnalysisId;
   try {
-    active = await dependencies.getActiveAnalysis();
-    if (active?.status === 'UPLOADING') {
-      await dependencies.cancelAnalysis(active.id);
+    if (!targetAnalysisId) {
+      const active = await dependencies.getActiveAnalysis();
+      if (active?.status === 'UPLOADING' || active?.status === 'ANALYZING') {
+        targetAnalysisId = active.id;
+      }
     }
-  } catch {
-    return 'RETRY';
+    if (targetAnalysisId) {
+      await dependencies.cancelAnalysis(targetAnalysisId);
+    }
+  } catch (error) {
+    return error instanceof HttpError && error.status === 409 ? 'NO_LONGER_ACTIVE' : 'RETRY';
   }
-
-  if (active?.status === 'ANALYZING') return 'ANALYZING';
 
   try {
     await dependencies.clearJob();
