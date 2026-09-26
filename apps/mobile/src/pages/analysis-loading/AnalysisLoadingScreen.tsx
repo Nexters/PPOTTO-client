@@ -276,6 +276,9 @@ export function AnalysisLoadingScreen() {
         router.replace({ pathname: '/board', params: boardId ? { boardId } : undefined });
         return;
       }
+      if (latest.status === 'COMPLETED') {
+        toast('이미 스티커 생성이 완료되었어요.');
+      }
       const next = updateSequence({
         type: 'FOREGROUND_RESYNCED',
         progress: latest.progress,

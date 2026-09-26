@@ -204,6 +204,33 @@ it('서버 취소가 실패하면 로컬 작업을 보존한다', async () => {
   expect(dependencies.clearJob).not.toHaveBeenCalled();
 });
 
+it('현재 분석 ID가 있으면 active 조회 없이 해당 분석을 취소한다', async () => {
+  const snapshot = uploadJob('file:///documents/photo-upload/job-1/a.jpg');
+  const dependencies = dependenciesFor(snapshot, []);
+
+  await expect(discardSavedPhotoUpload(dependencies, 'analysis-current')).resolves.toBe(
+    'DISCARDED',
+  );
+
+  expect(dependencies.getActiveAnalysis).not.toHaveBeenCalled();
+  expect(dependencies.cancelAnalysis).toHaveBeenCalledWith('analysis-current');
+  expect(dependencies.clearJob).toHaveBeenCalledTimes(1);
+});
+
+it('현재 분석이 이미 종료됐으면 로컬 작업을 보존한다', async () => {
+  const snapshot = uploadJob('file:///documents/photo-upload/job-1/a.jpg');
+  const dependencies = dependenciesFor(snapshot, []);
+  dependencies.cancelAnalysis.mockRejectedValue(new HttpError(409, 'ANALYSIS-004', {}));
+
+  await expect(discardSavedPhotoUpload(dependencies, 'analysis-current')).resolves.toBe(
+    'NO_LONGER_ACTIVE',
+  );
+
+  expect(dependencies.getActiveAnalysis).not.toHaveBeenCalled();
+  expect(dependencies.cancelAnalysis).toHaveBeenCalledWith('analysis-current');
+  expect(dependencies.clearJob).not.toHaveBeenCalled();
+});
+
 function dependenciesFor(snapshot: UploadJobSnapshot, events: UploadJobEvent[]) {
   return {
     saveJob: jest.fn(async () => undefined),

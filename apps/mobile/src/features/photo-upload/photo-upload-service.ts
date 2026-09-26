@@ -542,7 +542,7 @@ export const photoUploadService = {
   },
 
   async discard() {
-    const result = await discardSavedPhotoUpload(dependencies);
+    const result = await discardSavedPhotoUpload(dependencies, viewState.analysisId);
     if (result === 'DISCARDED') {
       completedRecovery = false;
       await clearLastSeenLoadingPhase().catch((error) =>

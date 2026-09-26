@@ -63,12 +63,18 @@ export async function resumeSavedPhotoUpload(
 /** 서버 active 상태와 대조해 진행 전 작업만 취소하고 로컬 작업을 정리한다. */
 export async function discardSavedPhotoUpload(
   dependencies: PhotoUploadServiceDependencies,
+  currentAnalysisId?: string | null,
 ): Promise<DiscardUploadResult> {
-  let active: Awaited<ReturnType<PhotoUploadServiceDependencies['getActiveAnalysis']>>;
+  let targetAnalysisId = currentAnalysisId;
   try {
-    active = await dependencies.getActiveAnalysis();
-    if (active?.status === 'UPLOADING' || active?.status === 'ANALYZING') {
-      await dependencies.cancelAnalysis(active.id);
+    if (!targetAnalysisId) {
+      const active = await dependencies.getActiveAnalysis();
+      if (active?.status === 'UPLOADING' || active?.status === 'ANALYZING') {
+        targetAnalysisId = active.id;
+      }
+    }
+    if (targetAnalysisId) {
+      await dependencies.cancelAnalysis(targetAnalysisId);
     }
   } catch (error) {
     return error instanceof HttpError && error.status === 409 ? 'NO_LONGER_ACTIVE' : 'RETRY';

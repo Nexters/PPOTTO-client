@@ -217,6 +217,7 @@ it.each([
     discardSavedPhotoUpload.mockResolvedValue(result);
     await photoUploadService.discard();
 
+    expect(discardSavedPhotoUpload).toHaveBeenCalledWith(expect.any(Object), 'analysis-1');
     expect(photoUploadService.getViewState()).toMatchObject({ analysisId, notificationRequested });
     expect(photoUploadService.getCurrent() !== null).toBe(hasCurrent);
     expect(photoUploadService.getCurrentJobId()).toBe(jobId);

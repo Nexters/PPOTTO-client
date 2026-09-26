@@ -307,6 +307,7 @@ it('취소 전에 분석이 종료됐으면 최신 서버 상태를 다시 반�
   await user.press(screen.getByRole('button', { name: '종료' }));
 
   await waitFor(() => expect(photoUploadService.refreshNow).toHaveBeenCalledTimes(1));
+  expect(mockToast).toHaveBeenCalledWith('이미 스티커 생성이 완료되었어요.');
   expect(router.replace).not.toHaveBeenCalledWith(
     expect.objectContaining({ pathname: '/photo-select' }),
   );
