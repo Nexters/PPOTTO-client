@@ -26,3 +26,7 @@ pnpm 모노레포:
 
 PRD에 없는 제품 정책은 임의로 확정하지 않는다.
 PRD와 현재 구현 또는 요청 내용이 충돌하면 임의로 해석하지 말고 충돌 지점을 먼저 명시한다.
+
+## 벤치마크
+
+- `apps/mobile/src/features/photo-selection/model/` 내부 파일을 추가·수정·삭제한 경우, 커밋 전에 `pnpm --filter mobile bench photo-group`으로 변경 전후 결과를 비교하여 사용자에게 보고한다.
