@@ -30,3 +30,4 @@ PRD와 현재 구현 또는 요청 내용이 충돌하면 임의로 해석하지
 ## 벤치마크
 
 - `apps/mobile/src/features/photo-selection/model/` 내부 파일을 추가·수정·삭제한 경우, 커밋 전에 `pnpm --filter mobile bench photo-group`으로 변경 전후 결과를 비교하여 사용자에게 보고한다.
+- `apps/web/src/pages/board/model/` 내부 파일을 추가·수정·삭제한 경우, 커밋 전에 `pnpm --filter web bench sticker-placement`로 변경 전후 결과를 비교하여 사용자에게 보고한다.
