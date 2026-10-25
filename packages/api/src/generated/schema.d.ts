@@ -609,6 +609,16 @@ export interface components {
             success: boolean;
         };
         /** @description 공통 응답 봉투 */
+        ApiResponseBoardListV2Response: {
+            data?: components["schemas"]["BoardListV2Response"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
         ApiResponseBoardResponse: {
             data?: components["schemas"]["BoardResponse"] | null;
             error?: components["schemas"]["ErrorResponse"] | null;
@@ -741,6 +751,27 @@ export interface components {
              */
             success: boolean;
         };
+        /** @description 보드 종류별 개수 */
+        BoardCountsResponse: {
+            /**
+             * Format: int32
+             * @description 전체 보드 수
+             * @example 10
+             */
+            all: number;
+            /**
+             * Format: int32
+             * @description 개인 보드 수
+             * @example 4
+             */
+            personal: number;
+            /**
+             * Format: int32
+             * @description 공유 보드 수
+             * @example 6
+             */
+            shared: number;
+        };
         /** @description 보드와 배치된 스티커 및 그림 */
         BoardDetailResponse: {
             /** @description 보드와 스티커 위의 그림 목록. v1은 선만 내려간다 */
@@ -777,6 +808,11 @@ export interface components {
             /** @description 보드에 배치된 스티커 목록. v1과 동일 */
             stickers: components["schemas"]["BoardStickerResponse"][];
         };
+        /**
+         * @description PERSONAL 개인 보드 / SHARED 공유 보드
+         * @enum {string}
+         */
+        BoardKind: "PERSONAL" | "SHARED";
         /** @description 보드 편집 결과 일괄 저장 요청. 편집 모드에서 바뀐 것만 보냄 */
         BoardLayoutRequest: {
             drawings?: components["schemas"]["DrawingChangesRequest"] | null;
@@ -788,6 +824,12 @@ export interface components {
             drawings?: components["schemas"]["DrawingChangesV2Request"] | null;
             /** @description 변경된 스티커 배치. v1과 동일 */
             stickers?: components["schemas"]["StickerLayoutRequest"][] | null;
+        };
+        /** @description 보드 홈 목록 (v2). 종류별 개수와 최근 활동순 보드 요약 */
+        BoardListV2Response: {
+            /** @description 보드 요약 목록. lastActivityAt 내림차순, 같으면 id 내림차순 */
+            boards: components["schemas"]["BoardSummaryV2Response"][];
+            counts: components["schemas"]["BoardCountsResponse"];
         };
         /** @description 보드 요약 */
         BoardResponse: {
@@ -803,6 +845,11 @@ export interface components {
              */
             name: string;
         };
+        /**
+         * @description 보드에서 내 역할. OWNER 방장 / MEMBER 참여자
+         * @enum {string}
+         */
+        BoardRole: "OWNER" | "MEMBER";
         /** @description 보드에 배치된 스티커 */
         BoardStickerResponse: {
             /**
@@ -885,6 +932,53 @@ export interface components {
              * @example 3
              */
             zIndex?: number | null;
+        };
+        /** @description 보드 홈 카드에 쓰는 보드 요약 (v2) */
+        BoardSummaryV2Response: {
+            /**
+             * @description 내가 이 보드에서 진행 중인 분석 상태. UPLOADING 업로드 중 / ANALYZING 분석 중 / 진행 중인 분석이 없으면 null
+             * @example ANALYZING
+             * @enum {string|null}
+             */
+            analysisStatus?: "UPLOADING" | "ANALYZING" | null;
+            /**
+             * Format: uuid
+             * @description 보드 ID (uuidv7)
+             * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+             */
+            id: string;
+            kind: components["schemas"]["BoardKind"];
+            /**
+             * Format: date-time
+             * @description 보드의 마지막 활동 시각
+             * @example 2026-07-27T14:03:38+09:00
+             */
+            lastActivityAt: string;
+            /**
+             * @description 카드 배경 그라데이션 색 (#RRGGBB). 스티커가 없으면 null
+             * @example #FC5A57
+             */
+            mainColor?: string | null;
+            /**
+             * @description 보드 이름. 최대 10자
+             * @example 여름 휴가
+             */
+            name: string;
+            /**
+             * Format: int32
+             * @description 보드 참여자 수
+             * @example 1
+             */
+            participantCount: number;
+            /** @description 최신순 이미지 스티커 미리보기 URL. 최대 4개이며 만료가 있음 */
+            previewImageUrls: string[];
+            role: components["schemas"]["BoardRole"];
+            /**
+             * Format: int32
+             * @description 보드의 스티커 수. 이미지와 텍스트 스티커를 모두 셈
+             * @example 13
+             */
+            stickerCount: number;
         };
         /** @description 분석 생성과 사진 업로드 URL 발급 요청 */
         CreateAnalysisRequest: {
@@ -2629,7 +2723,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiResponseListBoardResponse"];
+                    "application/json": components["schemas"]["ApiResponseListBoardResponse"] | components["schemas"]["ApiResponseBoardListV2Response"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */

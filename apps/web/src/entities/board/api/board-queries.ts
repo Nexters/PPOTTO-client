@@ -11,6 +11,12 @@ export const useBoardListQuery = () =>
     queryFn: boardApi.list,
   });
 
+export const useBoardSummaryListQuery = () =>
+  useQuery({
+    queryKey: boardQueryKeys.summaryList(),
+    queryFn: boardApi.listSummaries,
+  });
+
 export const useBoardQuery = (boardId?: string) =>
   useQuery({
     queryKey: boardQueryKeys.detail(boardId),

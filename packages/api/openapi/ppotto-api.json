@@ -1024,7 +1024,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListBoardResponse"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseListBoardResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBoardListV2Response"
+                    }
+                  ]
                 },
                 "examples": {
                   "보드 목록": {
@@ -1041,6 +1048,47 @@
                           "name": "여름 휴가"
                         }
                       ]
+                    }
+                  },
+                  "보드 홈 목록 (v2)": {
+                    "description": "보드 홈 목록 (v2)",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "counts": {
+                          "all": 2,
+                          "personal": 1,
+                          "shared": 1
+                        },
+                        "boards": [
+                          {
+                            "id": "01983f2a-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
+                            "name": "여름 휴가",
+                            "kind": "SHARED",
+                            "role": "MEMBER",
+                            "stickerCount": 32,
+                            "participantCount": 4,
+                            "previewImageUrls": [
+                              "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Expires=3600&X-Goog-Signature=sample"
+                            ],
+                            "mainColor": "#3D74CE",
+                            "lastActivityAt": "2026-07-27T14:03:38+09:00",
+                            "analysisStatus": null
+                          },
+                          {
+                            "id": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                            "name": "Board 7",
+                            "kind": "PERSONAL",
+                            "role": "OWNER",
+                            "stickerCount": 0,
+                            "participantCount": 1,
+                            "previewImageUrls": [],
+                            "mainColor": null,
+                            "lastActivityAt": "2026-07-26T09:12:33+09:00",
+                            "analysisStatus": "ANALYZING"
+                          }
+                        ]
+                      }
                     }
                   }
                 }
@@ -6704,6 +6752,159 @@
           }
         },
         "required": ["success"]
+      },
+      "ApiResponseBoardListV2Response": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardListV2Response"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardListV2Response": {
+        "type": "object",
+        "description": "보드 홈 목록 (v2). 종류별 개수와 최근 활동순 보드 요약",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/BoardCountsResponse"
+          },
+          "boards": {
+            "type": "array",
+            "description": "보드 요약 목록. lastActivityAt 내림차순, 같으면 id 내림차순",
+            "items": {
+              "$ref": "#/components/schemas/BoardSummaryV2Response"
+            }
+          }
+        },
+        "required": ["boards", "counts"]
+      },
+      "BoardCountsResponse": {
+        "type": "object",
+        "description": "보드 종류별 개수",
+        "properties": {
+          "all": {
+            "type": "integer",
+            "format": "int32",
+            "description": "전체 보드 수",
+            "example": 10
+          },
+          "personal": {
+            "type": "integer",
+            "format": "int32",
+            "description": "개인 보드 수",
+            "example": 4
+          },
+          "shared": {
+            "type": "integer",
+            "format": "int32",
+            "description": "공유 보드 수",
+            "example": 6
+          }
+        },
+        "required": ["all", "personal", "shared"]
+      },
+      "BoardSummaryV2Response": {
+        "type": "object",
+        "description": "보드 홈 카드에 쓰는 보드 요약 (v2)",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "보드 ID (uuidv7)",
+            "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          },
+          "name": {
+            "type": "string",
+            "description": "보드 이름. 최대 10자",
+            "example": "여름 휴가"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/BoardKind"
+          },
+          "role": {
+            "$ref": "#/components/schemas/BoardRole"
+          },
+          "stickerCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보드의 스티커 수. 이미지와 텍스트 스티커를 모두 셈",
+            "example": 13
+          },
+          "participantCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보드 참여자 수",
+            "example": 1
+          },
+          "previewImageUrls": {
+            "type": "array",
+            "description": "최신순 이미지 스티커 미리보기 URL. 최대 4개이며 만료가 있음",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mainColor": {
+            "type": ["string", "null"],
+            "description": "카드 배경 그라데이션 색 (#RRGGBB). 스티커가 없으면 null",
+            "example": "#FC5A57"
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "보드의 마지막 활동 시각",
+            "example": "2026-07-27T14:03:38+09:00"
+          },
+          "analysisStatus": {
+            "type": ["string", "null"],
+            "description": "내가 이 보드에서 진행 중인 분석 상태. UPLOADING 업로드 중 / ANALYZING 분석 중 / 진행 중인 분석이 없으면 null",
+            "enum": ["UPLOADING", "ANALYZING"],
+            "example": "ANALYZING"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "lastActivityAt",
+          "name",
+          "participantCount",
+          "previewImageUrls",
+          "role",
+          "stickerCount"
+        ]
+      },
+      "BoardKind": {
+        "type": "string",
+        "description": "PERSONAL 개인 보드 / SHARED 공유 보드",
+        "enum": ["PERSONAL", "SHARED"]
+      },
+      "BoardRole": {
+        "type": "string",
+        "description": "보드에서 내 역할. OWNER 방장 / MEMBER 참여자",
+        "enum": ["OWNER", "MEMBER"]
       },
       "ApiResponseBoardDetailV2Response": {
         "type": "object",
