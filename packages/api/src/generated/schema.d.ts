@@ -221,7 +221,7 @@ export interface paths {
         };
         /**
          * 내 보드 목록 조회
-         * @description 보드 선택 드롭다운에 사용할 활성 보드 목록을 반환함. id(uuidv7) 오름차순이 생성순
+         * @description 보드 선택 드롭다운에 사용할 내가 만든 활성 보드 목록을 반환함. 참여한 보드는 포함하지 않음. id(uuidv7) 오름차순이 생성순
          */
         get: operations["list"];
         put?: never;
@@ -751,24 +751,24 @@ export interface components {
              */
             success: boolean;
         };
-        /** @description 보드 종류별 개수 */
+        /** @description 탭별 보드 개수 */
         BoardCountsResponse: {
             /**
              * Format: int32
-             * @description 전체 보드 수
-             * @example 10
+             * @description 전체 탭. personal + shared
+             * @example 3
              */
             all: number;
             /**
              * Format: int32
-             * @description 개인 보드 수
-             * @example 4
+             * @description 개인 탭
+             * @example 2
              */
             personal: number;
             /**
              * Format: int32
-             * @description 공유 보드 수
-             * @example 6
+             * @description 공동 탭
+             * @example 1
              */
             shared: number;
         };
@@ -809,7 +809,7 @@ export interface components {
             stickers: components["schemas"]["BoardStickerResponse"][];
         };
         /**
-         * @description PERSONAL 개인 보드 / SHARED 공유 보드
+         * @description 보드 종류. 참여자가 한 명이라도 있으면 SHARED
          * @enum {string}
          */
         BoardKind: "PERSONAL" | "SHARED";
@@ -825,10 +825,11 @@ export interface components {
             /** @description 변경된 스티커 배치. v1과 동일 */
             stickers?: components["schemas"]["StickerLayoutRequest"][] | null;
         };
-        /** @description 보드 홈 목록 (v2). 종류별 개수와 최근 활동순 보드 요약 */
+        /** @description 홈 보드 목록과 탭별 개수 (v2) */
         BoardListV2Response: {
-            /** @description 보드 요약 목록. lastActivityAt 내림차순, 같으면 id 내림차순 */
+            /** @description 보드 카드 목록. lastActivityAt 내림차순, 같으면 id 내림차순 */
             boards: components["schemas"]["BoardSummaryV2Response"][];
+            /** @description 탭별 보드 개수 */
             counts: components["schemas"]["BoardCountsResponse"];
         };
         /** @description 보드 요약 */
@@ -846,7 +847,7 @@ export interface components {
             name: string;
         };
         /**
-         * @description 보드에서 내 역할. OWNER 방장 / MEMBER 참여자
+         * @description 요청한 사용자의 보드 내 역할. 방장은 boards.user_id, 참여자는 board_members
          * @enum {string}
          */
         BoardRole: "OWNER" | "MEMBER";
@@ -933,10 +934,10 @@ export interface components {
              */
             zIndex?: number | null;
         };
-        /** @description 보드 홈 카드에 쓰는 보드 요약 (v2) */
+        /** @description 홈 보드 카드 (v2) */
         BoardSummaryV2Response: {
             /**
-             * @description 내가 이 보드에서 진행 중인 분석 상태. UPLOADING 업로드 중 / ANALYZING 분석 중 / 진행 중인 분석이 없으면 null
+             * @description 이 보드에서 진행 중인 내 분석의 상태. 다른 참여자의 분석은 보이지 않으며 없으면 null
              * @example ANALYZING
              * @enum {string|null}
              */
@@ -947,36 +948,44 @@ export interface components {
              * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
              */
             id: string;
+            /**
+             * @description 보드 종류. 참여자가 한 명이라도 있으면 SHARED
+             * @example SHARED
+             */
             kind: components["schemas"]["BoardKind"];
             /**
              * Format: date-time
-             * @description 보드의 마지막 활동 시각
-             * @example 2026-07-27T14:03:38+09:00
+             * @description 마지막 활동 시각. 삭제되지 않은 스티커 중 가장 최근에 보드에 추가된 스티커의 생성 시각이며, 스티커가 없으면 보드 생성 시각. 리캡 열람이나 공유 설정 변경으로는 바뀌지 않음
+             * @example 2026-10-20T12:40:05Z
              */
             lastActivityAt: string;
             /**
-             * @description 카드 배경 그라데이션 색 (#RRGGBB). 스티커가 없으면 null
-             * @example #FC5A57
+             * @description 가장 최근 이미지형 스티커의 메인 컬러. 이미지형 스티커가 없으면 null
+             * @example #FF6B6B
              */
             mainColor?: string | null;
             /**
-             * @description 보드 이름. 최대 10자
+             * @description 보드 이름
              * @example 여름 휴가
              */
             name: string;
             /**
              * Format: int32
-             * @description 보드 참여자 수
-             * @example 1
+             * @description 참여 인원. 방장 1명 + 참여자 수
+             * @example 3
              */
             participantCount: number;
-            /** @description 최신순 이미지 스티커 미리보기 URL. 최대 4개이며 만료가 있음 */
+            /** @description 최근 이미지형 스티커의 읽기용 signed URL. 최신순 최대 4개이며 없으면 빈 배열 (만료 1시간) */
             previewImageUrls: string[];
+            /**
+             * @description 요청한 사용자의 역할. 방장이면 OWNER, 참여자면 MEMBER
+             * @example OWNER
+             */
             role: components["schemas"]["BoardRole"];
             /**
              * Format: int32
-             * @description 보드의 스티커 수. 이미지와 텍스트 스티커를 모두 셈
-             * @example 13
+             * @description 삭제되지 않은 스티커 수. 이미지형과 텍스트형을 모두 센다
+             * @example 12
              */
             stickerCount: number;
         };
