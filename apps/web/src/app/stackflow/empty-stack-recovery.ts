@@ -6,8 +6,7 @@ import { uuidv7 } from '@/shared/lib/uuidv7';
 
 import { countAliveActivities, summarizeStack } from './stack-summary';
 
-// TODO: 보드를 여러 개 만들 수 있게 되면 어느 보드로 복구할지 다시 정한다
-const RECOVERY_ACTIVITY = 'Board';
+const RECOVERY_ACTIVITY = 'Home';
 
 export type EmptyStackRecoveryState = { hasSeenActivity: boolean; isRecovering: boolean };
 
@@ -47,7 +46,7 @@ export const emptyStackRecoveryPlugin = (): StackflowReactPlugin => () => {
 
       const summary = summarizeStack(stack);
       addNavigationBreadcrumb('빈 스택 복구', summary);
-      captureMessage('화면 스택이 비어 보드로 복구했다', { level: 'error', extra: summary });
+      captureMessage('화면 스택이 비어 홈으로 복구했다', { level: 'error', extra: summary });
 
       actions.push({
         activityId: uuidv7(),

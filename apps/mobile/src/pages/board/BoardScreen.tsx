@@ -24,6 +24,11 @@ function logPendingUpload(message: string, details?: unknown) {
   console.log(`[pending-upload] ${message}`, details ?? '');
 }
 
+function analysisLoadingParams(boardId: string | undefined) {
+  const loadingBoardId = boardId ?? photoUploadService.getBoardId();
+  return loadingBoardId ? { boardId: loadingBoardId } : undefined;
+}
+
 // 보드, 리캡 전용 웹뷰
 export function BoardScreen() {
   const navigation = useNavigation();
@@ -53,7 +58,7 @@ export function BoardScreen() {
     if (screenState.status !== 'CHECKING') return;
 
     if (photoUploadService.getCurrent()) {
-      router.replace({ pathname: '/analysis-loading', params: boardId ? { boardId } : undefined });
+      router.replace({ pathname: '/analysis-loading', params: analysisLoadingParams(boardId) });
       return;
     }
 
@@ -68,7 +73,7 @@ export function BoardScreen() {
         if (recoveryStatus === 'COMPLETED') {
           router.replace({
             pathname: '/analysis-loading',
-            params: boardId ? { boardId } : undefined,
+            params: analysisLoadingParams(boardId),
           });
           return;
         }
@@ -105,7 +110,7 @@ export function BoardScreen() {
       void photoUploadService.getMotionPhotosForWeb().catch(() => undefined);
     }
     logPendingUpload('사전 resume 상태', photoUploadService.getViewState());
-    router.replace({ pathname: '/analysis-loading', params: boardId ? { boardId } : undefined });
+    router.replace({ pathname: '/analysis-loading', params: analysisLoadingParams(boardId) });
     logPendingUpload('router.replace 요청 완료', { pathname: '/analysis-loading', boardId });
   };
 
@@ -146,7 +151,11 @@ export function BoardScreen() {
   return (
     <View style={{ flex: 1 }}>
       {screenState.status === 'CHECKING' || screenState.status === 'READY' ? (
-        <AppWebView path="/board" onReady={clearPreviousScreens} waitForBoardReady />
+        <AppWebView
+          path={boardId ? `/board?boardId=${encodeURIComponent(boardId)}` : '/home'}
+          onReady={clearPreviousScreens}
+          waitForBoardReady
+        />
       ) : (
         <AppBackground />
       )}

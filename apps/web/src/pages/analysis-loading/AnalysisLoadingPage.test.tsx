@@ -50,6 +50,7 @@ const mocks = vi.hoisted(() => {
     resync,
   }));
   const replace = vi.fn();
+  const push = vi.fn();
   const boardList = vi.fn(() => Promise.resolve([{ id: 'board-1', name: '보드' }]));
   const boardGet = vi.fn(() =>
     Promise.resolve({
@@ -63,7 +64,8 @@ const mocks = vi.hoisted(() => {
   );
   const preloadStickerImages = vi.fn(() => Promise.resolve());
   const fetchQuery = vi.fn(({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn());
-  const queryClient = { fetchQuery };
+  const invalidateQueries = vi.fn(() => Promise.resolve());
+  const queryClient = { fetchQuery, invalidateQueries };
   const eventHandlers = new Map<string, (payload?: unknown) => void>();
   const on = vi.fn((message: string, handler: (payload?: unknown) => void) => {
     eventHandlers.set(message, handler);
@@ -79,9 +81,11 @@ const mocks = vi.hoisted(() => {
     destroy,
     eventHandlers,
     fetchQuery,
+    invalidateQueries,
     nextState,
     on,
     preloadStickerImages,
+    push,
     queryClient,
     replace,
     request,
@@ -93,7 +97,9 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('@stackflow/react', () => ({ useFlow: () => ({ replace: mocks.replace }) }));
+vi.mock('@stackflow/react', () => ({
+  useFlow: () => ({ push: mocks.push, replace: mocks.replace }),
+}));
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => mocks.queryClient,
 }));
@@ -312,7 +318,8 @@ describe('AnalysisLoadingPage', () => {
     expect(mocks.boardGet).toHaveBeenCalledWith('board-1');
 
     mocks.eventHandlers.get('SHOW_BOARD')?.();
-    expect(mocks.replace).toHaveBeenCalledWith('Board', {});
+    expect(mocks.replace).toHaveBeenCalledWith('Home', {}, { animate: false });
+    expect(mocks.push).toHaveBeenCalledWith('Board', { boardId: 'board-1' });
 
     unmount();
     expect(mocks.destroy).toHaveBeenCalledTimes(1);
@@ -322,6 +329,35 @@ describe('AnalysisLoadingPage', () => {
     expect(mocks.destroy.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.revokeObjectURL.mock.invocationCallOrder[0]!,
     );
+  });
+
+  it('분석한 보드 ID가 있으면 그 보드를 미리 불러오고 결과 확인 시 홈 위에 그 보드를 연다', async () => {
+    render(<AnalysisLoadingPage boardId="board-9" />);
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    const options = mocks.createLoadingMotion.mock.calls[0]![0];
+
+    options.onPhaseStarted('REVEAL');
+    await waitFor(() => expect(mocks.boardGet).toHaveBeenCalledWith('board-9'));
+    expect(mocks.boardList).not.toHaveBeenCalled();
+
+    mocks.eventHandlers.get('SHOW_BOARD')?.();
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['board', 'list'] });
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['board', 'summaryList'] });
+    expect(mocks.replace).toHaveBeenCalledWith('Home', {}, { animate: false });
+    expect(mocks.push).toHaveBeenCalledWith('Board', { boardId: 'board-9' });
+    expect(mocks.replace.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.push.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('결과 보드를 알 수 없으면 결과 확인 시 홈으로 간다', async () => {
+    render(<AnalysisLoadingPage />);
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+
+    mocks.eventHandlers.get('SHOW_BOARD')?.();
+
+    expect(mocks.replace).toHaveBeenCalledWith('Home', {});
+    expect(mocks.push).not.toHaveBeenCalled();
   });
 
   it.each([true, false])(

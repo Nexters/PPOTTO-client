@@ -357,3 +357,14 @@ it('저장된 분석이 완료됐으면 완료 상태를 복구한다', async ()
     status: 'COMPLETED',
   });
 });
+
+it('저장된 작업으로 복구 상태를 확인하면 그 작업이 속한 보드 ID를 알려준다', async () => {
+  const { photoUploadService } = setup();
+  mockLoadJob.mockResolvedValue({
+    snapshot: { jobId: 'job-1', boardId: 'board-7', groups: [] },
+    events: [],
+  });
+
+  await expect(photoUploadService.getRecoveryStatus()).resolves.toBe('PENDING');
+  expect(photoUploadService.getBoardId()).toBe('board-7');
+});

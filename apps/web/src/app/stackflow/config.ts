@@ -3,14 +3,15 @@ import { defineConfig } from '@stackflow/config';
 declare module '@stackflow/config' {
   interface Register {
     Login: Record<string, never>;
-    Onboarding: Record<string, never>;
+    Onboarding: { boardId?: string };
     Terms: Record<string, never>;
     TermsDetail: { code: string };
-    Board: Record<string, never>;
+    Home: Record<string, never>;
+    Board: { boardId?: string };
     Recap: { stickerId: string; boardId: string };
     PhotoViewer: { stickerId: string; initialIndex: string };
     Settings: Record<string, never>;
-    AnalysisLoading: Record<string, never>;
+    AnalysisLoading: { boardId?: string };
   }
 }
 
@@ -20,7 +21,17 @@ export const config = defineConfig({
     { name: 'Onboarding', route: '/onboarding' },
     { name: 'Terms', route: '/terms' },
     { name: 'TermsDetail', route: '/terms-detail' },
-    { name: 'Board', route: '/board' },
+    { name: 'Home', route: '/home' },
+    {
+      name: 'Board',
+      route: {
+        path: '/board',
+        defaultHistory: () => ({
+          entries: [{ activityName: 'Home', activityParams: {} }],
+          skipDefaultHistorySetupTransition: true,
+        }),
+      },
+    },
     { name: 'Recap', route: '/recap' },
     { name: 'PhotoViewer', route: '/photo-viewer' },
     { name: 'Settings', route: '/settings' },

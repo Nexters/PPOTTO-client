@@ -47,6 +47,16 @@ describe('안드로이드 뒤로가기', () => {
     expect(send).toHaveBeenCalledWith('EXIT_APP');
   });
 
+  it('필수 약관 화면이 맨 위면 아래 화면이 있어도 pop하지 않고 앱 이탈을 위임한다', () => {
+    const pop = vi.fn();
+    setAliveActivityCountForTest(2, 'Terms');
+
+    handleNavigateBack(pop);
+
+    expect(pop).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledWith('EXIT_APP');
+  });
+
   it('닫힌 다이얼로그는 오버레이로 치지 않는다', () => {
     document.body.innerHTML = '<div role="dialog" data-state="closed"></div>';
     const pop = vi.fn();

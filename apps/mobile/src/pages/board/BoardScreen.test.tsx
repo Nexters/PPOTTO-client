@@ -7,6 +7,7 @@ let mockSearchParams: { boardId?: string; confirmResume?: string } = { boardId: 
 let mockPreventRemoveCallback:
   ((event: { data: { action: { type: string } } }) => void) | undefined;
 const mockNavigationDispatch = jest.fn();
+let mockWebViewPath: string | undefined;
 
 jest.mock('@react-navigation/native', () => ({
   CommonActions: { reset: jest.fn((state) => state) },
@@ -22,7 +23,12 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('@/shared/ui/AppWebView', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');
-  return { AppWebView: () => <Text>보드 웹뷰</Text> };
+  return {
+    AppWebView: ({ path }: { path?: string }) => {
+      mockWebViewPath = path;
+      return <Text>보드 웹뷰</Text>;
+    },
+  };
 });
 jest.mock('@/shared/ui/AppBackground', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');
@@ -31,6 +37,7 @@ jest.mock('@/shared/ui/AppBackground', () => {
 jest.mock('@/features/photo-upload', () => ({
   photoUploadService: {
     discard: jest.fn(),
+    getBoardId: jest.fn(),
     getCurrent: jest.fn(),
     getMotionPhotosForWeb: jest.fn(),
     getUploadMode: jest.fn(),
@@ -46,6 +53,7 @@ const { router } = jest.requireMock('expo-router') as {
 const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
   photoUploadService: {
     discard: jest.Mock;
+    getBoardId: jest.Mock;
     getCurrent: jest.Mock;
     getMotionPhotosForWeb: jest.Mock;
     getUploadMode: jest.Mock;
@@ -58,7 +66,9 @@ const { photoUploadService } = jest.requireMock('@/features/photo-upload') as {
 beforeEach(() => {
   jest.clearAllMocks();
   mockPreventRemoveCallback = undefined;
+  mockWebViewPath = undefined;
   mockSearchParams = { boardId: 'board-1' };
+  photoUploadService.getBoardId.mockReturnValue(null);
   photoUploadService.getCurrent.mockReturnValue(null);
   photoUploadService.getMotionPhotosForWeb.mockResolvedValue([]);
   photoUploadService.getUploadMode.mockReturnValue(undefined);
@@ -189,5 +199,36 @@ it('추가 업로드 실패 후에는 추가 사진 선택 화면으로 이동�
   expect(router.replace).toHaveBeenCalledWith({
     pathname: '/photo-select',
     params: { boardId: 'board-1', mode: 'additional' },
+  });
+});
+
+it('보드 ID 없이 들어오면 웹뷰에서 보드 홈을 연다', async () => {
+  mockSearchParams = {};
+
+  await render(<BoardScreen />);
+
+  expect(await screen.findByText('보드 웹뷰')).toBeOnTheScreen();
+  expect(mockWebViewPath).toBe('/home');
+});
+
+it('보드 ID와 함께 들어오면 웹뷰에서 그 보드를 연다', async () => {
+  mockSearchParams = { boardId: 'board-1' };
+
+  await render(<BoardScreen />);
+
+  expect(await screen.findByText('보드 웹뷰')).toBeOnTheScreen();
+  expect(mockWebViewPath).toBe('/board?boardId=board-1');
+});
+
+it('보드 ID 없이 들어와도 완료된 저장 작업이 있으면 그 작업의 보드로 로딩 화면을 연다', async () => {
+  mockSearchParams = {};
+  photoUploadService.getRecoveryStatus.mockResolvedValue('COMPLETED');
+  photoUploadService.getBoardId.mockReturnValue('board-7');
+
+  await render(<BoardScreen />);
+
+  expect(router.replace).toHaveBeenCalledWith({
+    pathname: '/analysis-loading',
+    params: { boardId: 'board-7' },
   });
 });

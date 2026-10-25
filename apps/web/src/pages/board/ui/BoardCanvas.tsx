@@ -14,9 +14,10 @@ import {
 } from 'react';
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
-import { useBoardQuery } from '@/entities/board/api/board-queries';
+import { isBoardNotFoundError, useBoardQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge, track } from '@/shared/lib/bridge';
+import { shouldShowLoadError } from '@/shared/lib/should-show-load-error';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
@@ -62,6 +63,7 @@ import { useTextSelection } from '../model/use-text-selection';
 import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
 import type { ToolbarMode } from './BoardToolbar';
+import { BoardNotFound } from './BoardNotFound';
 import { BOARD_TEXT_STYLE } from './board-text-style';
 import { CoachMarkTip } from './CoachMarkTip';
 import { DrawingStroke } from './DrawingStroke';
@@ -122,10 +124,6 @@ export type BoardCanvasHandle = {
   recenterCamera: () => void;
 };
 
-export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
-  return isError && !data;
-}
-
 // 그리는 도중인 선의 실시간 미리보기는 스티커·그림 zIndex 값과 무관하게 항상 맨 위에 그려져야 한다
 const LIVE_STROKE_Z_INDEX = 999999;
 
@@ -171,7 +169,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [emptyBoardStickerTransform, setEmptyBoardStickerTransform] = useState<StickerTransform>(
     EMPTY_BOARD_STICKER_INITIAL_TRANSFORM,
   );
-  const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
+  const { data, error, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { data: me } = useMeQuery();
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
@@ -667,7 +665,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     );
   }
 
-  if (shouldShowBoardLoadError(isError, data)) {
+  if (!data && isBoardNotFoundError(error)) return <BoardNotFound />;
+
+  if (shouldShowLoadError(isError, data)) {
     return (
       <div className="flex items-center justify-center w-full h-full">
         <p className="text-gray-400 text-body-04">보드를 불러오지 못했어요</p>
@@ -726,7 +726,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             isQuickMenuOpen
             isEditMode={false}
             transform={activeEmptyBoardStickerTransform}
-            onClick={() => push('Onboarding', {})}
+            onClick={() => push('Onboarding', { boardId })}
             onLongPress={openEmptyBoardStickerQuickMenu}
           />
         )}
@@ -902,7 +902,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 isQuickMenuOpen={false}
                 isEditMode={isEditMode}
                 transform={activeEmptyBoardStickerTransform}
-                onClick={() => push('Onboarding', {})}
+                onClick={() => push('Onboarding', { boardId })}
                 onLongPress={openEmptyBoardStickerQuickMenu}
               />
               {selectedId === EMPTY_BOARD_STICKER_ID && (

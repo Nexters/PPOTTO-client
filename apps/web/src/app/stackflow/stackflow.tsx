@@ -10,6 +10,7 @@ import { stackflow, type ActivityComponentType } from '@stackflow/react';
 
 import { BoardPage } from '@/pages/board';
 import { AnalysisLoadingPage } from '@/pages/analysis-loading';
+import { HomePage } from '@/pages/home';
 import { LoginPage } from '@/pages/login';
 import { OnboardingPage } from '@/pages/onboarding';
 import { PhotoViewerPage } from '@/pages/photo-viewer';
@@ -39,24 +40,31 @@ const LoginActivity: ActivityComponentType<'Login'> = () => {
   );
 };
 
-const BoardActivity: ActivityComponentType<'Board'> = () => {
+const HomeActivity: ActivityComponentType<'Home'> = () => (
+  <AppScreen>
+    <ScreenView name="home" />
+    <HomePage />
+  </AppScreen>
+);
+
+const BoardActivity: ActivityComponentType<'Board'> = ({ params }) => {
   return (
     <AppScreen>
       <ScreenView name="board" />
-      <BoardPage />
+      <BoardPage boardId={params.boardId} />
     </AppScreen>
   );
 };
 
-const OnboardingActivity: ActivityComponentType<'Onboarding'> = () => (
+const OnboardingActivity: ActivityComponentType<'Onboarding'> = ({ params }) => (
   <AppScreen>
     <ScreenView name="onboarding" />
-    <OnboardingPage />
+    <OnboardingPage boardId={params.boardId} />
   </AppScreen>
 );
 
 const TermsActivity: ActivityComponentType<'Terms'> = () => (
-  <AppScreen>
+  <AppScreen preventSwipeBack>
     <ScreenView name="terms" />
     <TermsPage />
   </AppScreen>
@@ -90,10 +98,10 @@ const SettingsActivity: ActivityComponentType<'Settings'> = () => (
   </AppScreen>
 );
 
-const AnalysisLoadingActivity: ActivityComponentType<'AnalysisLoading'> = () => (
+const AnalysisLoadingActivity: ActivityComponentType<'AnalysisLoading'> = ({ params }) => (
   <AppScreen>
     <ScreenView name="analysis_loading" />
-    <AnalysisLoadingPage />
+    <AnalysisLoadingPage boardId={params.boardId} />
   </AppScreen>
 );
 
@@ -104,6 +112,7 @@ export const { Stack, actions } = stackflow({
     Onboarding: OnboardingActivity,
     Terms: TermsActivity,
     TermsDetail: TermsDetailActivity,
+    Home: HomeActivity,
     Board: BoardActivity,
     Recap: RecapActivity,
     PhotoViewer: PhotoViewerActivity,

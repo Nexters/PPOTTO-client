@@ -10,7 +10,6 @@ import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
-import { useTermsGate } from './model/use-terms-gate';
 import { BoardHeader } from './ui/BoardHeader';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
@@ -46,9 +45,9 @@ const EYEDROPPER_CAPTURE_DELAY_MS = 250;
 const captureBoard = (element: HTMLElement) =>
   toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
 
-export function BoardPage() {
-  useTermsGate();
-  const { boardId, isBoardListLoading, openPhotoSelect } = useBoardPageState();
+export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
+  const { boardId, isBoardListLoading, canAddSticker, openPhotoSelect } =
+    useBoardPageState(boardIdParam);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
@@ -441,6 +440,7 @@ export function BoardPage() {
           <BoardToolbar
             mode={toolbarMode}
             onModeChange={handleToolbarModeChange}
+            isAddStickerDisabled={!canAddSticker}
             onAddSticker={() => {
               track('board_add_sticker_clicked');
               openPhotoSelect();

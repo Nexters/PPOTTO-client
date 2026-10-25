@@ -1002,7 +1002,7 @@
       "get": {
         "tags": ["보드"],
         "summary": "내 보드 목록 조회",
-        "description": "보드 선택 드롭다운에 사용할 활성 보드 목록을 반환함. id(uuidv7) 오름차순이 생성순",
+        "description": "보드 선택 드롭다운에 사용할 내가 만든 활성 보드 목록을 반환함. 참여한 보드는 포함하지 않음. id(uuidv7) 오름차순이 생성순",
         "operationId": "list",
         "parameters": [
           {
@@ -1024,9 +1024,75 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListBoardResponse"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseListBoardResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBoardListV2Response"
+                    }
+                  ]
                 },
                 "examples": {
+                  "내 보드와 참여한 보드": {
+                    "summary": "참여 보드는 role=MEMBER. 분석 상태는 내가 진행 중인 분석만 보이고, 이미지형 스티커가 없는 보드의 mainColor는 null",
+                    "description": "내 보드와 참여한 보드",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "counts": {
+                          "all": 3,
+                          "personal": 1,
+                          "shared": 2
+                        },
+                        "boards": [
+                          {
+                            "id": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                            "name": "여름 휴가",
+                            "kind": "SHARED",
+                            "role": "OWNER",
+                            "stickerCount": 12,
+                            "participantCount": 3,
+                            "previewImageUrls": [
+                              "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Expires=3600&X-Goog-Signature=sample",
+                              "https://storage.googleapis.com/ppotto-stickers/01983f2a.png?X-Goog-Expires=3600&X-Goog-Signature=sample",
+                              "https://storage.googleapis.com/ppotto-stickers/01983f29.png?X-Goog-Expires=3600&X-Goog-Signature=sample",
+                              "https://storage.googleapis.com/ppotto-stickers/01983f28.png?X-Goog-Expires=3600&X-Goog-Signature=sample"
+                            ],
+                            "mainColor": "#FF6B6B",
+                            "lastActivityAt": "2026-10-20T12:40:05Z",
+                            "analysisStatus": "ANALYZING"
+                          },
+                          {
+                            "id": "01983f2a-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+                            "name": "동아리",
+                            "kind": "SHARED",
+                            "role": "MEMBER",
+                            "stickerCount": 5,
+                            "participantCount": 2,
+                            "previewImageUrls": [
+                              "https://storage.googleapis.com/ppotto-stickers/01983f27.png?X-Goog-Expires=3600&X-Goog-Signature=sample"
+                            ],
+                            "mainColor": "#6BCB77",
+                            "lastActivityAt": "2026-10-18T09:12:33Z",
+                            "analysisStatus": null
+                          },
+                          {
+                            "id": "01983f2a-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
+                            "name": "Board 1",
+                            "kind": "PERSONAL",
+                            "role": "OWNER",
+                            "stickerCount": 0,
+                            "participantCount": 1,
+                            "previewImageUrls": [],
+                            "mainColor": null,
+                            "lastActivityAt": "2026-10-01T03:00:00Z",
+                            "analysisStatus": null
+                          }
+                        ]
+                      }
+                    }
+                  },
                   "보드 목록": {
                     "description": "보드 목록",
                     "value": {
@@ -1072,6 +1138,9 @@
           }
         },
         "security": [
+          {
+            "bearerAuth": []
+          },
           {
             "bearerAuth": []
           }
@@ -4907,7 +4976,7 @@
                       "success": false,
                       "error": {
                         "code": "ANALYSIS-004",
-                        "message": "분석이 시작되어 취소할 수 없습니다.",
+                        "message": "이미 완료되었거나 실패한 분석은 취소할 수 없습니다.",
                         "fieldErrors": [],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
@@ -6676,6 +6745,162 @@
         },
         "required": ["agreed", "code", "id", "isRequired", "version"]
       },
+      "ApiResponseBoardListV2Response": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardListV2Response"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardCountsResponse": {
+        "type": "object",
+        "description": "탭별 보드 개수",
+        "properties": {
+          "all": {
+            "type": "integer",
+            "format": "int32",
+            "description": "전체 탭. personal + shared",
+            "example": 3
+          },
+          "personal": {
+            "type": "integer",
+            "format": "int32",
+            "description": "개인 탭",
+            "example": 2
+          },
+          "shared": {
+            "type": "integer",
+            "format": "int32",
+            "description": "공동 탭",
+            "example": 1
+          }
+        },
+        "required": ["all", "personal", "shared"]
+      },
+      "BoardKind": {
+        "type": "string",
+        "enum": ["PERSONAL", "SHARED"]
+      },
+      "BoardListV2Response": {
+        "type": "object",
+        "description": "홈 보드 목록과 탭별 개수 (v2)",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/BoardCountsResponse",
+            "description": "탭별 보드 개수"
+          },
+          "boards": {
+            "type": "array",
+            "description": "보드 카드 목록. lastActivityAt 내림차순, 같으면 id 내림차순",
+            "items": {
+              "$ref": "#/components/schemas/BoardSummaryV2Response"
+            }
+          }
+        },
+        "required": ["boards", "counts"]
+      },
+      "BoardRole": {
+        "type": "string",
+        "enum": ["OWNER", "MEMBER"]
+      },
+      "BoardSummaryV2Response": {
+        "type": "object",
+        "description": "홈 보드 카드 (v2)",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "보드 이름",
+            "example": "여름 휴가"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/BoardKind",
+            "description": "보드 종류. 참여자가 한 명이라도 있으면 SHARED",
+            "example": "SHARED"
+          },
+          "role": {
+            "$ref": "#/components/schemas/BoardRole",
+            "description": "요청한 사용자의 역할. 방장이면 OWNER, 참여자면 MEMBER",
+            "example": "OWNER"
+          },
+          "stickerCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "삭제되지 않은 스티커 수. 이미지형과 텍스트형을 모두 센다",
+            "example": 12
+          },
+          "participantCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "참여 인원. 방장 1명 + 참여자 수",
+            "example": 3
+          },
+          "previewImageUrls": {
+            "type": "array",
+            "description": "최근 이미지형 스티커의 읽기용 signed URL. 최신순 최대 4개이며 없으면 빈 배열 (만료 1시간)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mainColor": {
+            "type": ["string", "null"],
+            "description": "가장 최근 이미지형 스티커의 메인 컬러. 이미지형 스티커가 없으면 null",
+            "example": "#FF6B6B"
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "마지막 활동 시각. 삭제되지 않은 스티커 중 가장 최근에 보드에 추가된 스티커의 생성 시각이며, 스티커가 없으면 보드 생성 시각. 리캡 열람이나 공유 설정 변경으로는 바뀌지 않음",
+            "example": "2026-10-20T12:40:05Z"
+          },
+          "analysisStatus": {
+            "type": ["string", "null"],
+            "description": "이 보드에서 진행 중인 내 분석의 상태. 다른 참여자의 분석은 보이지 않으며 없으면 null",
+            "enum": ["UPLOADING", "ANALYZING"],
+            "example": "ANALYZING"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "보드 ID (uuidv7)",
+            "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "lastActivityAt",
+          "name",
+          "participantCount",
+          "previewImageUrls",
+          "role",
+          "stickerCount"
+        ]
+      },
       "ApiResponseListBoardResponse": {
         "type": "object",
         "description": "공통 응답 봉투",
@@ -7206,11 +7431,11 @@
             "description": "현재 분석의 완료 알림 신청 여부",
             "example": true
           },
-          "boardId": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
-          "id": {
+          "boardId": {
             "type": "string",
             "format": "uuid"
           }

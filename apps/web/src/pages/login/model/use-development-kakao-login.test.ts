@@ -50,7 +50,7 @@ describe('useDevelopmentKakaoLogin', () => {
 
     expect(window.location.search).toBe('');
     expect(completeKakaoLogin).toHaveBeenCalledWith('kakao-code', REDIRECT_URI);
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('Board', {}));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('Home', {}));
     expect(track).toHaveBeenCalledWith('login', { method: 'development' });
   });
 
