@@ -316,8 +316,8 @@ describe('AnalysisLoadingPage', () => {
     expect(mocks.boardGet).toHaveBeenCalledWith('board-1');
 
     mocks.eventHandlers.get('SHOW_BOARD')?.();
-    expect(mocks.replace).toHaveBeenCalledWith('Home', {});
-    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.replace).toHaveBeenCalledWith('Home', {}, { animate: false });
+    expect(mocks.push).toHaveBeenCalledWith('Board', { boardId: 'board-1' });
 
     unmount();
     expect(mocks.destroy).toHaveBeenCalledTimes(1);
@@ -344,6 +344,16 @@ describe('AnalysisLoadingPage', () => {
     expect(mocks.replace.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.push.mock.invocationCallOrder[0]!,
     );
+  });
+
+  it('결과 보드를 알 수 없으면 결과 확인 시 홈으로 간다', async () => {
+    render(<AnalysisLoadingPage />);
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+
+    mocks.eventHandlers.get('SHOW_BOARD')?.();
+
+    expect(mocks.replace).toHaveBeenCalledWith('Home', {});
+    expect(mocks.push).not.toHaveBeenCalled();
   });
 
   it.each([true, false])(

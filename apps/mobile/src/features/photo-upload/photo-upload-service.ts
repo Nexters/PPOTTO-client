@@ -76,6 +76,7 @@ const dependencies: PhotoUploadServiceDependencies = {
 
 let currentUpload: Promise<void> | null = null;
 let currentJobId: string | null = null;
+let currentBoardId: string | null = null;
 let runId = 0;
 const listeners = new Set<() => void>();
 
@@ -318,6 +319,7 @@ export const photoUploadService = {
     analysisStartedAt = undefined;
     const startedAt = Date.now();
     currentJobId = jobId;
+    currentBoardId = null;
     viewState = {
       analysisId: null,
       notificationRequested: false,
@@ -352,6 +354,7 @@ export const photoUploadService = {
       logPhotoUpload(`#${id} 모션 시작 — 업로드 사진 압축 시작`);
       const job = await prepareJob();
       if (id !== runId) return;
+      currentBoardId = job.boardId;
       const uploadPhotoCount = job.groups.reduce((count, group) => count + group.items.length, 0);
       logPhotoUpload(`#${id} 작업 준비 완료 (${job.groups.length}그룹, ${uploadPhotoCount}장)`);
 
@@ -385,6 +388,8 @@ export const photoUploadService = {
   getCurrent: () => currentUpload,
 
   getCurrentJobId: () => currentJobId,
+
+  getBoardId: () => currentBoardId,
 
   isCurrentJob: (jobId: string | null) => jobId === currentJobId,
 
@@ -423,6 +428,7 @@ export const photoUploadService = {
   async getRecoveryStatus(): Promise<'NONE' | 'PENDING' | 'COMPLETED'> {
     const stored = await storage.loadJob();
     if (!stored) return (await analysisApi.getActive()) ? 'PENDING' : 'NONE';
+    currentBoardId = stored.snapshot.boardId;
 
     const restored = restoreUploadJob(stored.snapshot, stored.events);
     if (!restored.analysisId) return 'PENDING';
@@ -468,6 +474,7 @@ export const photoUploadService = {
     const restoredJob = storage.loadJob().then((stored) => {
       if (stored) {
         currentJobId = stored.snapshot.jobId;
+        currentBoardId = stored.snapshot.boardId;
         restoreMotionPhotos(stored.snapshot);
       }
       return stored;
@@ -530,6 +537,7 @@ export const photoUploadService = {
     uploadMode = undefined;
     currentUpload = null;
     currentJobId = null;
+    currentBoardId = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -550,6 +558,7 @@ export const photoUploadService = {
     uploadMode = undefined;
     currentUpload = null;
     currentJobId = null;
+    currentBoardId = null;
     motionPhotos = [];
     motionPhotoCount = 0;
     webMotionPhotos = null;
@@ -573,6 +582,7 @@ export const photoUploadService = {
       );
       currentUpload = null;
       currentJobId = null;
+      currentBoardId = null;
       motionPhotos = [];
       motionPhotoCount = 0;
       webMotionPhotos = null;

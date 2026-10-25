@@ -41,6 +41,7 @@ export function AnalysisLoadingPage({ boardId }: { boardId?: string }) {
   const motionRef = useRef<ReturnType<typeof createLoadingMotion>>(undefined);
   const pendingResyncRef = useRef<AnalysisLoadingPhaseState | undefined>(undefined);
   const downloadingFromICloudRef = useRef(false);
+  const resultBoardIdRef = useRef(boardId);
   const [mockError, setMockError] = useState<string | null>(null);
 
   const syncICloudNotice = useCallback((downloading: boolean) => {
@@ -58,6 +59,7 @@ export function AnalysisLoadingPage({ boardId }: { boardId?: string }) {
         })
       )[0]?.id;
     if (!targetBoardId) return;
+    resultBoardIdRef.current = targetBoardId;
 
     const board = await queryClient.fetchQuery({
       queryKey: boardQueryKeys.detail(targetBoardId),
@@ -70,14 +72,15 @@ export function AnalysisLoadingPage({ boardId }: { boardId?: string }) {
   useEffect(
     () =>
       bridge.on('SHOW_BOARD', () => {
-        if (!boardId) {
+        const resultBoardId = resultBoardIdRef.current;
+        if (!resultBoardId) {
           replace('Home', {});
           return;
         }
         replace('Home', {}, { animate: false });
-        push('Board', { boardId });
+        push('Board', { boardId: resultBoardId });
       }),
-    [boardId, push, replace],
+    [push, replace],
   );
 
   useEffect(
