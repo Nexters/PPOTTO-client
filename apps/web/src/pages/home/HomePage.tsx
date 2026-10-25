@@ -2,7 +2,7 @@
 
 import { IconPlus, IconSettings, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { useBoardSummaryListQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
@@ -32,6 +32,9 @@ export function HomePage() {
   const [menuBoardId, setMenuBoardId] = useState<string | null>(null);
   const boards = data ? filterBoardsByTab(data.boards, tab) : [];
   const closeMenu = () => setMenuBoardId(null);
+  const baseId = useId();
+  const panelId = `${baseId}-panel`;
+  const tabId = (target: BoardHomeTab) => `${baseId}-tab-${target}`;
 
   useRefetchOnActive(refetch, isStale);
 
@@ -52,43 +55,43 @@ export function HomePage() {
         className="h-full overflow-y-auto px-6 pb-40"
         style={{ paddingTop: `calc(${SAFE_AREA_TOP} + 148px)` }}
       >
-        {isPending ? (
-          <div className="flex flex-col gap-4">
-            {Array.from({ length: 3 }, (_, index) => (
-              <Skeleton key={index} className="h-33 w-full rounded-24" />
-            ))}
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-4">
-            {boards.map((board) => (
-              <li key={board.id} className="flex">
-                <BoardCard
-                  board={board}
-                  now={dataUpdatedAt}
-                  isMenuTarget={board.id === menuBoardId}
-                  onOpen={() => push('Board', { boardId: board.id })}
-                  onOpenMenu={board.role === 'OWNER' ? () => setMenuBoardId(board.id) : undefined}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
+        <div role="tabpanel" id={panelId} aria-labelledby={tabId(tab)}>
+          {isPending ? (
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: 3 }, (_, index) => (
+                <Skeleton key={index} className="h-33 w-full rounded-24" />
+              ))}
+            </div>
+          ) : (
+            <ul className="flex flex-col gap-4">
+              {boards.map((board) => (
+                <li key={board.id} className="flex">
+                  <BoardCard
+                    board={board}
+                    now={dataUpdatedAt}
+                    isMenuTarget={board.id === menuBoardId}
+                    onOpen={() => push('Board', { boardId: board.id })}
+                    onOpenMenu={board.role === 'OWNER' ? () => setMenuBoardId(board.id) : undefined}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+          {data && boards.length === 0 && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <p className="text-body-04 text-gray-400">아직 보드가 없어요</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {shouldShowLoadError(isError, data) ? (
+      {shouldShowLoadError(isError, data) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
           <p className="text-body-04 text-gray-400">보드를 불러오지 못했어요</p>
           <Button size="medium" onClick={() => refetch()}>
             다시 시도
           </Button>
         </div>
-      ) : (
-        data &&
-        boards.length === 0 && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <p className="text-body-04 text-gray-400">아직 보드가 없어요</p>
-          </div>
-        )
       )}
 
       <header
@@ -115,12 +118,16 @@ export function HomePage() {
         <div role="tablist" className="pointer-events-auto flex gap-2">
           {BOARD_HOME_TABS.map((item) => {
             const isSelected = item.tab === tab;
+            const count = data && countBoardsInTab(data.counts, item.tab);
             return (
               <button
                 key={item.tab}
+                id={tabId(item.tab)}
                 type="button"
                 role="tab"
                 aria-selected={isSelected}
+                aria-controls={panelId}
+                aria-label={data ? `${item.label} ${count}` : item.label}
                 onClick={() => setTab(item.tab)}
                 className={cn(
                   'flex items-center gap-1 rounded-full px-4 py-2',
@@ -130,7 +137,7 @@ export function HomePage() {
                 )}
               >
                 {item.label}
-                {data && <span>{countBoardsInTab(data.counts, item.tab)}</span>}
+                {data && <span>{count}</span>}
               </button>
             );
           })}
@@ -144,7 +151,7 @@ export function HomePage() {
         )}
         style={{ backgroundImage: 'linear-gradient(to top, #000, transparent)' }}
       >
-        <IconButton aria-label="보드 추가" className="pointer-events-auto">
+        <IconButton aria-label="보드 추가" aria-disabled="true" className="pointer-events-auto">
           <IconPlus />
         </IconButton>
       </div>

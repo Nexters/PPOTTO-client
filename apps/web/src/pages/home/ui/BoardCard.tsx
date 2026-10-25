@@ -88,7 +88,7 @@ export function BoardCard({ board, now, isMenuTarget, onOpen, onOpenMenu }: Boar
           type="button"
           aria-label={`${board.name} 보드 메뉴`}
           onClick={onOpenMenu}
-          className="absolute top-4 right-4"
+          className="absolute top-1.5 right-1.5 p-2.5"
         >
           <MenuKebab />
         </button>
