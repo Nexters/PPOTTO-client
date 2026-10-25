@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, CheckCircle, CheckCircleEmpty, ChevronLeftSmall, Logo } from '@ppotto/assets';
-import { useFlow } from '@stackflow/react';
+import { useActivity, useFlow } from '@stackflow/react';
 import { useState } from 'react';
 
 import { useAgreeTermsMutation } from '@/entities/terms/api/terms-mutations';
@@ -15,7 +15,8 @@ import { TERMS_META, type TermCode } from './terms-content';
 const TERM_CODES: TermCode[] = ['TOS', 'PRIVACY'];
 
 export function TermsPage() {
-  const { push, replace } = useFlow();
+  const { push, pop, replace } = useFlow();
+  const { isRoot } = useActivity();
   const { data: currentTerms } = useTermsListQuery();
   const { mutateAsync: agreeTerms, isPending } = useAgreeTermsMutation();
   const [checkedCodes, setCheckedCodes] = useState<string[]>([]);
@@ -50,7 +51,8 @@ export function TermsPage() {
       track('terms_accepted', {
         agreed_count: visibleTerms.filter(({ serverTerm }) => serverTerm).length,
       });
-      replace('Home', {});
+      if (isRoot) replace('Home', {});
+      else pop();
     } catch (error) {
       console.error('약관 동의 실패', error);
     }

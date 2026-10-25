@@ -64,7 +64,7 @@ const OnboardingActivity: ActivityComponentType<'Onboarding'> = ({ params }) => 
 );
 
 const TermsActivity: ActivityComponentType<'Terms'> = () => (
-  <AppScreen>
+  <AppScreen preventSwipeBack>
     <ScreenView name="terms" />
     <TermsPage />
   </AppScreen>

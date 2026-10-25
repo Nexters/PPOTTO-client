@@ -11,14 +11,13 @@ import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { Button, IconButton } from '@/shared/ui/common/Button';
 import { Skeleton } from '@/shared/ui/Skeleton';
 
-import { useTermsGate } from '../board/model/use-terms-gate';
-
 import {
   BOARD_HOME_TABS,
   type BoardHomeTab,
   countBoardsInTab,
   filterBoardsByTab,
 } from './model/board-home-tab';
+import { useTermsGate } from './model/use-terms-gate';
 import { BoardCard } from './ui/BoardCard';
 import { BoardMenuSheet } from './ui/BoardMenuSheet';
 

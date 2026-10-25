@@ -10,7 +10,6 @@ import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
-import { useTermsGate } from './model/use-terms-gate';
 import { BoardHeader } from './ui/BoardHeader';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
@@ -47,7 +46,6 @@ const captureBoard = (element: HTMLElement) =>
   toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
 
 export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
-  useTermsGate();
   const { boardId, isBoardListLoading, openPhotoSelect } = useBoardPageState(boardIdParam);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
