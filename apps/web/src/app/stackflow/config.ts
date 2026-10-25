@@ -3,10 +3,10 @@ import { defineConfig } from '@stackflow/config';
 declare module '@stackflow/config' {
   interface Register {
     Login: Record<string, never>;
-    Onboarding: Record<string, never>;
+    Onboarding: { boardId?: string };
     Terms: Record<string, never>;
     TermsDetail: { code: string };
-    Board: Record<string, never>;
+    Board: { boardId?: string };
     Recap: { stickerId: string; boardId: string };
     PhotoViewer: { stickerId: string; initialIndex: string };
     Settings: Record<string, never>;

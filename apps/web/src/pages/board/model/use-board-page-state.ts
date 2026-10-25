@@ -9,9 +9,9 @@ import {
 } from '@/shared/lib/first-upload-storage';
 
 /* 첫 업로드 여부 판단 훅 */
-export function useBoardPageState() {
+export function useBoardPageState(boardIdParam?: string) {
   const { data: boards, isLoading: isBoardListLoading } = useBoardListQuery();
-  const boardId = boards?.[0]?.id;
+  const boardId = boardIdParam ?? boards?.[0]?.id;
   const { data: board, isLoading: isBoardLoading } = useBoardQuery(boardId);
   const { data: me } = useMeQuery();
 

@@ -726,7 +726,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
             isQuickMenuOpen
             isEditMode={false}
             transform={activeEmptyBoardStickerTransform}
-            onClick={() => push('Onboarding', {})}
+            onClick={() => push('Onboarding', { boardId })}
             onLongPress={openEmptyBoardStickerQuickMenu}
           />
         )}
@@ -902,7 +902,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
                 isQuickMenuOpen={false}
                 isEditMode={isEditMode}
                 transform={activeEmptyBoardStickerTransform}
-                onClick={() => push('Onboarding', {})}
+                onClick={() => push('Onboarding', { boardId })}
                 onLongPress={openEmptyBoardStickerQuickMenu}
               />
               {selectedId === EMPTY_BOARD_STICKER_ID && (

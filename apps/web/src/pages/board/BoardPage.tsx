@@ -46,9 +46,9 @@ const EYEDROPPER_CAPTURE_DELAY_MS = 250;
 const captureBoard = (element: HTMLElement) =>
   toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
 
-export function BoardPage() {
+export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   useTermsGate();
-  const { boardId, isBoardListLoading, openPhotoSelect } = useBoardPageState();
+  const { boardId, isBoardListLoading, openPhotoSelect } = useBoardPageState(boardIdParam);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);

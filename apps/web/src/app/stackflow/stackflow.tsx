@@ -39,19 +39,19 @@ const LoginActivity: ActivityComponentType<'Login'> = () => {
   );
 };
 
-const BoardActivity: ActivityComponentType<'Board'> = () => {
+const BoardActivity: ActivityComponentType<'Board'> = ({ params }) => {
   return (
     <AppScreen>
       <ScreenView name="board" />
-      <BoardPage />
+      <BoardPage boardId={params.boardId} />
     </AppScreen>
   );
 };
 
-const OnboardingActivity: ActivityComponentType<'Onboarding'> = () => (
+const OnboardingActivity: ActivityComponentType<'Onboarding'> = ({ params }) => (
   <AppScreen>
     <ScreenView name="onboarding" />
-    <OnboardingPage />
+    <OnboardingPage boardId={params.boardId} />
   </AppScreen>
 );
 

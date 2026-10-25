@@ -15,10 +15,10 @@ import { useOnboardingCarousel } from './model/use-onboarding-carousel';
 import { OnboardingIndicator } from './ui/OnboardingIndicator';
 import { ONBOARDING_SLIDES } from './ui/OnboardingSlides';
 
-export function OnboardingPage() {
+export function OnboardingPage({ boardId: boardIdParam }: { boardId?: string }) {
   const { pop } = useFlow();
   const { data: boards } = useBoardListQuery();
-  const boardId = boards?.[0]?.id;
+  const boardId = boardIdParam ?? boards?.[0]?.id;
   const { data: me } = useMeQuery();
   const { emblaRef, selectedIndex, isLastSlide, goNext } = useOnboardingCarousel(
     ONBOARDING_SLIDES.length,
