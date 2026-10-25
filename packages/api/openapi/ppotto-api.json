@@ -10,7 +10,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:8080",
+      "url": "https://dev-api.ppotto.co.kr",
       "description": "Generated server url"
     }
   ],
@@ -6301,17 +6301,17 @@
             "description": "선 굵기",
             "example": 4
           },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함",
-            "example": "01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
-          },
           "stickerId": {
             "type": ["string", "null"],
             "format": "uuid",
             "description": "scope=STICKER일 때 필수",
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함",
+            "example": "01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
           },
           "zIndex": {
             "type": "integer",
@@ -6381,17 +6381,17 @@
             "description": "회전 각도(degree)",
             "example": 0
           },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함",
-            "example": "01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d"
-          },
           "stickerId": {
             "type": ["string", "null"],
             "format": "uuid",
             "description": "scope=STICKER일 때 필수",
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함",
+            "example": "01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d"
           },
           "zIndex": {
             "type": "integer",
@@ -6596,17 +6596,17 @@
             "description": "선 굵기",
             "example": 4
           },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함",
-            "example": "01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
-          },
           "stickerId": {
             "type": ["string", "null"],
             "format": "uuid",
             "description": "scope=STICKER일 때 필수",
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함",
+            "example": "01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
           }
         },
         "required": ["color", "id", "scope", "stroke", "strokeWidth"]
@@ -6804,7 +6804,6 @@
       },
       "BoardKind": {
         "type": "string",
-        "description": "보드 종류. 참여자가 한 명이라도 있으면 SHARED",
         "enum": ["PERSONAL", "SHARED"]
       },
       "BoardListV2Response": {
@@ -6827,7 +6826,6 @@
       },
       "BoardRole": {
         "type": "string",
-        "description": "요청한 사용자의 보드 내 역할. 방장은 boards.user_id, 참여자는 board_members",
         "enum": ["OWNER", "MEMBER"]
       },
       "BoardSummaryV2Response": {
@@ -7126,17 +7124,17 @@
             "description": "선 굵기",
             "example": 4
           },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "그림 ID (uuidv7)",
-            "example": "01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          },
           "stickerId": {
             "type": ["string", "null"],
             "format": "uuid",
             "description": "scope=STICKER일 때만 값이 있음",
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "그림 ID (uuidv7)",
+            "example": "01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           },
           "zIndex": {
             "type": "integer",
@@ -7202,17 +7200,17 @@
             "description": "회전 각도(degree)",
             "example": 0
           },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "그림 ID (uuidv7)",
-            "example": "01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d"
-          },
           "stickerId": {
             "type": ["string", "null"],
             "format": "uuid",
             "description": "scope=STICKER일 때만 값이 있음",
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "그림 ID (uuidv7)",
+            "example": "01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d"
           },
           "zIndex": {
             "type": "integer",
@@ -7356,17 +7354,17 @@
             "description": "선 굵기",
             "example": 4
           },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "그림 ID (uuidv7)",
-            "example": "01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          },
           "stickerId": {
             "type": ["string", "null"],
             "format": "uuid",
             "description": "scope=STICKER일 때만 값이 있음",
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "그림 ID (uuidv7)",
+            "example": "01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
         },
         "required": ["color", "id", "scope", "stroke", "strokeWidth"]
@@ -7433,11 +7431,11 @@
             "description": "현재 분석의 완료 알림 신청 여부",
             "example": true
           },
-          "boardId": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
-          "id": {
+          "boardId": {
             "type": "string",
             "format": "uuid"
           }

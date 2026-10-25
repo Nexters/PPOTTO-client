@@ -808,10 +808,7 @@ export interface components {
             /** @description 보드에 배치된 스티커 목록. v1과 동일 */
             stickers: components["schemas"]["BoardStickerResponse"][];
         };
-        /**
-         * @description 보드 종류. 참여자가 한 명이라도 있으면 SHARED
-         * @enum {string}
-         */
+        /** @enum {string} */
         BoardKind: "PERSONAL" | "SHARED";
         /** @description 보드 편집 결과 일괄 저장 요청. 편집 모드에서 바뀐 것만 보냄 */
         BoardLayoutRequest: {
@@ -846,10 +843,7 @@ export interface components {
              */
             name: string;
         };
-        /**
-         * @description 요청한 사용자의 보드 내 역할. 방장은 boards.user_id, 참여자는 board_members
-         * @enum {string}
-         */
+        /** @enum {string} */
         BoardRole: "OWNER" | "MEMBER";
         /** @description 보드에 배치된 스티커 */
         BoardStickerResponse: {
