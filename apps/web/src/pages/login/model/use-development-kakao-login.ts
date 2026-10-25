@@ -27,7 +27,7 @@ export function useDevelopmentKakaoLogin(enabled: boolean) {
     completeKakaoLogin(authorizationCode, redirectUri())
       .then(() => {
         track('login', { method: 'development' });
-        replace('Board', {});
+        replace('Home', {});
       })
       .catch((error: unknown) => {
         track('login_failed', { method: 'development' });

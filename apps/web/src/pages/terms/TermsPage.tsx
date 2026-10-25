@@ -50,7 +50,7 @@ export function TermsPage() {
       track('terms_accepted', {
         agreed_count: visibleTerms.filter(({ serverTerm }) => serverTerm).length,
       });
-      replace('Board', {});
+      replace('Home', {});
     } catch (error) {
       console.error('약관 동의 실패', error);
     }

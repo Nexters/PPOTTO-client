@@ -32,8 +32,8 @@ export function LoginPage() {
     try {
       const result = await bridge.request(channel, undefined, { timeout: 'none' });
       if (!result) return;
-      // 약관 미동의 여부는 보드 진입 시 useTermsGate가 GET /terms로 판단한다
-      replace('Board', {});
+      // 약관 미동의 여부는 홈 진입 시 useTermsGate가 GET /terms로 판단한다
+      replace('Home', {});
     } catch (error) {
       console.error('로그인 실패', error);
     }

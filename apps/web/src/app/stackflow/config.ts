@@ -11,7 +11,7 @@ declare module '@stackflow/config' {
     Recap: { stickerId: string; boardId: string };
     PhotoViewer: { stickerId: string; initialIndex: string };
     Settings: Record<string, never>;
-    AnalysisLoading: Record<string, never>;
+    AnalysisLoading: { boardId?: string };
   }
 }
 
@@ -22,7 +22,16 @@ export const config = defineConfig({
     { name: 'Terms', route: '/terms' },
     { name: 'TermsDetail', route: '/terms-detail' },
     { name: 'Home', route: '/home' },
-    { name: 'Board', route: '/board' },
+    {
+      name: 'Board',
+      route: {
+        path: '/board',
+        defaultHistory: () => ({
+          entries: [{ activityName: 'Home', activityParams: {} }],
+          skipDefaultHistorySetupTransition: true,
+        }),
+      },
+    },
     { name: 'Recap', route: '/recap' },
     { name: 'PhotoViewer', route: '/photo-viewer' },
     { name: 'Settings', route: '/settings' },

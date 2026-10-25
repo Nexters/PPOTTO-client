@@ -98,10 +98,10 @@ const SettingsActivity: ActivityComponentType<'Settings'> = () => (
   </AppScreen>
 );
 
-const AnalysisLoadingActivity: ActivityComponentType<'AnalysisLoading'> = () => (
+const AnalysisLoadingActivity: ActivityComponentType<'AnalysisLoading'> = ({ params }) => (
   <AppScreen>
     <ScreenView name="analysis_loading" />
-    <AnalysisLoadingPage />
+    <AnalysisLoadingPage boardId={params.boardId} />
   </AppScreen>
 );
 

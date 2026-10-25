@@ -34,10 +34,10 @@ const MOCK_NEXT_PHASE: Record<
   REVEAL: { visiblePhase: 'REVEAL', visualProgress: 100 },
 };
 
-export function AnalysisLoadingPage() {
+export function AnalysisLoadingPage({ boardId }: { boardId?: string }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-  const { replace } = useFlow();
+  const { push, replace } = useFlow();
   const motionRef = useRef<ReturnType<typeof createLoadingMotion>>(undefined);
   const pendingResyncRef = useRef<AnalysisLoadingPhaseState | undefined>(undefined);
   const downloadingFromICloudRef = useRef(false);
@@ -49,22 +49,36 @@ export function AnalysisLoadingPage() {
   }, []);
 
   const prepareBoard = useCallback(async () => {
-    const boards = await queryClient.fetchQuery({
-      queryKey: boardQueryKeys.list(),
-      queryFn: boardApi.list,
-    });
-    const boardId = boards[0]?.id;
-    if (!boardId) return;
+    const targetBoardId =
+      boardId ??
+      (
+        await queryClient.fetchQuery({
+          queryKey: boardQueryKeys.list(),
+          queryFn: boardApi.list,
+        })
+      )[0]?.id;
+    if (!targetBoardId) return;
 
     const board = await queryClient.fetchQuery({
-      queryKey: boardQueryKeys.detail(boardId),
-      queryFn: () => boardApi.get(boardId),
+      queryKey: boardQueryKeys.detail(targetBoardId),
+      queryFn: () => boardApi.get(targetBoardId),
     });
 
     await preloadStickerImages(board.stickers.map(({ imageUrl }) => imageUrl));
-  }, [queryClient]);
+  }, [boardId, queryClient]);
 
-  useEffect(() => bridge.on('SHOW_BOARD', () => replace('Board', {})), [replace]);
+  useEffect(
+    () =>
+      bridge.on('SHOW_BOARD', () => {
+        if (!boardId) {
+          replace('Home', {});
+          return;
+        }
+        replace('Home', {}, { animate: false });
+        push('Board', { boardId });
+      }),
+    [boardId, push, replace],
+  );
 
   useEffect(
     () => bridge.on('ICLOUD_DOWNLOAD_CHANGED', ({ downloading }) => syncICloudNotice(downloading)),

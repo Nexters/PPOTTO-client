@@ -50,6 +50,7 @@ const mocks = vi.hoisted(() => {
     resync,
   }));
   const replace = vi.fn();
+  const push = vi.fn();
   const boardList = vi.fn(() => Promise.resolve([{ id: 'board-1', name: '보드' }]));
   const boardGet = vi.fn(() =>
     Promise.resolve({
@@ -82,6 +83,7 @@ const mocks = vi.hoisted(() => {
     nextState,
     on,
     preloadStickerImages,
+    push,
     queryClient,
     replace,
     request,
@@ -93,7 +95,9 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('@stackflow/react', () => ({ useFlow: () => ({ replace: mocks.replace }) }));
+vi.mock('@stackflow/react', () => ({
+  useFlow: () => ({ push: mocks.push, replace: mocks.replace }),
+}));
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => mocks.queryClient,
 }));
@@ -312,7 +316,8 @@ describe('AnalysisLoadingPage', () => {
     expect(mocks.boardGet).toHaveBeenCalledWith('board-1');
 
     mocks.eventHandlers.get('SHOW_BOARD')?.();
-    expect(mocks.replace).toHaveBeenCalledWith('Board', {});
+    expect(mocks.replace).toHaveBeenCalledWith('Home', {});
+    expect(mocks.push).not.toHaveBeenCalled();
 
     unmount();
     expect(mocks.destroy).toHaveBeenCalledTimes(1);
@@ -321,6 +326,23 @@ describe('AnalysisLoadingPage', () => {
     );
     expect(mocks.destroy.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.revokeObjectURL.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('분석한 보드 ID가 있으면 그 보드를 미리 불러오고 결과 확인 시 홈 위에 그 보드를 연다', async () => {
+    render(<AnalysisLoadingPage boardId="board-9" />);
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    const options = mocks.createLoadingMotion.mock.calls[0]![0];
+
+    options.onPhaseStarted('REVEAL');
+    await waitFor(() => expect(mocks.boardGet).toHaveBeenCalledWith('board-9'));
+    expect(mocks.boardList).not.toHaveBeenCalled();
+
+    mocks.eventHandlers.get('SHOW_BOARD')?.();
+    expect(mocks.replace).toHaveBeenCalledWith('Home', {}, { animate: false });
+    expect(mocks.push).toHaveBeenCalledWith('Board', { boardId: 'board-9' });
+    expect(mocks.replace.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.push.mock.invocationCallOrder[0]!,
     );
   });
 
