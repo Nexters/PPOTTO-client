@@ -46,7 +46,8 @@ const captureBoard = (element: HTMLElement) =>
   toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
 
 export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
-  const { boardId, isBoardListLoading, openPhotoSelect } = useBoardPageState(boardIdParam);
+  const { boardId, isBoardListLoading, canAddSticker, openPhotoSelect } =
+    useBoardPageState(boardIdParam);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
@@ -439,6 +440,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           <BoardToolbar
             mode={toolbarMode}
             onModeChange={handleToolbarModeChange}
+            isAddStickerDisabled={!canAddSticker}
             onAddSticker={() => {
               track('board_add_sticker_clicked');
               openPhotoSelect();

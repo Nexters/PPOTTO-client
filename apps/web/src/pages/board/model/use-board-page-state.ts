@@ -22,7 +22,7 @@ export function useBoardPageState(boardIdParam?: string) {
   }, [board, me]);
 
   const openPhotoSelect = () => {
-    if (!boardId) return;
+    if (!boardId || !board) return;
     const uploadCompleted = me ? hasCompletedFirstUpload(me.id) : false;
     bridge.send('OPEN_PHOTO_SELECT', {
       boardId,
@@ -34,6 +34,7 @@ export function useBoardPageState(boardIdParam?: string) {
     boardId,
     isBoardListLoading,
     isBoardLoading,
+    canAddSticker: Boolean(board),
     openPhotoSelect,
   };
 }

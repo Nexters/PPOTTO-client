@@ -9,6 +9,7 @@ type BoardToolbarProps = {
   mode: ToolbarMode;
   onModeChange: (mode: ToolbarMode) => void;
   onAddSticker: () => void;
+  isAddStickerDisabled?: boolean;
   aboveModeSwitcher?: ReactNode;
 };
 
@@ -16,6 +17,7 @@ export function BoardToolbar({
   mode,
   onModeChange,
   onAddSticker,
+  isAddStickerDisabled,
   aboveModeSwitcher,
 }: BoardToolbarProps) {
   const toggle = (target: ToolbarMode) => {
@@ -81,7 +83,11 @@ export function BoardToolbar({
         type="button"
         aria-label="스티커 추가"
         onClick={onAddSticker}
-        className="pointer-events-auto flex size-12 items-center justify-center rounded-full bg-white"
+        disabled={isAddStickerDisabled}
+        className={cn(
+          'pointer-events-auto flex size-12 items-center justify-center',
+          'rounded-full bg-white disabled:opacity-50',
+        )}
       >
         <IconPlus width={18} height={18} />
       </button>

@@ -14,7 +14,7 @@ import {
 } from 'react';
 
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
-import { useBoardQuery } from '@/entities/board/api/board-queries';
+import { isBoardNotFoundError, useBoardQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge, track } from '@/shared/lib/bridge';
 import { shouldShowLoadError } from '@/shared/lib/should-show-load-error';
@@ -63,6 +63,7 @@ import { useTextSelection } from '../model/use-text-selection';
 import { useStickerQuickMenu } from '../model/use-sticker-quick-menu';
 
 import type { ToolbarMode } from './BoardToolbar';
+import { BoardNotFound } from './BoardNotFound';
 import { BOARD_TEXT_STYLE } from './board-text-style';
 import { CoachMarkTip } from './CoachMarkTip';
 import { DrawingStroke } from './DrawingStroke';
@@ -168,7 +169,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   const [emptyBoardStickerTransform, setEmptyBoardStickerTransform] = useState<StickerTransform>(
     EMPTY_BOARD_STICKER_INITIAL_TRANSFORM,
   );
-  const { data, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
+  const { data, error, isLoading, isError, refetch, isStale } = useBoardQuery(boardId);
   const { data: me } = useMeQuery();
   const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
   const { push } = useFlow();
@@ -663,6 +664,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       </div>
     );
   }
+
+  if (!data && isBoardNotFoundError(error)) return <BoardNotFound />;
 
   if (shouldShowLoadError(isError, data)) {
     return (
