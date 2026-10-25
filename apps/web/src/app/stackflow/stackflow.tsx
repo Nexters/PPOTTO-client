@@ -10,6 +10,7 @@ import { stackflow, type ActivityComponentType } from '@stackflow/react';
 
 import { BoardPage } from '@/pages/board';
 import { AnalysisLoadingPage } from '@/pages/analysis-loading';
+import { HomePage } from '@/pages/home';
 import { LoginPage } from '@/pages/login';
 import { OnboardingPage } from '@/pages/onboarding';
 import { PhotoViewerPage } from '@/pages/photo-viewer';
@@ -38,6 +39,13 @@ const LoginActivity: ActivityComponentType<'Login'> = () => {
     </AppScreen>
   );
 };
+
+const HomeActivity: ActivityComponentType<'Home'> = () => (
+  <AppScreen>
+    <ScreenView name="home" />
+    <HomePage />
+  </AppScreen>
+);
 
 const BoardActivity: ActivityComponentType<'Board'> = ({ params }) => {
   return (
@@ -104,6 +112,7 @@ export const { Stack, actions } = stackflow({
     Onboarding: OnboardingActivity,
     Terms: TermsActivity,
     TermsDetail: TermsDetailActivity,
+    Home: HomeActivity,
     Board: BoardActivity,
     Recap: RecapActivity,
     PhotoViewer: PhotoViewerActivity,

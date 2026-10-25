@@ -31,6 +31,7 @@ export type AnalyticsEvents = {
       | 'onboarding'
       | 'photo_select'
       | 'analysis_loading'
+      | 'home'
       | 'board'
       | 'recap'
       | 'photo_viewer'
