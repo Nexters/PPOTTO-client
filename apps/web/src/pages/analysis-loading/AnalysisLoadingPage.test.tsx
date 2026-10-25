@@ -64,7 +64,8 @@ const mocks = vi.hoisted(() => {
   );
   const preloadStickerImages = vi.fn(() => Promise.resolve());
   const fetchQuery = vi.fn(({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn());
-  const queryClient = { fetchQuery };
+  const invalidateQueries = vi.fn(() => Promise.resolve());
+  const queryClient = { fetchQuery, invalidateQueries };
   const eventHandlers = new Map<string, (payload?: unknown) => void>();
   const on = vi.fn((message: string, handler: (payload?: unknown) => void) => {
     eventHandlers.set(message, handler);
@@ -80,6 +81,7 @@ const mocks = vi.hoisted(() => {
     destroy,
     eventHandlers,
     fetchQuery,
+    invalidateQueries,
     nextState,
     on,
     preloadStickerImages,
@@ -339,6 +341,8 @@ describe('AnalysisLoadingPage', () => {
     expect(mocks.boardList).not.toHaveBeenCalled();
 
     mocks.eventHandlers.get('SHOW_BOARD')?.();
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['board', 'list'] });
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['board', 'summaryList'] });
     expect(mocks.replace).toHaveBeenCalledWith('Home', {}, { animate: false });
     expect(mocks.push).toHaveBeenCalledWith('Board', { boardId: 'board-9' });
     expect(mocks.replace.mock.invocationCallOrder[0]).toBeLessThan(

@@ -72,6 +72,8 @@ export function AnalysisLoadingPage({ boardId }: { boardId?: string }) {
   useEffect(
     () =>
       bridge.on('SHOW_BOARD', () => {
+        void queryClient.invalidateQueries({ queryKey: boardQueryKeys.list() });
+        void queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() });
         const resultBoardId = resultBoardIdRef.current;
         if (!resultBoardId) {
           replace('Home', {});
@@ -80,7 +82,7 @@ export function AnalysisLoadingPage({ boardId }: { boardId?: string }) {
         replace('Home', {}, { animate: false });
         push('Board', { boardId: resultBoardId });
       }),
-    [push, replace],
+    [push, queryClient, replace],
   );
 
   useEffect(
