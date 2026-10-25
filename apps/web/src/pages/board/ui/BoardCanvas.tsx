@@ -17,6 +17,7 @@ import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutatio
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge, track } from '@/shared/lib/bridge';
+import { shouldShowLoadError } from '@/shared/lib/should-show-load-error';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { uuidv7 } from '@/shared/lib/uuidv7';
 import { useToast } from '@/shared/ui/common/Toast';
@@ -121,10 +122,6 @@ export type BoardCanvasHandle = {
   // 무한 캔버스에서 길을 잃었을 때 내 스티커들이 있는 곳으로 카메라를 되돌린다
   recenterCamera: () => void;
 };
-
-export function shouldShowBoardLoadError(isError: boolean, data: unknown): boolean {
-  return isError && !data;
-}
 
 // 그리는 도중인 선의 실시간 미리보기는 스티커·그림 zIndex 값과 무관하게 항상 맨 위에 그려져야 한다
 const LIVE_STROKE_Z_INDEX = 999999;
@@ -667,7 +664,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     );
   }
 
-  if (shouldShowBoardLoadError(isError, data)) {
+  if (shouldShowLoadError(isError, data)) {
     return (
       <div className="flex items-center justify-center w-full h-full">
         <p className="text-gray-400 text-body-04">보드를 불러오지 못했어요</p>

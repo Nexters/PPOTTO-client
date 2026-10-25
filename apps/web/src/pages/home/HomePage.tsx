@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useBoardSummaryListQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
+import { shouldShowLoadError } from '@/shared/lib/should-show-load-error';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { Button, IconButton } from '@/shared/ui/common/Button';
 import { Skeleton } from '@/shared/ui/Skeleton';
@@ -74,7 +75,7 @@ export function HomePage() {
         )}
       </div>
 
-      {isError ? (
+      {shouldShowLoadError(isError, data) ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
           <p className="text-body-04 text-gray-400">보드를 불러오지 못했어요</p>
           <Button size="medium" onClick={() => refetch()}>
