@@ -10,19 +10,19 @@ const DAY_MS = 24 * HOUR_MS;
 const elapsed = (ms: number) => new Date(NOW - ms).toISOString();
 
 it.each([
-  ['1분 미만', 59 * 1000, '지금 막'],
-  ['1분', MINUTE_MS, '1분 전'],
-  ['59분', 59 * MINUTE_MS, '59분 전'],
-  ['1시간', HOUR_MS, '1시간 전'],
-  ['23시간', 23 * HOUR_MS, '23시간 전'],
-  ['1일', DAY_MS, '1일 전'],
-  ['6일', 6 * DAY_MS, '6일 전'],
-  ['7일', 7 * DAY_MS, '1주 전'],
-  ['29일', 29 * DAY_MS, '4주 전'],
-  ['30일', 30 * DAY_MS, '1개월 전'],
-  ['364일', 364 * DAY_MS, '12개월 전'],
-  ['365일', 365 * DAY_MS, '1년 전'],
-])('%s 지났으면 "%s" 단위로 내림해 표시한다', (_label, ms, expected) => {
+  { label: '1분 미만', ms: 59 * 1000, expected: '지금 막' },
+  { label: '1분', ms: MINUTE_MS, expected: '1분 전' },
+  { label: '59분', ms: 59 * MINUTE_MS, expected: '59분 전' },
+  { label: '1시간', ms: HOUR_MS, expected: '1시간 전' },
+  { label: '23시간', ms: 23 * HOUR_MS, expected: '23시간 전' },
+  { label: '1일', ms: DAY_MS, expected: '1일 전' },
+  { label: '6일', ms: 6 * DAY_MS, expected: '6일 전' },
+  { label: '7일', ms: 7 * DAY_MS, expected: '1주 전' },
+  { label: '29일', ms: 29 * DAY_MS, expected: '4주 전' },
+  { label: '30일', ms: 30 * DAY_MS, expected: '1개월 전' },
+  { label: '364일', ms: 364 * DAY_MS, expected: '12개월 전' },
+  { label: '365일', ms: 365 * DAY_MS, expected: '1년 전' },
+])('$label 지났으면 $expected(으)로 내림해 표시한다', ({ ms, expected }) => {
   expect(formatRelativeTime(elapsed(ms), NOW)).toBe(expected);
 });
 
