@@ -349,7 +349,9 @@ export function AnalysisLoadingScreen() {
         bridgeHandlers={bridgeHandlers}
         analysisLoadingResync={resyncState}
         downloadingFromICloud={downloadingFromICloud}
-        path="/analysis-loading"
+        path={
+          boardId ? `/analysis-loading?boardId=${encodeURIComponent(boardId)}` : '/analysis-loading'
+        }
         showBoard={showingBoard}
         waitForAnalysisReady
       />

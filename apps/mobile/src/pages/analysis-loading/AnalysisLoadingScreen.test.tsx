@@ -77,6 +77,7 @@ type LoadingBridgeHandlers = {
 };
 
 let loadingBridgeHandlers: LoadingBridgeHandlers | undefined;
+let webViewPath: string | undefined;
 let showingBoard = false;
 let analysisLoadingResync: AnalysisLoadingPhaseState | undefined;
 
@@ -91,14 +92,17 @@ jest.mock('@/shared/ui/AppWebView', () => {
   return {
     AppWebView: ({
       bridgeHandlers,
+      path,
       showBoard,
       analysisLoadingResync: nextResync,
     }: {
       bridgeHandlers: LoadingBridgeHandlers;
+      path?: string;
       showBoard?: boolean;
       analysisLoadingResync?: AnalysisLoadingPhaseState;
     }) => {
       loadingBridgeHandlers = bridgeHandlers;
+      webViewPath = path;
       showingBoard = showBoard ?? false;
       analysisLoadingResync = nextResync;
       return <Text>분석 로딩 웹뷰</Text>;
@@ -153,6 +157,7 @@ const SAFE_AREA_METRICS = {
 beforeEach(() => {
   jest.clearAllMocks();
   loadingBridgeHandlers = undefined;
+  webViewPath = undefined;
   showingBoard = false;
   analysisLoadingResync = undefined;
   appStateChangeHandler = undefined;
@@ -174,6 +179,16 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers();
+});
+
+it('분석 중인 보드 ID를 웹뷰에 넘겨 결과 확인 시 그 보드로 이동하게 한다', async () => {
+  await render(
+    <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
+      <AnalysisLoadingScreen />
+    </SafeAreaProvider>,
+  );
+
+  expect(webViewPath).toBe('/analysis-loading?boardId=board-1');
 });
 
 it('완료 상태로 복구하면 결과 확인 버튼을 바로 표시한다', async () => {

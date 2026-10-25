@@ -146,7 +146,11 @@ export function BoardScreen() {
   return (
     <View style={{ flex: 1 }}>
       {screenState.status === 'CHECKING' || screenState.status === 'READY' ? (
-        <AppWebView path="/board" onReady={clearPreviousScreens} waitForBoardReady />
+        <AppWebView
+          path={boardId ? `/board?boardId=${encodeURIComponent(boardId)}` : '/home'}
+          onReady={clearPreviousScreens}
+          waitForBoardReady
+        />
       ) : (
         <AppBackground />
       )}
