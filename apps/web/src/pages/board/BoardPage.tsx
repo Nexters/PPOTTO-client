@@ -24,6 +24,7 @@ import { DrawingSizePreview } from './ui/DrawingSizePreview';
 import { EyedropperMarker } from './ui/EyedropperMarker';
 import { captureBoardTextLayout } from './ui/board-text-layout';
 import { TextInputOverlay } from './ui/TextInputOverlay';
+import { BoardMenuSheet } from './ui/BoardMenuSheet';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
@@ -52,12 +53,14 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     boardId,
     boardName,
     participantCount,
+    boardRole,
     isBoardListLoading,
     canAddSticker,
     openPhotoSelect,
   } = useBoardPageState(boardIdParam);
   const { pop } = useFlow();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
+  const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
@@ -389,6 +392,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
               title={boardName}
               participantCount={participantCount}
               onBack={goBack}
+              onOpenMenu={() => setIsBoardMenuOpen(true)}
               onTitleClick={() => canvasRef.current?.recenterCamera()}
             />
           ))}
@@ -480,6 +484,11 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
         {(toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed && (
           <DrawingDeleteBar trashButtonRef={trashButtonRef} isDragOver={isDrawingOverTrash} />
         )}
+        <BoardMenuSheet
+          isOpen={isBoardMenuOpen}
+          onClose={() => setIsBoardMenuOpen(false)}
+          role={boardRole}
+        />
       </div>
       {isPickingColor && pickerInitialPosition && (
         <div

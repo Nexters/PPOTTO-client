@@ -6,7 +6,7 @@ type BoardHeaderProps = {
   title?: string;
   participantCount?: number;
   onBack: () => void;
-  onOpenMenu?: () => void;
+  onOpenMenu: () => void;
   onTitleClick?: () => void;
 };
 
@@ -55,8 +55,7 @@ export function BoardHeader({
           type="button"
           aria-label="보드 메뉴 열기"
           onClick={onOpenMenu}
-          disabled={!onOpenMenu}
-          className="pointer-events-auto flex size-10 items-center justify-end disabled:opacity-50"
+          className="pointer-events-auto flex size-10 items-center justify-end"
         >
           <MenuKebab color="white" />
         </button>

@@ -17,7 +17,7 @@ describe('BoardHeader', () => {
   it('뒤로가기 버튼을 누르면 전달받은 동작을 실행한다', async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
-    render(<BoardHeader title="제주 여행" onBack={onBack} />);
+    render(<BoardHeader title="제주 여행" onBack={onBack} onOpenMenu={vi.fn()} />);
 
     await user.click(screen.getByRole('button', { name: '뒤로가기' }));
 
@@ -37,7 +37,14 @@ describe('BoardHeader', () => {
   it('제목을 누르면 전달받은 동작을 실행한다', async () => {
     const user = userEvent.setup();
     const onTitleClick = vi.fn();
-    render(<BoardHeader title="제주 여행" onBack={vi.fn()} onTitleClick={onTitleClick} />);
+    render(
+      <BoardHeader
+        title="제주 여행"
+        onBack={vi.fn()}
+        onOpenMenu={vi.fn()}
+        onTitleClick={onTitleClick}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: '보드 가운데로 보기' }));
 
