@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { useBoardListQuery, useBoardQuery } from '@/entities/board/api/board-queries';
+import { useBoardQuery, useBoardSummaryListQuery } from '@/entities/board/api/board-queries';
 import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge } from '@/shared/lib/bridge';
 import {
@@ -10,8 +10,9 @@ import {
 
 /* 첫 업로드 여부 판단 훅 */
 export function useBoardPageState(boardIdParam?: string) {
-  const { data: boards, isLoading: isBoardListLoading } = useBoardListQuery();
-  const boardId = boardIdParam ?? boards?.[0]?.id;
+  const { data: boardList, isLoading: isBoardListLoading } = useBoardSummaryListQuery();
+  const boardId = boardIdParam ?? boardList?.boards[0]?.id;
+  const boardSummary = boardList?.boards.find((item) => item.id === boardId);
   const { data: board, isLoading: isBoardLoading } = useBoardQuery(boardId);
   const { data: me } = useMeQuery();
 
@@ -32,6 +33,9 @@ export function useBoardPageState(boardIdParam?: string) {
 
   return {
     boardId,
+    boardName: board?.name ?? boardSummary?.name,
+    participantCount: boardSummary?.kind === 'SHARED' ? boardSummary.participantCount : undefined,
+    boardRole: boardSummary?.role,
     isBoardListLoading,
     isBoardLoading,
     canAddSticker: Boolean(board),

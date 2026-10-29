@@ -1,47 +1,66 @@
 'use client';
 
-import { IconSettings } from '@ppotto/assets';
-import { useFlow } from '@stackflow/react';
-import Image from 'next/image';
-
-import { cn } from '@/shared/lib/cn';
+import { ChevronLeft, MenuKebab } from '@ppotto/assets';
 
 type BoardHeaderProps = {
-  onRecenter?: () => void;
+  title?: string;
+  participantCount?: number;
+  onBack: () => void;
+  onOpenMenu?: () => void;
+  onTitleClick?: () => void;
 };
 
-export function BoardHeader({ onRecenter }: BoardHeaderProps) {
-  const { push } = useFlow();
-
+export function BoardHeader({
+  title,
+  participantCount,
+  onBack,
+  onOpenMenu,
+  onTitleClick,
+}: BoardHeaderProps) {
   return (
-    <div
-      className={cn(
-        'pointer-events-none absolute inset-x-0 z-60 flex flex-col',
-        'items-start px-6 pt-5 pb-16',
-      )}
+    <header
+      className="pointer-events-none absolute inset-x-0 z-60 px-6 pt-3 pb-16"
       style={{
         top: 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))',
         backgroundImage: 'linear-gradient(to bottom, black 29px, transparent)',
       }}
     >
-      <div className="flex items-center justify-between w-full">
+      <div className="grid h-10 w-full grid-cols-[40px_minmax(0,1fr)_40px] items-center">
         <button
           type="button"
-          aria-label="가운데로 돌아가기"
-          onClick={onRecenter}
-          className="pointer-events-auto"
+          aria-label="뒤로가기"
+          onClick={onBack}
+          className="pointer-events-auto flex size-10 items-center justify-start"
         >
-          <Image src="/logo/Logo.svg" alt="PPOTTO" width={105} height={32} className="w-auto h-8" />
+          <ChevronLeft />
         </button>
+
+        <div className="flex min-w-0 items-center justify-center gap-2 text-body-01">
+          <button
+            type="button"
+            aria-label="보드 가운데로 보기"
+            onClick={onTitleClick}
+            className="pointer-events-auto min-w-0"
+          >
+            <h1 className="truncate text-white">{title ?? ''}</h1>
+          </button>
+          {participantCount !== undefined && (
+            <span aria-label={`참여자 ${participantCount}명`} className="shrink-0 text-gray-500">
+              {participantCount}
+            </span>
+          )}
+        </div>
+
         <button
           type="button"
-          aria-label="설정"
-          onClick={() => push('Settings', {})}
-          className="pointer-events-auto"
+          aria-label="보드 메뉴 열기"
+          onClick={onOpenMenu}
+          disabled={!onOpenMenu}
+          className="pointer-events-auto flex size-10 items-center justify-end disabled:opacity-50"
         >
-          <IconSettings color="white" />
+          <MenuKebab color="white" />
         </button>
       </div>
-    </div>
+    </header>
   );
 }

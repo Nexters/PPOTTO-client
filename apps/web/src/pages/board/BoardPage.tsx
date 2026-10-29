@@ -1,5 +1,6 @@
 'use client';
 
+import { useFlow } from '@stackflow/react';
 import { toCanvas } from 'html-to-image';
 import dynamic from 'next/dynamic';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
@@ -7,6 +8,7 @@ import { flushSync } from 'react-dom';
 
 import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
+import { useSinglePop } from '@/shared/lib/use-single-pop';
 
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
@@ -46,8 +48,16 @@ const captureBoard = (element: HTMLElement) =>
   toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
 
 export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
-  const { boardId, isBoardListLoading, canAddSticker, openPhotoSelect } =
-    useBoardPageState(boardIdParam);
+  const {
+    boardId,
+    boardName,
+    participantCount,
+    isBoardListLoading,
+    canAddSticker,
+    openPhotoSelect,
+  } = useBoardPageState(boardIdParam);
+  const { pop } = useFlow();
+  const goBack = useSinglePop(useCallback(() => pop(), [pop]));
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
@@ -375,7 +385,12 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
               onConfirm={finishTextMode}
             />
           ) : (
-            <BoardHeader onRecenter={() => canvasRef.current?.recenterCamera()} />
+            <BoardHeader
+              title={boardName}
+              participantCount={participantCount}
+              onBack={goBack}
+              onTitleClick={() => canvasRef.current?.recenterCamera()}
+            />
           ))}
         <BoardContent
           boardId={boardId}
