@@ -11,6 +11,7 @@ describe('BoardMenuSheet', () => {
         isOpen
         onClose={vi.fn()}
         onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
         role={role}
         view={{ type: 'menu' }}
       />,
@@ -48,6 +49,7 @@ describe('BoardMenuSheet', () => {
         isOpen
         onClose={onClose}
         onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
         role="MEMBER"
         view={{ type: 'menu' }}
       />,
@@ -65,6 +67,7 @@ describe('BoardMenuSheet', () => {
         isOpen
         onClose={vi.fn()}
         onInvite={onInvite}
+        onCopyInvitation={vi.fn()}
         role="OWNER"
         view={{ type: 'menu' }}
       />,
@@ -81,6 +84,7 @@ describe('BoardMenuSheet', () => {
         isOpen
         onClose={vi.fn()}
         onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
         role="OWNER"
         view={{ type: 'invitation', code: 'K7P2QX' }}
       />,

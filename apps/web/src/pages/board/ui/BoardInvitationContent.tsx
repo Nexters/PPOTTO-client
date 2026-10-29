@@ -4,9 +4,10 @@ import { cn } from '@/shared/lib/cn';
 
 type BoardInvitationContentProps = {
   code: string;
+  onCopy: () => void;
 };
 
-export function BoardInvitationContent({ code }: BoardInvitationContentProps) {
+export function BoardInvitationContent({ code, onCopy }: BoardInvitationContentProps) {
   return (
     <>
       <div className="flex w-full flex-col gap-2">
@@ -34,7 +35,7 @@ export function BoardInvitationContent({ code }: BoardInvitationContentProps) {
           <Instagram width={48} height={48} />
           <span className="text-caption-01 w-full text-center text-white">인스타그램</span>
         </button>
-        <button type="button" disabled className="flex w-18 flex-col items-center gap-2">
+        <button type="button" onClick={onCopy} className="flex w-18 flex-col items-center gap-2">
           <span className="flex size-12 items-center justify-center rounded-full bg-gray-800">
             <Overlap color="white" width={28} height={28} />
           </span>

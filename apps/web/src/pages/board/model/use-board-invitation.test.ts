@@ -1,10 +1,17 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mutateAsync, toast } = vi.hoisted(() => ({ mutateAsync: vi.fn(), toast: vi.fn() }));
+const { mutateAsync, toast, writeText } = vi.hoisted(() => ({
+  mutateAsync: vi.fn(),
+  toast: vi.fn(),
+  writeText: vi.fn(),
+}));
 
 vi.mock('@/entities/board/api/board-mutations', () => ({
   useIssueBoardInvitationMutation: () => ({ mutateAsync, isPending: false }),
+}));
+vi.mock('@/shared/lib/copy-text-to-clipboard', () => ({
+  copyTextToClipboard: writeText,
 }));
 vi.mock('@/shared/ui/common/Toast', () => ({ useToast: () => toast }));
 
@@ -14,6 +21,7 @@ describe('useBoardInvitation', () => {
   beforeEach(() => {
     mutateAsync.mockReset();
     toast.mockReset();
+    writeText.mockReset();
   });
 
   it('발급에 성공하면 초대 정보를 반환한다', async () => {
@@ -44,5 +52,24 @@ describe('useBoardInvitation', () => {
 
     expect(mutateAsync).not.toHaveBeenCalled();
     expect(issued).toBeNull();
+  });
+
+  it('초대 코드를 클립보드에 복사하고 완료를 안내한다', async () => {
+    writeText.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useBoardInvitation('board-1'));
+
+    await act(() => result.current.copyInvitationCode('K7P2QX'));
+
+    expect(writeText).toHaveBeenCalledWith('K7P2QX');
+    expect(toast).toHaveBeenCalledWith('초대 코드를 복사했어요');
+  });
+
+  it('초대 코드 복사에 실패하면 오류를 안내한다', async () => {
+    writeText.mockRejectedValue(new Error('denied'));
+    const { result } = renderHook(() => useBoardInvitation('board-1'));
+
+    await act(() => result.current.copyInvitationCode('K7P2QX'));
+
+    expect(toast).toHaveBeenCalledWith('초대 코드를 복사하지 못했어요');
   });
 });

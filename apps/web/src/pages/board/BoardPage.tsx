@@ -61,7 +61,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   } = useBoardPageState(boardIdParam);
   const { pop } = useFlow();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
-  const { issueInvitation, isInvitationPending } = useBoardInvitation(boardId);
+  const { issueInvitation, copyInvitationCode, isInvitationPending } = useBoardInvitation(boardId);
   const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
   const [boardMenuView, setBoardMenuView] = useState<BoardMenuView>({ type: 'menu' });
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
@@ -501,6 +501,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           role={boardRole}
           view={boardMenuView}
           onInvite={() => void openInvitation()}
+          onCopyInvitation={(code) => void copyInvitationCode(code)}
           isInvitePending={isInvitationPending}
         />
       </div>

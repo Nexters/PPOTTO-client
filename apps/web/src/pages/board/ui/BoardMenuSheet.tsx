@@ -20,6 +20,7 @@ type BoardMenuSheetProps = {
   role?: BoardRole;
   view: BoardMenuView;
   onInvite: () => void;
+  onCopyInvitation: (code: string) => void;
   isInvitePending?: boolean;
 };
 
@@ -54,11 +55,15 @@ function BoardMenuContent({
   view,
   role,
   onInvite,
+  onCopyInvitation,
   isInvitePending,
-}: Pick<BoardMenuSheetProps, 'view' | 'role' | 'onInvite' | 'isInvitePending'>) {
+}: Pick<
+  BoardMenuSheetProps,
+  'view' | 'role' | 'onInvite' | 'onCopyInvitation' | 'isInvitePending'
+>) {
   switch (view.type) {
     case 'invitation':
-      return <BoardInvitationContent code={view.code} />;
+      return <BoardInvitationContent code={view.code} onCopy={() => onCopyInvitation(view.code)} />;
     case 'menu':
       return (
         <>
@@ -89,6 +94,7 @@ export function BoardMenuSheet({
   role,
   view,
   onInvite,
+  onCopyInvitation,
   isInvitePending,
 }: BoardMenuSheetProps) {
   return (
@@ -103,6 +109,7 @@ export function BoardMenuSheet({
         view={view}
         role={role}
         onInvite={onInvite}
+        onCopyInvitation={onCopyInvitation}
         isInvitePending={isInvitePending}
       />
     </BottomSheet>
