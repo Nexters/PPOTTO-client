@@ -212,6 +212,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/board-invitations/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 보드 초대 상세 조회
+         * @description 인증 없이 조회할 수 있으며 로그인한 사용자는 참여 상태와 참여자 목록도 함께 확인함
+         */
+        get: operations["getBoardInvitation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/board-invitations/{invitationId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 초대 미리보기 업로드·교체
+         * @description 발급자가 현재 코드에 사용할 WebP 미리보기를 업로드함
+         */
+        put: operations["uploadBoardInvitationPreview"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/boards": {
         parameters: {
             query?: never;
@@ -262,6 +302,26 @@ export interface paths {
          * @description 내 보드의 이름을 변경함. 최대 10자
          */
         patch: operations["rename"];
+        trace?: never;
+    };
+    "/boards/{boardId}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 내 초대 코드 발급·재사용
+         * @description 보드의 방장 또는 참여자에게 30일 동안 유효한 초대 코드를 발급함
+         */
+        post: operations["issueBoardInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/boards/{boardId}/layout": {
@@ -609,6 +669,36 @@ export interface components {
             success: boolean;
         };
         /** @description 공통 응답 봉투 */
+        ApiResponseBoardInvitationDetailResponse: {
+            data?: components["schemas"]["BoardInvitationDetailResponse"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
+        ApiResponseBoardInvitationIssueResponse: {
+            data?: components["schemas"]["BoardInvitationIssueResponse"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
+        ApiResponseBoardInvitationPreviewUploadResponse: {
+            data?: components["schemas"]["BoardInvitationPreviewUploadResponse"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
         ApiResponseBoardListV2Response: {
             data?: components["schemas"]["BoardListV2Response"] | null;
             error?: components["schemas"]["ErrorResponse"] | null;
@@ -808,6 +898,103 @@ export interface components {
             /** @description 보드에 배치된 스티커 목록. v1과 동일 */
             stickers: components["schemas"]["BoardStickerResponse"][];
         };
+        /** @description 보드 초대 상세 */
+        BoardInvitationDetailResponse: {
+            /**
+             * Format: uuid
+             * @description 초대 대상 보드 ID (uuidv7)
+             */
+            boardId: string;
+            /**
+             * @description 보드 이름
+             * @example 제주 여행
+             */
+            boardName: string;
+            /**
+             * @description 초대 코드
+             * @example K7P2QX
+             */
+            code: string;
+            /**
+             * Format: date-time
+             * @description 초대 만료 시각
+             * @example 2026-11-27T09:30:00Z
+             */
+            expiresAt: string;
+            /**
+             * @description 초대한 사용자 이름
+             * @example 김용희
+             */
+            inviterName: string;
+            /**
+             * Format: int32
+             * @description 최대 참여 인원(방장 포함)
+             * @example 8
+             */
+            maxParticipantCount: number;
+            /**
+             * Format: int32
+             * @description 현재 참여 인원(방장 포함)
+             * @example 2
+             */
+            participantCount: number;
+            /** @description 현재 참여자 목록. 익명 요청에서는 생략 */
+            participants?: components["schemas"]["BoardInvitationParticipantResponse"][] | null;
+            /** @description 미리보기 읽기용 signed URL */
+            previewImageUrl?: string | null;
+            /**
+             * Format: int32
+             * @description 현재 스티커 수
+             * @example 9
+             */
+            stickerCount: number;
+            viewerStatus?: components["schemas"]["BoardInvitationViewerStatus"] | null;
+        };
+        /** @description 보드 초대 코드 발급 결과 */
+        BoardInvitationIssueResponse: {
+            /**
+             * @description 초대 코드
+             * @example K7P2QX
+             */
+            code: string;
+            /**
+             * Format: date-time
+             * @description 초대 만료 시각
+             * @example 2026-11-27T09:30:00Z
+             */
+            expiresAt: string;
+            /**
+             * Format: uuid
+             * @description 초대 ID (uuidv7)
+             * @example 019a268d-15c8-7d31-8f42-90ad72d627f5
+             */
+            invitationId: string;
+            /**
+             * @description 현재 코드의 미리보기 생성 필요 여부
+             * @example true
+             */
+            previewRequired: boolean;
+        };
+        /** @description 보드 초대 참여자 */
+        BoardInvitationParticipantResponse: {
+            /**
+             * @description 사용자 이름
+             * @example 김용희
+             */
+            name: string;
+            /** @description 보드 역할 */
+            role: components["schemas"]["BoardRole"];
+        };
+        /** @description 보드 초대 미리보기 업로드 결과 */
+        BoardInvitationPreviewUploadResponse: {
+            /**
+             * @description 미리보기 읽기용 signed URL
+             * @example https://storage.googleapis.com/ppotto-board-invitations/...?X-Goog-Signature=sample
+             */
+            previewImageUrl: string;
+        };
+        /** @enum {string} */
+        BoardInvitationViewerStatus: "OWNER" | "MEMBER" | "NOT_JOINED";
         /** @enum {string} */
         BoardKind: "PERSONAL" | "SHARED";
         /** @description 보드 편집 결과 일괄 저장 요청. 편집 모드에서 바뀐 것만 보냄 */
@@ -2705,6 +2892,132 @@ export interface operations {
             };
         };
     };
+    getBoardInvitation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 6자리 초대 코드
+                 * @example K7P2QX
+                 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 유효한 초대 상세 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseBoardInvitationDetailResponse"];
+                };
+            };
+            /** @description 전달한 access token이 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 초대를 찾을 수 없음 (BOARD-006) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    uploadBoardInvitationPreview: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 초대 ID (uuidv7)
+                 * @example 019a268d-15c8-7d31-8f42-90ad72d627f5
+                 */
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    code: string;
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 미리보기 저장 및 교체 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseBoardInvitationPreviewUploadResponse"];
+                };
+            };
+            /** @description 초대 미리보기 이미지가 올바르지 않음 (BOARD-007) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 초대를 찾을 수 없음 (BOARD-006) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 이미지 생성 중 초대 코드가 갱신됨 (BOARD-008) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
     list: {
         parameters: {
             query?: never;
@@ -2953,6 +3266,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 보드를 찾을 수 없음 (BOARD-002) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    issueBoardInvitation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 초대할 보드 ID (uuidv7)
+                 * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+                 */
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 초대 코드와 미리보기 필요 여부 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseBoardInvitationIssueResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
