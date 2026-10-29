@@ -10,10 +10,12 @@ import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 import { useSinglePop } from '@/shared/lib/use-single-pop';
 
+import { useBoardInvitation } from './model/use-board-invitation';
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
-import { BoardHeader } from './ui/BoardHeader';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
+import { BoardHeader } from './ui/BoardHeader';
+import { BoardMenuSheet, type BoardMenuView } from './ui/BoardMenuSheet';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { ConfirmCancelHeader } from './ui/ConfirmCancelHeader';
@@ -24,7 +26,6 @@ import { DrawingSizePreview } from './ui/DrawingSizePreview';
 import { EyedropperMarker } from './ui/EyedropperMarker';
 import { captureBoardTextLayout } from './ui/board-text-layout';
 import { TextInputOverlay } from './ui/TextInputOverlay';
-import { BoardMenuSheet } from './ui/BoardMenuSheet';
 
 const BoardCanvas = dynamic(() => import('./ui/BoardCanvas').then((mod) => mod.BoardCanvas), {
   ssr: false,
@@ -60,7 +61,9 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   } = useBoardPageState(boardIdParam);
   const { pop } = useFlow();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
+  const { issueInvitation, isInvitationPending } = useBoardInvitation(boardId);
   const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
+  const [boardMenuView, setBoardMenuView] = useState<BoardMenuView>({ type: 'menu' });
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
@@ -111,6 +114,11 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const pickerPositionRef = useRef<{ x: number; y: number } | null>(null);
 
   const isEyedropperActive = isPreparingColor || isPickingColor || colorSource === 'eyedropper';
+
+  const openInvitation = async () => {
+    const invitation = await issueInvitation();
+    if (invitation) setBoardMenuView({ type: 'invitation', code: invitation.code });
+  };
 
   const invalidateEyedropperSnapshot = useCallback(() => {
     snapshotVersionRef.current += 1;
@@ -392,7 +400,10 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
               title={boardName}
               participantCount={participantCount}
               onBack={goBack}
-              onOpenMenu={() => setIsBoardMenuOpen(true)}
+              onOpenMenu={() => {
+                setBoardMenuView({ type: 'menu' });
+                setIsBoardMenuOpen(true);
+              }}
               onTitleClick={() => canvasRef.current?.recenterCamera()}
             />
           ))}
@@ -488,6 +499,9 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           isOpen={isBoardMenuOpen}
           onClose={() => setIsBoardMenuOpen(false)}
           role={boardRole}
+          view={boardMenuView}
+          onInvite={() => void openInvitation()}
+          isInvitePending={isInvitationPending}
         />
       </div>
       {isPickingColor && pickerInitialPosition && (
