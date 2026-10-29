@@ -17,6 +17,7 @@ export type BoardSummaryList = components['schemas']['BoardListV2Response'];
 export type BoardSummary = components['schemas']['BoardSummaryV2Response'];
 
 export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request'];
+export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
@@ -45,6 +46,21 @@ export const boardApi = {
       api.PATCH('/boards/{boardId}/layout', {
         params: { path: { boardId }, header: { 'X-API-Version': '2' } },
         body: input,
+      }),
+    );
+  },
+  issueInvitation: (boardId: string) => {
+    if (USE_MOCK) {
+      return Promise.resolve({
+        code: 'K7P2QX',
+        expiresAt: '2026-11-29T00:00:00Z',
+        invitationId: '019a268d-15c8-7d31-8f42-90ad72d627f5',
+        previewRequired: true,
+      } satisfies BoardInvitationIssue);
+    }
+    return unwrapData(
+      api.POST('/boards/{boardId}/invitations', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
       }),
     );
   },

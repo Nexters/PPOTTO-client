@@ -1,5 +1,6 @@
 'use client';
 
+import { useFlow } from '@stackflow/react';
 import { toCanvas } from 'html-to-image';
 import dynamic from 'next/dynamic';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
@@ -7,11 +8,14 @@ import { flushSync } from 'react-dom';
 
 import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
+import { useSinglePop } from '@/shared/lib/use-single-pop';
 
+import { useBoardInvitation } from './model/use-board-invitation';
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
-import { BoardHeader } from './ui/BoardHeader';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
+import { BoardHeader } from './ui/BoardHeader';
+import { BoardMenuSheet, type BoardMenuView } from './ui/BoardMenuSheet';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { ConfirmCancelHeader } from './ui/ConfirmCancelHeader';
@@ -46,8 +50,20 @@ const captureBoard = (element: HTMLElement) =>
   toCanvas(element, { includeQueryParams: true, skipFonts: true, pixelRatio: 1 });
 
 export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
-  const { boardId, isBoardListLoading, canAddSticker, openPhotoSelect } =
-    useBoardPageState(boardIdParam);
+  const {
+    boardId,
+    boardName,
+    participantCount,
+    boardRole,
+    isBoardListLoading,
+    canAddSticker,
+    openPhotoSelect,
+  } = useBoardPageState(boardIdParam);
+  const { pop } = useFlow();
+  const goBack = useSinglePop(useCallback(() => pop(), [pop]));
+  const { issueInvitation, copyInvitationCode, isInvitationPending } = useBoardInvitation(boardId);
+  const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
+  const [boardMenuView, setBoardMenuView] = useState<BoardMenuView>({ type: 'menu' });
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
@@ -98,6 +114,11 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const pickerPositionRef = useRef<{ x: number; y: number } | null>(null);
 
   const isEyedropperActive = isPreparingColor || isPickingColor || colorSource === 'eyedropper';
+
+  const openInvitation = async () => {
+    const invitation = await issueInvitation();
+    if (invitation) setBoardMenuView({ type: 'invitation', code: invitation.code });
+  };
 
   const invalidateEyedropperSnapshot = useCallback(() => {
     snapshotVersionRef.current += 1;
@@ -375,7 +396,16 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
               onConfirm={finishTextMode}
             />
           ) : (
-            <BoardHeader onRecenter={() => canvasRef.current?.recenterCamera()} />
+            <BoardHeader
+              title={boardName}
+              participantCount={participantCount}
+              onBack={goBack}
+              onOpenMenu={() => {
+                setBoardMenuView({ type: 'menu' });
+                setIsBoardMenuOpen(true);
+              }}
+              onTitleClick={() => canvasRef.current?.recenterCamera()}
+            />
           ))}
         <BoardContent
           boardId={boardId}
@@ -465,6 +495,15 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
         {(toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed && (
           <DrawingDeleteBar trashButtonRef={trashButtonRef} isDragOver={isDrawingOverTrash} />
         )}
+        <BoardMenuSheet
+          isOpen={isBoardMenuOpen}
+          onClose={() => setIsBoardMenuOpen(false)}
+          role={boardRole}
+          view={boardMenuView}
+          onInvite={() => void openInvitation()}
+          onCopyInvitation={(code) => void copyInvitationCode(code)}
+          isInvitePending={isInvitationPending}
+        />
       </div>
       {isPickingColor && pickerInitialPosition && (
         <div

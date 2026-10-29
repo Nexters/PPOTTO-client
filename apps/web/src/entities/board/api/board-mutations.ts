@@ -29,3 +29,8 @@ export const useUpdateBoardLayoutMutation = () => {
     },
   });
 };
+
+export const useIssueBoardInvitationMutation = () =>
+  useMutation({
+    mutationFn: (boardId: string) => boardApi.issueInvitation(boardId),
+  });

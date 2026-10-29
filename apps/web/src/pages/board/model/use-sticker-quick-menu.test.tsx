@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useStickerQuickMenu } from './use-sticker-quick-menu';
@@ -41,7 +41,6 @@ function QuickMenuHarness() {
 
 describe('useStickerQuickMenu', () => {
   afterEach(() => {
-    cleanup();
     vi.restoreAllMocks();
   });
 

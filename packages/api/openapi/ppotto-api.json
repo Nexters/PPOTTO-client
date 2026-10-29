@@ -24,6 +24,10 @@
       "description": "소셜 로그인과 서비스 토큰 관리"
     },
     {
+      "name": "보드 초대",
+      "description": "보드 초대 코드 발급과 조회"
+    },
+    {
       "name": "분석",
       "description": "사진 업로드와 분석 실행"
     },
@@ -45,6 +49,184 @@
     }
   ],
   "paths": {
+    "/board-invitations/{invitationId}/preview": {
+      "put": {
+        "tags": ["보드 초대"],
+        "summary": "초대 미리보기 업로드·교체",
+        "description": "발급자가 현재 코드에 사용할 WebP 미리보기를 업로드함",
+        "operationId": "uploadBoardInvitationPreview",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "in": "path",
+            "description": "초대 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "019a268d-15c8-7d31-8f42-90ad72d627f5"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": ["code", "file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "미리보기 저장 및 교체 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoardInvitationPreviewUploadResponse"
+                },
+                "examples": {
+                  "초대 미리보기 업로드": {
+                    "description": "초대 미리보기 업로드",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "previewImageUrl": "https://storage.googleapis.com/ppotto-board-invitations/preview.webp?X-Goog-Signature=sample"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "초대 미리보기 이미지가 올바르지 않음 (BOARD-007)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-007": {
+                    "summary": "WebP 형식, 파일 크기 또는 해상도 검증 실패",
+                    "description": "BOARD-007",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-007",
+                        "message": "초대 미리보기 이미지가 올바르지 않습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "초대를 찾을 수 없음 (BOARD-006)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-006": {
+                    "summary": "초대 없음, 만료, 보드 삭제 또는 발급자 탈퇴",
+                    "description": "BOARD-006",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-006",
+                        "message": "초대를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "이미지 생성 중 초대 코드가 갱신됨 (BOARD-008)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-008": {
+                    "summary": "미리보기 생성 중 초대 코드가 갱신됨",
+                    "description": "BOARD-008",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-008",
+                        "message": "초대 코드가 갱신되었습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/terms/agreements": {
       "post": {
         "tags": ["약관"],
@@ -1264,6 +1446,118 @@
                       "error": {
                         "code": "COMMON-004",
                         "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/boards/{boardId}/invitations": {
+      "post": {
+        "tags": ["보드 초대"],
+        "summary": "내 초대 코드 발급·재사용",
+        "description": "보드의 방장 또는 참여자에게 30일 동안 유효한 초대 코드를 발급함",
+        "operationId": "issueBoardInvitation",
+        "parameters": [
+          {
+            "name": "boardId",
+            "in": "path",
+            "description": "초대할 보드 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "초대 코드와 미리보기 필요 여부",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoardInvitationIssueResponse"
+                },
+                "examples": {
+                  "초대 코드 발급": {
+                    "description": "초대 코드 발급",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "invitationId": "019a268d-15c8-7d31-8f42-90ad72d627f5",
+                        "code": "K7P2QX",
+                        "expiresAt": "2026-11-27T09:30:00Z",
+                        "previewRequired": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "보드를 찾을 수 없음 (BOARD-002)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-002": {
+                    "summary": "보드 없음 또는 초대 권한 없음",
+                    "description": "BOARD-002",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-002",
+                        "message": "보드를 찾을 수 없습니다.",
                         "fieldErrors": [],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
@@ -4720,6 +5014,151 @@
         }
       }
     },
+    "/board-invitations/{code}": {
+      "get": {
+        "tags": ["보드 초대"],
+        "summary": "보드 초대 상세 조회",
+        "description": "인증 없이 조회할 수 있으며 로그인한 사용자는 참여 상태와 참여자 목록도 함께 확인함",
+        "operationId": "getBoardInvitation",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "6자리 초대 코드",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "K7P2QX"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "유효한 초대 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoardInvitationDetailResponse"
+                },
+                "examples": {
+                  "로그인 사용자 - 참여 상태와 참여자 포함": {
+                    "description": "로그인 사용자 - 참여 상태와 참여자 포함",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "code": "K7P2QX",
+                        "boardId": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                        "boardName": "제주 여행",
+                        "inviterName": "김용희",
+                        "participantCount": 2,
+                        "maxParticipantCount": 8,
+                        "stickerCount": 9,
+                        "previewImageUrl": "https://storage.googleapis.com/ppotto-board-invitations/preview.webp?X-Goog-Signature=sample",
+                        "expiresAt": "2026-11-27T09:30:00Z",
+                        "viewerStatus": "NOT_JOINED",
+                        "participants": [
+                          {
+                            "name": "김용희",
+                            "role": "OWNER"
+                          },
+                          {
+                            "name": "이수민",
+                            "role": "MEMBER"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "비로그인 사용자 - 공개 정보만": {
+                    "description": "비로그인 사용자 - 공개 정보만",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "code": "K7P2QX",
+                        "boardId": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                        "boardName": "제주 여행",
+                        "inviterName": "김용희",
+                        "participantCount": 2,
+                        "maxParticipantCount": 8,
+                        "stickerCount": 9,
+                        "previewImageUrl": "https://storage.googleapis.com/ppotto-board-invitations/preview.webp?X-Goog-Signature=sample",
+                        "expiresAt": "2026-11-27T09:30:00Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "전달한 access token이 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "초대를 찾을 수 없음 (BOARD-006)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-006": {
+                    "summary": "초대 없음, 만료, 보드 삭제 또는 발급자 탈퇴",
+                    "description": "BOARD-006",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-006",
+                        "message": "초대를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/analysis/{analysisId}": {
       "get": {
         "tags": ["분석"],
@@ -5081,25 +5520,6 @@
   },
   "components": {
     "schemas": {
-      "AgreeTermsRequest": {
-        "type": "object",
-        "description": "약관 동의 요청",
-        "properties": {
-          "termIds": {
-            "type": "array",
-            "description": "동의한 현재 약관 ID 목록. 필수 약관이 빠지면 TERM-001",
-            "example": [
-              "01983f2a-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
-              "01983f2a-2b3c-7d4e-9f5a-6b7c8d9e0f1a"
-            ],
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        },
-        "required": ["termIds"]
-      },
       "ApiErrorResponse": {
         "type": "object",
         "description": "공통 실패 응답 봉투",
@@ -5171,6 +5591,69 @@
           }
         },
         "required": ["field"]
+      },
+      "ApiResponseBoardInvitationPreviewUploadResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardInvitationPreviewUploadResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardInvitationPreviewUploadResponse": {
+        "type": "object",
+        "description": "보드 초대 미리보기 업로드 결과",
+        "properties": {
+          "previewImageUrl": {
+            "type": "string",
+            "description": "미리보기 읽기용 signed URL",
+            "example": "https://storage.googleapis.com/ppotto-board-invitations/...?X-Goog-Signature=sample"
+          }
+        },
+        "required": ["previewImageUrl"]
+      },
+      "AgreeTermsRequest": {
+        "type": "object",
+        "description": "약관 동의 요청",
+        "properties": {
+          "termIds": {
+            "type": "array",
+            "description": "동의한 현재 약관 ID 목록. 필수 약관이 빠지면 TERM-001",
+            "example": [
+              "01983f2a-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+              "01983f2a-2b3c-7d4e-9f5a-6b7c8d9e0f1a"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": ["termIds"]
       },
       "ApiResponseUnit": {
         "type": "object",
@@ -5626,6 +6109,67 @@
           }
         },
         "required": ["id", "name"]
+      },
+      "ApiResponseBoardInvitationIssueResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardInvitationIssueResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardInvitationIssueResponse": {
+        "type": "object",
+        "description": "보드 초대 코드 발급 결과",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "초대 코드",
+            "example": "K7P2QX"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "초대 만료 시각",
+            "example": "2026-11-27T09:30:00Z"
+          },
+          "previewRequired": {
+            "type": "boolean",
+            "description": "현재 코드의 미리보기 생성 필요 여부",
+            "example": true
+          },
+          "invitationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "초대 ID (uuidv7)",
+            "example": "019a268d-15c8-7d31-8f42-90ad72d627f5"
+          }
+        },
+        "required": ["code", "expiresAt", "invitationId", "previewRequired"]
       },
       "RefreshRequest": {
         "type": "object",
@@ -7369,6 +7913,139 @@
         },
         "required": ["color", "id", "scope", "stroke", "strokeWidth"]
       },
+      "ApiResponseBoardInvitationDetailResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardInvitationDetailResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardInvitationDetailResponse": {
+        "type": "object",
+        "description": "보드 초대 상세",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "초대 코드",
+            "example": "K7P2QX"
+          },
+          "boardName": {
+            "type": "string",
+            "description": "보드 이름",
+            "example": "제주 여행"
+          },
+          "inviterName": {
+            "type": "string",
+            "description": "초대한 사용자 이름",
+            "example": "김용희"
+          },
+          "participantCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "현재 참여 인원(방장 포함)",
+            "example": 2
+          },
+          "maxParticipantCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "최대 참여 인원(방장 포함)",
+            "example": 8
+          },
+          "stickerCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "현재 스티커 수",
+            "example": 9
+          },
+          "previewImageUrl": {
+            "type": ["string", "null"],
+            "description": "미리보기 읽기용 signed URL"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "초대 만료 시각",
+            "example": "2026-11-27T09:30:00Z"
+          },
+          "viewerStatus": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardInvitationViewerStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "participants": {
+            "type": ["array", "null"],
+            "description": "현재 참여자 목록. 익명 요청에서는 생략",
+            "items": {
+              "$ref": "#/components/schemas/BoardInvitationParticipantResponse"
+            }
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "초대 대상 보드 ID (uuidv7)"
+          }
+        },
+        "required": [
+          "boardId",
+          "boardName",
+          "code",
+          "expiresAt",
+          "inviterName",
+          "maxParticipantCount",
+          "participantCount",
+          "stickerCount"
+        ]
+      },
+      "BoardInvitationParticipantResponse": {
+        "type": "object",
+        "description": "보드 초대 참여자",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "사용자 이름",
+            "example": "김용희"
+          },
+          "role": {
+            "$ref": "#/components/schemas/BoardRole",
+            "description": "보드 역할"
+          }
+        },
+        "required": ["name", "role"]
+      },
+      "BoardInvitationViewerStatus": {
+        "type": "string",
+        "enum": ["OWNER", "MEMBER", "NOT_JOINED"]
+      },
       "AnalysisStatusResponse": {
         "type": "object",
         "description": "분석 상태",
@@ -7431,11 +8108,11 @@
             "description": "현재 분석의 완료 알림 신청 여부",
             "example": true
           },
-          "id": {
+          "boardId": {
             "type": "string",
             "format": "uuid"
           },
-          "boardId": {
+          "id": {
             "type": "string",
             "format": "uuid"
           }
