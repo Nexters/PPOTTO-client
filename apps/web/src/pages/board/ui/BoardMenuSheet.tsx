@@ -3,15 +3,25 @@ import type { ComponentType } from 'react';
 
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 
+import type { BoardShareScope } from '../model/board-share-scope';
+
 import { BoardInvitationContent } from './BoardInvitationContent';
+import { BoardShareContent, type BoardShareActions } from './BoardShareContent';
+import { BoardShareScopeContent } from './BoardShareScopeContent';
 
 type BoardRole = 'OWNER' | 'MEMBER';
 
-export type BoardMenuView = { type: 'menu' } | { type: 'invitation'; code: string };
+export type BoardMenuView =
+  | { type: 'menu' }
+  | { type: 'invitation'; code: string }
+  | { type: 'share' }
+  | { type: 'shareScope' };
 
 const boardMenuTitles: Record<BoardMenuView['type'], string> = {
   menu: '보드 메뉴',
   invitation: '초대하기',
+  share: '공유하기',
+  shareScope: '공유 설정',
 };
 
 type BoardMenuSheetProps = {
@@ -19,9 +29,15 @@ type BoardMenuSheetProps = {
   onClose: () => void;
   role?: BoardRole;
   view: BoardMenuView;
+  onViewChange?: (view: BoardMenuView) => void;
   onInvite: () => void;
   onCopyInvitation: (code: string) => void;
   isInvitePending?: boolean;
+  // 공동 보드 외부 공유 정책이 정해지기 전까지 공동 보드에서는 공유하기를 막는다
+  isShareDisabled?: boolean;
+  share?: BoardShareActions;
+  shareScope?: BoardShareScope;
+  onShareScopeChange?: (scope: BoardShareScope) => void;
 };
 
 type BoardMenuItemProps = {
@@ -54,16 +70,30 @@ function assertNever(value: never): never {
 function BoardMenuContent({
   view,
   role,
+  onViewChange,
   onInvite,
   onCopyInvitation,
   isInvitePending,
-}: Pick<
-  BoardMenuSheetProps,
-  'view' | 'role' | 'onInvite' | 'onCopyInvitation' | 'isInvitePending'
->) {
+  isShareDisabled,
+  share,
+  shareScope,
+  onShareScopeChange,
+}: Omit<BoardMenuSheetProps, 'isOpen' | 'onClose'>) {
   switch (view.type) {
     case 'invitation':
       return <BoardInvitationContent code={view.code} onCopy={() => onCopyInvitation(view.code)} />;
+    case 'share':
+      return share ? (
+        <BoardShareContent {...share} onOpenScope={() => onViewChange?.({ type: 'shareScope' })} />
+      ) : null;
+    case 'shareScope':
+      return shareScope ? (
+        <BoardShareScopeContent
+          scope={shareScope}
+          onBack={() => onViewChange?.({ type: 'share' })}
+          onSelect={(next) => onShareScopeChange?.(next)}
+        />
+      ) : null;
     case 'menu':
       return (
         <>
@@ -76,7 +106,12 @@ function BoardMenuContent({
               disabled={isInvitePending}
             />
             <BoardMenuItem Icon={Participants} label="참여자" />
-            <BoardMenuItem Icon={Share} label="공유하기" />
+            <BoardMenuItem
+              Icon={Share}
+              label="공유하기"
+              onClick={() => onViewChange?.({ type: 'share' })}
+              disabled={isShareDisabled || !share}
+            />
             {role === 'OWNER' && <BoardMenuItem Icon={Edit} label="이름 변경하기" />}
             {role === 'MEMBER' && <BoardMenuItem Icon={SignOut} label="나가기" />}
             {role === 'OWNER' && <BoardMenuItem Icon={Trash} label="삭제하기" />}
@@ -88,15 +123,7 @@ function BoardMenuContent({
   }
 }
 
-export function BoardMenuSheet({
-  isOpen,
-  onClose,
-  role,
-  view,
-  onInvite,
-  onCopyInvitation,
-  isInvitePending,
-}: BoardMenuSheetProps) {
+export function BoardMenuSheet({ isOpen, onClose, view, ...contentProps }: BoardMenuSheetProps) {
   return (
     <BottomSheet
       isOpen={isOpen}
@@ -105,13 +132,7 @@ export function BoardMenuSheet({
       overlayClassName="z-70 bg-gray-900/50"
       contentClassName="z-70 gap-5"
     >
-      <BoardMenuContent
-        view={view}
-        role={role}
-        onInvite={onInvite}
-        onCopyInvitation={onCopyInvitation}
-        isInvitePending={isInvitePending}
-      />
+      <BoardMenuContent view={view} {...contentProps} />
     </BottomSheet>
   );
 }
