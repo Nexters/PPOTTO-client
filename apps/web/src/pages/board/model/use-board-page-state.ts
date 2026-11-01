@@ -39,6 +39,7 @@ export function useBoardPageState(boardIdParam?: string) {
     isBoardListLoading,
     isBoardLoading,
     canAddSticker: Boolean(board),
+    hasStickers: (board?.stickers.length ?? 0) > 0,
     openPhotoSelect,
   };
 }

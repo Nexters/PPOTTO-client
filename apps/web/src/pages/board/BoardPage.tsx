@@ -11,11 +11,13 @@ import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 import { useSinglePop } from '@/shared/lib/use-single-pop';
 
 import { useBoardInvitation } from './model/use-board-invitation';
+import { useBoardShare } from './model/use-board-share';
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardMenuSheet, type BoardMenuView } from './ui/BoardMenuSheet';
+import { BoardShareCard } from './ui/BoardShareCard';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
 import { BoardToolbar, type ToolbarMode } from './ui/BoardToolbar';
 import { ConfirmCancelHeader } from './ui/ConfirmCancelHeader';
@@ -57,6 +59,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     boardRole,
     isBoardListLoading,
     canAddSticker,
+    hasStickers,
     openPhotoSelect,
   } = useBoardPageState(boardIdParam);
   const { pop } = useFlow();
@@ -84,6 +87,17 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     !isDrawingUiHidden ||
     ((toolbarMode === 'move' || toolbarMode === 'default') && isDrawingDeleteArmed);
   const canvasRef = useRef<BoardCanvasHandle>(null);
+  const {
+    scope: shareScope,
+    setScope: setShareScope,
+    isSaving: isSavingShareImage,
+    isSharingInstagram,
+    isCapturing: isCapturingShareImage,
+    cardRef: shareCardRef,
+    snapshotRef: shareSnapshotRef,
+    saveImage: saveShareImage,
+    shareInstagram,
+  } = useBoardShare(() => canvasRef.current?.getViewportElement());
   const textInputRef = useRef<HTMLTextAreaElement | null>(null);
   const capturedPixelsRef = useRef<EyedropperPixels | null>(null);
   const captureBoundsRef = useRef<DOMRect | null>(null);
@@ -500,11 +514,31 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           onClose={() => setIsBoardMenuOpen(false)}
           role={boardRole}
           view={boardMenuView}
+          onViewChange={setBoardMenuView}
           onInvite={() => void openInvitation()}
           onCopyInvitation={(code) => void copyInvitationCode(code)}
           isInvitePending={isInvitationPending}
+          isShareDisabled={participantCount !== undefined}
+          share={{
+            hasStickers,
+            isSaving: isSavingShareImage,
+            isSharingInstagram,
+            onSaveImage: () => void saveShareImage().then((ok) => ok && setIsBoardMenuOpen(false)),
+            onInstagramShare: () =>
+              void shareInstagram().then((ok) => ok && setIsBoardMenuOpen(false)),
+          }}
+          shareScope={shareScope}
+          onShareScopeChange={setShareScope}
         />
       </div>
+      {/* 캡처 도중 시트가 닫혀도 캡처 대상 DOM이 언마운트되지 않게 작업 중에는 유지한다 */}
+      {((isBoardMenuOpen && boardMenuView.type === 'share') || isCapturingShareImage) && (
+        <div className="fixed top-0 left-[-9999px]" aria-hidden>
+          <div ref={shareCardRef}>
+            <BoardShareCard boardName={boardName} snapshotRef={shareSnapshotRef} />
+          </div>
+        </div>
+      )}
       {isPickingColor && pickerInitialPosition && (
         <div
           ref={pickerMarkerRef}
