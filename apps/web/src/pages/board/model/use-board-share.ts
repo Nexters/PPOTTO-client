@@ -3,35 +3,24 @@ import { useRef, useState } from 'react';
 import { saveImageToDevice } from '@/features/save-image-to-device';
 import { blobToBase64 } from '@/shared/lib/blob-to-base64';
 import { bridge } from '@/shared/lib/bridge';
-import { captureElementAsBlob, captureElementAsCanvas } from '@/shared/lib/capture-element-as-blob';
+import { captureElementAsBlob } from '@/shared/lib/capture-element-as-blob';
 import { useToast } from '@/shared/ui/common/Toast';
 
-import { drawCenterSquare } from './board-share-image';
 import { DEFAULT_BOARD_SHARE_SCOPE, type BoardShareScope } from './board-share-scope';
 
 // 공유 카드는 400px이라 3배로 캡처해야 저장·스토리 이미지가 흐려지지 않는다
 const SHARE_CARD_PIXEL_RATIO = 3;
 
-export function useBoardShare(getViewportElement: () => HTMLElement | null | undefined) {
+export function useBoardShare() {
   const toast = useToast();
   const [scope, setScope] = useState<BoardShareScope>(DEFAULT_BOARD_SHARE_SCOPE);
   const [isSaving, setIsSaving] = useState(false);
   const [isSharingInstagram, setIsSharingInstagram] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-  const snapshotRef = useRef<HTMLCanvasElement>(null);
 
   const captureShareImage = async () => {
-    const viewport = getViewportElement();
     const card = cardRef.current;
-    const snapshot = snapshotRef.current;
-    if (!viewport || !card || !snapshot)
-      throw new Error('공유 이미지를 만들 화면이 준비되지 않았습니다.');
-
-    const board = await captureElementAsCanvas(viewport, {
-      skipFonts: true,
-      pixelRatio: SHARE_CARD_PIXEL_RATIO,
-    });
-    drawCenterSquare(snapshot, board);
+    if (!card) throw new Error('공유 이미지를 만들 화면이 준비되지 않았습니다.');
     return captureElementAsBlob(card, { skipFonts: true, pixelRatio: SHARE_CARD_PIXEL_RATIO });
   };
 
@@ -75,7 +64,6 @@ export function useBoardShare(getViewportElement: () => HTMLElement | null | und
     isSharingInstagram,
     isCapturing: isSaving || isSharingInstagram,
     cardRef,
-    snapshotRef,
     saveImage,
     shareInstagram,
   };

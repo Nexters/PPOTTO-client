@@ -94,10 +94,9 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     isSharingInstagram,
     isCapturing: isCapturingShareImage,
     cardRef: shareCardRef,
-    snapshotRef: shareSnapshotRef,
     saveImage: saveShareImage,
     shareInstagram,
-  } = useBoardShare(() => canvasRef.current?.getViewportElement());
+  } = useBoardShare();
   const textInputRef = useRef<HTMLTextAreaElement | null>(null);
   const capturedPixelsRef = useRef<EyedropperPixels | null>(null);
   const captureBoundsRef = useRef<DOMRect | null>(null);
@@ -532,13 +531,14 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
         />
       </div>
       {/* 캡처 도중 시트가 닫혀도 캡처 대상 DOM이 언마운트되지 않게 작업 중에는 유지한다 */}
-      {((isBoardMenuOpen && boardMenuView.type === 'share') || isCapturingShareImage) && (
-        <div className="fixed top-0 left-[-9999px]" aria-hidden>
-          <div ref={shareCardRef}>
-            <BoardShareCard boardName={boardName} snapshotRef={shareSnapshotRef} />
+      {boardId &&
+        ((isBoardMenuOpen && boardMenuView.type === 'share') || isCapturingShareImage) && (
+          <div className="fixed top-0 left-[-9999px]" aria-hidden>
+            <div ref={shareCardRef}>
+              <BoardShareCard boardId={boardId} boardName={boardName} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
       {isPickingColor && pickerInitialPosition && (
         <div
           ref={pickerMarkerRef}
