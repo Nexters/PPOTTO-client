@@ -78,6 +78,108 @@ describe('BoardMenuSheet', () => {
     expect(onInvite).toHaveBeenCalledOnce();
   });
 
+  const shareActions = {
+    hasStickers: true,
+    isSaving: false,
+    isSharingInstagram: false,
+    onInstagramShare: vi.fn(),
+    onSaveImage: vi.fn(),
+  };
+
+  it('공유하기를 누르면 공유 화면으로 전환을 요청한다', () => {
+    const onViewChange = vi.fn();
+    render(
+      <BoardMenuSheet
+        isOpen
+        onClose={vi.fn()}
+        onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
+        role="OWNER"
+        view={{ type: 'menu' }}
+        onViewChange={onViewChange}
+        share={shareActions}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '공유하기' }));
+
+    expect(onViewChange).toHaveBeenCalledWith({ type: 'share' });
+  });
+
+  it('공유 동작이 없거나 공유가 막힌 보드에서는 공유하기를 비활성화한다', () => {
+    const { rerender } = render(
+      <BoardMenuSheet
+        isOpen
+        onClose={vi.fn()}
+        onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
+        role="OWNER"
+        view={{ type: 'menu' }}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '공유하기' })).toBeDisabled();
+
+    rerender(
+      <BoardMenuSheet
+        isOpen
+        onClose={vi.fn()}
+        onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
+        role="MEMBER"
+        view={{ type: 'menu' }}
+        share={shareActions}
+        isShareDisabled
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '공유하기' })).toBeDisabled();
+  });
+
+  it('공유 화면에서 공유 설정을 누르면 공유 설정 화면으로 전환을 요청한다', () => {
+    const onViewChange = vi.fn();
+    render(
+      <BoardMenuSheet
+        isOpen
+        onClose={vi.fn()}
+        onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
+        role="OWNER"
+        view={{ type: 'share' }}
+        onViewChange={onViewChange}
+        share={shareActions}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '공유 설정' }));
+
+    expect(onViewChange).toHaveBeenCalledWith({ type: 'shareScope' });
+  });
+
+  it('공유 설정 화면에서 범위를 고르거나 뒤로 갈 수 있다', () => {
+    const onViewChange = vi.fn();
+    const onShareScopeChange = vi.fn();
+    render(
+      <BoardMenuSheet
+        isOpen
+        onClose={vi.fn()}
+        onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
+        role="OWNER"
+        view={{ type: 'shareScope' }}
+        onViewChange={onViewChange}
+        shareScope="RECAP"
+        onShareScopeChange={onShareScopeChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '보드만' }));
+    fireEvent.click(screen.getByRole('button', { name: '뒤로가기' }));
+
+    expect(onShareScopeChange).toHaveBeenCalledWith('BOARD');
+    expect(onViewChange).toHaveBeenCalledWith({ type: 'share' });
+  });
+
   it('코드가 발급되면 같은 바텀시트 안에서 초대 화면을 표시한다', () => {
     render(
       <BoardMenuSheet
