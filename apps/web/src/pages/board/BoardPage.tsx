@@ -527,6 +527,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           participantList={{
             data: participantListQuery.data,
             currentUserId,
+            expectedParticipantCount: participantCount,
             isPending: participantListQuery.isPending,
             isError: participantListQuery.isError,
             onRetry: () => void participantListQuery.refetch(),

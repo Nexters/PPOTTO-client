@@ -23,11 +23,26 @@ const participants = {
 } satisfies BoardParticipants;
 
 it('로딩 중에는 참여자 목록 형태의 스켈레톤을 표시한다', () => {
-  render(
+  const { container } = render(
     <BoardParticipantsContent isPending isError={false} onRetry={vi.fn()} onInvite={vi.fn()} />,
   );
 
   expect(screen.getByRole('status', { name: '참여자 목록 불러오는 중' })).toBeInTheDocument();
+  expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(4);
+});
+
+it('알고 있는 참여자 수와 초대하기 자리에 맞춰 스켈레톤을 표시한다', () => {
+  const { container } = render(
+    <BoardParticipantsContent
+      expectedParticipantCount={7}
+      isPending
+      isError={false}
+      onRetry={vi.fn()}
+      onInvite={vi.fn()}
+    />,
+  );
+
+  expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(8);
 });
 
 it('참여자 수와 이름을 표시하고 현재 사용자에게 나를 표시한다', () => {
