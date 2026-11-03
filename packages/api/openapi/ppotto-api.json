@@ -25,7 +25,7 @@
     },
     {
       "name": "보드 초대",
-      "description": "보드 초대 코드 발급과 조회"
+      "description": "보드 초대 조회와 관리"
     },
     {
       "name": "분석",
@@ -42,6 +42,10 @@
     {
       "name": "사용자",
       "description": "내 계정 조회와 탈퇴"
+    },
+    {
+      "name": "보드",
+      "description": "보드 관리"
     },
     {
       "name": "약관",
@@ -1558,6 +1562,141 @@
                       "error": {
                         "code": "BOARD-002",
                         "message": "보드를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/board-invitations/{code}/join": {
+      "post": {
+        "tags": ["보드 초대"],
+        "summary": "초대를 통한 보드 참여",
+        "description": "초대 링크 또는 6자리 초대 코드로 전달된 초대를 사용해 보드에 참여함",
+        "operationId": "joinBoardByInvitation",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "6자리 초대 코드",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "K7P2QX"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "보드 참여 또는 기존 참여 상태",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoardJoinResponse"
+                },
+                "examples": {
+                  "보드 참여": {
+                    "description": "보드 참여",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "boardId": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                        "boardName": "제주 여행",
+                        "role": "MEMBER"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "초대를 찾을 수 없음 (BOARD-006)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-006": {
+                    "summary": "초대 없음, 만료, 보드 삭제 또는 발급자 탈퇴",
+                    "description": "BOARD-006",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-006",
+                        "message": "초대를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "보드 참여 인원이 가득 참 (BOARD-009)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-009": {
+                    "summary": "보드 참여 인원 8명 도달",
+                    "description": "BOARD-009",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-009",
+                        "message": "보드 참여 인원이 가득 찼습니다.",
                         "fieldErrors": [],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
@@ -5014,6 +5153,128 @@
         }
       }
     },
+    "/boards/{boardId}/participants": {
+      "get": {
+        "tags": ["보드"],
+        "summary": "보드 참여자 목록 조회",
+        "description": "접근 가능한 보드의 현재 참여자 목록을 방장 우선, 이후 참여 순서로 조회함",
+        "operationId": "getBoardParticipants",
+        "parameters": [
+          {
+            "name": "boardId",
+            "in": "path",
+            "description": "조회할 보드 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "현재 참여 인원과 참여자 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoardParticipantsResponse"
+                },
+                "examples": {
+                  "보드 참여자 목록": {
+                    "description": "보드 참여자 목록",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "participantCount": 2,
+                        "maxParticipantCount": 8,
+                        "participants": [
+                          {
+                            "userId": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3c",
+                            "name": "김용희",
+                            "role": "OWNER"
+                          },
+                          {
+                            "userId": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3d",
+                            "name": "이수민",
+                            "role": "MEMBER"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "보드를 찾을 수 없음 (BOARD-002)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-002": {
+                    "summary": "보드 없음 또는 접근 권한 없음",
+                    "description": "BOARD-002",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-002",
+                        "message": "보드를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/board-invitations/{code}": {
       "get": {
         "tags": ["보드 초대"],
@@ -6170,6 +6431,63 @@
           }
         },
         "required": ["code", "expiresAt", "invitationId", "previewRequired"]
+      },
+      "ApiResponseBoardJoinResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardJoinResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardJoinResponse": {
+        "type": "object",
+        "description": "보드 참여 결과",
+        "properties": {
+          "boardName": {
+            "type": "string",
+            "description": "현재 보드 이름",
+            "example": "제주 여행"
+          },
+          "role": {
+            "$ref": "#/components/schemas/BoardRole",
+            "description": "요청 사용자의 현재 보드 역할"
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "참여한 보드 ID"
+          }
+        },
+        "required": ["boardId", "boardName", "role"]
+      },
+      "BoardRole": {
+        "type": "string",
+        "enum": ["OWNER", "MEMBER"]
       },
       "RefreshRequest": {
         "type": "object",
@@ -7368,10 +7686,6 @@
         },
         "required": ["boards", "counts"]
       },
-      "BoardRole": {
-        "type": "string",
-        "enum": ["OWNER", "MEMBER"]
-      },
       "BoardSummaryV2Response": {
         "type": "object",
         "description": "홈 보드 카드 (v2)",
@@ -7913,6 +8227,85 @@
         },
         "required": ["color", "id", "scope", "stroke", "strokeWidth"]
       },
+      "ApiResponseBoardParticipantsResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardParticipantsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardParticipantResponse": {
+        "type": "object",
+        "description": "보드 참여자",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "사용자 이름",
+            "example": "김용희"
+          },
+          "role": {
+            "$ref": "#/components/schemas/BoardRole",
+            "description": "보드 역할"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "사용자 ID"
+          }
+        },
+        "required": ["name", "role", "userId"]
+      },
+      "BoardParticipantsResponse": {
+        "type": "object",
+        "description": "보드 참여자 목록",
+        "properties": {
+          "participantCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "현재 참여 인원(방장 포함)",
+            "example": 2
+          },
+          "maxParticipantCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "최대 참여 인원(방장 포함)",
+            "example": 8
+          },
+          "participants": {
+            "type": "array",
+            "description": "방장 우선, 이후 참여 순서의 참여자 목록",
+            "items": {
+              "$ref": "#/components/schemas/BoardParticipantResponse"
+            }
+          }
+        },
+        "required": ["maxParticipantCount", "participantCount", "participants"]
+      },
       "ApiResponseBoardInvitationDetailResponse": {
         "type": "object",
         "description": "공통 응답 봉투",
@@ -8108,11 +8501,11 @@
             "description": "현재 분석의 완료 알림 신청 여부",
             "example": true
           },
-          "boardId": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
-          "id": {
+          "boardId": {
             "type": "string",
             "format": "uuid"
           }

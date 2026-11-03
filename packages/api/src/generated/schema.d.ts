@@ -232,6 +232,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/board-invitations/{code}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 초대를 통한 보드 참여
+         * @description 초대 링크 또는 6자리 초대 코드로 전달된 초대를 사용해 보드에 참여함
+         */
+        post: operations["joinBoardByInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/board-invitations/{invitationId}/preview": {
         parameters: {
             query?: never;
@@ -342,6 +362,26 @@ export interface paths {
          * @description 스티커 배치와 그림 생성·삭제를 하나의 트랜잭션으로 반영함. 편집 모드에서 바뀐 필드만 보냄
          */
         patch: operations["update"];
+        trace?: never;
+    };
+    "/boards/{boardId}/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 보드 참여자 목록 조회
+         * @description 접근 가능한 보드의 현재 참여자 목록을 방장 우선, 이후 참여 순서로 조회함
+         */
+        get: operations["getBoardParticipants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/device-tokens": {
@@ -699,8 +739,28 @@ export interface components {
             success: boolean;
         };
         /** @description 공통 응답 봉투 */
+        ApiResponseBoardJoinResponse: {
+            data?: components["schemas"]["BoardJoinResponse"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
         ApiResponseBoardListV2Response: {
             data?: components["schemas"]["BoardListV2Response"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
+        ApiResponseBoardParticipantsResponse: {
+            data?: components["schemas"]["BoardParticipantsResponse"] | null;
             error?: components["schemas"]["ErrorResponse"] | null;
             /**
              * @description 요청 성공 여부
@@ -995,6 +1055,21 @@ export interface components {
         };
         /** @enum {string} */
         BoardInvitationViewerStatus: "OWNER" | "MEMBER" | "NOT_JOINED";
+        /** @description 보드 참여 결과 */
+        BoardJoinResponse: {
+            /**
+             * Format: uuid
+             * @description 참여한 보드 ID
+             */
+            boardId: string;
+            /**
+             * @description 현재 보드 이름
+             * @example 제주 여행
+             */
+            boardName: string;
+            /** @description 요청 사용자의 현재 보드 역할 */
+            role: components["schemas"]["BoardRole"];
+        };
         /** @enum {string} */
         BoardKind: "PERSONAL" | "SHARED";
         /** @description 보드 편집 결과 일괄 저장 요청. 편집 모드에서 바뀐 것만 보냄 */
@@ -1015,6 +1090,38 @@ export interface components {
             boards: components["schemas"]["BoardSummaryV2Response"][];
             /** @description 탭별 보드 개수 */
             counts: components["schemas"]["BoardCountsResponse"];
+        };
+        /** @description 보드 참여자 */
+        BoardParticipantResponse: {
+            /**
+             * @description 사용자 이름
+             * @example 김용희
+             */
+            name: string;
+            /** @description 보드 역할 */
+            role: components["schemas"]["BoardRole"];
+            /**
+             * Format: uuid
+             * @description 사용자 ID
+             */
+            userId: string;
+        };
+        /** @description 보드 참여자 목록 */
+        BoardParticipantsResponse: {
+            /**
+             * Format: int32
+             * @description 최대 참여 인원(방장 포함)
+             * @example 8
+             */
+            maxParticipantCount: number;
+            /**
+             * Format: int32
+             * @description 현재 참여 인원(방장 포함)
+             * @example 2
+             */
+            participantCount: number;
+            /** @description 방장 우선, 이후 참여 순서의 참여자 목록 */
+            participants: components["schemas"]["BoardParticipantResponse"][];
         };
         /** @description 보드 요약 */
         BoardResponse: {
@@ -2942,6 +3049,65 @@ export interface operations {
             };
         };
     };
+    joinBoardByInvitation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 6자리 초대 코드
+                 * @example K7P2QX
+                 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 보드 참여 또는 기존 참여 상태 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseBoardJoinResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 초대를 찾을 수 없음 (BOARD-006) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 보드 참여 인원이 가득 참 (BOARD-009) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
     uploadBoardInvitationPreview: {
         parameters: {
             query?: never;
@@ -3385,6 +3551,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 보드를 찾을 수 없음 (BOARD-002) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getBoardParticipants: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 조회할 보드 ID (uuidv7)
+                 * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+                 */
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 현재 참여 인원과 참여자 목록 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseBoardParticipantsResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
