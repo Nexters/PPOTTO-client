@@ -31,6 +31,7 @@ export { default as Logo } from './Logo';
 export { default as MenuKebab } from './MenuKebab';
 export { default as OnboardingArrow } from './OnboardingArrow';
 export { default as Overlap } from './Overlap';
+export { default as ParticipantProfile } from './ParticipantProfile';
 export { default as Participants } from './Participants';
 export { default as Reload } from './Reload';
 export { default as Share } from './Share';

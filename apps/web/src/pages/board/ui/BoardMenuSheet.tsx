@@ -6,6 +6,10 @@ import { BottomSheet } from '@/shared/ui/BottomSheet';
 import type { BoardShareScope } from '../model/board-share-scope';
 
 import { BoardInvitationContent } from './BoardInvitationContent';
+import {
+  BoardParticipantsContent,
+  type BoardParticipantListState,
+} from './BoardParticipantsContent';
 import { BoardShareContent, type BoardShareActions } from './BoardShareContent';
 import { BoardShareScopeContent } from './BoardShareScopeContent';
 
@@ -13,12 +17,14 @@ type BoardRole = 'OWNER' | 'MEMBER';
 
 export type BoardMenuView =
   | { type: 'menu' }
+  | { type: 'participants' }
   | { type: 'invitation'; code: string }
   | { type: 'share' }
   | { type: 'shareScope' };
 
 const boardMenuTitles: Record<BoardMenuView['type'], string> = {
   menu: '보드 메뉴',
+  participants: '참여자',
   invitation: '초대하기',
   share: '공유하기',
   shareScope: '공유 설정',
@@ -33,6 +39,7 @@ type BoardMenuSheetProps = {
   onInvite: () => void;
   onCopyInvitation: (code: string) => void;
   isInvitePending?: boolean;
+  participantList?: BoardParticipantListState;
   // 공동 보드 외부 공유 정책이 정해지기 전까지 공동 보드에서는 공유하기를 막는다
   isShareDisabled?: boolean;
   share?: BoardShareActions;
@@ -74,12 +81,21 @@ function BoardMenuContent({
   onInvite,
   onCopyInvitation,
   isInvitePending,
+  participantList,
   isShareDisabled,
   share,
   shareScope,
   onShareScopeChange,
 }: Omit<BoardMenuSheetProps, 'isOpen' | 'onClose'>) {
   switch (view.type) {
+    case 'participants':
+      return participantList ? (
+        <BoardParticipantsContent
+          {...participantList}
+          onInvite={onInvite}
+          isInvitePending={isInvitePending}
+        />
+      ) : null;
     case 'invitation':
       return <BoardInvitationContent code={view.code} onCopy={() => onCopyInvitation(view.code)} />;
     case 'share':
@@ -105,7 +121,11 @@ function BoardMenuContent({
               onClick={onInvite}
               disabled={isInvitePending}
             />
-            <BoardMenuItem Icon={Participants} label="참여자" />
+            <BoardMenuItem
+              Icon={Participants}
+              label="참여자"
+              onClick={() => onViewChange?.({ type: 'participants' })}
+            />
             <BoardMenuItem
               Icon={Share}
               label="공유하기"

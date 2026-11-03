@@ -34,6 +34,7 @@ export function useBoardPageState(boardIdParam?: string) {
   return {
     boardId,
     boardName: board?.name ?? boardSummary?.name,
+    currentUserId: me?.id,
     participantCount: boardSummary?.kind === 'SHARED' ? boardSummary.participantCount : undefined,
     boardRole: boardSummary?.role,
     isBoardListLoading,

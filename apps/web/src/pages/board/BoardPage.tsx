@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
+import { useBoardParticipantsQuery } from '@/entities/board/api/board-queries';
 import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 import { useSinglePop } from '@/shared/lib/use-single-pop';
@@ -55,6 +56,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const {
     boardId,
     boardName,
+    currentUserId,
     participantCount,
     boardRole,
     isBoardListLoading,
@@ -67,6 +69,8 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const { issueInvitation, copyInvitationCode, isInvitationPending } = useBoardInvitation(boardId);
   const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
   const [boardMenuView, setBoardMenuView] = useState<BoardMenuView>({ type: 'menu' });
+  const isParticipantsView = isBoardMenuOpen && boardMenuView.type === 'participants';
+  const participantListQuery = useBoardParticipantsQuery(boardId, isParticipantsView);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
@@ -510,13 +514,23 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
         )}
         <BoardMenuSheet
           isOpen={isBoardMenuOpen}
-          onClose={() => setIsBoardMenuOpen(false)}
+          onClose={() => {
+            setIsBoardMenuOpen(false);
+            setBoardMenuView({ type: 'menu' });
+          }}
           role={boardRole}
           view={boardMenuView}
           onViewChange={setBoardMenuView}
           onInvite={() => void openInvitation()}
           onCopyInvitation={(code) => void copyInvitationCode(code)}
           isInvitePending={isInvitationPending}
+          participantList={{
+            data: participantListQuery.data,
+            currentUserId,
+            isPending: participantListQuery.isPending,
+            isError: participantListQuery.isError,
+            onRetry: () => void participantListQuery.refetch(),
+          }}
           isShareDisabled={participantCount !== undefined}
           share={{
             hasStickers,

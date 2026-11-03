@@ -78,6 +78,54 @@ describe('BoardMenuSheet', () => {
     expect(onInvite).toHaveBeenCalledOnce();
   });
 
+  it('참여자를 누르면 참여자 화면으로 전환을 요청한다', () => {
+    const onViewChange = vi.fn();
+    render(
+      <BoardMenuSheet
+        isOpen
+        onClose={vi.fn()}
+        onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
+        role="OWNER"
+        view={{ type: 'menu' }}
+        onViewChange={onViewChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '참여자' }));
+
+    expect(onViewChange).toHaveBeenCalledWith({ type: 'participants' });
+  });
+
+  it('참여자 화면에 참여자 콘텐츠를 표시한다', () => {
+    render(
+      <BoardMenuSheet
+        isOpen
+        onClose={vi.fn()}
+        onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
+        role="OWNER"
+        view={{ type: 'participants' }}
+        participantList={{
+          data: {
+            participantCount: 2,
+            maxParticipantCount: 8,
+            participants: [
+              { userId: 'user-1', name: '김용희', role: 'OWNER' },
+              { userId: 'user-2', name: '이수민', role: 'MEMBER' },
+            ],
+          },
+          currentUserId: 'user-1',
+          isPending: false,
+          isError: false,
+          onRetry: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: '참여자 2명' })).toBeInTheDocument();
+  });
+
   const shareActions = {
     hasStickers: true,
     isSaving: false,
