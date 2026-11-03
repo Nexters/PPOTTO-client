@@ -34,3 +34,10 @@ export const useBoardQuery = (boardId?: string) =>
     staleTime: SIGNED_URL_STALE_TIME_MS,
     retry: shouldRetryBoardQuery,
   });
+
+export const useBoardParticipantsQuery = (boardId?: string, enabled = true) =>
+  useQuery({
+    queryKey: boardQueryKeys.participants(boardId),
+    queryFn: () => boardApi.getParticipants(boardId!),
+    enabled: enabled && !!boardId,
+  });
