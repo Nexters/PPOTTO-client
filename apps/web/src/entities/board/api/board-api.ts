@@ -3,6 +3,7 @@ import { type components, type paths, unwrapData, unwrapVoid } from '@ppotto/api
 import { api } from '@/shared/api/client';
 
 import { boardFixture } from './__fixtures__/board.fixture';
+import { boardParticipantsFixture } from './__fixtures__/board-participants.fixture';
 import { boardSummaryListFixture } from './__fixtures__/board-summary-list.fixture';
 
 // 스펙은 v1|v2 유니온이지만 웹은 항상 X-API-Version: 2를 보내므로 v2 타입으로 고정한다
@@ -15,6 +16,7 @@ type BoardListAnyVersion =
 type BoardList = components['schemas']['BoardResponse'][];
 export type BoardSummaryList = components['schemas']['BoardListV2Response'];
 export type BoardSummary = components['schemas']['BoardSummaryV2Response'];
+export type BoardParticipants = components['schemas']['BoardParticipantsResponse'];
 
 export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request'];
 export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
@@ -39,6 +41,14 @@ export const boardApi = {
         params: { path: { boardId }, header: { 'X-API-Version': '2' } },
       }),
     ) as Promise<BoardDetail>;
+  },
+  getParticipants: (boardId: string): Promise<BoardParticipants> => {
+    if (USE_MOCK) return Promise.resolve(boardParticipantsFixture);
+    return unwrapData(
+      api.GET('/boards/{boardId}/participants', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
   },
   updateLayout: (boardId: string, input: UpdateBoardLayoutInput) => {
     if (USE_MOCK) return Promise.resolve();
