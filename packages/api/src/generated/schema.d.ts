@@ -391,7 +391,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 내 보드 공유 상태 조회
+         * @description 보드의 방장 또는 참여자가 자기 공유 링크 토큰과 현재 범위를 조회함. 공유한 적이 없으면 shareToken은 null이고 scope는 기본값 RECAP임
+         */
+        get: operations["getMyBoardShare"];
         put?: never;
         /**
          * 내 보드 공유 링크 발급·범위 변경
@@ -849,6 +853,16 @@ export interface components {
             success: boolean;
         };
         /** @description 공통 응답 봉투 */
+        ApiResponseBoardShareStatusResponse: {
+            data?: components["schemas"]["BoardShareStatusResponse"] | null;
+            error?: components["schemas"]["ErrorResponse"] | null;
+            /**
+             * @description 요청 성공 여부
+             * @example true
+             */
+            success: boolean;
+        };
+        /** @description 공통 응답 봉투 */
         ApiResponseCreateAnalysisResponse: {
             data?: components["schemas"]["CreateAnalysisResponse"] | null;
             error?: components["schemas"]["ErrorResponse"] | null;
@@ -1242,6 +1256,19 @@ export interface components {
         };
         /** @enum {string} */
         BoardShareScope: "BOARD" | "RECAP" | "PHOTOS";
+        /** @description 내 보드 공유 상태 */
+        BoardShareStatusResponse: {
+            /**
+             * @description 현재 공유 범위. 공유한 적이 없으면 기본값 RECAP
+             * @example PHOTOS
+             */
+            scope: components["schemas"]["BoardShareScope"];
+            /**
+             * @description 요청 사용자의 공유 링크 토큰. 공유한 적이 없으면 null
+             * @example 4f1c2b9e-7a3d-4e8f-9b6a-2c5d8e1f0a7b
+             */
+            shareToken?: string | null;
+        };
         /** @description 보드에 배치된 스티커 */
         BoardStickerResponse: {
             /**
@@ -3726,6 +3753,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseBoardParticipantsResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 보드를 찾을 수 없음 (BOARD-002) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getMyBoardShare: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 공유 상태를 확인할 보드 ID (uuidv7)
+                 * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+                 */
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 내 공유 링크 상태 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseBoardShareStatusResponse"];
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */

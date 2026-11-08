@@ -1472,6 +1472,124 @@
       }
     },
     "/boards/{boardId}/share": {
+      "get": {
+        "tags": ["보드 공유"],
+        "summary": "내 보드 공유 상태 조회",
+        "description": "보드의 방장 또는 참여자가 자기 공유 링크 토큰과 현재 범위를 조회함. 공유한 적이 없으면 shareToken은 null이고 scope는 기본값 RECAP임",
+        "operationId": "getMyBoardShare",
+        "parameters": [
+          {
+            "name": "boardId",
+            "in": "path",
+            "description": "공유 상태를 확인할 보드 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "내 공유 링크 상태",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoardShareStatusResponse"
+                },
+                "examples": {
+                  "공유한 적 있음": {
+                    "description": "공유한 적 있음",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "shareToken": "4f1c2b9e-7a3d-4e8f-9b6a-2c5d8e1f0a7b",
+                        "scope": "PHOTOS"
+                      }
+                    }
+                  },
+                  "공유한 적 없음": {
+                    "description": "공유한 적 없음",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "shareToken": null,
+                        "scope": "RECAP"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "보드를 찾을 수 없음 (BOARD-002)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-002": {
+                    "summary": "보드 없음 또는 공유 권한 없음",
+                    "description": "BOARD-002",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-002",
+                        "message": "보드를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
       "post": {
         "tags": ["보드 공유"],
         "summary": "내 보드 공유 링크 발급·범위 변경",
@@ -8780,6 +8898,55 @@
           }
         },
         "required": ["color", "id", "scope", "stroke", "strokeWidth"]
+      },
+      "ApiResponseBoardShareStatusResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardShareStatusResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardShareStatusResponse": {
+        "type": "object",
+        "description": "내 보드 공유 상태",
+        "properties": {
+          "shareToken": {
+            "type": ["string", "null"],
+            "description": "요청 사용자의 공유 링크 토큰. 공유한 적이 없으면 null",
+            "example": "4f1c2b9e-7a3d-4e8f-9b6a-2c5d8e1f0a7b"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/BoardShareScope",
+            "description": "현재 공유 범위. 공유한 적이 없으면 기본값 RECAP",
+            "example": "PHOTOS"
+          }
+        },
+        "required": ["scope"]
       },
       "ApiResponseBoardParticipantsResponse": {
         "type": "object",
