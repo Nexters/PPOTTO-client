@@ -41,3 +41,10 @@ export const useBoardParticipantsQuery = (boardId?: string, enabled = true) =>
     queryFn: () => boardApi.getParticipants(boardId!),
     enabled: enabled && !!boardId,
   });
+
+export const useBoardShareStatusQuery = (boardId?: string, enabled = true) =>
+  useQuery({
+    queryKey: boardQueryKeys.shareStatus(boardId),
+    queryFn: () => boardApi.getShareStatus(boardId!),
+    enabled: enabled && !!boardId,
+  });

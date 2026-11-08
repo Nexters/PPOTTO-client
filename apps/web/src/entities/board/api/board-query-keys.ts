@@ -4,4 +4,5 @@ export const boardQueryKeys = {
   summaryList: () => [...boardQueryKeys.all, 'summaryList'] as const,
   detail: (boardId?: string) => [...boardQueryKeys.all, 'detail', boardId] as const,
   participants: (boardId?: string) => [...boardQueryKeys.all, 'participants', boardId] as const,
+  shareStatus: (boardId?: string) => [...boardQueryKeys.all, 'shareStatus', boardId] as const,
 };

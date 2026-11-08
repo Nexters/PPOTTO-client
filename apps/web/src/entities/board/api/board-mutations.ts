@@ -5,6 +5,7 @@ import { track } from '@/shared/lib/bridge';
 
 import {
   boardApi,
+  type BoardShareScope,
   type CreateBoardInput,
   type UpdateBoardInput,
   type UpdateBoardLayoutInput,
@@ -69,3 +70,20 @@ export const useIssueBoardInvitationMutation = () =>
   useMutation({
     mutationFn: (boardId: string) => boardApi.issueInvitation(boardId),
   });
+
+type ShareBoardVariables = {
+  boardId: string;
+  scope: BoardShareScope;
+};
+
+export const useShareBoardMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ boardId, scope }: ShareBoardVariables) => boardApi.share(boardId, scope),
+    // 공유 설정 화면이 저장된 범위를 바로 보여주도록 조회 캐시를 응답으로 맞춘다
+    onSuccess: (data, { boardId }) => {
+      queryClient.setQueryData(boardQueryKeys.shareStatus(boardId), data);
+    },
+  });
+};

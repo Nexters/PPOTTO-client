@@ -73,6 +73,8 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
   const [boardMenuView, setBoardMenuView] = useState<BoardMenuView>({ type: 'menu' });
   const isParticipantsView = isBoardMenuOpen && boardMenuView.type === 'participants';
+  const isShareView =
+    isBoardMenuOpen && (boardMenuView.type === 'share' || boardMenuView.type === 'shareScope');
   const participantListQuery = useBoardParticipantsQuery(boardId, isParticipantsView);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
@@ -96,14 +98,14 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const {
     scope: shareScope,
-    setScope: setShareScope,
+    changeScope: changeShareScope,
     isSaving: isSavingShareImage,
     isSharingInstagram,
     isCapturing: isCapturingShareImage,
     cardRef: shareCardRef,
     saveImage: saveShareImage,
     shareInstagram,
-  } = useBoardShare();
+  } = useBoardShare(boardId, isShareView);
   const textInputRef = useRef<HTMLTextAreaElement | null>(null);
   const capturedPixelsRef = useRef<EyedropperPixels | null>(null);
   const captureBoundsRef = useRef<DOMRect | null>(null);
@@ -552,7 +554,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
               void shareInstagram().then((ok) => ok && setIsBoardMenuOpen(false)),
           }}
           shareScope={shareScope}
-          onShareScopeChange={setShareScope}
+          onShareScopeChange={changeShareScope}
         />
         <DeleteBoardModal
           target={deleteBoard.target}

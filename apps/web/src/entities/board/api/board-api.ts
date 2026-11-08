@@ -24,6 +24,7 @@ export type UpdateBoardInput =
   paths['/boards/{boardId}']['patch']['requestBody']['content']['application/json'];
 export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request'];
 export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
+export type BoardShareScope = components['schemas']['BoardShareScope'];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
@@ -84,6 +85,23 @@ export const boardApi = {
     return unwrapVoid(
       api.DELETE('/boards/{boardId}', {
         params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
+  },
+  getShareStatus: (boardId: string) => {
+    if (USE_MOCK) return Promise.resolve({ shareToken: null, scope: 'RECAP' as const });
+    return unwrapData(
+      api.GET('/boards/{boardId}/share', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
+  },
+  share: (boardId: string, scope: BoardShareScope) => {
+    if (USE_MOCK) return Promise.resolve({ shareToken: 'mock-board-share-token', scope });
+    return unwrapData(
+      api.POST('/boards/{boardId}/share', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+        body: { scope },
       }),
     );
   },

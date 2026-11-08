@@ -1,22 +1,31 @@
 import { useRef, useState } from 'react';
 
+import { useShareBoardMutation } from '@/entities/board/api/board-mutations';
+import { useBoardShareStatusQuery } from '@/entities/board/api/board-queries';
 import { saveImageToDevice } from '@/features/save-image-to-device';
 import { blobToBase64 } from '@/shared/lib/blob-to-base64';
 import { bridge } from '@/shared/lib/bridge';
 import { captureElementAsBlob } from '@/shared/lib/capture-element-as-blob';
 import { useToast } from '@/shared/ui/common/Toast';
 
-import { DEFAULT_BOARD_SHARE_SCOPE, type BoardShareScope } from './board-share-scope';
+import type { BoardShareScope } from './board-share-scope';
 
 // 공유 카드는 400px이라 3배로 캡처해야 저장·스토리 이미지가 흐려지지 않는다
 const SHARE_CARD_PIXEL_RATIO = 3;
 
-export function useBoardShare() {
+// isOpen: 공유 화면이 열려 있을 때만 내 공유 상태를 조회한다
+export function useBoardShare(boardId: string | undefined, isOpen: boolean) {
   const toast = useToast();
-  const [scope, setScope] = useState<BoardShareScope>(DEFAULT_BOARD_SHARE_SCOPE);
+  const { data: shareStatus } = useBoardShareStatusQuery(boardId, isOpen);
+  const { mutate: shareBoard } = useShareBoardMutation();
   const [isSaving, setIsSaving] = useState(false);
   const [isSharingInstagram, setIsSharingInstagram] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const changeScope = (scope: BoardShareScope) => {
+    if (!boardId || scope === shareStatus?.scope) return;
+    shareBoard({ boardId, scope }, { onError: () => toast('공유 설정 저장에 실패했습니다') });
+  };
 
   const captureShareImage = async () => {
     const card = cardRef.current;
@@ -58,8 +67,8 @@ export function useBoardShare() {
   };
 
   return {
-    scope,
-    setScope,
+    scope: shareStatus?.scope,
+    changeScope,
     isSaving,
     isSharingInstagram,
     isCapturing: isSaving || isSharingInstagram,
