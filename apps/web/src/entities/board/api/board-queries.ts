@@ -41,3 +41,14 @@ export const useBoardParticipantsQuery = (boardId?: string, enabled = true) =>
     queryFn: () => boardApi.getParticipants(boardId!),
     enabled: enabled && !!boardId,
   });
+
+export const useBoardInvitationQuery = (code?: string, enabled = true) => {
+  const normalizedCode = code?.trim().toUpperCase();
+
+  return useQuery({
+    queryKey: boardQueryKeys.invitation(normalizedCode),
+    queryFn: () => boardApi.getInvitation(normalizedCode!),
+    enabled: enabled && normalizedCode?.length === 6,
+    retry: shouldRetryBoardQuery,
+  });
+};
