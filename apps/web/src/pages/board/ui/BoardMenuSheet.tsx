@@ -42,8 +42,6 @@ type BoardMenuSheetProps = {
   onCopyInvitation: (code: string) => void;
   isInvitePending?: boolean;
   participantList?: BoardParticipantListState;
-  // 공동 보드 외부 공유 정책이 정해지기 전까지 공동 보드에서는 공유하기를 막는다
-  isShareDisabled?: boolean;
   share?: BoardShareActions;
   shareScope?: BoardShareScope;
   onShareScopeChange?: (scope: BoardShareScope) => void;
@@ -86,7 +84,6 @@ function BoardMenuContent({
   onCopyInvitation,
   isInvitePending,
   participantList,
-  isShareDisabled,
   share,
   shareScope,
   onShareScopeChange,
@@ -134,7 +131,7 @@ function BoardMenuContent({
               Icon={Share}
               label="공유하기"
               onClick={() => onViewChange?.({ type: 'share' })}
-              disabled={isShareDisabled || !share}
+              disabled={!share}
             />
             {role === 'OWNER' && (
               <BoardMenuItem Icon={Edit} label="이름 변경하기" onClick={onRename} />

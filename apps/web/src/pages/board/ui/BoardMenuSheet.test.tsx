@@ -154,8 +154,8 @@ describe('BoardMenuSheet', () => {
     expect(onViewChange).toHaveBeenCalledWith({ type: 'share' });
   });
 
-  it('공유 동작이 없거나 공유가 막힌 보드에서는 공유하기를 비활성화한다', () => {
-    const { rerender } = render(
+  it('공유 동작이 없으면 공유하기를 비활성화한다', () => {
+    render(
       <BoardMenuSheet
         isOpen
         onClose={vi.fn()}
@@ -167,8 +167,10 @@ describe('BoardMenuSheet', () => {
     );
 
     expect(screen.getByRole('button', { name: '공유하기' })).toBeDisabled();
+  });
 
-    rerender(
+  it('공동 보드의 참여자도 공유하기를 누를 수 있다', () => {
+    render(
       <BoardMenuSheet
         isOpen
         onClose={vi.fn()}
@@ -177,11 +179,10 @@ describe('BoardMenuSheet', () => {
         role="MEMBER"
         view={{ type: 'menu' }}
         share={shareActions}
-        isShareDisabled
       />,
     );
 
-    expect(screen.getByRole('button', { name: '공유하기' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '공유하기' })).toBeEnabled();
   });
 
   it('공유 화면에서 공유 설정을 누르면 공유 설정 화면으로 전환을 요청한다', () => {

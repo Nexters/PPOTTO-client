@@ -543,7 +543,6 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             isError: participantListQuery.isError,
             onRetry: () => void participantListQuery.refetch(),
           }}
-          isShareDisabled={participantCount !== undefined}
           share={{
             hasStickers,
             isSaving: isSavingShareImage,
