@@ -32,6 +32,7 @@ export type AnalyticsEvents = {
       | 'photo_select'
       | 'analysis_loading'
       | 'home'
+      | 'board_invitation_code'
       | 'board'
       | 'recap'
       | 'photo_viewer'

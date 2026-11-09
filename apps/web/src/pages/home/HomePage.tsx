@@ -157,7 +157,7 @@ export function HomePage() {
         )}
         style={{ backgroundImage: 'linear-gradient(to top, #000, transparent)' }}
       >
-        <HomeAddMenu />
+        <HomeAddMenu onJoinByCode={() => push('BoardInvitationCode', {})} />
       </div>
 
       {menuBoardId && <div className="absolute inset-0 z-20 bg-black/50" />}

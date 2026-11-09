@@ -10,6 +10,7 @@ import { stackflow, type ActivityComponentType } from '@stackflow/react';
 
 import { BoardPage } from '@/pages/board';
 import { AnalysisLoadingPage } from '@/pages/analysis-loading';
+import { BoardInvitationCodePage } from '@/pages/board-invitation-code';
 import { HomePage } from '@/pages/home';
 import { LoginPage } from '@/pages/login';
 import { OnboardingPage } from '@/pages/onboarding';
@@ -44,6 +45,13 @@ const HomeActivity: ActivityComponentType<'Home'> = () => (
   <AppScreen>
     <ScreenView name="home" />
     <HomePage />
+  </AppScreen>
+);
+
+const BoardInvitationCodeActivity: ActivityComponentType<'BoardInvitationCode'> = () => (
+  <AppScreen>
+    <ScreenView name="board_invitation_code" />
+    <BoardInvitationCodePage />
   </AppScreen>
 );
 
@@ -113,6 +121,7 @@ export const { Stack, actions } = stackflow({
     Terms: TermsActivity,
     TermsDetail: TermsDetailActivity,
     Home: HomeActivity,
+    BoardInvitationCode: BoardInvitationCodeActivity,
     Board: BoardActivity,
     Recap: RecapActivity,
     PhotoViewer: PhotoViewerActivity,
