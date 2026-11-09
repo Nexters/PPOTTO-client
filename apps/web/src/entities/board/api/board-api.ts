@@ -18,6 +18,10 @@ export type BoardSummaryList = components['schemas']['BoardListV2Response'];
 export type BoardSummary = components['schemas']['BoardSummaryV2Response'];
 export type BoardParticipants = components['schemas']['BoardParticipantsResponse'];
 
+export type CreateBoardInput =
+  paths['/boards']['post']['requestBody']['content']['application/json'];
+export type UpdateBoardInput =
+  paths['/boards/{boardId}']['patch']['requestBody']['content']['application/json'];
 export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request'];
 export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
 
@@ -56,6 +60,30 @@ export const boardApi = {
       api.PATCH('/boards/{boardId}/layout', {
         params: { path: { boardId }, header: { 'X-API-Version': '2' } },
         body: input,
+      }),
+    );
+  },
+  // name을 생략하면 서버가 기본 이름을 붙인다
+  create: (input: CreateBoardInput) => {
+    if (USE_MOCK) return Promise.resolve({ id: boardFixture.id, name: input.name ?? '새 보드' });
+    return unwrapData(
+      api.POST('/boards', { params: { header: { 'X-API-Version': '2' } }, body: input }),
+    );
+  },
+  update: (boardId: string, input: UpdateBoardInput) => {
+    if (USE_MOCK) return Promise.resolve({ id: boardId, name: input.name });
+    return unwrapData(
+      api.PATCH('/boards/{boardId}', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+        body: input,
+      }),
+    );
+  },
+  delete: (boardId: string) => {
+    if (USE_MOCK) return Promise.resolve();
+    return unwrapVoid(
+      api.DELETE('/boards/{boardId}', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
       }),
     );
   },

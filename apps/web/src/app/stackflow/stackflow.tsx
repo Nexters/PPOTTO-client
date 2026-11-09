@@ -9,6 +9,7 @@ import { basicRendererPlugin } from '@stackflow/plugin-renderer-basic';
 import { stackflow, type ActivityComponentType } from '@stackflow/react';
 
 import { BoardPage } from '@/pages/board';
+import { BoardNamePage } from '@/pages/board-name';
 import { AnalysisLoadingPage } from '@/pages/analysis-loading';
 import { HomePage } from '@/pages/home';
 import { LoginPage } from '@/pages/login';
@@ -55,6 +56,13 @@ const BoardActivity: ActivityComponentType<'Board'> = ({ params }) => {
     </AppScreen>
   );
 };
+
+// ponytail: screen_view 이벤트 이름(analytics-events)에 아직 없어 추적하지 않는다
+const BoardNameActivity: ActivityComponentType<'BoardName'> = ({ params }) => (
+  <AppScreen>
+    <BoardNamePage boardId={params.boardId} initialName={params.name} />
+  </AppScreen>
+);
 
 const OnboardingActivity: ActivityComponentType<'Onboarding'> = ({ params }) => (
   <AppScreen>
@@ -114,6 +122,7 @@ export const { Stack, actions } = stackflow({
     TermsDetail: TermsDetailActivity,
     Home: HomeActivity,
     Board: BoardActivity,
+    BoardName: BoardNameActivity,
     Recap: RecapActivity,
     PhotoViewer: PhotoViewerActivity,
     Settings: SettingsActivity,

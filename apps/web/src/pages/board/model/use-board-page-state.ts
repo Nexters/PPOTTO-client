@@ -37,6 +37,7 @@ export function useBoardPageState(boardIdParam?: string) {
     currentUserId: me?.id,
     participantCount: boardSummary?.kind === 'SHARED' ? boardSummary.participantCount : undefined,
     boardRole: boardSummary?.role,
+    boardSummary,
     isBoardListLoading,
     isBoardLoading,
     canAddSticker: Boolean(board),

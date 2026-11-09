@@ -37,6 +37,8 @@ type BoardMenuSheetProps = {
   view: BoardMenuView;
   onViewChange?: (view: BoardMenuView) => void;
   onInvite: () => void;
+  onRename?: () => void;
+  onDelete?: () => void;
   onCopyInvitation: (code: string) => void;
   isInvitePending?: boolean;
   participantList?: BoardParticipantListState;
@@ -79,6 +81,8 @@ function BoardMenuContent({
   role,
   onViewChange,
   onInvite,
+  onRename,
+  onDelete,
   onCopyInvitation,
   isInvitePending,
   participantList,
@@ -132,9 +136,11 @@ function BoardMenuContent({
               onClick={() => onViewChange?.({ type: 'share' })}
               disabled={isShareDisabled || !share}
             />
-            {role === 'OWNER' && <BoardMenuItem Icon={Edit} label="이름 변경하기" />}
+            {role === 'OWNER' && (
+              <BoardMenuItem Icon={Edit} label="이름 변경하기" onClick={onRename} />
+            )}
             {role === 'MEMBER' && <BoardMenuItem Icon={SignOut} label="나가기" />}
-            {role === 'OWNER' && <BoardMenuItem Icon={Trash} label="삭제하기" />}
+            {role === 'OWNER' && <BoardMenuItem Icon={Trash} label="삭제하기" onClick={onDelete} />}
           </div>
         </>
       );

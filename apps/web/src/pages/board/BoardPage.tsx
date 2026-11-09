@@ -7,6 +7,7 @@ import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom';
 
 import { useBoardParticipantsQuery } from '@/entities/board/api/board-queries';
+import { DeleteBoardModal, useDeleteBoard } from '@/features/manage-board';
 import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 import { useSinglePop } from '@/shared/lib/use-single-pop';
@@ -59,13 +60,15 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     currentUserId,
     participantCount,
     boardRole,
+    boardSummary,
     isBoardListLoading,
     canAddSticker,
     hasStickers,
     openPhotoSelect,
   } = useBoardPageState(boardIdParam);
-  const { pop } = useFlow();
+  const { pop, push } = useFlow();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
+  const deleteBoard = useDeleteBoard({ onDeleted: goBack });
   const { issueInvitation, copyInvitationCode, isInvitationPending } = useBoardInvitation(boardId);
   const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
   const [boardMenuView, setBoardMenuView] = useState<BoardMenuView>({ type: 'menu' });
@@ -522,6 +525,14 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           view={boardMenuView}
           onViewChange={setBoardMenuView}
           onInvite={() => void openInvitation()}
+          onRename={() => {
+            setIsBoardMenuOpen(false);
+            if (boardId) push('BoardName', { boardId, name: boardName });
+          }}
+          onDelete={() => {
+            setIsBoardMenuOpen(false);
+            if (boardSummary) deleteBoard.request(boardSummary);
+          }}
           onCopyInvitation={(code) => void copyInvitationCode(code)}
           isInvitePending={isInvitationPending}
           participantList={{
@@ -543,6 +554,12 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           }}
           shareScope={shareScope}
           onShareScopeChange={setShareScope}
+        />
+        <DeleteBoardModal
+          target={deleteBoard.target}
+          isPending={deleteBoard.isPending}
+          onConfirm={deleteBoard.confirm}
+          onCancel={deleteBoard.cancel}
         />
       </div>
       {/* 캡처 도중 시트가 닫혀도 캡처 대상 DOM이 언마운트되지 않게 작업 중에는 유지한다 */}
