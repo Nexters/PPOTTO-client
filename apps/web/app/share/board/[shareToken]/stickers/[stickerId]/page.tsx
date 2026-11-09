@@ -37,6 +37,8 @@ export default async function Page({ params }: PageProps) {
     <div className="relative">
       <SharedRecapView
         data={recap}
+        // 스티커마다 리캡을 새로 열어도 앱 설치 안내는 보드당 한 번만 띄운다
+        appInstallPromptDismissKey={`ppotto.share-board.${shareToken}.app-install-prompt-dismissed`}
         options={{
           image: true,
           summary: true,

@@ -17,27 +17,53 @@ function isIOSDevice(): boolean {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+// 저장소가 막힌 브라우저(시크릿 모드 등)에서는 매번 띄운다
+function wasDismissed(dismissKey: string): boolean {
+  try {
+    return sessionStorage.getItem(dismissKey) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismissed(dismissKey: string) {
+  try {
+    sessionStorage.setItem(dismissKey, '1');
+  } catch {
+    // 기록하지 못하면 다음 화면에서 다시 띄운다
+  }
+}
+
 type Platform = 'ios' | 'android';
 
-export function AppInstallPromptSheet() {
+type AppInstallPromptSheetProps = {
+  // 넘기면 한 번 닫은 뒤 같은 탭에서는 다시 띄우지 않는다. 보드 공유처럼 리캡을 여러 번 오가는 화면용
+  dismissKey?: string;
+};
+
+export function AppInstallPromptSheet({ dismissKey }: AppInstallPromptSheetProps) {
   const [platform, setPlatform] = useState<Platform | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelFallbackRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    if (dismissKey && wasDismissed(dismissKey)) return;
     const timer = setTimeout(() => {
       setPlatform(isIOSDevice() ? 'ios' : 'android');
       setIsOpen(true);
     }, SHOW_DELAY_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, [dismissKey]);
 
   useEffect(() => {
     return () => cancelFallbackRef.current?.();
   }, []);
 
-  const handleStayInWeb = () => setIsOpen(false);
+  const handleStayInWeb = () => {
+    if (dismissKey) rememberDismissed(dismissKey);
+    setIsOpen(false);
+  };
 
   if (platform === null) return null;
 
