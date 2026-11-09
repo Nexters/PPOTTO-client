@@ -80,4 +80,16 @@ describe('computeShareCamera', () => {
 
     expect(camera.scale).toBeCloseTo(0.2);
   });
+
+  it('화면 영역과 배율 범위를 넘기면 그 영역에 맞춘다', () => {
+    const camera = computeShareCamera(
+      { minX: 0, minY: 0, maxX: 200, maxY: 100 },
+      { width: 400, height: 400 },
+      { min: 0.25, max: 1 },
+    );
+
+    expect(camera.scale).toBe(1);
+    expect(camera.x + 100 * camera.scale).toBeCloseTo(200);
+    expect(camera.y + 50 * camera.scale).toBeCloseTo(200);
+  });
 });

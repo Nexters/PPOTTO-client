@@ -22,21 +22,24 @@ export type ShareBoardContent = {
 };
 
 type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
+type ShareArea = { width: number; height: number };
+type ShareScaleRange = { min: number; max: number };
 
 // 400×400 카드에서 제목(top 28~52)·로고(top 344~376)와 겹치지 않는 보드 영역 — Figma 3356:18843
 export const SHARE_CONTENT_AREA = { left: 24, top: 64, width: 352, height: 272 };
 
-// 시안의 스티커 크기(84.48px ÷ 기본 160px) — 스티커가 적어도 이보다 크게 키우지 않는다
-const SHARE_SCALE_MAX = 0.528;
-// 스티커가 넓게 퍼져 있어도 이보다 작게는 줄이지 않는다 — 넘치는 부분은 영역 밖으로 잘린다
-const SHARE_SCALE_MIN = 0.2;
+// 카드 시안의 스티커 크기(84.48px ÷ 기본 160px)까지만 키우고, 넓게 퍼져도 0.2배 아래로는 줄이지 않는다
+// 넘치는 부분은 영역 밖으로 잘린다
+const SHARE_CARD_SCALE_RANGE: ShareScaleRange = { min: 0.2, max: 0.528 };
 
 // Sticker.tsx의 STICKER_MAX_EDGE(160) 절반 — 실제 이미지 비율은 로드해야 알 수 있어 근사한다
 const STICKER_HALF_EDGE = 80;
 // 스티커 아래에 붙는 제목 뱃지가 잘리지 않도록 아래쪽에 더 두는 여유
 const BADGE_ALLOWANCE = 24;
 
-export function toShareBoardContent(board: BoardDetail): ShareBoardContent {
+export function toShareBoardContent(
+  board: Pick<BoardDetail, 'stickers' | 'drawings'>,
+): ShareBoardContent {
   return {
     stickers: board.stickers
       .filter((sticker) => !needsInitialLayout(sticker))
@@ -95,16 +98,20 @@ export function computeShareContentBounds({
   };
 }
 
-// 보드 전체가 SHARE_CONTENT_AREA 가운데에 들어오도록 하는 카메라 — 좌표는 콘텐츠 영역 기준
-export function computeShareCamera(bounds: Bounds | null): CameraState {
-  const { width, height } = SHARE_CONTENT_AREA;
-  if (!bounds) return { scale: SHARE_SCALE_MAX, x: width / 2, y: height / 2 };
+// 보드 전체가 영역 가운데에 들어오도록 하는 카메라 — 좌표는 영역 기준. 기본값은 공유 카드
+export function computeShareCamera(
+  bounds: Bounds | null,
+  area: ShareArea = SHARE_CONTENT_AREA,
+  scaleRange: ShareScaleRange = SHARE_CARD_SCALE_RANGE,
+): CameraState {
+  const { width, height } = area;
+  if (!bounds) return { scale: scaleRange.max, x: width / 2, y: height / 2 };
 
   const fitScale = Math.min(
     width / (bounds.maxX - bounds.minX),
     height / (bounds.maxY - bounds.minY),
   );
-  const scale = Math.min(Math.max(fitScale, SHARE_SCALE_MIN), SHARE_SCALE_MAX);
+  const scale = Math.min(Math.max(fitScale, scaleRange.min), scaleRange.max);
   const centerX = (bounds.minX + bounds.maxX) / 2;
   const centerY = (bounds.minY + bounds.maxY) / 2;
 
