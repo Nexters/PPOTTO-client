@@ -29,6 +29,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-bucket-dev/stickers/**' },
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-bucket-dev/photos/**' },
+      { hostname: 'storage.googleapis.com', pathname: '/*/board-invitations/**' },
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-stickers/**' },
       { hostname: 'storage.googleapis.com', pathname: '/ppotto-photos/**' },
     ],
