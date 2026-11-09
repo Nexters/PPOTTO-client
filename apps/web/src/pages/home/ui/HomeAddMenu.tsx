@@ -12,6 +12,11 @@ type HomeAddMenuProps = {
 const actionClassName =
   'bg-gray-200 px-3 whitespace-nowrap text-black disabled:bg-gray-200 disabled:text-black';
 
+const ACTION_TRANSITION =
+  'transition-[opacity,transform] motion-reduce:transition-none motion-reduce:transform-none';
+const OPEN_TRANSITION = 'duration-220 ease-[cubic-bezier(0.16,1,0.3,1)]';
+const CLOSE_TRANSITION = 'duration-180 ease-[cubic-bezier(0.4,0,0.2,1)]';
+
 export function HomeAddMenu({ onCreateBoard, onJoinByCode }: HomeAddMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,21 +52,23 @@ export function HomeAddMenu({ onCreateBoard, onJoinByCode }: HomeAddMenuProps) {
         id={actionsId}
         aria-hidden={!isOpen}
         inert={!isOpen ? true : undefined}
-        className={cn(
-          'absolute right-0 bottom-14.5 flex flex-col items-end gap-2.5',
-          'origin-bottom-right transition-[opacity,transform] duration-250',
-          'ease-[cubic-bezier(0.22,1,0.36,1)]',
-          'motion-reduce:transition-none',
-          isOpen
-            ? 'translate-y-0 scale-100 opacity-100'
-            : 'pointer-events-none translate-y-3 scale-95 opacity-0',
-        )}
+        className="absolute right-0 bottom-14.5 flex flex-col items-end gap-2.5"
       >
         <Button
           size="medium"
           disabled={!onCreateBoard}
           onClick={() => runAction(onCreateBoard)}
-          className={cn(actionClassName, 'pointer-events-auto w-25.25')}
+          className={cn(
+            actionClassName,
+            'pointer-events-auto w-25.25 origin-bottom-right',
+            ACTION_TRANSITION,
+            isOpen
+              ? cn(OPEN_TRANSITION, 'translate-y-0 scale-100 opacity-100 delay-40')
+              : cn(
+                  CLOSE_TRANSITION,
+                  'pointer-events-none translate-y-2 scale-98 opacity-0 delay-0',
+                ),
+          )}
         >
           새 보드 만들기
         </Button>
@@ -69,7 +76,17 @@ export function HomeAddMenu({ onCreateBoard, onJoinByCode }: HomeAddMenuProps) {
           size="medium"
           disabled={!onJoinByCode}
           onClick={() => runAction(onJoinByCode)}
-          className={cn(actionClassName, 'pointer-events-auto w-27.5')}
+          className={cn(
+            actionClassName,
+            'pointer-events-auto w-27.5 origin-bottom-right',
+            ACTION_TRANSITION,
+            isOpen
+              ? cn(OPEN_TRANSITION, 'translate-y-0 scale-100 opacity-100 delay-0')
+              : cn(
+                  CLOSE_TRANSITION,
+                  'pointer-events-none translate-y-2 scale-98 opacity-0 delay-0',
+                ),
+          )}
         >
           코드로 참여하기
         </Button>
@@ -79,7 +96,10 @@ export function HomeAddMenu({ onCreateBoard, onJoinByCode }: HomeAddMenuProps) {
         aria-expanded={isOpen}
         aria-controls={actionsId}
         onClick={() => setIsOpen((open) => !open)}
-        className={cn('pointer-events-auto', isOpen && 'bg-gray-800 text-white')}
+        className={cn(
+          'pointer-events-auto transition-colors duration-200 ease-out motion-reduce:transition-none',
+          isOpen && 'bg-gray-800 text-white',
+        )}
       >
         <IconPlus color={isOpen ? 'white' : 'black'} />
       </IconButton>
