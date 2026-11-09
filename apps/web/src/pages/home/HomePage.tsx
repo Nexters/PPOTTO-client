@@ -1,6 +1,6 @@
 'use client';
 
-import { IconPlus, IconSettings, Logo } from '@ppotto/assets';
+import { IconSettings, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import { useEffect, useId, useState } from 'react';
 
@@ -9,7 +9,7 @@ import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 import { shouldShowLoadError } from '@/shared/lib/should-show-load-error';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
-import { Button, IconButton } from '@/shared/ui/common/Button';
+import { Button } from '@/shared/ui/common/Button';
 import { Skeleton } from '@/shared/ui/Skeleton';
 
 import {
@@ -20,6 +20,7 @@ import {
 } from './model/board-home-tab';
 import { useTermsGate } from './model/use-terms-gate';
 import { BoardCard } from './ui/BoardCard';
+import { HomeAddMenu } from './ui/HomeAddMenu';
 import { BoardMenuSheet } from './ui/BoardMenuSheet';
 
 const SAFE_AREA_TOP = 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))';
@@ -151,9 +152,7 @@ export function HomePage() {
         )}
         style={{ backgroundImage: 'linear-gradient(to top, #000, transparent)' }}
       >
-        <IconButton aria-label="보드 추가" aria-disabled="true" className="pointer-events-auto">
-          <IconPlus />
-        </IconButton>
+        <HomeAddMenu />
       </div>
 
       {menuBoardId && <div className="absolute inset-0 z-20 bg-black/50" />}
