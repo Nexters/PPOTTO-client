@@ -8,6 +8,7 @@ import { useBoardSummaryListQuery } from '@/entities/board/api/board-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 import { shouldShowLoadError } from '@/shared/lib/should-show-load-error';
+import { useImageErrorRecovery } from '@/shared/lib/use-image-error-recovery';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
 import { Button } from '@/shared/ui/common/Button';
 import { Skeleton } from '@/shared/ui/Skeleton';
@@ -36,6 +37,9 @@ export function HomePage() {
   const baseId = useId();
   const panelId = `${baseId}-panel`;
   const tabId = (target: BoardHomeTab) => `${baseId}-tab-${target}`;
+  const recoverPreviewImages = useImageErrorRecovery(() => {
+    void refetch({ cancelRefetch: false });
+  });
 
   useRefetchOnActive(refetch, isStale);
 
@@ -73,6 +77,7 @@ export function HomePage() {
                     isMenuTarget={board.id === menuBoardId}
                     onOpen={() => push('Board', { boardId: board.id })}
                     onOpenMenu={board.role === 'OWNER' ? () => setMenuBoardId(board.id) : undefined}
+                    onPreviewImageError={recoverPreviewImages}
                   />
                 </li>
               ))}

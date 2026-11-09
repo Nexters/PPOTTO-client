@@ -22,13 +22,14 @@ vi.mock('next/image', () => ({
 import { StickerPhotoImage } from './StickerPhotoImage';
 
 describe('StickerPhotoImage', () => {
-  it('이미지 로드 실패 시 refetch를 호출한다', () => {
+  it('이미지 로드 실패 시 refetch를 한 번만 호출한다', () => {
     refetch.mockClear();
 
     const { container } = render(
       <StickerPhotoImage stickerId="sticker-1" src="https://example.com/photo.jpg" alt="" fill />,
     );
 
+    fireEvent.error(container.querySelector('img')!);
     fireEvent.error(container.querySelector('img')!);
 
     expect(container.querySelector('img')).toHaveAttribute('crossorigin', 'anonymous');

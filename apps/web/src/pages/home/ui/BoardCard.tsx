@@ -2,7 +2,6 @@ import { Clock, MenuKebab, Overlap, UserProfile } from '@ppotto/assets';
 import Image from 'next/image';
 
 import type { BoardSummary } from '@/entities/board/api/board-api';
-import { useBoardSummaryListQuery } from '@/entities/board/api/board-queries';
 import { cn } from '@/shared/lib/cn';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import { AnalysisPill } from '@/shared/ui/AnalysisPill';
@@ -18,10 +17,17 @@ type BoardCardProps = {
   isMenuTarget: boolean;
   onOpen: () => void;
   onOpenMenu?: () => void;
+  onPreviewImageError: () => void;
 };
 
-export function BoardCard({ board, now, isMenuTarget, onOpen, onOpenMenu }: BoardCardProps) {
-  const { refetch } = useBoardSummaryListQuery();
+export function BoardCard({
+  board,
+  now,
+  isMenuTarget,
+  onOpen,
+  onOpenMenu,
+  onPreviewImageError,
+}: BoardCardProps) {
   const hasPreview = board.previewImageUrls.length > 0;
   const metaColor = hasPreview ? '#929292' : '#757575';
 
@@ -71,7 +77,7 @@ export function BoardCard({ board, now, isMenuTarget, onOpen, onOpenMenu }: Boar
                   fill
                   sizes="80px"
                   className="object-contain"
-                  onError={() => void refetch({ cancelRefetch: false })}
+                  onError={onPreviewImageError}
                 />
               </span>
             ))}
