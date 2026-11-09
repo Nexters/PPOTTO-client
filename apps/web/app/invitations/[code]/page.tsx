@@ -1,6 +1,7 @@
 import { HttpError } from '@ppotto/api';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 
 import { boardApi } from '@/entities/board/api/board-api';
 import { BoardInvitationPage } from '@/pages/board-invitation';
@@ -9,14 +10,14 @@ type PageProps = {
   params: Promise<{ code: string }>;
 };
 
-async function loadInvitation(code: string) {
+const loadInvitation = cache(async (code: string) => {
   try {
     return await boardApi.getPublicInvitation(code);
   } catch (error) {
     if (error instanceof HttpError && error.status === 404) return null;
     throw error;
   }
-}
+});
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const invitation = await loadInvitation((await params).code);

@@ -17,6 +17,7 @@ import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/
 import { useBoardPageState } from './model/use-board-page-state';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
+import { BoardInvitationPreviewCard } from './ui/BoardInvitationPreviewCard';
 import { BoardMenuSheet, type BoardMenuView } from './ui/BoardMenuSheet';
 import { BoardShareCard } from './ui/BoardShareCard';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
@@ -66,7 +67,13 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   } = useBoardPageState(boardIdParam);
   const { pop } = useFlow();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
-  const { issueInvitation, copyInvitationCode, isInvitationPending } = useBoardInvitation(boardId);
+  const {
+    previewRef: invitationPreviewRef,
+    isPreviewPreparing: isInvitationPreviewPreparing,
+    issueInvitation,
+    copyInvitationCode,
+    isInvitationPending,
+  } = useBoardInvitation(boardId);
   const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
   const [boardMenuView, setBoardMenuView] = useState<BoardMenuView>({ type: 'menu' });
   const isParticipantsView = isBoardMenuOpen && boardMenuView.type === 'participants';
@@ -554,6 +561,13 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             </div>
           </div>
         )}
+      {boardId && isInvitationPreviewPreparing && (
+        <div className="pointer-events-none fixed top-0 left-[-9999px]" aria-hidden>
+          <div ref={invitationPreviewRef}>
+            <BoardInvitationPreviewCard boardId={boardId} />
+          </div>
+        </div>
+      )}
       {isPickingColor && pickerInitialPosition && (
         <div
           ref={pickerMarkerRef}

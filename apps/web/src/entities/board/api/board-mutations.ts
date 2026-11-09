@@ -34,3 +34,16 @@ export const useIssueBoardInvitationMutation = () =>
   useMutation({
     mutationFn: (boardId: string) => boardApi.issueInvitation(boardId),
   });
+
+export const useUploadBoardInvitationPreviewMutation = () =>
+  useMutation({
+    mutationFn: ({
+      invitationId,
+      code,
+      file,
+    }: {
+      invitationId: string;
+      code: string;
+      file: Blob;
+    }) => boardApi.uploadInvitationPreview(invitationId, code, file),
+  });

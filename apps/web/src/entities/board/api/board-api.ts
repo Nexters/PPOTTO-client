@@ -26,6 +26,8 @@ export type BoardInvitationDetail = components['schemas']['BoardInvitationDetail
 
 export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request'];
 export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
+export type BoardInvitationPreviewUpload =
+  components['schemas']['BoardInvitationPreviewUploadResponse'];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
@@ -77,6 +79,28 @@ export const boardApi = {
     return unwrapData(
       api.POST('/boards/{boardId}/invitations', {
         params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
+  },
+  uploadInvitationPreview: (
+    invitationId: string,
+    code: string,
+    file: Blob,
+  ): Promise<BoardInvitationPreviewUpload> => {
+    if (USE_MOCK) {
+      return Promise.resolve({
+        previewImageUrl: 'https://storage.googleapis.com/ppotto-board-invitations/preview.webp',
+      });
+    }
+
+    const formData = new FormData();
+    formData.append('code', code);
+    formData.append('file', file, 'preview.webp');
+
+    return unwrapData(
+      api.PUT('/board-invitations/{invitationId}/preview', {
+        params: { path: { invitationId }, header: { 'X-API-Version': '2' } },
+        body: formData as unknown as { code: string; file: string },
       }),
     );
   },

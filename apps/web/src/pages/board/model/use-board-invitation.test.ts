@@ -1,15 +1,19 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mutateAsync, toast, writeText } = vi.hoisted(() => ({
+const { mutateAsync, uploadPreview, captureElement, toast, writeText } = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
+  uploadPreview: vi.fn(),
+  captureElement: vi.fn(),
   toast: vi.fn(),
   writeText: vi.fn(),
 }));
 
 vi.mock('@/entities/board/api/board-mutations', () => ({
   useIssueBoardInvitationMutation: () => ({ mutateAsync, isPending: false }),
+  useUploadBoardInvitationPreviewMutation: () => ({ mutateAsync: uploadPreview }),
 }));
+vi.mock('@/shared/lib/capture-element-as-blob', () => ({ captureElementAsBlob: captureElement }));
 vi.mock('@/shared/lib/copy-text-to-clipboard', () => ({
   copyTextToClipboard: writeText,
 }));
@@ -20,6 +24,8 @@ import { useBoardInvitation } from './use-board-invitation';
 describe('useBoardInvitation', () => {
   beforeEach(() => {
     mutateAsync.mockReset();
+    uploadPreview.mockReset();
+    captureElement.mockReset();
     toast.mockReset();
     writeText.mockReset();
   });
@@ -33,6 +39,36 @@ describe('useBoardInvitation', () => {
 
     expect(mutateAsync).toHaveBeenCalledWith('board-1');
     expect(issued).toBe(invitation);
+  });
+
+  it('새 미리보기가 필요하면 화면을 WebP로 캡처해 업로드한다', async () => {
+    const invitation = {
+      code: 'K7P2QX',
+      invitationId: 'invitation-1',
+      previewRequired: true,
+    };
+    const file = new Blob(['preview'], { type: 'image/webp' });
+    mutateAsync.mockResolvedValue(invitation);
+    captureElement.mockResolvedValue(file);
+    uploadPreview.mockResolvedValue({ previewImageUrl: 'https://example.com/preview.webp' });
+    const { result } = renderHook(() => useBoardInvitation('board-1'));
+    const element = document.createElement('div');
+    result.current.previewRef.current = element;
+
+    await act(() => result.current.issueInvitation());
+    await vi.waitFor(() =>
+      expect(uploadPreview).toHaveBeenCalledWith({
+        invitationId: 'invitation-1',
+        code: 'K7P2QX',
+        file,
+      }),
+    );
+
+    expect(captureElement).toHaveBeenCalledWith(
+      element,
+      { skipFonts: true, pixelRatio: 2 },
+      { type: 'image/webp', quality: 0.9 },
+    );
   });
 
   it('발급에 실패하면 오류를 안내하고 null을 반환한다', async () => {
