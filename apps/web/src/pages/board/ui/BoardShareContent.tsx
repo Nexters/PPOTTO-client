@@ -4,6 +4,7 @@ export type BoardShareActions = {
   hasStickers: boolean;
   isSaving: boolean;
   isSharingInstagram: boolean;
+  isSharingKakao: boolean;
   onKakaoShare?: () => void;
   onInstagramShare: () => void;
   onSaveImage: () => void;
@@ -18,6 +19,7 @@ export function BoardShareContent({
   hasStickers,
   isSaving,
   isSharingInstagram,
+  isSharingKakao,
   onKakaoShare,
   onInstagramShare,
   onSaveImage,
@@ -29,7 +31,7 @@ export function BoardShareContent({
       <div className="flex w-full items-start justify-between">
         <button
           type="button"
-          disabled={!hasStickers || !onKakaoShare}
+          disabled={!hasStickers || !onKakaoShare || isSharingKakao}
           className="flex w-18 flex-col items-center gap-2 text-white disabled:opacity-50"
           onClick={onKakaoShare}
         >

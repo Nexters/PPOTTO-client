@@ -130,6 +130,7 @@ describe('BoardMenuSheet', () => {
     hasStickers: true,
     isSaving: false,
     isSharingInstagram: false,
+    isSharingKakao: false,
     onInstagramShare: vi.fn(),
     onSaveImage: vi.fn(),
   };
