@@ -110,6 +110,7 @@ it('카카오톡 버튼으로 업로드한 이미지 URL과 템플릿 변수를 
   ]);
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith('SHARE_KAKAO', {
+      templateId: 136185,
       templateArgs: {
         IMAGE_URL: 'https://k.kakao/image.png',
         USER_NAME: '테스트',

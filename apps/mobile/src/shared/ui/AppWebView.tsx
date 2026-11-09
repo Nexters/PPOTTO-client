@@ -39,7 +39,6 @@ const HAPTIC_STYLES = {
 } as const;
 const INSTAGRAM_APP_ID = '1002723789453387';
 const INSTAGRAM_PACKAGE = 'com.instagram.android';
-const KAKAO_SHARE_TEMPLATE_ID = 136185;
 
 export function buildWebViewUri(uri: string, platform: string) {
   const separator = uri.includes('?') ? '&' : '?';
@@ -202,9 +201,9 @@ export function AppWebView({
         return { success: false };
       }
     },
-    SHARE_KAKAO: async ({ templateArgs }) => {
+    SHARE_KAKAO: async ({ templateId, templateArgs }) => {
       try {
-        await shareCustomTemplate({ templateId: KAKAO_SHARE_TEMPLATE_ID, templateArgs });
+        await shareCustomTemplate({ templateId, templateArgs });
         return { success: true };
       } catch (error) {
         console.warn('카카오톡 공유 실패', error);

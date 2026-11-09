@@ -5,9 +5,14 @@ import { cn } from '@/shared/lib/cn';
 type BoardInvitationContentProps = {
   code: string;
   onCopy: () => void;
+  onKakaoShare?: () => void;
 };
 
-export function BoardInvitationContent({ code, onCopy }: BoardInvitationContentProps) {
+export function BoardInvitationContent({
+  code,
+  onCopy,
+  onKakaoShare,
+}: BoardInvitationContentProps) {
   return (
     <>
       <div className="flex w-full flex-col gap-2">
@@ -27,7 +32,12 @@ export function BoardInvitationContent({ code, onCopy }: BoardInvitationContentP
       </p>
 
       <div className="flex items-start gap-2">
-        <button type="button" disabled className="flex w-18 flex-col items-center gap-2">
+        <button
+          type="button"
+          disabled={!onKakaoShare}
+          onClick={onKakaoShare}
+          className="flex w-18 flex-col items-center gap-2 disabled:opacity-50"
+        >
           <Kakaotalk width={48} height={48} />
           <span className="text-caption-01 w-full text-center text-white">카카오톡</span>
         </button>

@@ -10,6 +10,7 @@ import { useBoardParticipantsQuery } from '@/entities/board/api/board-queries';
 import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 import { useSinglePop } from '@/shared/lib/use-single-pop';
+import { KakaoSdkScript } from '@/shared/ui/KakaoSdkScript';
 
 import { useBoardInvitation } from './model/use-board-invitation';
 import { useBoardShare } from './model/use-board-share';
@@ -18,6 +19,7 @@ import { useBoardPageState } from './model/use-board-page-state';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardInvitationPreviewCard } from './ui/BoardInvitationPreviewCard';
+import { BoardKakaoShareCard } from './ui/BoardKakaoShareCard';
 import { BoardMenuSheet, type BoardMenuView } from './ui/BoardMenuSheet';
 import { BoardShareCard } from './ui/BoardShareCard';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
@@ -70,8 +72,12 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const {
     previewRef: invitationPreviewRef,
     isPreviewPreparing: isInvitationPreviewPreparing,
+    kakaoCardRef,
+    isKakaoSharePreparing,
+    kakaoShareNow,
     issueInvitation,
     copyInvitationCode,
+    shareToKakao,
     isInvitationPending,
   } = useBoardInvitation(boardId);
   const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
@@ -370,6 +376,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
 
   return (
     <>
+      <KakaoSdkScript strategy="lazyOnload" />
       <div
         className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden"
         style={{
@@ -530,6 +537,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           onViewChange={setBoardMenuView}
           onInvite={() => void openInvitation()}
           onCopyInvitation={(code) => void copyInvitationCode(code)}
+          onKakaoShareInvitation={shareToKakao}
           isInvitePending={isInvitationPending}
           participantList={{
             data: participantListQuery.data,
@@ -565,6 +573,13 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
         <div className="pointer-events-none fixed top-0 left-[-9999px]" aria-hidden>
           <div ref={invitationPreviewRef}>
             <BoardInvitationPreviewCard boardId={boardId} />
+          </div>
+        </div>
+      )}
+      {boardId && isKakaoSharePreparing && (
+        <div className="pointer-events-none fixed top-0 left-[-9999px]" aria-hidden>
+          <div ref={kakaoCardRef}>
+            <BoardKakaoShareCard boardId={boardId} now={kakaoShareNow} />
           </div>
         </div>
       )}

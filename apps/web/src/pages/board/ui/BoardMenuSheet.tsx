@@ -38,6 +38,7 @@ type BoardMenuSheetProps = {
   onViewChange?: (view: BoardMenuView) => void;
   onInvite: () => void;
   onCopyInvitation: (code: string) => void;
+  onKakaoShareInvitation?: (code: string) => void;
   isInvitePending?: boolean;
   participantList?: BoardParticipantListState;
   // 공동 보드 외부 공유 정책이 정해지기 전까지 공동 보드에서는 공유하기를 막는다
@@ -80,6 +81,7 @@ function BoardMenuContent({
   onViewChange,
   onInvite,
   onCopyInvitation,
+  onKakaoShareInvitation,
   isInvitePending,
   participantList,
   isShareDisabled,
@@ -97,7 +99,15 @@ function BoardMenuContent({
         />
       ) : null;
     case 'invitation':
-      return <BoardInvitationContent code={view.code} onCopy={() => onCopyInvitation(view.code)} />;
+      return (
+        <BoardInvitationContent
+          code={view.code}
+          onCopy={() => onCopyInvitation(view.code)}
+          onKakaoShare={
+            onKakaoShareInvitation ? () => onKakaoShareInvitation(view.code) : undefined
+          }
+        />
+      );
     case 'share':
       return share ? (
         <BoardShareContent {...share} onOpenScope={() => onViewChange?.({ type: 'shareScope' })} />

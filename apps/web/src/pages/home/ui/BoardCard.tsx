@@ -3,10 +3,9 @@ import Image from 'next/image';
 
 import type { BoardSummary } from '@/entities/board/api/board-api';
 import { cn } from '@/shared/lib/cn';
+import { formatRelativeTime } from '@/shared/lib/format-relative-time';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import { AnalysisPill } from '@/shared/ui/AnalysisPill';
-
-import { formatRelativeTime } from '../model/relative-time';
 
 const MAX_PARTICIPANT_ICONS = 5;
 const ANALYSIS_LABEL = { UPLOADING: '업로드 중', ANALYZING: '분석 중' } as const;
