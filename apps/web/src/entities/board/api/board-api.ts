@@ -1,6 +1,7 @@
 import { type components, type paths, unwrapData, unwrapVoid } from '@ppotto/api';
 
 import { api } from '@/shared/api/client';
+import { publicApi } from '@/shared/api/public-client';
 
 import { boardFixture } from './__fixtures__/board.fixture';
 import { boardParticipantsFixture } from './__fixtures__/board-participants.fixture';
@@ -25,6 +26,7 @@ export type UpdateBoardInput =
 export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request'];
 export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
 export type BoardShareScope = components['schemas']['BoardShareScope'];
+export type SharedBoard = components['schemas']['SharedBoardResponse'];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
@@ -105,6 +107,14 @@ export const boardApi = {
       }),
     );
   },
+  getShared: (shareToken: string) =>
+    unwrapData(publicApi.GET('/boards/shared/{shareToken}', { params: { path: { shareToken } } })),
+  getSharedRecap: (shareToken: string, stickerId: string) =>
+    unwrapData(
+      publicApi.GET('/boards/shared/{shareToken}/stickers/{stickerId}', {
+        params: { path: { shareToken, stickerId } },
+      }),
+    ),
   issueInvitation: (boardId: string) => {
     if (USE_MOCK) {
       return Promise.resolve({
