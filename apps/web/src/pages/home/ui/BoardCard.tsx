@@ -2,12 +2,10 @@ import { Clock, MenuKebab, Overlap, UserProfile } from '@ppotto/assets';
 import Image from 'next/image';
 
 import type { BoardSummary } from '@/entities/board/api/board-api';
-import { useBoardSummaryListQuery } from '@/entities/board/api/board-queries';
 import { cn } from '@/shared/lib/cn';
+import { formatRelativeTime } from '@/shared/lib/format-relative-time';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import { AnalysisPill } from '@/shared/ui/AnalysisPill';
-
-import { formatRelativeTime } from '../model/relative-time';
 
 const MAX_PARTICIPANT_ICONS = 5;
 const ANALYSIS_LABEL = { UPLOADING: '업로드 중', ANALYZING: '분석 중' } as const;
@@ -18,10 +16,17 @@ type BoardCardProps = {
   isMenuTarget: boolean;
   onOpen: () => void;
   onOpenMenu?: () => void;
+  onPreviewImageError: () => void;
 };
 
-export function BoardCard({ board, now, isMenuTarget, onOpen, onOpenMenu }: BoardCardProps) {
-  const { refetch } = useBoardSummaryListQuery();
+export function BoardCard({
+  board,
+  now,
+  isMenuTarget,
+  onOpen,
+  onOpenMenu,
+  onPreviewImageError,
+}: BoardCardProps) {
   const hasPreview = board.previewImageUrls.length > 0;
   const metaColor = hasPreview ? '#929292' : '#757575';
 
@@ -71,7 +76,7 @@ export function BoardCard({ board, now, isMenuTarget, onOpen, onOpenMenu }: Boar
                   fill
                   sizes="80px"
                   className="object-contain"
-                  onError={() => void refetch({ cancelRefetch: false })}
+                  onError={onPreviewImageError}
                 />
               </span>
             ))}

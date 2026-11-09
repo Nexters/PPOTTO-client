@@ -1,16 +1,17 @@
 'use client';
 
-import { IconPlus, IconSettings, Logo } from '@ppotto/assets';
+import { IconSettings, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
-import { type ComponentProps, useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { useBoardSummaryListQuery } from '@/entities/board/api/board-queries';
 import { DeleteBoardModal, useDeleteBoard } from '@/features/manage-board';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 import { shouldShowLoadError } from '@/shared/lib/should-show-load-error';
+import { useImageErrorRecovery } from '@/shared/lib/use-image-error-recovery';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
-import { Button, IconButton } from '@/shared/ui/common/Button';
+import { Button } from '@/shared/ui/common/Button';
 import { Skeleton } from '@/shared/ui/Skeleton';
 
 import {
@@ -21,6 +22,7 @@ import {
 } from './model/board-home-tab';
 import { useTermsGate } from './model/use-terms-gate';
 import { BoardCard } from './ui/BoardCard';
+import { HomeAddMenu } from './ui/HomeAddMenu';
 import { BoardMenuSheet } from './ui/BoardMenuSheet';
 
 const SAFE_AREA_TOP = 'var(--rn-safe-area-inset-top, env(safe-area-inset-top))';
@@ -31,7 +33,6 @@ export function HomePage() {
   const { data, isPending, isError, refetch, isStale, dataUpdatedAt } = useBoardSummaryListQuery();
   const [tab, setTab] = useState<BoardHomeTab>('ALL');
   const [menuBoardId, setMenuBoardId] = useState<string | null>(null);
-  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const boards = data ? filterBoardsByTab(data.boards, tab) : [];
   const menuBoard = data?.boards.find((board) => board.id === menuBoardId);
   const closeMenu = () => setMenuBoardId(null);
@@ -39,6 +40,9 @@ export function HomePage() {
   const baseId = useId();
   const panelId = `${baseId}-panel`;
   const tabId = (target: BoardHomeTab) => `${baseId}-tab-${target}`;
+  const recoverPreviewImages = useImageErrorRecovery(() => {
+    void refetch({ cancelRefetch: false });
+  });
 
   useRefetchOnActive(refetch, isStale);
 
@@ -76,6 +80,7 @@ export function HomePage() {
                     isMenuTarget={board.id === menuBoardId}
                     onOpen={() => push('Board', { boardId: board.id })}
                     onOpenMenu={board.role === 'OWNER' ? () => setMenuBoardId(board.id) : undefined}
+                    onPreviewImageError={recoverPreviewImages}
                   />
                 </li>
               ))}
@@ -148,16 +153,6 @@ export function HomePage() {
         </div>
       </header>
 
-      {isAddMenuOpen && (
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-hidden
-          className="absolute inset-0 cursor-default"
-          onClick={() => setIsAddMenuOpen(false)}
-        />
-      )}
-
       <div
         className={cn(
           'pointer-events-none absolute inset-x-0 bottom-0',
@@ -165,30 +160,10 @@ export function HomePage() {
         )}
         style={{ backgroundImage: 'linear-gradient(to top, #000, transparent)' }}
       >
-        <div className="pointer-events-auto flex flex-col items-end gap-2.5">
-          {isAddMenuOpen && (
-            <>
-              <AddMenuChip
-                onClick={() => {
-                  setIsAddMenuOpen(false);
-                  push('BoardName', {});
-                }}
-              >
-                새 보드 만들기
-              </AddMenuChip>
-              {/* ponytail: 코드로 참여는 T03에서 연결한다 */}
-              <AddMenuChip disabled>코드로 참여하기</AddMenuChip>
-            </>
-          )}
-          <IconButton
-            aria-label={isAddMenuOpen ? '보드 추가 메뉴 닫기' : '보드 추가'}
-            aria-expanded={isAddMenuOpen}
-            onClick={() => setIsAddMenuOpen((open) => !open)}
-            className={cn(isAddMenuOpen && 'bg-gray-800 text-white')}
-          >
-            <IconPlus />
-          </IconButton>
-        </div>
+        <HomeAddMenu
+          onCreateBoard={() => push('BoardName', {})}
+          onJoinByCode={() => push('BoardJoinCode', {})}
+        />
       </div>
 
       {menuBoardId && <div className="absolute inset-0 z-20 bg-black/50" />}
@@ -211,18 +186,5 @@ export function HomePage() {
         onCancel={deleteBoard.cancel}
       />
     </main>
-  );
-}
-
-function AddMenuChip(props: ComponentProps<'button'>) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        'h-10 rounded-full bg-gray-200 px-3 text-body-05 text-black',
-        'drop-shadow-[0_8px_10px_rgba(0,0,0,0.16)] disabled:text-gray-500',
-      )}
-      {...props}
-    />
   );
 }

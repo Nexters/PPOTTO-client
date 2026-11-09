@@ -29,7 +29,8 @@ export async function captureElementAsCanvas(
 export async function captureElementAsBlob(
   element: HTMLElement,
   options?: Parameters<typeof toCanvas>[1],
+  blobOptions?: Parameters<typeof canvasToBlob>[1],
 ): Promise<Blob> {
   const canvas = await captureElementAsCanvas(element, options);
-  return canvasToBlob(canvas);
+  return canvasToBlob(canvas, blobOptions);
 }

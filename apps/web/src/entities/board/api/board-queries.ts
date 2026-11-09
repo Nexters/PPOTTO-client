@@ -1,5 +1,5 @@
 import { HttpError } from '@ppotto/api';
-import { useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 
 import { SIGNED_URL_STALE_TIME_MS } from '@/shared/lib/signed-url';
 
@@ -19,6 +19,7 @@ export const useBoardSummaryListQuery = () =>
   });
 
 const DEFAULT_RETRY_COUNT = 3;
+const INVITATION_STALE_TIME_MS = 30 * 1000;
 
 export const isBoardNotFoundError = (error: unknown) =>
   error instanceof HttpError && error.status === 404;
@@ -40,6 +41,23 @@ export const useBoardParticipantsQuery = (boardId?: string, enabled = true) =>
     queryKey: boardQueryKeys.participants(boardId),
     queryFn: () => boardApi.getParticipants(boardId!),
     enabled: enabled && !!boardId,
+  });
+
+export const boardInvitationQueryOptions = (code: string) => {
+  const normalizedCode = code.trim().toUpperCase();
+
+  return queryOptions({
+    queryKey: boardQueryKeys.invitation(normalizedCode),
+    queryFn: () => boardApi.getInvitation(normalizedCode),
+    staleTime: INVITATION_STALE_TIME_MS,
+    retry: shouldRetryBoardQuery,
+  });
+};
+
+export const useBoardInvitationQuery = (code?: string, enabled = true) =>
+  useQuery({
+    ...boardInvitationQueryOptions(code ?? ''),
+    enabled: enabled && code?.trim().length === 6,
   });
 
 export const useBoardShareStatusQuery = (boardId?: string, enabled = true) =>

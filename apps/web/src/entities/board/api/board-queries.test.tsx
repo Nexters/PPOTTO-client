@@ -4,10 +4,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 
-const { getParticipants } = vi.hoisted(() => ({ getParticipants: vi.fn() }));
-vi.mock('./board-api', () => ({ boardApi: { getParticipants } }));
+const { getInvitation, getParticipants } = vi.hoisted(() => ({
+  getInvitation: vi.fn(),
+  getParticipants: vi.fn(),
+}));
+vi.mock('./board-api', () => ({ boardApi: { getInvitation, getParticipants } }));
 
-import { shouldRetryBoardQuery, useBoardParticipantsQuery } from './board-queries';
+import {
+  shouldRetryBoardQuery,
+  useBoardInvitationQuery,
+  useBoardParticipantsQuery,
+} from './board-queries';
 import { boardQueryKeys } from './board-query-keys';
 
 function createWrapper() {
@@ -66,4 +73,44 @@ it('보드 ID가 없거나 비활성화되면 참여자 목록을 조회하지 �
   expect(getParticipants).not.toHaveBeenCalled();
   first.queryClient.clear();
   second.queryClient.clear();
+});
+
+it('초대 코드를 포함한 Query Key를 생성한다', () => {
+  expect(boardQueryKeys.invitation('K7P2QX')).toEqual(['board', 'invitation', 'K7P2QX']);
+});
+
+it('6자리 초대 코드를 정규화해 초대 정보를 조회한다', async () => {
+  const invitation = {
+    boardId: 'board-1',
+    boardName: '제주 여행',
+    code: 'K7P2QX',
+    expiresAt: '2026-12-09T00:00:00Z',
+    inviterName: '김용희',
+    maxParticipantCount: 8,
+    participantCount: 2,
+    stickerCount: 9,
+  };
+  getInvitation.mockResolvedValue(invitation);
+  const { queryClient, wrapper } = createWrapper();
+
+  const { result } = renderHook(() => useBoardInvitationQuery(' k7p2qx '), { wrapper });
+
+  await waitFor(() => expect(result.current.data).toBe(invitation));
+  expect(getInvitation).toHaveBeenCalledWith('K7P2QX');
+  queryClient.clear();
+});
+
+it('초대 코드가 없거나 6자리가 아니거나 비활성화되면 조회하지 않는다', () => {
+  const first = createWrapper();
+  const second = createWrapper();
+  const third = createWrapper();
+
+  renderHook(() => useBoardInvitationQuery(undefined), { wrapper: first.wrapper });
+  renderHook(() => useBoardInvitationQuery('ABC'), { wrapper: second.wrapper });
+  renderHook(() => useBoardInvitationQuery('K7P2QX', false), { wrapper: third.wrapper });
+
+  expect(getInvitation).not.toHaveBeenCalled();
+  first.queryClient.clear();
+  second.queryClient.clear();
+  third.queryClient.clear();
 });

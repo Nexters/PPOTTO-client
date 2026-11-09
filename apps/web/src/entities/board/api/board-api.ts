@@ -3,6 +3,10 @@ import { type components, type paths, unwrapData, unwrapVoid } from '@ppotto/api
 import { api } from '@/shared/api/client';
 import { publicApi } from '@/shared/api/public-client';
 
+import {
+  boardInvitationFixture,
+  publicBoardInvitationFixture,
+} from './__fixtures__/board-invitation.fixture';
 import { boardFixture } from './__fixtures__/board.fixture';
 import { boardParticipantsFixture } from './__fixtures__/board-participants.fixture';
 import { boardSummaryListFixture } from './__fixtures__/board-summary-list.fixture';
@@ -18,6 +22,7 @@ type BoardList = components['schemas']['BoardResponse'][];
 export type BoardSummaryList = components['schemas']['BoardListV2Response'];
 export type BoardSummary = components['schemas']['BoardSummaryV2Response'];
 export type BoardParticipants = components['schemas']['BoardParticipantsResponse'];
+export type BoardInvitationDetail = components['schemas']['BoardInvitationDetailResponse'];
 
 export type CreateBoardInput =
   paths['/boards']['post']['requestBody']['content']['application/json'];
@@ -25,6 +30,8 @@ export type UpdateBoardInput =
   paths['/boards/{boardId}']['patch']['requestBody']['content']['application/json'];
 export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request'];
 export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
+export type BoardInvitationPreviewUpload =
+  components['schemas']['BoardInvitationPreviewUploadResponse'];
 export type BoardShareScope = components['schemas']['BoardShareScope'];
 export type SharedBoard = components['schemas']['SharedBoardResponse'];
 
@@ -127,6 +134,44 @@ export const boardApi = {
     return unwrapData(
       api.POST('/boards/{boardId}/invitations', {
         params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
+  },
+  uploadInvitationPreview: (
+    invitationId: string,
+    code: string,
+    file: Blob,
+  ): Promise<BoardInvitationPreviewUpload> => {
+    if (USE_MOCK) {
+      return Promise.resolve({
+        previewImageUrl: 'https://storage.googleapis.com/ppotto-board-invitations/preview.webp',
+      });
+    }
+
+    const formData = new FormData();
+    formData.append('code', code);
+    formData.append('file', file, 'preview.webp');
+
+    return unwrapData(
+      api.PUT('/board-invitations/{invitationId}/preview', {
+        params: { path: { invitationId }, header: { 'X-API-Version': '2' } },
+        body: formData as unknown as { code: string; file: string },
+      }),
+    );
+  },
+  getInvitation: (code: string): Promise<BoardInvitationDetail> => {
+    if (USE_MOCK) return Promise.resolve(boardInvitationFixture);
+    return unwrapData(
+      api.GET('/board-invitations/{code}', {
+        params: { path: { code: code.trim().toUpperCase() } },
+      }),
+    );
+  },
+  getPublicInvitation: (code: string): Promise<BoardInvitationDetail> => {
+    if (USE_MOCK) return Promise.resolve(publicBoardInvitationFixture);
+    return unwrapData(
+      publicApi.GET('/board-invitations/{code}', {
+        params: { path: { code: code.trim().toUpperCase() } },
       }),
     );
   },

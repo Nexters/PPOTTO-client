@@ -19,6 +19,8 @@ import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/
 import { useBoardPageState } from './model/use-board-page-state';
 import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
+import { BoardInvitationPreviewCard } from './ui/BoardInvitationPreviewCard';
+import { BoardKakaoShareCard } from './ui/BoardKakaoShareCard';
 import { BoardMenuSheet, type BoardMenuView } from './ui/BoardMenuSheet';
 import { BoardShareCard } from './ui/BoardShareCard';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
@@ -70,7 +72,17 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const { pop, push } = useFlow();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
   const deleteBoard = useDeleteBoard({ onDeleted: goBack });
-  const { issueInvitation, copyInvitationCode, isInvitationPending } = useBoardInvitation(boardId);
+  const {
+    previewRef: invitationPreviewRef,
+    isPreviewPreparing: isInvitationPreviewPreparing,
+    kakaoCardRef,
+    isKakaoSharePreparing,
+    kakaoShareNow,
+    issueInvitation,
+    copyInvitationCode,
+    shareToKakao,
+    isInvitationPending,
+  } = useBoardInvitation(boardId);
   const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
   const [boardMenuView, setBoardMenuView] = useState<BoardMenuView>({ type: 'menu' });
   const isParticipantsView = isBoardMenuOpen && boardMenuView.type === 'participants';
@@ -371,6 +383,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
 
   return (
     <>
+      <KakaoSdkScript strategy="lazyOnload" />
       <div
         className="relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden"
         style={{
@@ -539,6 +552,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             if (boardSummary) deleteBoard.request(boardSummary);
           }}
           onCopyInvitation={(code) => void copyInvitationCode(code)}
+          onKakaoShareInvitation={shareToKakao}
           isInvitePending={isInvitationPending}
           participantList={{
             data: participantListQuery.data,
@@ -571,7 +585,6 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           onCancel={deleteBoard.cancel}
         />
       </div>
-      {isShareView && <KakaoSdkScript strategy="lazyOnload" />}
       {/* 캡처 도중 시트가 닫혀도 캡처 대상 DOM이 언마운트되지 않게 작업 중에는 유지한다 */}
       {boardId &&
         ((isBoardMenuOpen && boardMenuView.type === 'share') || isCapturingShareImage) && (
@@ -581,6 +594,20 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             </div>
           </div>
         )}
+      {boardId && isInvitationPreviewPreparing && (
+        <div className="pointer-events-none fixed top-0 left-[-9999px]" aria-hidden>
+          <div ref={invitationPreviewRef}>
+            <BoardInvitationPreviewCard boardId={boardId} />
+          </div>
+        </div>
+      )}
+      {boardId && isKakaoSharePreparing && (
+        <div className="pointer-events-none fixed top-0 left-[-9999px]" aria-hidden>
+          <div ref={kakaoCardRef}>
+            <BoardKakaoShareCard boardId={boardId} now={kakaoShareNow} />
+          </div>
+        </div>
+      )}
       {isPickingColor && pickerInitialPosition && (
         <div
           ref={pickerMarkerRef}

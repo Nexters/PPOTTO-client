@@ -40,6 +40,7 @@ type BoardMenuSheetProps = {
   onRename?: () => void;
   onDelete?: () => void;
   onCopyInvitation: (code: string) => void;
+  onKakaoShareInvitation?: (code: string) => void;
   isInvitePending?: boolean;
   participantList?: BoardParticipantListState;
   share?: BoardShareActions;
@@ -82,6 +83,7 @@ function BoardMenuContent({
   onRename,
   onDelete,
   onCopyInvitation,
+  onKakaoShareInvitation,
   isInvitePending,
   participantList,
   share,
@@ -98,7 +100,15 @@ function BoardMenuContent({
         />
       ) : null;
     case 'invitation':
-      return <BoardInvitationContent code={view.code} onCopy={() => onCopyInvitation(view.code)} />;
+      return (
+        <BoardInvitationContent
+          code={view.code}
+          onCopy={() => onCopyInvitation(view.code)}
+          onKakaoShare={
+            onKakaoShareInvitation ? () => onKakaoShareInvitation(view.code) : undefined
+          }
+        />
+      );
     case 'share':
       return share ? (
         <BoardShareContent {...share} onOpenScope={() => onViewChange?.({ type: 'shareScope' })} />
