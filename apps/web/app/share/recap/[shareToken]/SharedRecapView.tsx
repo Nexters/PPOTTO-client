@@ -19,9 +19,14 @@ import { SharedPhotoViewer } from './SharedPhotoViewer';
 type SharedRecapViewProps = {
   data: StickerRecap;
   options: Record<ShareOptionKey, boolean>;
+  appInstallPromptDismissKey?: string;
 };
 
-export function SharedRecapView({ data, options }: SharedRecapViewProps) {
+export function SharedRecapView({
+  data,
+  options,
+  appInstallPromptDismissKey,
+}: SharedRecapViewProps) {
   const viewedSticker = useRef<string | null>(null);
   useEffect(() => {
     if (viewedSticker.current === data.sticker.id) return;
@@ -102,7 +107,7 @@ export function SharedRecapView({ data, options }: SharedRecapViewProps) {
           onClose={() => setOpenPhotoIndex(null)}
         />
       )}
-      <AppInstallPromptSheet />
+      <AppInstallPromptSheet dismissKey={appInstallPromptDismissKey} />
     </div>
   );
 }

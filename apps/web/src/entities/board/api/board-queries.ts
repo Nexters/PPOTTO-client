@@ -59,3 +59,10 @@ export const useBoardInvitationQuery = (code?: string, enabled = true) =>
     ...boardInvitationQueryOptions(code ?? ''),
     enabled: enabled && code?.trim().length === 6,
   });
+
+export const useBoardShareStatusQuery = (boardId?: string, enabled = true) =>
+  useQuery({
+    queryKey: boardQueryKeys.shareStatus(boardId),
+    queryFn: () => boardApi.getShareStatus(boardId!),
+    enabled: enabled && !!boardId,
+  });

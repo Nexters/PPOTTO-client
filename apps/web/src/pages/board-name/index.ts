@@ -1,0 +1,1 @@
+export { BoardNamePage } from './BoardNamePage';

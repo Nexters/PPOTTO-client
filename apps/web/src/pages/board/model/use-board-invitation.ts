@@ -1,3 +1,4 @@
+import { BridgeUnknownMessageError } from 'webview-bridge-kit';
 import { useRef, useState } from 'react';
 
 import {
@@ -17,9 +18,6 @@ import {
 } from './board-invitation-preview-layout';
 
 const WEBP_QUALITY = 0.9;
-// 보드 초대용 피드 템플릿 ID
-const BOARD_INVITE_KAKAO_TEMPLATE_ID = 138784;
-
 function waitForPreviewPaint() {
   return new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
@@ -97,8 +95,7 @@ export function useBoardInvitation(boardId?: string) {
       const file = new File([blob], 'ppotto-invite.png', { type: blob.type || 'image/png' });
       const { infos } = await window.Kakao.Share.uploadImage({ file: [file] });
 
-      const { success } = await bridge.request('SHARE_KAKAO', {
-        templateId: BOARD_INVITE_KAKAO_TEMPLATE_ID,
+      const { success } = await bridge.request('SHARE_KAKAO_INVITATION', {
         templateArgs: {
           IMAGE_URL: infos.original.url,
           INVITER_NAME: me?.name ?? '',
@@ -109,6 +106,10 @@ export function useBoardInvitation(boardId?: string) {
       });
       if (!success) toast('카카오톡 공유에 실패했어요');
     } catch (error) {
+      if (error instanceof BridgeUnknownMessageError) {
+        toast('앱을 업데이트하면 카카오톡으로 공유할 수 있어요');
+        return;
+      }
       console.error('[board-invitation] 카카오톡 공유 실패', error);
       toast('카카오톡 공유에 실패했어요');
     } finally {

@@ -5,6 +5,7 @@ import { useFlow } from '@stackflow/react';
 import { useEffect, useId, useState } from 'react';
 
 import { useBoardSummaryListQuery } from '@/entities/board/api/board-queries';
+import { DeleteBoardModal, useDeleteBoard } from '@/features/manage-board';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 import { shouldShowLoadError } from '@/shared/lib/should-show-load-error';
@@ -33,7 +34,9 @@ export function HomePage() {
   const [tab, setTab] = useState<BoardHomeTab>('ALL');
   const [menuBoardId, setMenuBoardId] = useState<string | null>(null);
   const boards = data ? filterBoardsByTab(data.boards, tab) : [];
+  const menuBoard = data?.boards.find((board) => board.id === menuBoardId);
   const closeMenu = () => setMenuBoardId(null);
+  const deleteBoard = useDeleteBoard();
   const baseId = useId();
   const panelId = `${baseId}-panel`;
   const tabId = (target: BoardHomeTab) => `${baseId}-tab-${target}`;
@@ -157,15 +160,30 @@ export function HomePage() {
         )}
         style={{ backgroundImage: 'linear-gradient(to top, #000, transparent)' }}
       >
-        <HomeAddMenu onJoinByCode={() => push('BoardJoinCode', {})} />
+        <HomeAddMenu
+          onCreateBoard={() => push('BoardName', {})}
+          onJoinByCode={() => push('BoardJoinCode', {})}
+        />
       </div>
 
       {menuBoardId && <div className="absolute inset-0 z-20 bg-black/50" />}
       <BoardMenuSheet
         isOpen={menuBoardId !== null}
         onClose={closeMenu}
-        onRename={closeMenu}
-        onDelete={closeMenu}
+        onRename={() => {
+          closeMenu();
+          if (menuBoard) push('BoardName', { boardId: menuBoard.id, name: menuBoard.name });
+        }}
+        onDelete={() => {
+          closeMenu();
+          if (menuBoard) deleteBoard.request(menuBoard);
+        }}
+      />
+      <DeleteBoardModal
+        target={deleteBoard.target}
+        isPending={deleteBoard.isPending}
+        onConfirm={deleteBoard.confirm}
+        onCancel={deleteBoard.cancel}
       />
     </main>
   );

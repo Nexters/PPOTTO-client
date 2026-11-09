@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 
 import { useBoardQuery } from '@/entities/board/api/board-queries';
 
-import { drawingZIndex } from '../model/board-drawing';
 import {
   computeShareCamera,
   computeShareContentBounds,
@@ -11,10 +10,7 @@ import {
   toShareBoardContent,
 } from '../model/board-share-layout';
 
-import { BOARD_TEXT_STYLE } from './board-text-style';
-import { DrawingStroke } from './DrawingStroke';
-import { Sticker } from './Sticker';
-import { StickerBadgeMark } from './StickerBadgeMark';
+import { ShareBoardScene } from './ShareBoardScene';
 
 const DOT_SPACING = 18;
 
@@ -44,68 +40,7 @@ export function BoardShareCard({ boardId, boardName }: BoardShareCardProps) {
         }}
       />
       <div className="absolute overflow-hidden" style={SHARE_CONTENT_AREA}>
-        {content && (
-          <div
-            style={
-              {
-                position: 'absolute',
-                inset: 0,
-                transformOrigin: '0 0',
-                transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
-                // 뱃지도 스티커와 같은 비율로 줄어야 시안처럼 보인다
-                '--inv-camera-scale': 1,
-              } as React.CSSProperties
-            }
-          >
-            {content.drawings.map((drawing) => (
-              <svg
-                key={drawing.id}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  overflow: 'visible',
-                  zIndex: drawingZIndex(drawing),
-                }}
-              >
-                <DrawingStroke
-                  points={drawing.points}
-                  color={drawing.color}
-                  strokeWidth={drawing.strokeWidth}
-                />
-              </svg>
-            ))}
-            {content.texts.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  position: 'absolute',
-                  left: item.x,
-                  top: item.y,
-                  zIndex: drawingZIndex(item),
-                }}
-              >
-                <div
-                  style={{
-                    display: 'inline-block',
-                    transform: `translate(-50%, -50%) rotate(${item.rotation}deg)`,
-                    fontSize: item.fontSize,
-                    color: '#fff',
-                    maxWidth: item.maxWidth,
-                    ...BOARD_TEXT_STYLE,
-                  }}
-                >
-                  {item.text}
-                </div>
-              </div>
-            ))}
-            {content.stickers.map((sticker) => (
-              <Sticker key={sticker.id} sticker={sticker} />
-            ))}
-            {content.stickers.map((sticker) => (
-              <StickerBadgeMark key={sticker.id} sticker={sticker} isEditMode opacity={1} />
-            ))}
-          </div>
-        )}
+        {content && <ShareBoardScene content={content} camera={camera} />}
       </div>
       <span className="text-body-01 absolute top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-white">
         {boardName}

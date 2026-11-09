@@ -39,6 +39,9 @@ const HAPTIC_STYLES = {
 } as const;
 const INSTAGRAM_APP_ID = '1002723789453387';
 const INSTAGRAM_PACKAGE = 'com.instagram.android';
+const KAKAO_SHARE_TEMPLATE_ID = 136185;
+const KAKAO_BOARD_SHARE_TEMPLATE_ID = 138783;
+const KAKAO_INVITATION_TEMPLATE_ID = 138784;
 
 export function buildWebViewUri(uri: string, platform: string) {
   const separator = uri.includes('?') ? '&' : '?';
@@ -201,12 +204,30 @@ export function AppWebView({
         return { success: false };
       }
     },
-    SHARE_KAKAO: async ({ templateId, templateArgs }) => {
+    SHARE_KAKAO: async ({ templateArgs }) => {
       try {
-        await shareCustomTemplate({ templateId, templateArgs });
+        await shareCustomTemplate({ templateId: KAKAO_SHARE_TEMPLATE_ID, templateArgs });
         return { success: true };
       } catch (error) {
         console.warn('카카오톡 공유 실패', error);
+        return { success: false };
+      }
+    },
+    SHARE_KAKAO_BOARD: async ({ templateArgs }) => {
+      try {
+        await shareCustomTemplate({ templateId: KAKAO_BOARD_SHARE_TEMPLATE_ID, templateArgs });
+        return { success: true };
+      } catch (error) {
+        console.warn('보드 카카오톡 공유 실패', error);
+        return { success: false };
+      }
+    },
+    SHARE_KAKAO_INVITATION: async ({ templateArgs }) => {
+      try {
+        await shareCustomTemplate({ templateId: KAKAO_INVITATION_TEMPLATE_ID, templateArgs });
+        return { success: true };
+      } catch (error) {
+        console.warn('초대 카카오톡 공유 실패', error);
         return { success: false };
       }
     },

@@ -3,7 +3,13 @@ import type { AnalyticsTrackArgs } from '@ppotto/bridge';
 
 import { track } from '@/shared/lib/bridge';
 
-import { boardApi, type UpdateBoardLayoutInput } from './board-api';
+import {
+  boardApi,
+  type BoardShareScope,
+  type CreateBoardInput,
+  type UpdateBoardInput,
+  type UpdateBoardLayoutInput,
+} from './board-api';
 import { boardQueryKeys } from './board-query-keys';
 
 type UpdateBoardLayoutVariables = {
@@ -30,6 +36,36 @@ export const useUpdateBoardLayoutMutation = () => {
   });
 };
 
+export const useCreateBoardMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateBoardInput) => boardApi.create(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() }),
+  });
+};
+
+type UpdateBoardVariables = { boardId: string; input: UpdateBoardInput };
+
+export const useUpdateBoardMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ boardId, input }: UpdateBoardVariables) => boardApi.update(boardId, input),
+    onSuccess: (_data, { boardId }) => {
+      queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() });
+      queryClient.invalidateQueries({ queryKey: boardQueryKeys.detail(boardId) });
+    },
+  });
+};
+
+export const useDeleteBoardMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (boardId: string) => boardApi.delete(boardId),
+    // 삭제된 보드의 상세 캐시는 건드리지 않는다. 보드 화면에서 삭제 직후 재조회되면 404 화면이 잠깐 보인다
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() }),
+  });
+};
+
 export const useIssueBoardInvitationMutation = () =>
   useMutation({
     mutationFn: (boardId: string) => boardApi.issueInvitation(boardId),
@@ -47,3 +83,20 @@ export const useUploadBoardInvitationPreviewMutation = () =>
       file: Blob;
     }) => boardApi.uploadInvitationPreview(invitationId, code, file),
   });
+
+type ShareBoardVariables = {
+  boardId: string;
+  scope: BoardShareScope;
+};
+
+export const useShareBoardMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ boardId, scope }: ShareBoardVariables) => boardApi.share(boardId, scope),
+    // 공유 설정 화면이 저장된 범위를 바로 보여주도록 조회 캐시를 응답으로 맞춘다
+    onSuccess: (data, { boardId }) => {
+      queryClient.setQueryData(boardQueryKeys.shareStatus(boardId), data);
+    },
+  });
+};

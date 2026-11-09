@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 
 import type { BoardSummary, BoardSummaryList } from '@/entities/board/api/board-api';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
+import { ToastProvider } from '@/shared/ui/common/Toast';
 
 const mocks = vi.hoisted(() => ({ listSummaries: vi.fn() }));
 
@@ -57,7 +58,9 @@ function renderHomePage(
 ) {
   render(
     <QueryClientProvider client={client}>
-      <HomePage />
+      <ToastProvider>
+        <HomePage />
+      </ToastProvider>
     </QueryClientProvider>,
   );
   return client;

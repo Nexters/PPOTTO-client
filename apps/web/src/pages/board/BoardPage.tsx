@@ -7,6 +7,7 @@ import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom';
 
 import { useBoardParticipantsQuery } from '@/entities/board/api/board-queries';
+import { DeleteBoardModal, useDeleteBoard } from '@/features/manage-board';
 import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 import { useSinglePop } from '@/shared/lib/use-single-pop';
@@ -62,13 +63,15 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     currentUserId,
     participantCount,
     boardRole,
+    boardSummary,
     isBoardListLoading,
     canAddSticker,
     hasStickers,
     openPhotoSelect,
   } = useBoardPageState(boardIdParam);
-  const { pop } = useFlow();
+  const { pop, push } = useFlow();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
+  const deleteBoard = useDeleteBoard({ onDeleted: goBack });
   const {
     previewRef: invitationPreviewRef,
     isPreviewPreparing: isInvitationPreviewPreparing,
@@ -83,6 +86,8 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const [isBoardMenuOpen, setIsBoardMenuOpen] = useState(false);
   const [boardMenuView, setBoardMenuView] = useState<BoardMenuView>({ type: 'menu' });
   const isParticipantsView = isBoardMenuOpen && boardMenuView.type === 'participants';
+  const isShareView =
+    isBoardMenuOpen && (boardMenuView.type === 'share' || boardMenuView.type === 'shareScope');
   const participantListQuery = useBoardParticipantsQuery(boardId, isParticipantsView);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [drawColor, setDrawColor] = useState('#ffffff');
@@ -106,14 +111,16 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const canvasRef = useRef<BoardCanvasHandle>(null);
   const {
     scope: shareScope,
-    setScope: setShareScope,
+    changeScope: changeShareScope,
     isSaving: isSavingShareImage,
     isSharingInstagram,
+    isSharingKakao,
     isCapturing: isCapturingShareImage,
     cardRef: shareCardRef,
     saveImage: saveShareImage,
     shareInstagram,
-  } = useBoardShare();
+    shareKakao,
+  } = useBoardShare(boardId, isShareView);
   const textInputRef = useRef<HTMLTextAreaElement | null>(null);
   const capturedPixelsRef = useRef<EyedropperPixels | null>(null);
   const captureBoundsRef = useRef<DOMRect | null>(null);
@@ -536,6 +543,14 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           view={boardMenuView}
           onViewChange={setBoardMenuView}
           onInvite={() => void openInvitation()}
+          onRename={() => {
+            setIsBoardMenuOpen(false);
+            if (boardId) push('BoardName', { boardId, name: boardName });
+          }}
+          onDelete={() => {
+            setIsBoardMenuOpen(false);
+            if (boardSummary) deleteBoard.request(boardSummary);
+          }}
           onCopyInvitation={(code) => void copyInvitationCode(code)}
           onKakaoShareInvitation={shareToKakao}
           isInvitePending={isInvitationPending}
@@ -547,17 +562,27 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             isError: participantListQuery.isError,
             onRetry: () => void participantListQuery.refetch(),
           }}
-          isShareDisabled={participantCount !== undefined}
           share={{
             hasStickers,
             isSaving: isSavingShareImage,
             isSharingInstagram,
             onSaveImage: () => void saveShareImage().then((ok) => ok && setIsBoardMenuOpen(false)),
+            isSharingKakao,
             onInstagramShare: () =>
               void shareInstagram().then((ok) => ok && setIsBoardMenuOpen(false)),
+            // 공유 상태를 받아야 링크를 만들 수 있어 그 전에는 버튼을 막는다
+            onKakaoShare: shareScope
+              ? () => void shareKakao(boardName ?? '').then((ok) => ok && setIsBoardMenuOpen(false))
+              : undefined,
           }}
           shareScope={shareScope}
-          onShareScopeChange={setShareScope}
+          onShareScopeChange={changeShareScope}
+        />
+        <DeleteBoardModal
+          target={deleteBoard.target}
+          isPending={deleteBoard.isPending}
+          onConfirm={deleteBoard.confirm}
+          onCancel={deleteBoard.cancel}
         />
       </div>
       {/* 캡처 도중 시트가 닫혀도 캡처 대상 DOM이 언마운트되지 않게 작업 중에는 유지한다 */}

@@ -20,8 +20,6 @@ import { RecapShareCard } from './RecapShareCard';
 import { RecapShareList } from './RecapShareList';
 import { RecapShareOptions, type ShareOptionKey } from './RecapShareOptions';
 
-const RECAP_KAKAO_TEMPLATE_ID = 136185;
-
 type RecapShareSheetProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -123,7 +121,6 @@ export function RecapShareSheet({ isOpen, onClose, stickerId, data }: RecapShare
       const webLink = `${window.location.origin}/share/recap/${shareToken}?o=${encodeShareOptions(options)}`;
 
       const { success } = await bridge.request('SHARE_KAKAO', {
-        templateId: RECAP_KAKAO_TEMPLATE_ID,
         templateArgs: {
           IMAGE_URL: infos.original.url,
           USER_NAME: me?.name ?? '',

@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { BridgeUnknownMessageError } from 'webview-bridge-kit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
@@ -147,8 +148,7 @@ describe('useBoardInvitation', () => {
     act(() => result.current.shareToKakao('K7P2QX'));
 
     await vi.waitFor(() =>
-      expect(bridgeRequest).toHaveBeenCalledWith('SHARE_KAKAO', {
-        templateId: 138784,
+      expect(bridgeRequest).toHaveBeenCalledWith('SHARE_KAKAO_INVITATION', {
         templateArgs: {
           IMAGE_URL: 'https://k.kakao/invite.png',
           INVITER_NAME: '김용희',
@@ -183,5 +183,23 @@ describe('useBoardInvitation', () => {
     act(() => result.current.shareToKakao('K7P2QX'));
 
     await vi.waitFor(() => expect(toast).toHaveBeenCalledWith('카카오톡 공유에 실패했어요'));
+  });
+
+  it('초대 공유를 모르는 구버전 앱이면 업데이트를 안내한다', async () => {
+    captureElement.mockResolvedValue(new Blob(['card'], { type: 'image/png' }));
+    kakaoUploadImage.mockResolvedValue({
+      infos: { original: { url: 'https://k.kakao/invite.png' } },
+    });
+    bridgeRequest.mockRejectedValue(
+      new BridgeUnknownMessageError('SHARE_KAKAO_INVITATION', 'request'),
+    );
+    const { result } = renderHook(() => useBoardInvitation('board-1'));
+    result.current.kakaoCardRef.current = document.createElement('div');
+
+    act(() => result.current.shareToKakao('K7P2QX'));
+
+    await vi.waitFor(() =>
+      expect(toast).toHaveBeenCalledWith('앱을 업데이트하면 카카오톡으로 공유할 수 있어요'),
+    );
   });
 });

@@ -66,10 +66,17 @@ export const contract = defineContract({
     response: z.object({ success: z.boolean() }),
   }),
   SHARE_KAKAO: request({
-    payload: z.object({
-      templateId: z.number(),
-      templateArgs: z.record(z.string(), z.string()),
-    }),
+    payload: z.object({ templateArgs: z.record(z.string(), z.string()) }),
+    response: z.object({ success: z.boolean() }),
+  }),
+  // 보드 공유는 템플릿이 달라 메시지를 따로 둔다. 이 메시지를 모르는 구버전 앱은 UNKNOWN_MESSAGE로 거절한다
+  SHARE_KAKAO_BOARD: request({
+    payload: z.object({ templateArgs: z.record(z.string(), z.string()) }),
+    response: z.object({ success: z.boolean() }),
+  }),
+  // 초대 공유도 구버전 앱의 리캡 템플릿으로 잘못 전송되지 않도록 메시지를 분리한다
+  SHARE_KAKAO_INVITATION: request({
+    payload: z.object({ templateArgs: z.record(z.string(), z.string()) }),
     response: z.object({ success: z.boolean() }),
   }),
   // 보드 화면 진입/이탈 — 보드에 있는 동안만 바운스 끔

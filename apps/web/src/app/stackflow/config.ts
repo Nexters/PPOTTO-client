@@ -10,6 +10,7 @@ declare module '@stackflow/config' {
     BoardJoinCode: Record<string, never>;
     BoardJoinConfirm: { code: string };
     Board: { boardId?: string };
+    BoardName: { boardId?: string; name?: string };
     Recap: { stickerId: string; boardId: string };
     PhotoViewer: { stickerId: string; initialIndex: string };
     Settings: Record<string, never>;
@@ -36,6 +37,7 @@ export const config = defineConfig({
         }),
       },
     },
+    { name: 'BoardName', route: '/board-name' },
     { name: 'Recap', route: '/recap' },
     { name: 'PhotoViewer', route: '/photo-viewer' },
     { name: 'Settings', route: '/settings' },

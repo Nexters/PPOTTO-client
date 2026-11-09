@@ -24,10 +24,16 @@ export type BoardSummary = components['schemas']['BoardSummaryV2Response'];
 export type BoardParticipants = components['schemas']['BoardParticipantsResponse'];
 export type BoardInvitationDetail = components['schemas']['BoardInvitationDetailResponse'];
 
+export type CreateBoardInput =
+  paths['/boards']['post']['requestBody']['content']['application/json'];
+export type UpdateBoardInput =
+  paths['/boards/{boardId}']['patch']['requestBody']['content']['application/json'];
 export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request'];
 export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
 export type BoardInvitationPreviewUpload =
   components['schemas']['BoardInvitationPreviewUploadResponse'];
+export type BoardShareScope = components['schemas']['BoardShareScope'];
+export type SharedBoard = components['schemas']['SharedBoardResponse'];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
@@ -67,6 +73,55 @@ export const boardApi = {
       }),
     );
   },
+  // name을 생략하면 서버가 기본 이름을 붙인다
+  create: (input: CreateBoardInput) => {
+    if (USE_MOCK) return Promise.resolve({ id: boardFixture.id, name: input.name ?? '새 보드' });
+    return unwrapData(
+      api.POST('/boards', { params: { header: { 'X-API-Version': '2' } }, body: input }),
+    );
+  },
+  update: (boardId: string, input: UpdateBoardInput) => {
+    if (USE_MOCK) return Promise.resolve({ id: boardId, name: input.name });
+    return unwrapData(
+      api.PATCH('/boards/{boardId}', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+        body: input,
+      }),
+    );
+  },
+  delete: (boardId: string) => {
+    if (USE_MOCK) return Promise.resolve();
+    return unwrapVoid(
+      api.DELETE('/boards/{boardId}', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
+  },
+  getShareStatus: (boardId: string) => {
+    if (USE_MOCK) return Promise.resolve({ shareToken: null, scope: 'RECAP' as const });
+    return unwrapData(
+      api.GET('/boards/{boardId}/share', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
+  },
+  share: (boardId: string, scope: BoardShareScope) => {
+    if (USE_MOCK) return Promise.resolve({ shareToken: 'mock-board-share-token', scope });
+    return unwrapData(
+      api.POST('/boards/{boardId}/share', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+        body: { scope },
+      }),
+    );
+  },
+  getShared: (shareToken: string) =>
+    unwrapData(publicApi.GET('/boards/shared/{shareToken}', { params: { path: { shareToken } } })),
+  getSharedRecap: (shareToken: string, stickerId: string) =>
+    unwrapData(
+      publicApi.GET('/boards/shared/{shareToken}/stickers/{stickerId}', {
+        params: { path: { shareToken, stickerId } },
+      }),
+    ),
   issueInvitation: (boardId: string) => {
     if (USE_MOCK) {
       return Promise.resolve({
