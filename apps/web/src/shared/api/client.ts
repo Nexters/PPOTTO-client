@@ -4,6 +4,7 @@ import { bridge } from '@/shared/lib/bridge';
 import { isDevelopmentBrowser } from '@/shared/lib/runtime-environment';
 
 import { getDevelopmentAccessToken } from './browser-dev-session';
+import { mockImageUrlsMiddleware } from './mock-image-urls';
 
 async function getAccessToken(forceRefresh: boolean) {
   const developmentToken = await getDevelopmentAccessToken({ forceRefresh });
@@ -23,3 +24,5 @@ export const api = createApiClient({
     else bridge.send('AUTH_EXPIRED');
   },
 });
+
+if (process.env.NEXT_PUBLIC_MOCK_IMAGES === 'true') api.use(mockImageUrlsMiddleware);

@@ -3,7 +3,12 @@ import type { AnalyticsTrackArgs } from '@ppotto/bridge';
 
 import { track } from '@/shared/lib/bridge';
 
-import { boardApi, type UpdateBoardLayoutInput } from './board-api';
+import {
+  boardApi,
+  type CreateBoardInput,
+  type UpdateBoardInput,
+  type UpdateBoardLayoutInput,
+} from './board-api';
 import { boardQueryKeys } from './board-query-keys';
 
 type UpdateBoardLayoutVariables = {
@@ -27,6 +32,36 @@ export const useUpdateBoardLayoutMutation = () => {
     onError: (_error, variables) => {
       queryClient.invalidateQueries({ queryKey: boardQueryKeys.detail(variables.boardId) });
     },
+  });
+};
+
+export const useCreateBoardMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateBoardInput) => boardApi.create(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() }),
+  });
+};
+
+type UpdateBoardVariables = { boardId: string; input: UpdateBoardInput };
+
+export const useUpdateBoardMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ boardId, input }: UpdateBoardVariables) => boardApi.update(boardId, input),
+    onSuccess: (_data, { boardId }) => {
+      queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() });
+      queryClient.invalidateQueries({ queryKey: boardQueryKeys.detail(boardId) });
+    },
+  });
+};
+
+export const useDeleteBoardMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (boardId: string) => boardApi.delete(boardId),
+    // 삭제된 보드의 상세 캐시는 건드리지 않는다. 보드 화면에서 삭제 직후 재조회되면 404 화면이 잠깐 보인다
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() }),
   });
 };
 
