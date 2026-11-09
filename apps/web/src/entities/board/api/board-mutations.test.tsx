@@ -2,15 +2,20 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { expect, it, vi } from 'vitest';
 
-const { updateLayout, share, track } = vi.hoisted(() => ({
+const { updateLayout, share, joinInvitation, track } = vi.hoisted(() => ({
   updateLayout: vi.fn(),
   share: vi.fn(),
+  joinInvitation: vi.fn(),
   track: vi.fn(),
 }));
-vi.mock('./board-api', () => ({ boardApi: { updateLayout, share } }));
+vi.mock('./board-api', () => ({ boardApi: { updateLayout, share, joinInvitation } }));
 vi.mock('@/shared/lib/bridge', () => ({ track }));
 
-import { useShareBoardMutation, useUpdateBoardLayoutMutation } from './board-mutations';
+import {
+  useJoinBoardInvitationMutation,
+  useShareBoardMutation,
+  useUpdateBoardLayoutMutation,
+} from './board-mutations';
 import { boardQueryKeys } from './board-query-keys';
 
 it('자동 배치·실패는 제외하고 각 저장 성공마다 이벤트를 한 번 기록한다', async () => {
@@ -66,6 +71,34 @@ it('공유 범위를 저장하면 내 공유 상태 캐시를 응답으로 바�
   expect(client.getQueryData(boardQueryKeys.shareStatus('board-1'))).toEqual({
     shareToken: 'token-1',
     scope: 'PHOTOS',
+  });
+  client.clear();
+});
+
+it('보드 참여에 성공하면 참여로 달라지는 캐시를 갱신한다', async () => {
+  const client = new QueryClient();
+  const invalidateQueries = vi.spyOn(client, 'invalidateQueries');
+  joinInvitation.mockResolvedValue({
+    boardId: 'board-1',
+    boardName: '제주 여행',
+    role: 'MEMBER',
+  });
+  const { result } = renderHook(useJoinBoardInvitationMutation, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+
+  await act(() => result.current.mutateAsync({ code: ' k7p2qx ' }));
+
+  expect(joinInvitation).toHaveBeenCalledWith(' k7p2qx ');
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: boardQueryKeys.summaryList() });
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: boardQueryKeys.detail('board-1') });
+  expect(invalidateQueries).toHaveBeenCalledWith({
+    queryKey: boardQueryKeys.participants('board-1'),
+  });
+  expect(invalidateQueries).toHaveBeenCalledWith({
+    queryKey: boardQueryKeys.invitation('K7P2QX'),
   });
   client.clear();
 });

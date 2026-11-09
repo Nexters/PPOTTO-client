@@ -71,6 +71,25 @@ export const useIssueBoardInvitationMutation = () =>
     mutationFn: (boardId: string) => boardApi.issueInvitation(boardId),
   });
 
+type JoinBoardInvitationVariables = {
+  code: string;
+};
+
+export const useJoinBoardInvitationMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ code }: JoinBoardInvitationVariables) => boardApi.joinInvitation(code),
+    onSuccess: ({ boardId }, { code }) => {
+      const normalizedCode = code.trim().toUpperCase();
+      void queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() });
+      void queryClient.invalidateQueries({ queryKey: boardQueryKeys.detail(boardId) });
+      void queryClient.invalidateQueries({ queryKey: boardQueryKeys.participants(boardId) });
+      void queryClient.invalidateQueries({ queryKey: boardQueryKeys.invitation(normalizedCode) });
+    },
+  });
+};
+
 export const useUploadBoardInvitationPreviewMutation = () =>
   useMutation({
     mutationFn: ({
