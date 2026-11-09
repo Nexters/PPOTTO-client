@@ -1,18 +1,23 @@
 'use client';
 
+import { HttpError } from '@ppotto/api';
 import { AlertCircle, ChevronLeft, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import type { ReactNode } from 'react';
 
 import type { BoardInvitationDetail } from '@/entities/board/api/board-api';
+import { useJoinBoardInvitationMutation } from '@/entities/board/api/board-mutations';
 import { useBoardInvitationQuery } from '@/entities/board/api/board-queries';
 import { BoardInvitationPreview } from '@/entities/board/ui/BoardInvitationPreview';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/common/Button';
+import { useToast } from '@/shared/ui/common/Toast';
 
 export function BoardJoinConfirmPage({ code }: { code: string }) {
-  const { pop } = useFlow();
+  const { pop, push } = useFlow();
+  const toast = useToast();
   const { data, isPending, isError, refetch } = useBoardInvitationQuery(code);
+  const joinBoard = useJoinBoardInvitationMutation();
 
   if (isPending) return <InvitationStatus>초대 정보를 불러오는 중이에요</InvitationStatus>;
 
@@ -27,17 +32,50 @@ export function BoardJoinConfirmPage({ code }: { code: string }) {
     );
   }
 
-  return <InvitationConfirm invitation={data} onBack={() => pop()} />;
+  const join = () => {
+    if (joinBoard.isPending) return;
+
+    joinBoard.mutate(
+      { code },
+      {
+        onSuccess: ({ boardId }) => {
+          pop(2, { animate: false });
+          push('Board', { boardId });
+        },
+        onError: (error) => toast(getJoinErrorMessage(error)),
+      },
+    );
+  };
+
+  return (
+    <InvitationConfirm
+      invitation={data}
+      isJoining={joinBoard.isPending}
+      onBack={() => pop()}
+      onJoin={join}
+    />
+  );
 }
 
 function InvitationConfirm({
   invitation,
+  isJoining,
   onBack,
+  onJoin,
 }: {
   invitation: BoardInvitationDetail;
+  isJoining: boolean;
   onBack: () => void;
+  onJoin: () => void;
 }) {
-  const isFull = invitation.participantCount >= invitation.maxParticipantCount;
+  const isAlreadyJoined =
+    invitation.viewerStatus === 'OWNER' || invitation.viewerStatus === 'MEMBER';
+  const isFull = !isAlreadyJoined && invitation.participantCount >= invitation.maxParticipantCount;
+  const joinButtonLabel = isFull
+    ? '참여 인원이 모두 찼어요'
+    : isAlreadyJoined
+      ? '보드 들어가기'
+      : '참여하기';
   const participantNames = (invitation.participants ?? []).map(
     ({ name, role }) => `${name}님${role === 'OWNER' ? '(방장)' : ''}`,
   );
@@ -113,10 +151,20 @@ function InvitationConfirm({
       </section>
 
       <footer className="absolute inset-x-0 bottom-0 px-6 pb-12">
-        <Button disabled={isFull}>{isFull ? '참여 인원이 모두 찼어요' : '참여하기'}</Button>
+        <Button disabled={isFull || isJoining} onClick={onJoin}>
+          {joinButtonLabel}
+        </Button>
       </footer>
     </main>
   );
+}
+
+function getJoinErrorMessage(error: unknown) {
+  if (error instanceof HttpError) {
+    if (error.status === 404) return '유효하지 않거나 만료된 초대예요';
+    if (error.status === 409) return '참여 인원이 모두 찼어요';
+  }
+  return '보드에 참여하지 못했어요';
 }
 
 function balanceParticipantRows(names: string[]) {

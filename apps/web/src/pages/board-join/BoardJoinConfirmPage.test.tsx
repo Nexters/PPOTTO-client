@@ -1,16 +1,32 @@
-import { render, screen } from '@testing-library/react';
+import { HttpError } from '@ppotto/api';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 
 import { boardInvitationFixture } from '@/entities/board/api/__fixtures__/board-invitation.fixture';
 
-const mocks = vi.hoisted(() => ({ refetch: vi.fn(), useBoardInvitationQuery: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  refetch: vi.fn(),
+  useBoardInvitationQuery: vi.fn(),
+  join: vi.fn(),
+  push: vi.fn(),
+  pop: vi.fn(),
+  toast: vi.fn(),
+  isJoining: false,
+}));
 
 vi.mock('@stackflow/react', () => ({
-  useFlow: () => ({ pop: vi.fn() }),
+  useFlow: () => ({ pop: mocks.pop, push: mocks.push }),
+}));
+vi.mock('@/entities/board/api/board-mutations', () => ({
+  useJoinBoardInvitationMutation: () => ({
+    mutate: mocks.join,
+    isPending: mocks.isJoining,
+  }),
 }));
 vi.mock('@/entities/board/api/board-queries', () => ({
   useBoardInvitationQuery: mocks.useBoardInvitationQuery,
 }));
+vi.mock('@/shared/ui/common/Toast', () => ({ useToast: () => mocks.toast }));
 vi.mock('next/image', () => ({
   default: ({
     fill: _fill,
@@ -28,6 +44,8 @@ vi.mock('next/image', () => ({
 import { BoardJoinConfirmPage } from './BoardJoinConfirmPage';
 
 beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.isJoining = false;
   mocks.useBoardInvitationQuery.mockReturnValue({
     data: boardInvitationFixture,
     isPending: false,
@@ -67,4 +85,71 @@ it('참여자가 5명 이상이면 이름을 균형 있게 두 줄로 배치한�
 
   expect(screen.getByText('김용희님(방장), 이수민님, 박지훈님')).toBeInTheDocument();
   expect(screen.getByText('최민지님, 윤아름님')).toBeInTheDocument();
+});
+
+it('참여에 성공하면 참여 화면을 정리하고 응답으로 받은 보드로 이동한다', () => {
+  mocks.join.mockImplementation((_variables, options) => {
+    options.onSuccess({ boardId: 'board-1', boardName: '제주 여행', role: 'MEMBER' });
+  });
+  render(<BoardJoinConfirmPage code="K7P2QX" />);
+
+  fireEvent.click(screen.getByRole('button', { name: '참여하기' }));
+
+  expect(mocks.join).toHaveBeenCalledWith(
+    { code: 'K7P2QX' },
+    expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+  );
+  expect(mocks.pop).toHaveBeenCalledWith(2, { animate: false });
+  expect(mocks.push).toHaveBeenCalledWith('Board', { boardId: 'board-1' });
+});
+
+it.each([
+  [new HttpError(404, 'BOARD-006', null), '유효하지 않거나 만료된 초대예요'],
+  [new HttpError(409, 'BOARD-009', null), '참여 인원이 모두 찼어요'],
+  [new Error('offline'), '보드에 참여하지 못했어요'],
+])('참여 실패 원인에 맞는 안내를 보여준다', (error, message) => {
+  mocks.join.mockImplementation((_variables, options) => options.onError(error));
+  render(<BoardJoinConfirmPage code="K7P2QX" />);
+
+  fireEvent.click(screen.getByRole('button', { name: '참여하기' }));
+
+  expect(mocks.toast).toHaveBeenCalledWith(message);
+});
+
+it('참여 요청 중에는 참여 버튼을 비활성화한다', () => {
+  mocks.isJoining = true;
+
+  render(<BoardJoinConfirmPage code="K7P2QX" />);
+
+  expect(screen.getByRole('button', { name: '참여하기' })).toBeDisabled();
+});
+
+it('정원이 찼으면 신규 참여는 막고 기존 참여자는 보드에 다시 들어갈 수 있다', () => {
+  mocks.useBoardInvitationQuery.mockReturnValue({
+    data: {
+      ...boardInvitationFixture,
+      participantCount: 8,
+      maxParticipantCount: 8,
+      viewerStatus: 'NOT_JOINED',
+    },
+    isPending: false,
+    isError: false,
+    refetch: mocks.refetch,
+  });
+  const { rerender } = render(<BoardJoinConfirmPage code="K7P2QX" />);
+  expect(screen.getByRole('button', { name: '참여 인원이 모두 찼어요' })).toBeDisabled();
+
+  mocks.useBoardInvitationQuery.mockReturnValue({
+    data: {
+      ...boardInvitationFixture,
+      participantCount: 8,
+      maxParticipantCount: 8,
+      viewerStatus: 'MEMBER',
+    },
+    isPending: false,
+    isError: false,
+    refetch: mocks.refetch,
+  });
+  rerender(<BoardJoinConfirmPage code="K7P2QX" />);
+  expect(screen.getByRole('button', { name: '보드 들어가기' })).toBeEnabled();
 });
