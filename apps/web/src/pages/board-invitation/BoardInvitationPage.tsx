@@ -1,9 +1,9 @@
 'use client';
 
 import { Logo, Overlap } from '@ppotto/assets';
-import Image from 'next/image';
 
 import type { BoardInvitationDetail } from '@/entities/board/api/board-api';
+import { BoardInvitationPreview } from '@/entities/board/ui/BoardInvitationPreview';
 import { cn } from '@/shared/lib/cn';
 import { copyTextToClipboard } from '@/shared/lib/copy-text-to-clipboard';
 import { Button } from '@/shared/ui/common/Button';
@@ -49,32 +49,11 @@ export function BoardInvitationPage({ invitation }: BoardInvitationPageProps) {
         </header>
 
         <section className={cn('mx-auto mt-5 flex w-full max-w-90 flex-1 flex-col', 'px-6 pb-8')}>
-          <div
-            className={cn(
-              'relative aspect-39/34 w-full overflow-hidden rounded-16',
-              'border border-gray-900',
-            )}
-          >
-            {invitation.previewImageUrl ? (
-              <Image
-                src={invitation.previewImageUrl}
-                alt={`${invitation.boardName} 보드 미리보기`}
-                fill
-                priority
-                sizes="(max-width: 360px) calc(100vw - 48px), 312px"
-                className="object-cover"
-              />
-            ) : (
-              <Image
-                src="/invitations/default-preview.png"
-                alt="PPOTTO 기본 미리보기"
-                fill
-                priority
-                sizes="(max-width: 360px) calc(100vw - 48px), 312px"
-                className="object-cover"
-              />
-            )}
-          </div>
+          <BoardInvitationPreview
+            boardName={invitation.boardName}
+            previewImageUrl={invitation.previewImageUrl}
+            priority
+          />
 
           <div className="mt-[35.48px] flex flex-col items-center gap-3.5">
             <button

@@ -1,1 +1,0 @@
-export { BoardInvitationCodePage } from './BoardInvitationCodePage';

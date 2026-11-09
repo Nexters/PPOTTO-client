@@ -10,7 +10,7 @@ import { stackflow, type ActivityComponentType } from '@stackflow/react';
 
 import { BoardPage } from '@/pages/board';
 import { AnalysisLoadingPage } from '@/pages/analysis-loading';
-import { BoardInvitationCodePage } from '@/pages/board-invitation-code';
+import { BoardJoinCodePage, BoardJoinConfirmPage } from '@/pages/board-join';
 import { HomePage } from '@/pages/home';
 import { LoginPage } from '@/pages/login';
 import { OnboardingPage } from '@/pages/onboarding';
@@ -48,10 +48,17 @@ const HomeActivity: ActivityComponentType<'Home'> = () => (
   </AppScreen>
 );
 
-const BoardInvitationCodeActivity: ActivityComponentType<'BoardInvitationCode'> = () => (
+const BoardJoinCodeActivity: ActivityComponentType<'BoardJoinCode'> = () => (
   <AppScreen>
-    <ScreenView name="board_invitation_code" />
-    <BoardInvitationCodePage />
+    <ScreenView name="board_join_code" />
+    <BoardJoinCodePage />
+  </AppScreen>
+);
+
+const BoardJoinConfirmActivity: ActivityComponentType<'BoardJoinConfirm'> = ({ params }) => (
+  <AppScreen>
+    <ScreenView name="board_join_confirm" />
+    <BoardJoinConfirmPage code={params.code} />
   </AppScreen>
 );
 
@@ -121,7 +128,8 @@ export const { Stack, actions } = stackflow({
     Terms: TermsActivity,
     TermsDetail: TermsDetailActivity,
     Home: HomeActivity,
-    BoardInvitationCode: BoardInvitationCodeActivity,
+    BoardJoinCode: BoardJoinCodeActivity,
+    BoardJoinConfirm: BoardJoinConfirmActivity,
     Board: BoardActivity,
     Recap: RecapActivity,
     PhotoViewer: PhotoViewerActivity,

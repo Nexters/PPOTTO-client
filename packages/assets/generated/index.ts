@@ -1,3 +1,4 @@
+export { default as AlertCircle } from './AlertCircle';
 export { default as AppleLogo } from './AppleLogo';
 export { default as BigLogo } from './BigLogo';
 export { default as BigTitle } from './BigTitle';

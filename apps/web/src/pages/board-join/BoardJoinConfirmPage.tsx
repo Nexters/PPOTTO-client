@@ -1,0 +1,141 @@
+'use client';
+
+import { AlertCircle, ChevronLeft, Logo } from '@ppotto/assets';
+import { useFlow } from '@stackflow/react';
+import type { ReactNode } from 'react';
+
+import type { BoardInvitationDetail } from '@/entities/board/api/board-api';
+import { useBoardInvitationQuery } from '@/entities/board/api/board-queries';
+import { BoardInvitationPreview } from '@/entities/board/ui/BoardInvitationPreview';
+import { cn } from '@/shared/lib/cn';
+import { Button } from '@/shared/ui/common/Button';
+
+export function BoardJoinConfirmPage({ code }: { code: string }) {
+  const { pop } = useFlow();
+  const { data, isPending, isError, refetch } = useBoardInvitationQuery(code);
+
+  if (isPending) return <InvitationStatus>초대 정보를 불러오는 중이에요</InvitationStatus>;
+
+  if (isError || !data) {
+    return (
+      <InvitationStatus>
+        <span>초대 정보를 불러오지 못했어요</span>
+        <Button size="medium" onClick={() => void refetch()}>
+          다시 시도
+        </Button>
+      </InvitationStatus>
+    );
+  }
+
+  return <InvitationConfirm invitation={data} onBack={() => pop()} />;
+}
+
+function InvitationConfirm({
+  invitation,
+  onBack,
+}: {
+  invitation: BoardInvitationDetail;
+  onBack: () => void;
+}) {
+  const isFull = invitation.participantCount >= invitation.maxParticipantCount;
+  const participantNames = (invitation.participants ?? []).map(
+    ({ name, role }) => `${name}님${role === 'OWNER' ? '(방장)' : ''}`,
+  );
+  const participantRows = balanceParticipantRows(participantNames);
+
+  return (
+    <main
+      className={cn(
+        'relative mx-auto h-dvh w-full max-w-107.5 overflow-hidden',
+        'bg-black px-6 text-white',
+      )}
+    >
+      <header
+        className="grid min-h-18 shrink-0 grid-cols-[40px_minmax(0,1fr)_40px] items-center"
+        style={{
+          paddingTop: 'calc(var(--rn-safe-area-inset-top, env(safe-area-inset-top)) + 0.75rem)',
+        }}
+      >
+        <button
+          type="button"
+          aria-label="뒤로 가기"
+          onClick={onBack}
+          className="flex size-10 items-center justify-start"
+        >
+          <ChevronLeft />
+        </button>
+        <span className="justify-self-center">
+          <Logo width={104.23} height={32} />
+        </span>
+        <span aria-hidden />
+      </header>
+
+      <section className="pt-8">
+        <h1 className="text-body-01 whitespace-nowrap">
+          {invitation.inviterName}님이 &apos;{invitation.boardName}&apos; 보드에 초대했어요
+        </h1>
+        <p className="mt-1 text-body-06 text-gray-400">
+          참여자 {invitation.participantCount}명 · 스티커 {invitation.stickerCount}개
+        </p>
+
+        <div className="mt-7">
+          <BoardInvitationPreview
+            boardName={invitation.boardName}
+            previewImageUrl={invitation.previewImageUrl}
+            priority
+          />
+        </div>
+
+        <div
+          aria-label="참여자"
+          className={cn(
+            'mt-2 flex flex-col items-center justify-center gap-1 py-3',
+            'text-body-06 text-gray-400',
+          )}
+        >
+          {participantRows.map((row) => (
+            <p key={row.join()} className="w-full truncate text-center">
+              {row.join(', ')}
+            </p>
+          ))}
+        </div>
+
+        <div className={cn('mt-2.25 flex h-16 items-center gap-2 rounded-lg', 'bg-gray-900 p-2')}>
+          <AlertCircle aria-hidden width={16} height={16} />
+          <p className="text-[10px] leading-4 font-normal tracking-[-0.03em] text-gray-500">
+            올린 사진과 리캡은 보드 참여자 모두가 볼 수 있어요.
+            <br />
+            방장이 보드를 링크로 공유하면 내 스티커도 함께 보여요.
+            <br />
+            보드에서 나가거나, 방장이 보드를 삭제하면 내 스티커는 사라져요.
+          </p>
+        </div>
+      </section>
+
+      <footer className="absolute inset-x-0 bottom-0 px-6 pb-12">
+        <Button disabled={isFull}>{isFull ? '참여 인원이 모두 찼어요' : '참여하기'}</Button>
+      </footer>
+    </main>
+  );
+}
+
+function balanceParticipantRows(names: string[]) {
+  if (names.length <= 4) return names.length > 0 ? [names] : [];
+
+  const firstRowCount = Math.ceil(names.length / 2);
+  return [names.slice(0, firstRowCount), names.slice(firstRowCount)];
+}
+
+function InvitationStatus({ children }: { children: ReactNode }) {
+  return (
+    <main
+      className={cn(
+        'mx-auto flex h-dvh w-full max-w-107.5 flex-col',
+        'items-center justify-center gap-4',
+        'bg-black px-6 text-body-04 text-gray-400',
+      )}
+    >
+      {children}
+    </main>
+  );
+}

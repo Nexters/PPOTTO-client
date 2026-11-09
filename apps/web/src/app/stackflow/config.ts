@@ -7,7 +7,8 @@ declare module '@stackflow/config' {
     Terms: Record<string, never>;
     TermsDetail: { code: string };
     Home: Record<string, never>;
-    BoardInvitationCode: Record<string, never>;
+    BoardJoinCode: Record<string, never>;
+    BoardJoinConfirm: { code: string };
     Board: { boardId?: string };
     Recap: { stickerId: string; boardId: string };
     PhotoViewer: { stickerId: string; initialIndex: string };
@@ -23,7 +24,8 @@ export const config = defineConfig({
     { name: 'Terms', route: '/terms' },
     { name: 'TermsDetail', route: '/terms-detail' },
     { name: 'Home', route: '/home' },
-    { name: 'BoardInvitationCode', route: '/board-invitation-code' },
+    { name: 'BoardJoinCode', route: '/board-join-code' },
+    { name: 'BoardJoinConfirm', route: '/board-join-confirm' },
     {
       name: 'Board',
       route: {
