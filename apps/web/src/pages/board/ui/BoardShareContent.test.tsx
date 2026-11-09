@@ -9,6 +9,7 @@ describe('BoardShareContent', () => {
       hasStickers: true,
       isSaving: false,
       isSharingInstagram: false,
+      isSharingKakao: false,
       onKakaoShare: vi.fn(),
       onInstagramShare: vi.fn(),
       onSaveImage: vi.fn(),

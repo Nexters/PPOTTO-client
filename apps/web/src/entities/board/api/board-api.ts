@@ -1,6 +1,7 @@
 import { type components, type paths, unwrapData, unwrapVoid } from '@ppotto/api';
 
 import { api } from '@/shared/api/client';
+import { publicApi } from '@/shared/api/public-client';
 
 import { boardFixture } from './__fixtures__/board.fixture';
 import { boardParticipantsFixture } from './__fixtures__/board-participants.fixture';
@@ -24,6 +25,8 @@ export type UpdateBoardInput =
   paths['/boards/{boardId}']['patch']['requestBody']['content']['application/json'];
 export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request'];
 export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
+export type BoardShareScope = components['schemas']['BoardShareScope'];
+export type SharedBoard = components['schemas']['SharedBoardResponse'];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
@@ -87,6 +90,31 @@ export const boardApi = {
       }),
     );
   },
+  getShareStatus: (boardId: string) => {
+    if (USE_MOCK) return Promise.resolve({ shareToken: null, scope: 'RECAP' as const });
+    return unwrapData(
+      api.GET('/boards/{boardId}/share', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
+  },
+  share: (boardId: string, scope: BoardShareScope) => {
+    if (USE_MOCK) return Promise.resolve({ shareToken: 'mock-board-share-token', scope });
+    return unwrapData(
+      api.POST('/boards/{boardId}/share', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+        body: { scope },
+      }),
+    );
+  },
+  getShared: (shareToken: string) =>
+    unwrapData(publicApi.GET('/boards/shared/{shareToken}', { params: { path: { shareToken } } })),
+  getSharedRecap: (shareToken: string, stickerId: string) =>
+    unwrapData(
+      publicApi.GET('/boards/shared/{shareToken}/stickers/{stickerId}', {
+        params: { path: { shareToken, stickerId } },
+      }),
+    ),
   issueInvitation: (boardId: string) => {
     if (USE_MOCK) {
       return Promise.resolve({

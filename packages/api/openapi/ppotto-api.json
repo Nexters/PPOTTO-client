@@ -50,6 +50,10 @@
     {
       "name": "약관",
       "description": "현재 약관 조회와 사용자 동의"
+    },
+    {
+      "name": "보드 공유",
+      "description": "보드 외부 공유 링크 발급과 공유된 보드 조회"
     }
   ],
   "paths": {
@@ -1450,6 +1454,296 @@
                       "error": {
                         "code": "COMMON-004",
                         "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/boards/{boardId}/share": {
+      "get": {
+        "tags": ["보드 공유"],
+        "summary": "내 보드 공유 상태 조회",
+        "description": "보드의 방장 또는 참여자가 자기 공유 링크 토큰과 현재 범위를 조회함. 공유한 적이 없으면 shareToken은 null이고 scope는 기본값 RECAP임",
+        "operationId": "getMyBoardShare",
+        "parameters": [
+          {
+            "name": "boardId",
+            "in": "path",
+            "description": "공유 상태를 확인할 보드 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "내 공유 링크 상태",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoardShareStatusResponse"
+                },
+                "examples": {
+                  "공유한 적 있음": {
+                    "description": "공유한 적 있음",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "shareToken": "4f1c2b9e-7a3d-4e8f-9b6a-2c5d8e1f0a7b",
+                        "scope": "PHOTOS"
+                      }
+                    }
+                  },
+                  "공유한 적 없음": {
+                    "description": "공유한 적 없음",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "shareToken": null,
+                        "scope": "RECAP"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "보드를 찾을 수 없음 (BOARD-002)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-002": {
+                    "summary": "보드 없음 또는 공유 권한 없음",
+                    "description": "BOARD-002",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-002",
+                        "message": "보드를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["보드 공유"],
+        "summary": "내 보드 공유 링크 발급·범위 변경",
+        "description": "보드의 방장 또는 참여자에게 자기 이름의 공유 링크 토큰을 발급함. 이미 공유했다면 같은 토큰을 유지하고 범위만 바꿈",
+        "operationId": "shareBoard",
+        "parameters": [
+          {
+            "name": "boardId",
+            "in": "path",
+            "description": "공유할 보드 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoardShareRequest"
+              },
+              "examples": {
+                "리캡까지 공유": {
+                  "description": "리캡까지 공유",
+                  "value": {
+                    "scope": "RECAP"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "내 공유 링크 정보",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoardShareResponse"
+                },
+                "examples": {
+                  "공유 링크 발급": {
+                    "description": "공유 링크 발급",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "shareToken": "4f1c2b9e-7a3d-4e8f-9b6a-2c5d8e1f0a7b",
+                        "scope": "RECAP"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청 값이 올바르지 않음 (COMMON-001)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-001": {
+                    "summary": "요청 바디 검증 실패",
+                    "description": "COMMON-001",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-001",
+                        "message": "잘못된 입력입니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "COMMON-001 (필드 오류)": {
+                    "summary": "필드별 검증 실패 상세가 함께 내려가는 경우",
+                    "description": "COMMON-001 (필드 오류)",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-001",
+                        "message": "잘못된 입력입니다.",
+                        "fieldErrors": [
+                          {
+                            "field": "name",
+                            "value": "열자가넘는아주긴보드이름",
+                            "reason": "크기가 1에서 10 사이여야 합니다"
+                          }
+                        ],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "보드를 찾을 수 없음 (BOARD-002)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-002": {
+                    "summary": "보드 없음 또는 공유 권한 없음",
+                    "description": "BOARD-002",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-002",
+                        "message": "보드를 찾을 수 없습니다.",
                         "fieldErrors": [],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
@@ -5275,6 +5569,319 @@
         ]
       }
     },
+    "/boards/shared/{shareToken}": {
+      "get": {
+        "tags": ["보드 공유"],
+        "summary": "공유된 보드 조회",
+        "description": "인증 없이 공유 토큰으로 보드를 조회함. 공동 보드는 모든 참여자의 스티커를 포함하고 isNew는 항상 false임. 없는 토큰, 삭제된 보드, 탈퇴했거나 보드를 나간 공유자는 모두 BOARD-010으로 응답함",
+        "operationId": "getSharedBoard",
+        "parameters": [
+          {
+            "name": "shareToken",
+            "in": "path",
+            "description": "공유 링크 토큰",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "4f1c2b9e-7a3d-4e8f-9b6a-2c5d8e1f0a7b"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "공유된 보드",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSharedBoardResponse"
+                },
+                "examples": {
+                  "리캡까지 공유된 보드": {
+                    "description": "리캡까지 공유된 보드",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "boardName": "제주 여행",
+                        "sharerName": "김용희",
+                        "scope": "RECAP",
+                        "stickers": [
+                          {
+                            "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                            "title": "동물 밈 짤줍",
+                            "isNew": false,
+                            "type": "IMAGE",
+                            "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Expires=3600&X-Goog-Signature=sample",
+                            "posX": 62.5,
+                            "posY": 318,
+                            "scale": 0.8,
+                            "rotation": -12,
+                            "zIndex": 3,
+                            "badgeOffsetX": -24,
+                            "badgeOffsetY": 96,
+                            "badgeRotation": 0
+                          }
+                        ],
+                        "drawings": [
+                          {
+                            "type": "TEXT",
+                            "id": "01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+                            "scope": "BOARD",
+                            "color": "#FFFFFF",
+                            "zIndex": 7,
+                            "content": "여름 휴가",
+                            "fontSize": 26,
+                            "posX": 80,
+                            "posY": 290.5,
+                            "maxWidth": 280,
+                            "rotation": 0
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "공유된 보드를 찾을 수 없음 (BOARD-010)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-010": {
+                    "summary": "없는 토큰, 보드 삭제, 공유자 탈퇴 또는 보드 나가기",
+                    "description": "BOARD-010",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-010",
+                        "message": "공유된 보드를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/boards/shared/{shareToken}/stickers/{stickerId}": {
+      "get": {
+        "tags": ["보드 공유"],
+        "summary": "공유된 보드의 스티커 리캡 조회",
+        "description": "인증 없이 공유된 보드에 있는 스티커의 리캡을 조회함. 링크의 공유 범위가 BOARD이면 BOARD-011, RECAP이면 photos는 항상 빈 배열이고 PHOTOS일 때만 사진을 포함함. 공동 보드의 모든 스티커에 같은 범위를 적용하며 isNew는 항상 false임",
+        "operationId": "getSharedBoardRecap",
+        "parameters": [
+          {
+            "name": "shareToken",
+            "in": "path",
+            "description": "공유 링크 토큰",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "4f1c2b9e-7a3d-4e8f-9b6a-2c5d8e1f0a7b"
+          },
+          {
+            "name": "stickerId",
+            "in": "path",
+            "description": "공유된 보드에 있는 스티커 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "스티커 리캡 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecapDetailResponse"
+                },
+                "examples": {
+                  "이미지 스티커 리캡": {
+                    "description": "이미지 스티커 리캡",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "sticker": {
+                          "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                          "title": "동물 밈 짤줍",
+                          "isNew": false,
+                          "type": "IMAGE",
+                          "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
+                          "mainColor": "#FF6B6B",
+                          "posX": 62.5,
+                          "posY": 318,
+                          "scale": 0.8,
+                          "rotation": -12,
+                          "zIndex": 3,
+                          "badgeOffsetX": -24,
+                          "badgeOffsetY": 96,
+                          "badgeRotation": 0
+                        },
+                        "summary": "웃기고 귀여우면 일단 주워요",
+                        "comments": [
+                          {
+                            "id": "01983f2d-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                            "content": "야옹~",
+                            "posX": -96,
+                            "posY": -150
+                          },
+                          {
+                            "id": "01983f2d-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                            "content": "또 주웠네!",
+                            "posX": -104,
+                            "posY": 62
+                          },
+                          {
+                            "id": "01983f2d-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                            "content": "복슬복슬",
+                            "posX": 98,
+                            "posY": 18
+                          },
+                          {
+                            "id": "01983f2d-4d5e-7f6a-b7c8-9d0e1f2a3b4c",
+                            "content": "냥집사"
+                          },
+                          {
+                            "id": "01983f2d-5e6f-7a7b-c8d9-0e1f2a3b4c5d",
+                            "content": "웃긴 동물들"
+                          },
+                          {
+                            "id": "01983f2d-6f7a-7b8c-d9e0-1f2a3b4c5d6e",
+                            "content": "당신은 밈 수집가!"
+                          },
+                          {
+                            "id": "01983f2d-7a8b-7c9d-e0f1-2a3b4c5d6e7f",
+                            "content": "복슬복슬"
+                          },
+                          {
+                            "id": "01983f2d-8b9c-7d0e-f1a2-3b4c5d6e7f8a",
+                            "content": "저장한 동물 짤 중 62%가 고양이다냥!"
+                          },
+                          {
+                            "id": "01983f2d-9c0d-7e1f-a2b3-4c5d6e7f8a9b",
+                            "content": "감도 높은 취향"
+                          },
+                          {
+                            "id": "01983f2d-a0d1-7f2a-b3c4-5d6e7f8a9b0c",
+                            "content": "밈잘알"
+                          },
+                          {
+                            "id": "01983f2d-b1e2-7a3b-c4d5-6e7f8a9b0c1d",
+                            "content": "밈 고르는 안목 보소"
+                          },
+                          {
+                            "id": "01983f2d-c2f3-7b4c-d5e6-7f8a9b0c1d2e",
+                            "content": "근데 소랑 돌고래가 같이 나는 사진은 뭐임?"
+                          }
+                        ],
+                        "photos": [
+                          {
+                            "id": "01983f2e-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                            "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e.jpg?X-Goog-Signature=sample",
+                            "takenAt": "2026-06-14T04:22:10Z",
+                            "isGroup": true,
+                            "groupId": "01983f2e-9c0d-7e1f-a2b3-4c5d6e7f8a9b",
+                            "groupPhotos": [
+                              {
+                                "id": "01983f2e-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
+                                "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2e-3c.jpg?X-Goog-Signature=smpl",
+                                "takenAt": "2026-06-14T04:22:11Z"
+                              }
+                            ]
+                          },
+                          {
+                            "id": "01983f2e-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                            "imageUrl": "https://storage.googleapis.com/ppotto-photos/01983f2f.jpg?X-Goog-Signature=sample",
+                            "takenAt": "2026-07-02T10:05:44Z",
+                            "isGroup": false,
+                            "groupPhotos": []
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "공유된 보드를 찾을 수 없음 (BOARD-010) 또는 공유 범위 밖이거나 이 보드의 스티커가 아님 (BOARD-011)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-010": {
+                    "summary": "없는 토큰, 보드 삭제, 공유자 탈퇴 또는 보드 나가기",
+                    "description": "BOARD-010",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-010",
+                        "message": "공유된 보드를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  },
+                  "BOARD-011": {
+                    "summary": "공유 범위가 BOARD이거나 이 보드에 없는 스티커",
+                    "description": "BOARD-011",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-011",
+                        "message": "공유된 리캡을 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/board-invitations/{code}": {
       "get": {
         "tags": ["보드 초대"],
@@ -6370,6 +6977,71 @@
           }
         },
         "required": ["id", "name"]
+      },
+      "BoardShareRequest": {
+        "type": "object",
+        "description": "보드 공유 요청",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/BoardShareScope",
+            "description": "공유 링크로 열람할 수 있는 범위. BOARD는 보드만, RECAP은 리캡까지, PHOTOS는 테마 속 사진까지",
+            "example": "RECAP"
+          }
+        },
+        "required": ["scope"]
+      },
+      "BoardShareScope": {
+        "type": "string",
+        "enum": ["BOARD", "RECAP", "PHOTOS"]
+      },
+      "ApiResponseBoardShareResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardShareResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardShareResponse": {
+        "type": "object",
+        "description": "내 보드 공유 링크 정보",
+        "properties": {
+          "shareToken": {
+            "type": "string",
+            "description": "공유 링크 토큰. 다시 공유해도 같은 값이 유지됨",
+            "example": "4f1c2b9e-7a3d-4e8f-9b6a-2c5d8e1f0a7b"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/BoardShareScope",
+            "description": "현재 공유 범위",
+            "example": "RECAP"
+          }
+        },
+        "required": ["scope", "shareToken"]
       },
       "ApiResponseBoardInvitationIssueResponse": {
         "type": "object",
@@ -8227,6 +8899,55 @@
         },
         "required": ["color", "id", "scope", "stroke", "strokeWidth"]
       },
+      "ApiResponseBoardShareStatusResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BoardShareStatusResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "BoardShareStatusResponse": {
+        "type": "object",
+        "description": "내 보드 공유 상태",
+        "properties": {
+          "shareToken": {
+            "type": ["string", "null"],
+            "description": "요청 사용자의 공유 링크 토큰. 공유한 적이 없으면 null",
+            "example": "4f1c2b9e-7a3d-4e8f-9b6a-2c5d8e1f0a7b"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/BoardShareScope",
+            "description": "현재 공유 범위. 공유한 적이 없으면 기본값 RECAP",
+            "example": "PHOTOS"
+          }
+        },
+        "required": ["scope"]
+      },
       "ApiResponseBoardParticipantsResponse": {
         "type": "object",
         "description": "공통 응답 봉투",
@@ -8305,6 +9026,74 @@
           }
         },
         "required": ["maxParticipantCount", "participantCount", "participants"]
+      },
+      "ApiResponseSharedBoardResponse": {
+        "type": "object",
+        "description": "공통 응답 봉투",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "요청 성공 여부",
+            "example": true
+          },
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SharedBoardResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["success"]
+      },
+      "SharedBoardResponse": {
+        "type": "object",
+        "description": "공유된 보드",
+        "properties": {
+          "boardName": {
+            "type": "string",
+            "description": "현재 보드 이름",
+            "example": "제주 여행"
+          },
+          "sharerName": {
+            "type": "string",
+            "description": "이 링크를 공유한 현재 사용자 이름",
+            "example": "김용희"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/BoardShareScope",
+            "description": "이 링크의 현재 공유 범위. BOARD이면 스티커를 눌러도 리캡을 열지 않음",
+            "example": "RECAP"
+          },
+          "stickers": {
+            "type": "array",
+            "description": "보드의 모든 참여자 스티커. v2 보드 상세와 같은 스키마이며 isNew는 항상 false",
+            "items": {
+              "$ref": "#/components/schemas/BoardStickerResponse"
+            }
+          },
+          "drawings": {
+            "type": "array",
+            "description": "보드와 스티커 위의 선과 텍스트. v2 보드 상세와 같은 스키마",
+            "items": {
+              "$ref": "#/components/schemas/DrawingV2Response"
+            }
+          }
+        },
+        "required": ["boardName", "drawings", "scope", "sharerName", "stickers"]
       },
       "ApiResponseBoardInvitationDetailResponse": {
         "type": "object",
@@ -8501,11 +9290,11 @@
             "description": "현재 분석의 완료 알림 신청 여부",
             "example": true
           },
-          "id": {
+          "boardId": {
             "type": "string",
             "format": "uuid"
           },
-          "boardId": {
+          "id": {
             "type": "string",
             "format": "uuid"
           }
