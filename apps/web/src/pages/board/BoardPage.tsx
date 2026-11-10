@@ -7,7 +7,12 @@ import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom';
 
 import { useBoardParticipantsQuery } from '@/entities/board/api/board-queries';
-import { DeleteBoardModal, useDeleteBoard } from '@/features/manage-board';
+import {
+  DeleteBoardModal,
+  LeaveBoardModal,
+  useDeleteBoard,
+  useLeaveBoard,
+} from '@/features/manage-board';
 import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 import { useSinglePop } from '@/shared/lib/use-single-pop';
@@ -69,9 +74,12 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     hasStickers,
     openPhotoSelect,
   } = useBoardPageState(boardIdParam);
-  const { pop, push } = useFlow();
+  const { pop, push, replace } = useFlow();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
   const deleteBoard = useDeleteBoard({ onDeleted: goBack });
+  const leaveBoard = useLeaveBoard({
+    onLeft: () => replace('Home', {}, { animate: false }),
+  });
   const {
     previewRef: invitationPreviewRef,
     isPreviewPreparing: isInvitationPreviewPreparing,
@@ -551,6 +559,9 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             setIsBoardMenuOpen(false);
             if (boardSummary) deleteBoard.request(boardSummary);
           }}
+          onLeave={() => {
+            if (boardId && boardName) leaveBoard.request({ id: boardId, name: boardName });
+          }}
           onCopyInvitation={(code) => void copyInvitationCode(code)}
           onKakaoShareInvitation={shareToKakao}
           isInvitePending={isInvitationPending}
@@ -583,6 +594,13 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           isPending={deleteBoard.isPending}
           onConfirm={deleteBoard.confirm}
           onCancel={deleteBoard.cancel}
+        />
+        <LeaveBoardModal
+          open={leaveBoard.isOpen}
+          target={leaveBoard.target}
+          isPending={leaveBoard.isPending}
+          onConfirm={leaveBoard.confirm}
+          onCancel={leaveBoard.cancel}
         />
       </div>
       {/* 캡처 도중 시트가 닫혀도 캡처 대상 DOM이 언마운트되지 않게 작업 중에는 유지한다 */}

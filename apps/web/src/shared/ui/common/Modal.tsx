@@ -11,13 +11,23 @@ type ModalProps = {
   title: ReactNode;
   description?: ReactNode;
   children: ReactNode;
+  layerClassName?: string;
 };
 
-export function Modal({ open, onOpenChange, title, description, children }: ModalProps) {
+export function Modal({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  layerClassName,
+}: ModalProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="modal-overlay fixed inset-0 z-50 bg-black/60" />
+        <Dialog.Overlay
+          className={cn('modal-overlay fixed inset-0 z-50 bg-black/50', layerClassName)}
+        />
         <Dialog.Content
           {...(description ? null : { 'aria-describedby': undefined })}
           className={cn(
@@ -25,6 +35,7 @@ export function Modal({ open, onOpenChange, title, description, children }: Moda
             'modal-content',
             'flex w-78 max-w-[calc(100vw-48px)] flex-col items-center gap-4',
             'rounded-16 bg-gray-900 p-4',
+            layerClassName,
           )}
         >
           <div className="flex flex-col items-center gap-2 py-2 text-center">
