@@ -42,6 +42,10 @@ const analysisLoadingState = analysisLoadingPhaseState.extend({
 });
 const analyticsName = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/);
 const analyticsParams = z.record(analyticsName, z.union([z.string(), z.number()]));
+const postLoginDestination = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('HOME') }),
+  z.object({ type: z.literal('BOARD_INVITATION'), code: z.string().regex(/^[A-Z0-9]{6}$/) }),
+]);
 
 // web <-> RN 브릿지 계약
 export const contract = defineContract({
@@ -51,6 +55,8 @@ export const contract = defineContract({
     payload: z.object({ forceRefresh: z.boolean().optional() }),
     response: z.object({ accessToken: z.string().nullable() }),
   }),
+  GET_POST_LOGIN_DESTINATION: request({ response: postLoginDestination }),
+  CLEAR_PENDING_BOARD_INVITATION: request(),
   LOGOUT: request(),
   WITHDRAW: request(),
   AUTH_EXPIRED: command(),

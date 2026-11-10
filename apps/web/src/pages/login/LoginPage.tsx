@@ -4,6 +4,7 @@ import { AppleLogo, KakaoLogo, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import { useState, useSyncExternalStore } from 'react';
 
+import { getPostLoginDestination } from '@/features/board-invitation';
 import { bridge } from '@/shared/lib/bridge';
 import { cn } from '@/shared/lib/cn';
 import { isDevelopmentBrowser } from '@/shared/lib/runtime-environment';
@@ -32,7 +33,17 @@ export function LoginPage() {
     try {
       const result = await bridge.request(channel, undefined, { timeout: 'none' });
       if (!result) return;
-      // 약관 미동의 여부는 홈 진입 시 useTermsGate가 GET /terms로 판단한다
+      const requiresTerms = result.pendingTerms.some((term) => term.isRequired && !term.agreed);
+      if (requiresTerms) {
+        replace('Home', {});
+        return;
+      }
+
+      const destination = await getPostLoginDestination();
+      if (destination.type === 'BOARD_INVITATION') {
+        replace('BoardInvitationJoin', { code: destination.code });
+        return;
+      }
       replace('Home', {});
     } catch (error) {
       console.error('로그인 실패', error);

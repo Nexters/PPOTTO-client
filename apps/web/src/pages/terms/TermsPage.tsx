@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { useAgreeTermsMutation } from '@/entities/terms/api/terms-mutations';
 import { useTermsListQuery } from '@/entities/terms/api/terms-queries';
+import { getPostLoginDestination } from '@/features/board-invitation';
 import { cn } from '@/shared/lib/cn';
 import { track } from '@/shared/lib/bridge';
 import { Button } from '@/shared/ui/common/Button';
@@ -51,6 +52,11 @@ export function TermsPage() {
       track('terms_accepted', {
         agreed_count: visibleTerms.filter(({ serverTerm }) => serverTerm).length,
       });
+      const destination = await getPostLoginDestination();
+      if (destination.type === 'BOARD_INVITATION') {
+        replace('BoardInvitationJoin', { code: destination.code });
+        return;
+      }
       if (isRoot) replace('Home', {});
       else pop();
     } catch (error) {

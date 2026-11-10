@@ -32,6 +32,7 @@ export type UpdateBoardLayoutInput = components['schemas']['BoardLayoutV2Request
 export type BoardInvitationIssue = components['schemas']['BoardInvitationIssueResponse'];
 export type BoardInvitationPreviewUpload =
   components['schemas']['BoardInvitationPreviewUploadResponse'];
+export type BoardJoinResult = components['schemas']['BoardJoinResponse'];
 export type BoardShareScope = components['schemas']['BoardShareScope'];
 export type SharedBoard = components['schemas']['SharedBoardResponse'];
 
@@ -172,6 +173,23 @@ export const boardApi = {
     return unwrapData(
       publicApi.GET('/board-invitations/{code}', {
         params: { path: { code: code.trim().toUpperCase() } },
+      }),
+    );
+  },
+  joinInvitation: (code: string): Promise<BoardJoinResult> => {
+    if (USE_MOCK) {
+      return Promise.resolve({
+        boardId: boardFixture.id,
+        boardName: boardFixture.name,
+        role: 'MEMBER',
+      });
+    }
+    return unwrapData(
+      api.POST('/board-invitations/{code}/join', {
+        params: {
+          path: { code: code.trim().toUpperCase() },
+          header: { 'X-API-Version': '2' },
+        },
       }),
     );
   },

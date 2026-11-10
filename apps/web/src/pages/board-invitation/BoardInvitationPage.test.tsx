@@ -7,9 +7,17 @@ import { ToastProvider } from '@/shared/ui/common/Toast';
 
 import { BoardInvitationPage } from './BoardInvitationPage';
 
-const copyTextToClipboard = vi.hoisted(() => vi.fn());
+const mocks = vi.hoisted(() => ({
+  copyTextToClipboard: vi.fn(),
+  openBoardInvitationInApp: vi.fn(),
+}));
 
-vi.mock('@/shared/lib/copy-text-to-clipboard', () => ({ copyTextToClipboard }));
+vi.mock('@/shared/lib/copy-text-to-clipboard', () => ({
+  copyTextToClipboard: mocks.copyTextToClipboard,
+}));
+vi.mock('./model/open-board-invitation-in-app', () => ({
+  openBoardInvitationInApp: mocks.openBoardInvitationInApp,
+}));
 
 vi.mock('next/image', () => ({
   default: ({
@@ -25,8 +33,9 @@ vi.mock('next/image', () => ({
 
 describe('BoardInvitationPage', () => {
   beforeEach(() => {
-    copyTextToClipboard.mockReset();
-    copyTextToClipboard.mockResolvedValue(undefined);
+    mocks.copyTextToClipboard.mockReset();
+    mocks.copyTextToClipboard.mockResolvedValue(undefined);
+    mocks.openBoardInvitationInApp.mockReset();
   });
 
   const renderPage = (invitation: BoardInvitationDetail = publicBoardInvitationFixture) =>
@@ -44,10 +53,7 @@ describe('BoardInvitationPage', () => {
     expect(screen.getByText('K7P2QX')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '초대 코드 복사' })).toBeInTheDocument();
     expect(screen.getByAltText('제주 여행 보드 미리보기')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '앱에서 참여하기' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    expect(screen.getByRole('button', { name: '앱에서 참여하기' })).toBeEnabled();
   });
 
   it('미리보기 이미지가 없으면 기본 로고를 표시한다', () => {
@@ -62,8 +68,16 @@ describe('BoardInvitationPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '초대 코드 복사' }));
 
-    expect(copyTextToClipboard).toHaveBeenCalledWith('K7P2QX');
+    expect(mocks.copyTextToClipboard).toHaveBeenCalledWith('K7P2QX');
     expect(await screen.findByText('초대 코드를 복사했어요')).toBeInTheDocument();
+  });
+
+  it('앱에서 참여하기를 누르면 초대 코드를 앱 딥링크로 전달한다', () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: '앱에서 참여하기' }));
+
+    expect(mocks.openBoardInvitationInApp).toHaveBeenCalledWith('K7P2QX');
   });
 
   it('참여 인원이 가득 차면 참여 버튼을 비활성화한다', () => {

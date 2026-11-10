@@ -1,13 +1,10 @@
 /* eslint-disable @next/next/no-img-element -- 정적 랜딩 애셋, next/image 최적화 비활성 상태라 불필요 */
 import { cn } from '@/shared/lib/cn';
+import { APP_STORE_URL, GOOGLE_PLAY_URL } from '@/shared/config/app-links';
 
 import { FeatureSection } from './ui/FeatureSection';
 import { HeroPhoneImage } from './ui/HeroPhoneImage';
 import { LandingNav } from './ui/LandingNav';
-
-const GOOGLE_PLAY_URL =
-  'https://play.google.com/store/apps/details?id=com.ppotto.mobile&pcampaignid=web_share';
-const APP_STORE_URL = 'https://apps.apple.com/kr/app/id6796674900';
 
 const FEATURES = [
   {

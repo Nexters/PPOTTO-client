@@ -9,6 +9,7 @@ declare module '@stackflow/config' {
     Home: Record<string, never>;
     BoardJoinCode: Record<string, never>;
     BoardJoinConfirm: { code: string };
+    BoardInvitationJoin: { code: string };
     Board: { boardId?: string };
     BoardName: { boardId?: string; name?: string };
     Recap: { stickerId: string; boardId: string };
@@ -27,6 +28,16 @@ export const config = defineConfig({
     { name: 'Home', route: '/home' },
     { name: 'BoardJoinCode', route: '/board-join-code' },
     { name: 'BoardJoinConfirm', route: '/board-join-confirm' },
+    {
+      name: 'BoardInvitationJoin',
+      route: {
+        path: '/board-invitation-join',
+        defaultHistory: () => ({
+          entries: [{ activityName: 'Home', activityParams: {} }],
+          skipDefaultHistorySetupTransition: true,
+        }),
+      },
+    },
     {
       name: 'Board',
       route: {
