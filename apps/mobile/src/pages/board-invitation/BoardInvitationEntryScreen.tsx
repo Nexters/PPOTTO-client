@@ -1,6 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 
+import {
+  clearPendingBoardInvitation,
+  savePendingBoardInvitation,
+} from '@/features/board-invitation';
 import { getAccessToken } from '@/lib/auth-session';
 import { AppBackground } from '@/shared/ui/AppBackground';
 
@@ -18,19 +22,25 @@ export function BoardInvitationEntryScreen() {
       };
     }
 
-    void getAccessToken().then(
-      (accessToken) => {
+    void (async () => {
+      try {
+        const accessToken = await getAccessToken();
         if (!active) return;
+
         if (!accessToken) {
+          await savePendingBoardInvitation(code);
+          if (!active) return;
           router.replace('/');
           return;
         }
+
+        await clearPendingBoardInvitation();
+        if (!active) return;
         router.replace({ pathname: '/board', params: { invitationCode: code } });
-      },
-      () => {
+      } catch {
         if (active) router.replace('/');
-      },
-    );
+      }
+    })();
 
     return () => {
       active = false;
