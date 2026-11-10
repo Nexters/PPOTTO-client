@@ -364,6 +364,26 @@ export interface paths {
         patch: operations["update"];
         trace?: never;
     };
+    "/boards/{boardId}/members/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 보드 나가기
+         * @description 참여 중인 공동 보드에서 나감. 방장은 나갈 수 없음
+         */
+        delete: operations["leaveBoard"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/boards/{boardId}/participants": {
         parameters: {
             query?: never;
@@ -3716,6 +3736,65 @@ export interface operations {
             };
             /** @description 보드를 찾을 수 없음 (BOARD-002) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    leaveBoard: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 나갈 보드 ID (uuidv7)
+                 * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+                 */
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 처리 완료. data는 항상 null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseUnit"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 보드를 찾을 수 없음 (BOARD-002) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 방장은 나갈 수 없음 (BOARD-012) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

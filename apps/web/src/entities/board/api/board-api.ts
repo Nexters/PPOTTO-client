@@ -98,6 +98,14 @@ export const boardApi = {
       }),
     );
   },
+  leave: (boardId: string) => {
+    if (USE_MOCK) return Promise.resolve();
+    return unwrapVoid(
+      api.DELETE('/boards/{boardId}/members/me', {
+        params: { path: { boardId }, header: { 'X-API-Version': '2' } },
+      }),
+    );
+  },
   getShareStatus: (boardId: string) => {
     if (USE_MOCK) return Promise.resolve({ shareToken: null, scope: 'RECAP' as const });
     return unwrapData(

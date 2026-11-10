@@ -39,8 +39,11 @@ type BoardMenuSheetProps = {
   onInvite: () => void;
   onRename?: () => void;
   onDelete?: () => void;
+  onLeave?: () => void;
   onCopyInvitation: (code: string) => void;
+  onInstagramShareInvitation?: (code: string) => void;
   onKakaoShareInvitation?: (code: string) => void;
+  isInstagramSharePreparing?: boolean;
   isInvitePending?: boolean;
   participantList?: BoardParticipantListState;
   share?: BoardShareActions;
@@ -82,8 +85,11 @@ function BoardMenuContent({
   onInvite,
   onRename,
   onDelete,
+  onLeave,
   onCopyInvitation,
+  onInstagramShareInvitation,
   onKakaoShareInvitation,
+  isInstagramSharePreparing,
   isInvitePending,
   participantList,
   share,
@@ -104,9 +110,13 @@ function BoardMenuContent({
         <BoardInvitationContent
           code={view.code}
           onCopy={() => onCopyInvitation(view.code)}
+          onInstagramShare={
+            onInstagramShareInvitation ? () => onInstagramShareInvitation(view.code) : undefined
+          }
           onKakaoShare={
             onKakaoShareInvitation ? () => onKakaoShareInvitation(view.code) : undefined
           }
+          isInstagramSharePreparing={isInstagramSharePreparing}
         />
       );
     case 'share':
@@ -146,7 +156,7 @@ function BoardMenuContent({
             {role === 'OWNER' && (
               <BoardMenuItem Icon={Edit} label="이름 변경하기" onClick={onRename} />
             )}
-            {role === 'MEMBER' && <BoardMenuItem Icon={SignOut} label="나가기" />}
+            {role === 'MEMBER' && <BoardMenuItem Icon={SignOut} label="나가기" onClick={onLeave} />}
             {role === 'OWNER' && <BoardMenuItem Icon={Trash} label="삭제하기" onClick={onDelete} />}
           </div>
         </>

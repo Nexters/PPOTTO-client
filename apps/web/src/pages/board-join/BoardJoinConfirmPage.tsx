@@ -3,6 +3,7 @@
 import { AlertCircle, ChevronLeft, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 
 import type { BoardInvitationDetail } from '@/entities/board/api/board-api';
 import { useJoinBoardInvitationMutation } from '@/entities/board/api/board-mutations';
@@ -18,12 +19,18 @@ export function BoardJoinConfirmPage({ code }: { code: string }) {
   const { pop, push } = useFlow();
   const toast = useToast();
   const { data, isPending, isError, refetch } = useBoardInvitationQuery(code);
+  const [isJoining, setIsJoining] = useState(false);
+
   const joinBoard = useJoinBoardInvitationMutation({
-    onSuccess: ({ boardId }) => {
+    onSuccess: ({ boardId, boardName }) => {
       pop(2, { animate: false });
       push('Board', { boardId });
+      toast(`'${boardName}' 보드에 참여했어요`);
     },
-    onError: (error) => toast(getBoardJoinErrorMessage(error)),
+    onError: (error) => {
+      setIsJoining(false);
+      toast(getBoardJoinErrorMessage(error));
+    },
   });
 
   if (isPending) return <InvitationStatus>초대 정보를 불러오는 중이에요</InvitationStatus>;
@@ -40,18 +47,14 @@ export function BoardJoinConfirmPage({ code }: { code: string }) {
   }
 
   const join = () => {
-    if (joinBoard.isPending) return;
+    if (isJoining) return;
 
+    setIsJoining(true);
     joinBoard.mutate({ code });
   };
 
   return (
-    <InvitationConfirm
-      invitation={data}
-      isJoining={joinBoard.isPending}
-      onBack={() => pop()}
-      onJoin={join}
-    />
+    <InvitationConfirm invitation={data} isJoining={isJoining} onBack={() => pop()} onJoin={join} />
   );
 }
 

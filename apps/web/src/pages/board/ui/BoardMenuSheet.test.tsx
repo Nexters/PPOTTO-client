@@ -33,6 +33,25 @@ describe('BoardMenuSheet', () => {
     expect(screen.queryByRole('button', { name: '삭제하기' })).not.toBeInTheDocument();
   });
 
+  it('멤버가 나가기를 누르면 전달받은 동작을 실행한다', () => {
+    const onLeave = vi.fn();
+    render(
+      <BoardMenuSheet
+        isOpen
+        onClose={vi.fn()}
+        onInvite={vi.fn()}
+        onCopyInvitation={vi.fn()}
+        onLeave={onLeave}
+        role="MEMBER"
+        view={{ type: 'menu' }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '나가기' }));
+
+    expect(onLeave).toHaveBeenCalledOnce();
+  });
+
   it('역할을 불러오기 전에는 역할 전용 메뉴를 표시하지 않는다', () => {
     renderSheet();
 

@@ -70,7 +70,7 @@
       [
         "react-native-share",
         {
-          "ios": ["instagram-stories"],
+          "ios": ["instagram", "instagram-stories"],
           "android": ["com.instagram.android"]
         }
       ],
