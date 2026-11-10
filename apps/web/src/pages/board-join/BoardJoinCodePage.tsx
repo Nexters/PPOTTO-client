@@ -4,7 +4,7 @@ import { ChevronLeft } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   boardInvitationQueryOptions,
@@ -22,9 +22,13 @@ export function BoardJoinCodePage() {
   const toast = useToast();
   const [code, setCode] = useState('');
   const [isChecking, setIsChecking] = useState(false);
+  const requestGeneration = useRef(0);
+  const isMounted = useRef(true);
   const isComplete = code.length === INVITATION_CODE_LENGTH;
 
   const changeCode = (value: string) => {
+    requestGeneration.current += 1;
+    setIsChecking(false);
     setCode(
       value
         .toUpperCase()
@@ -33,15 +37,35 @@ export function BoardJoinCodePage() {
     );
   };
 
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      requestGeneration.current += 1;
+    };
+  }, []);
+
+  const goBack = () => {
+    requestGeneration.current += 1;
+    pop();
+  };
+
   const submitCode = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isComplete || isChecking) return;
 
+    const submittedCode = code;
+    const generation = ++requestGeneration.current;
     setIsChecking(true);
     try {
-      await queryClient.fetchQuery(boardInvitationQueryOptions(code));
-      push('BoardJoinConfirm', { code });
+      await queryClient.fetchQuery(boardInvitationQueryOptions(submittedCode));
+      if (!isMounted.current || generation !== requestGeneration.current) return;
+
+      setIsChecking(false);
+      push('BoardJoinConfirm', { code: submittedCode });
     } catch (error) {
+      if (!isMounted.current || generation !== requestGeneration.current) return;
+
       setIsChecking(false);
       toast(
         isBoardNotFoundError(error)
@@ -68,7 +92,7 @@ export function BoardJoinCodePage() {
           <button
             type="button"
             aria-label="뒤로 가기"
-            onClick={() => pop()}
+            onClick={goBack}
             className="flex size-10 items-center justify-start"
           >
             <ChevronLeft />

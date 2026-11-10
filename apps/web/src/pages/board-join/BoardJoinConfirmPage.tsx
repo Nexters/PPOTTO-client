@@ -18,7 +18,13 @@ export function BoardJoinConfirmPage({ code }: { code: string }) {
   const { pop, push } = useFlow();
   const toast = useToast();
   const { data, isPending, isError, refetch } = useBoardInvitationQuery(code);
-  const joinBoard = useJoinBoardInvitationMutation();
+  const joinBoard = useJoinBoardInvitationMutation({
+    onSuccess: ({ boardId }) => {
+      pop(2, { animate: false });
+      push('Board', { boardId });
+    },
+    onError: (error) => toast(getBoardJoinErrorMessage(error)),
+  });
 
   if (isPending) return <InvitationStatus>초대 정보를 불러오는 중이에요</InvitationStatus>;
 
@@ -36,16 +42,7 @@ export function BoardJoinConfirmPage({ code }: { code: string }) {
   const join = () => {
     if (joinBoard.isPending) return;
 
-    joinBoard.mutate(
-      { code },
-      {
-        onSuccess: ({ boardId }) => {
-          pop(2, { animate: false });
-          push('Board', { boardId });
-        },
-        onError: (error) => toast(getBoardJoinErrorMessage(error)),
-      },
-    );
+    joinBoard.mutate({ code });
   };
 
   return (

@@ -12,16 +12,21 @@ const mocks = vi.hoisted(() => ({
   pop: vi.fn(),
   toast: vi.fn(),
   isJoining: false,
+  handlers: undefined as
+    { onSuccess: (data: unknown) => void; onError: (error: Error) => void } | undefined,
 }));
 
 vi.mock('@stackflow/react', () => ({
   useFlow: () => ({ pop: mocks.pop, push: mocks.push }),
 }));
 vi.mock('@/entities/board/api/board-mutations', () => ({
-  useJoinBoardInvitationMutation: () => ({
-    mutate: mocks.join,
-    isPending: mocks.isJoining,
-  }),
+  useJoinBoardInvitationMutation: (handlers: typeof mocks.handlers) => {
+    mocks.handlers = handlers;
+    return {
+      mutate: mocks.join,
+      isPending: mocks.isJoining,
+    };
+  },
 }));
 vi.mock('@/entities/board/api/board-queries', () => ({
   useBoardInvitationQuery: mocks.useBoardInvitationQuery,
@@ -46,6 +51,7 @@ import { BoardJoinConfirmPage } from './BoardJoinConfirmPage';
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.isJoining = false;
+  mocks.handlers = undefined;
   mocks.useBoardInvitationQuery.mockReturnValue({
     data: boardInvitationFixture,
     isPending: false,
@@ -88,17 +94,14 @@ it('참여자가 5명 이상이면 이름을 균형 있게 두 줄로 배치한�
 });
 
 it('참여에 성공하면 참여 화면을 정리하고 응답으로 받은 보드로 이동한다', () => {
-  mocks.join.mockImplementation((_variables, options) => {
-    options.onSuccess({ boardId: 'board-1', boardName: '제주 여행', role: 'MEMBER' });
+  mocks.join.mockImplementation(() => {
+    mocks.handlers?.onSuccess({ boardId: 'board-1', boardName: '제주 여행', role: 'MEMBER' });
   });
   render(<BoardJoinConfirmPage code="K7P2QX" />);
 
   fireEvent.click(screen.getByRole('button', { name: '참여하기' }));
 
-  expect(mocks.join).toHaveBeenCalledWith(
-    { code: 'K7P2QX' },
-    expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
-  );
+  expect(mocks.join).toHaveBeenCalledWith({ code: 'K7P2QX' });
   expect(mocks.pop).toHaveBeenCalledWith(2, { animate: false });
   expect(mocks.push).toHaveBeenCalledWith('Board', { boardId: 'board-1' });
 });
@@ -108,7 +111,7 @@ it.each([
   [new HttpError(409, 'BOARD-009', null), '참여 인원이 모두 찼어요'],
   [new Error('offline'), '보드에 참여하지 못했어요'],
 ])('참여 실패 원인에 맞는 안내를 보여준다', (error, message) => {
-  mocks.join.mockImplementation((_variables, options) => options.onError(error));
+  mocks.join.mockImplementation(() => mocks.handlers?.onError(error));
   render(<BoardJoinConfirmPage code="K7P2QX" />);
 
   fireEvent.click(screen.getByRole('button', { name: '참여하기' }));
