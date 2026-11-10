@@ -4,6 +4,7 @@ import { useFlow } from '@stackflow/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useJoinBoardInvitationMutation } from '@/entities/board/api/board-mutations';
+import { clearPendingBoardInvitation } from '@/features/board-invitation';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/common/Button';
 import { useToast } from '@/shared/ui/common/Toast';
@@ -17,13 +18,15 @@ export function BoardInvitationJoinPage({ code }: { code: string }) {
   const [failed, setFailed] = useState(false);
   const joinBoard = useJoinBoardInvitationMutation({
     onSuccess: ({ boardId, boardName }) => {
-      toast(`'${boardName}' 보드에 참여했어요`);
-      replace('Board', { boardId }, { animate: false });
+      void clearPendingBoardInvitation().then(() => {
+        toast(`'${boardName}' 보드에 참여했어요`);
+        replace('Board', { boardId }, { animate: false });
+      });
     },
     onError: (error) => {
       toast(getBoardJoinErrorMessage(error));
       if (isTerminalBoardJoinError(error)) {
-        pop({ animate: false });
+        void clearPendingBoardInvitation().then(() => pop({ animate: false }));
         return;
       }
       setFailed(true);

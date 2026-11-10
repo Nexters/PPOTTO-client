@@ -20,6 +20,10 @@ import {
   logout,
   withdraw,
 } from '@/lib/auth-session';
+import {
+  clearPendingBoardInvitation,
+  getPendingBoardInvitation,
+} from '@/features/board-invitation';
 import { forwardAnalyticsEvent } from '@/shared/lib/analytics';
 import {
   recordWebQaDiagnosticMessage,
@@ -122,6 +126,13 @@ export function AppWebView({
     GET_ACCESS_TOKEN: async ({ forceRefresh }) => ({
       accessToken: await getAccessToken({ forceRefresh }),
     }),
+    GET_POST_LOGIN_DESTINATION: async () => {
+      const invitation = await getPendingBoardInvitation();
+      return invitation
+        ? { type: 'BOARD_INVITATION' as const, code: invitation.code }
+        : { type: 'HOME' as const };
+    },
+    CLEAR_PENDING_BOARD_INVITATION: clearPendingBoardInvitation,
     LOGOUT: async () => {
       await logout();
       toast('로그아웃이 성공했습니다.');

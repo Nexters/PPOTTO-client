@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   pop: vi.fn(),
   replace: vi.fn(),
   isRoot: false,
+  getPostLoginDestination: vi.fn(),
 }));
 
 vi.mock('@/entities/terms/api/terms-api', () => ({
@@ -20,6 +21,9 @@ vi.mock('@stackflow/react', () => ({
   useActivity: () => ({ isRoot: mocks.isRoot }),
 }));
 vi.mock('@/shared/lib/bridge', () => ({ track: vi.fn() }));
+vi.mock('@/features/board-invitation', () => ({
+  getPostLoginDestination: mocks.getPostLoginDestination,
+}));
 
 import { TermsPage } from './TermsPage';
 
@@ -42,6 +46,10 @@ async function agreeAll() {
   await user.click(await screen.findByRole('button', { name: '약관 전체동의' }));
   await user.click(screen.getByRole('button', { name: '동의하고 계속하기' }));
 }
+
+beforeEach(() => {
+  mocks.getPostLoginDestination.mockResolvedValue({ type: 'HOME' });
+});
 
 afterEach(() => {
   cleanup();
@@ -70,5 +78,23 @@ it('루트로 열린 약관 화면은 동의하면 홈으로 교체된다', asyn
   await agreeAll();
 
   await vi.waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('Home', {}));
+  expect(mocks.pop).not.toHaveBeenCalled();
+});
+
+it('초대 링크에서 가입한 사용자는 약관 동의 후 초대 참여로 복귀한다', async () => {
+  mocks.isRoot = false;
+  mocks.list.mockResolvedValue(PENDING_TERMS);
+  mocks.agree.mockResolvedValue(undefined);
+  mocks.getPostLoginDestination.mockResolvedValue({
+    type: 'BOARD_INVITATION',
+    code: 'K7P2QX',
+  });
+  renderTermsPage();
+
+  await agreeAll();
+
+  await vi.waitFor(() =>
+    expect(mocks.replace).toHaveBeenCalledWith('BoardInvitationJoin', { code: 'K7P2QX' }),
+  );
   expect(mocks.pop).not.toHaveBeenCalled();
 });

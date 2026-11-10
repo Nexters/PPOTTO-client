@@ -15,6 +15,8 @@ const mockPushMessage = jest.fn();
 const mockEmit = jest.fn();
 const mockFileWrite = jest.fn();
 const mockTrack = jest.fn();
+const mockGetPendingBoardInvitation = jest.fn();
+const mockClearPendingBoardInvitation = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('@/shared/lib/analytics', () => ({
@@ -24,6 +26,10 @@ jest.mock('@/lib/auth-session', () => ({
   getAccessToken: jest.fn(),
   loginWithApple: jest.fn(),
   loginWithKakao: jest.fn(),
+}));
+jest.mock('@/features/board-invitation', () => ({
+  getPendingBoardInvitation: () => mockGetPendingBoardInvitation(),
+  clearPendingBoardInvitation: () => mockClearPendingBoardInvitation(),
 }));
 jest.mock('expo-router', () => ({
   router: {
@@ -134,6 +140,7 @@ beforeEach(() => {
   mockInjectedJavaScript = undefined;
   mockWebviewDebuggingEnabled = undefined;
   mockScrollEnabled = undefined;
+  mockGetPendingBoardInvitation.mockResolvedValue(null);
 });
 
 afterAll(() => {
@@ -153,6 +160,37 @@ describe('WebView 인증 만료', () => {
     await mockBridgeHandlers.AUTH_EXPIRED!();
 
     expect(router.replace).toHaveBeenCalledWith('/');
+  });
+});
+
+describe('로그인 완료 목적지 브리지', () => {
+  it('저장된 초대가 있으면 보드 초대 목적지를 반환한다', async () => {
+    mockGetPendingBoardInvitation.mockResolvedValue({
+      code: 'K7P2QX',
+      receivedAt: Date.now(),
+    });
+    await render(<AppWebView />);
+
+    await expect(mockBridgeHandlers.GET_POST_LOGIN_DESTINATION!()).resolves.toEqual({
+      type: 'BOARD_INVITATION',
+      code: 'K7P2QX',
+    });
+  });
+
+  it('저장된 초대가 없으면 홈 목적지를 반환한다', async () => {
+    await render(<AppWebView />);
+
+    await expect(mockBridgeHandlers.GET_POST_LOGIN_DESTINATION!()).resolves.toEqual({
+      type: 'HOME',
+    });
+  });
+
+  it('웹의 요청을 받아 pending 초대를 제거한다', async () => {
+    await render(<AppWebView />);
+
+    await mockBridgeHandlers.CLEAR_PENDING_BOARD_INVITATION!();
+
+    expect(mockClearPendingBoardInvitation).toHaveBeenCalledTimes(1);
   });
 });
 
