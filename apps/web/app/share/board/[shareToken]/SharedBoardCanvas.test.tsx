@@ -1,5 +1,5 @@
 import { createRef } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ShareBoardContent } from '@/pages/board/model/board-share-layout';
@@ -117,14 +117,20 @@ describe('SharedBoardCanvas', () => {
     expect(sceneTransform()).toContain('scale(1)');
   });
 
-  it('처음 위치로 돌아가기를 부르면 처음 카메라로 돌아간다', async () => {
+  it('처음 위치로 돌아가기를 부르면 처음 카메라로 돌아간다', () => {
     const { canvas, ref, sceneTransform } = renderCanvas();
     fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 10, clientY: 10 });
     fireEvent.pointerMove(canvas, { pointerId: 1, clientX: 110, clientY: 10 });
     fireEvent.pointerUp(canvas, { pointerId: 1 });
+    // 애니메이션 프레임을 바로 끝난 시점으로 돌려 기다리지 않게 한다
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(performance.now() + 1000);
+      return 0;
+    });
 
-    ref.current!.recenter();
+    act(() => ref.current!.recenter());
 
-    await waitFor(() => expect(sceneTransform()).toBe('translate(0px, 0px) scale(1)'));
+    expect(sceneTransform()).toBe('translate(0px, 0px) scale(1)');
+    raf.mockRestore();
   });
 });
