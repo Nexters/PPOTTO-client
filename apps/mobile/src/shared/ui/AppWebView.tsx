@@ -215,6 +215,29 @@ export function AppWebView({
         return { success: false };
       }
     },
+    SHARE_INSTAGRAM_INVITATION: async ({ url }) => {
+      try {
+        const installed =
+          Platform.OS === 'android'
+            ? (await Share.isPackageInstalled(INSTAGRAM_PACKAGE)).isInstalled
+            : await Linking.canOpenURL('instagram://');
+
+        if (!installed) {
+          await openInstagramStore();
+          return { success: true };
+        }
+
+        await Share.shareSingle({
+          social: Social.Instagram,
+          message: url,
+          type: 'text/plain',
+        });
+        return { success: true };
+      } catch (error) {
+        console.warn('초대 인스타그램 공유 실패', error);
+        return { success: false };
+      }
+    },
     SHARE_KAKAO: async ({ templateArgs }) => {
       try {
         await shareCustomTemplate({ templateId: KAKAO_SHARE_TEMPLATE_ID, templateArgs });

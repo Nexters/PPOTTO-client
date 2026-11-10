@@ -10,6 +10,7 @@ import { useMeQuery } from '@/entities/user/api/user-queries';
 import { bridge } from '@/shared/lib/bridge';
 import { captureElementAsBlob } from '@/shared/lib/capture-element-as-blob';
 import { copyTextToClipboard } from '@/shared/lib/copy-text-to-clipboard';
+import { WEB_APP_URL } from '@/shared/config/app-links';
 import { useToast } from '@/shared/ui/common/Toast';
 
 import {
@@ -29,6 +30,7 @@ export function useBoardInvitation(boardId?: string) {
   const previewRef = useRef<HTMLDivElement>(null);
   const kakaoCardRef = useRef<HTMLDivElement>(null);
   const [isPreviewPreparing, setIsPreviewPreparing] = useState(false);
+  const [isInstagramSharePreparing, setIsInstagramSharePreparing] = useState(false);
   const [isKakaoSharePreparing, setIsKakaoSharePreparing] = useState(false);
   const [kakaoShareNow, setKakaoShareNow] = useState(0);
   const { mutateAsync, isPending } = useIssueBoardInvitationMutation();
@@ -117,14 +119,36 @@ export function useBoardInvitation(boardId?: string) {
     }
   };
 
+  const shareToInstagram = async (code: string) => {
+    if (isInstagramSharePreparing) return;
+    setIsInstagramSharePreparing(true);
+    try {
+      const { success } = await bridge.request('SHARE_INSTAGRAM_INVITATION', {
+        url: `${WEB_APP_URL}/invitations/${encodeURIComponent(code)}`,
+      });
+      if (!success) toast('인스타그램 공유에 실패했어요');
+    } catch (error) {
+      if (error instanceof BridgeUnknownMessageError) {
+        toast('앱을 업데이트하면 인스타그램으로 공유할 수 있어요');
+        return;
+      }
+      console.error('[board-invitation] 인스타그램 공유 실패', error);
+      toast('인스타그램 공유에 실패했어요');
+    } finally {
+      setIsInstagramSharePreparing(false);
+    }
+  };
+
   return {
     previewRef,
     isPreviewPreparing,
     kakaoCardRef,
+    isInstagramSharePreparing,
     isKakaoSharePreparing,
     kakaoShareNow,
     issueInvitation,
     copyInvitationCode,
+    shareToInstagram: (code: string) => void shareToInstagram(code),
     shareToKakao: (code: string) => void shareToKakao(code),
     isInvitationPending: isPending,
   };

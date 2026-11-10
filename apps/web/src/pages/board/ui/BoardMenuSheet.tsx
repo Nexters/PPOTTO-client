@@ -41,7 +41,9 @@ type BoardMenuSheetProps = {
   onDelete?: () => void;
   onLeave?: () => void;
   onCopyInvitation: (code: string) => void;
+  onInstagramShareInvitation?: (code: string) => void;
   onKakaoShareInvitation?: (code: string) => void;
+  isInstagramSharePreparing?: boolean;
   isInvitePending?: boolean;
   participantList?: BoardParticipantListState;
   share?: BoardShareActions;
@@ -85,7 +87,9 @@ function BoardMenuContent({
   onDelete,
   onLeave,
   onCopyInvitation,
+  onInstagramShareInvitation,
   onKakaoShareInvitation,
+  isInstagramSharePreparing,
   isInvitePending,
   participantList,
   share,
@@ -106,9 +110,13 @@ function BoardMenuContent({
         <BoardInvitationContent
           code={view.code}
           onCopy={() => onCopyInvitation(view.code)}
+          onInstagramShare={
+            onInstagramShareInvitation ? () => onInstagramShareInvitation(view.code) : undefined
+          }
           onKakaoShare={
             onKakaoShareInvitation ? () => onKakaoShareInvitation(view.code) : undefined
           }
+          isInstagramSharePreparing={isInstagramSharePreparing}
         />
       );
     case 'share':

@@ -84,10 +84,12 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     previewRef: invitationPreviewRef,
     isPreviewPreparing: isInvitationPreviewPreparing,
     kakaoCardRef,
+    isInstagramSharePreparing,
     isKakaoSharePreparing,
     kakaoShareNow,
     issueInvitation,
     copyInvitationCode,
+    shareToInstagram,
     shareToKakao,
     isInvitationPending,
   } = useBoardInvitation(boardId);
@@ -563,7 +565,9 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             if (boardId && boardName) leaveBoard.request({ id: boardId, name: boardName });
           }}
           onCopyInvitation={(code) => void copyInvitationCode(code)}
+          onInstagramShareInvitation={shareToInstagram}
           onKakaoShareInvitation={shareToKakao}
+          isInstagramSharePreparing={isInstagramSharePreparing}
           isInvitePending={isInvitationPending}
           participantList={{
             data: participantListQuery.data,

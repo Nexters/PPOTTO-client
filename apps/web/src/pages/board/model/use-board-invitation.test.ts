@@ -160,6 +160,32 @@ describe('useBoardInvitation', () => {
     );
   });
 
+  it('인스타그램 공유 시 공개 초대 링크를 네이티브에 전달한다', async () => {
+    bridgeRequest.mockResolvedValue({ success: true });
+    const { result } = renderHook(() => useBoardInvitation('board-1'));
+
+    act(() => result.current.shareToInstagram('K7P2QX'));
+
+    await vi.waitFor(() =>
+      expect(bridgeRequest).toHaveBeenCalledWith('SHARE_INSTAGRAM_INVITATION', {
+        url: 'https://ppotto.co.kr/invitations/K7P2QX',
+      }),
+    );
+  });
+
+  it('인스타그램 초대 공유를 모르는 구버전 앱이면 업데이트를 안내한다', async () => {
+    bridgeRequest.mockRejectedValue(
+      new BridgeUnknownMessageError('SHARE_INSTAGRAM_INVITATION', 'request'),
+    );
+    const { result } = renderHook(() => useBoardInvitation('board-1'));
+
+    act(() => result.current.shareToInstagram('K7P2QX'));
+
+    await vi.waitFor(() =>
+      expect(toast).toHaveBeenCalledWith('앱을 업데이트하면 인스타그램으로 공유할 수 있어요'),
+    );
+  });
+
   it('카카오 SDK가 없으면 공유하지 않는다', async () => {
     window.Kakao = undefined;
     const { result } = renderHook(() => useBoardInvitation('board-1'));

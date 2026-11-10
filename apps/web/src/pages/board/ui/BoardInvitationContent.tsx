@@ -5,13 +5,17 @@ import { cn } from '@/shared/lib/cn';
 type BoardInvitationContentProps = {
   code: string;
   onCopy: () => void;
+  onInstagramShare?: () => void;
   onKakaoShare?: () => void;
+  isInstagramSharePreparing?: boolean;
 };
 
 export function BoardInvitationContent({
   code,
   onCopy,
+  onInstagramShare,
   onKakaoShare,
+  isInstagramSharePreparing = false,
 }: BoardInvitationContentProps) {
   return (
     <>
@@ -41,7 +45,12 @@ export function BoardInvitationContent({
           <Kakaotalk width={48} height={48} />
           <span className="text-caption-01 w-full text-center text-white">카카오톡</span>
         </button>
-        <button type="button" disabled className="flex w-18 flex-col items-center gap-2">
+        <button
+          type="button"
+          disabled={!onInstagramShare || isInstagramSharePreparing}
+          onClick={onInstagramShare}
+          className="flex w-18 flex-col items-center gap-2 disabled:opacity-50"
+        >
           <Instagram width={48} height={48} />
           <span className="text-caption-01 w-full text-center text-white">인스타그램</span>
         </button>

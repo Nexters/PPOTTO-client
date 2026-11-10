@@ -51,9 +51,9 @@ jest.mock('expo-file-system', () => ({
 }));
 jest.mock('react-native-share', () => ({
   __esModule: true,
-  Social: { InstagramStories: 'instagramstories' },
+  Social: { Instagram: 'instagram', InstagramStories: 'instagramstories' },
   default: {
-    Social: { INSTAGRAM_STORIES: 'instagramstories' },
+    Social: { INSTAGRAM: 'instagram', INSTAGRAM_STORIES: 'instagramstories' },
     isPackageInstalled: jest.fn(),
     shareSingle: jest.fn(),
   },
@@ -248,6 +248,41 @@ describe('인스타그램 스토리 공유', () => {
 
     await expect(
       mockBridgeHandlers.SHARE_INSTAGRAM_STORY!({ base64: 'image-base64' }),
+    ).resolves.toEqual({ success: true });
+
+    expect(openURL).toHaveBeenCalledWith('https://apps.apple.com/app/instagram/id389801252');
+    expect(share.shareSingle).not.toHaveBeenCalled();
+  });
+});
+
+describe('초대 링크 인스타그램 공유', () => {
+  it('설치되어 있으면 초대 링크를 DM 공유 화면으로 전달한다', async () => {
+    jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
+    share.shareSingle.mockResolvedValue({ success: true });
+    await render(<AppWebView />);
+
+    await expect(
+      mockBridgeHandlers.SHARE_INSTAGRAM_INVITATION!({
+        url: 'https://ppotto.co.kr/invitations/K7P2QX',
+      }),
+    ).resolves.toEqual({ success: true });
+
+    expect(share.shareSingle).toHaveBeenCalledWith({
+      social: 'instagram',
+      message: 'https://ppotto.co.kr/invitations/K7P2QX',
+      type: 'text/plain',
+    });
+  });
+
+  it('설치되어 있지 않으면 앱스토어로 이동한다', async () => {
+    jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(false);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    await render(<AppWebView />);
+
+    await expect(
+      mockBridgeHandlers.SHARE_INSTAGRAM_INVITATION!({
+        url: 'https://ppotto.co.kr/invitations/K7P2QX',
+      }),
     ).resolves.toEqual({ success: true });
 
     expect(openURL).toHaveBeenCalledWith('https://apps.apple.com/app/instagram/id389801252');

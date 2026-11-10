@@ -71,6 +71,10 @@ export const contract = defineContract({
     payload: z.object({ base64: z.string() }),
     response: z.object({ success: z.boolean() }),
   }),
+  SHARE_INSTAGRAM_INVITATION: request({
+    payload: z.object({ url: z.string().url() }),
+    response: z.object({ success: z.boolean() }),
+  }),
   SHARE_KAKAO: request({
     payload: z.object({ templateArgs: z.record(z.string(), z.string()) }),
     response: z.object({ success: z.boolean() }),
