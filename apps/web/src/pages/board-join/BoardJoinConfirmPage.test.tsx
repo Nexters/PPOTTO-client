@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   pop: vi.fn(),
   toast: vi.fn(),
-  isJoining: false,
   handlers: undefined as
     { onSuccess: (data: unknown) => void; onError: (error: Error) => void } | undefined,
 }));
@@ -24,7 +23,6 @@ vi.mock('@/entities/board/api/board-mutations', () => ({
     mocks.handlers = handlers;
     return {
       mutate: mocks.join,
-      isPending: mocks.isJoining,
     };
   },
 }));
@@ -49,8 +47,7 @@ vi.mock('next/image', () => ({
 import { BoardJoinConfirmPage } from './BoardJoinConfirmPage';
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mocks.isJoining = false;
+  vi.resetAllMocks();
   mocks.handlers = undefined;
   mocks.useBoardInvitationQuery.mockReturnValue({
     data: boardInvitationFixture,
@@ -120,9 +117,9 @@ it.each([
 });
 
 it('참여 요청 중에는 참여 버튼을 비활성화한다', () => {
-  mocks.isJoining = true;
-
   render(<BoardJoinConfirmPage code="K7P2QX" />);
+
+  fireEvent.click(screen.getByRole('button', { name: '참여하기' }));
 
   expect(screen.getByRole('button', { name: '참여하기' })).toBeDisabled();
 });
