@@ -15,9 +15,8 @@ import {
 import { SharedBoardCanvas } from './SharedBoardCanvas';
 import { SharedBoardHeader } from './SharedBoardHeader';
 
-// 처음 열 때는 로고와 제목이 있는 상단(Figma 3356:18674 Top 176px) 아래 영역에 보드를 맞춘다.
-// 보드 자체는 화면 전체에 깔려 있어서 끌면 헤더 아래로도 지나간다
-const HEADER_HEIGHT = 176;
+// 처음 열 때는 로고와 제목이 있는 상단(Figma 3356:18674 Top) 아래 영역에 보드를 맞춘다.
+// 상단 높이는 안전 영역에 따라 달라서 실제로 잰다. 보드 자체는 화면 전체에 깔려 있어서 끌면 헤더 아래로도 지나간다
 const BOTTOM_PADDING = 24;
 // 시안처럼 스티커를 원래 크기(160px)까지만 키우고, 보드 홈의 최소 줌보다 작게는 줄이지 않는다
 const WEB_SCALE_RANGE = { min: 0.25, max: 1 };
@@ -30,6 +29,7 @@ type SharedBoardViewProps = {
 export function SharedBoardView({ shareToken, board }: SharedBoardViewProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const content = useMemo(() => toShareBoardContent(board), [board]);
   const canOpenRecap = board.scope !== 'BOARD';
 
@@ -39,14 +39,15 @@ export function SharedBoardView({ shareToken, board }: SharedBoardViewProps) {
     const container = containerRef.current;
     if (!container) return;
     const observer = new ResizeObserver(() => {
+      const headerHeight = headerRef.current?.offsetHeight ?? 0;
       const area = {
         width: container.clientWidth,
-        height: Math.max(0, container.clientHeight - HEADER_HEIGHT - BOTTOM_PADDING),
+        height: Math.max(0, container.clientHeight - headerHeight - BOTTOM_PADDING),
       };
       setInitialCamera((current) => {
         if (current) return current;
         const fit = computeShareCamera(computeShareContentBounds(content), area, WEB_SCALE_RANGE);
-        return { ...fit, y: fit.y + HEADER_HEIGHT };
+        return { ...fit, y: fit.y + headerHeight };
       });
     });
     observer.observe(container);
@@ -83,7 +84,7 @@ export function SharedBoardView({ shareToken, board }: SharedBoardViewProps) {
           />
         )
       )}
-      <SharedBoardHeader>
+      <SharedBoardHeader ref={headerRef}>
         <Logo width={104} height={32} />
         <div className="flex flex-col gap-1">
           <span className="text-body-01 text-white">

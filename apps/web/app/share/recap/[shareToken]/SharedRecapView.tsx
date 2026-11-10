@@ -20,12 +20,15 @@ type SharedRecapViewProps = {
   data: StickerRecap;
   options: Record<ShareOptionKey, boolean>;
   appInstallPromptDismissKey?: string;
+  // 제목 위 여백. 넘기지 않으면 기존 리캡 공유 페이지처럼 40px다
+  paddingTop?: string;
 };
 
 export function SharedRecapView({
   data,
   options,
   appInstallPromptDismissKey,
+  paddingTop,
 }: SharedRecapViewProps) {
   const viewedSticker = useRef<string | null>(null);
   useEffect(() => {
@@ -56,7 +59,10 @@ export function SharedRecapView({
             backgroundImage: `linear-gradient(180deg, ${hexToRgba(data.sticker.mainColor, 0.5)} 0%, rgba(102, 102, 102, 0) 63.34%)`,
           }}
         />
-        <div className="relative flex w-full flex-col gap-10 px-5 pt-10">
+        <div
+          className={cn('relative flex w-full flex-col gap-10 px-5', !paddingTop && 'pt-10')}
+          style={paddingTop ? { paddingTop } : undefined}
+        >
           <span className="text-body-01 text-center text-gray-50">{data.sticker.title}</span>
           <div className="flex w-full flex-col">
             {options.image && (
