@@ -19,8 +19,8 @@ export function BoardInvitationJoinPage({ code }: { code: string }) {
   const joinBoard = useJoinBoardInvitationMutation({
     onSuccess: ({ boardId, boardName }) => {
       void clearPendingBoardInvitation().then(() => {
-        toast(`'${boardName}' 보드에 참여했어요`);
         replace('Board', { boardId }, { animate: false });
+        toast(`'${boardName}' 보드에 참여했어요`);
       });
     },
     onError: (error) => {

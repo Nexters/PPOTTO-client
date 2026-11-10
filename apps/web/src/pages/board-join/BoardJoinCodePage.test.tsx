@@ -7,10 +7,16 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { boardInvitationFixture } from '@/entities/board/api/__fixtures__/board-invitation.fixture';
 import { ToastProvider } from '@/shared/ui/common/Toast';
 
-const mocks = vi.hoisted(() => ({ getInvitation: vi.fn(), pop: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getInvitation: vi.fn(),
+  pop: vi.fn(),
+  push: vi.fn(),
+  isActive: true,
+}));
 
 vi.mock('@stackflow/react', () => ({
   useFlow: () => ({ pop: mocks.pop, push: mocks.push }),
+  useActivity: () => ({ isActive: mocks.isActive }),
 }));
 vi.mock('@/entities/board/api/board-api', () => ({
   boardApi: { getInvitation: mocks.getInvitation },
@@ -20,17 +26,20 @@ import { BoardJoinCodePage } from './BoardJoinCodePage';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
+  const page = () => (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BoardJoinCodePage />
       </ToastProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+  const result = render(page());
+  return { ...result, rerenderPage: () => result.rerender(page()) };
 }
 
 afterEach(() => {
   vi.clearAllMocks();
+  mocks.isActive = true;
 });
 
 it('영문과 숫자만 6자리까지 대문자로 입력한다', async () => {
@@ -68,6 +77,23 @@ it('유효한 코드를 조회하고 참여 확인 화면으로 이동한다', a
 
   expect(mocks.getInvitation).toHaveBeenCalledWith('K7P2QX');
   expect(mocks.push).toHaveBeenCalledWith('BoardJoinConfirm', { code: 'K7P2QX' });
+  expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
+});
+
+it('참여 확인 화면에서 돌아오면 다음 버튼을 다시 활성화한다', async () => {
+  const user = userEvent.setup();
+  mocks.getInvitation.mockResolvedValue(boardInvitationFixture);
+  const { rerenderPage } = renderPage();
+
+  await user.type(screen.getByRole('textbox', { name: '초대 코드' }), 'K7P2QX');
+  await user.click(screen.getByRole('button', { name: '다음' }));
+
+  mocks.isActive = false;
+  rerenderPage();
+  mocks.isActive = true;
+  rerenderPage();
+
+  expect(screen.getByRole('button', { name: '다음' })).toBeEnabled();
 });
 
 it('조회 중 코드를 변경하면 이전 응답이 확인 화면을 열지 않는다', async () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronLeft } from '@ppotto/assets';
-import { useFlow } from '@stackflow/react';
+import { useActivity, useFlow } from '@stackflow/react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -18,12 +18,14 @@ const INVITATION_CODE_LENGTH = 6;
 
 export function BoardJoinCodePage() {
   const { pop, push } = useFlow();
+  const { isActive } = useActivity();
   const queryClient = useQueryClient();
   const toast = useToast();
   const [code, setCode] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const requestGeneration = useRef(0);
   const isMounted = useRef(true);
+  const wasActive = useRef(isActive);
   const isComplete = code.length === INVITATION_CODE_LENGTH;
 
   const changeCode = (value: string) => {
@@ -45,6 +47,11 @@ export function BoardJoinCodePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (isActive && !wasActive.current) setIsChecking(false);
+    wasActive.current = isActive;
+  }, [isActive]);
+
   const goBack = () => {
     requestGeneration.current += 1;
     pop();
@@ -61,7 +68,6 @@ export function BoardJoinCodePage() {
       await queryClient.fetchQuery(boardInvitationQueryOptions(submittedCode));
       if (!isMounted.current || generation !== requestGeneration.current) return;
 
-      setIsChecking(false);
       push('BoardJoinConfirm', { code: submittedCode });
     } catch (error) {
       if (!isMounted.current || generation !== requestGeneration.current) return;
