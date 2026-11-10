@@ -14,9 +14,20 @@ export type LeaveBoardTarget = {
 
 export function useLeaveBoard({ onLeft }: { onLeft?: () => void } = {}) {
   const toast = useToast();
-  const { mutate, isPending } = useLeaveBoardMutation();
   const [target, setTarget] = useState<LeaveBoardTarget | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const { mutate, isPending } = useLeaveBoardMutation({
+    onSuccess: () => {
+      if (!target) return;
+      setIsOpen(false);
+      toast(`'${target.name}' 보드에서 나갔어요`);
+      onLeft?.();
+    },
+    onError: (error) => {
+      setIsOpen(false);
+      toast(getBoardErrorMessage(error, '보드에서 나가지 못했어요. 다시 시도해 주세요'));
+    },
+  });
 
   const request = (board: LeaveBoardTarget) => {
     setTarget(board);
@@ -26,17 +37,7 @@ export function useLeaveBoard({ onLeft }: { onLeft?: () => void } = {}) {
   const confirm = () => {
     if (!target || !isOpen || isPending) return;
 
-    mutate(target.id, {
-      onSuccess: () => {
-        setIsOpen(false);
-        toast(`'${target.name}' 보드에서 나갔어요`);
-        onLeft?.();
-      },
-      onError: (error) => {
-        setIsOpen(false);
-        toast(getBoardErrorMessage(error, '보드에서 나가지 못했어요. 다시 시도해 주세요'));
-      },
-    });
+    mutate(target.id);
   };
 
   const cancel = () => {

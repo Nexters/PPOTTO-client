@@ -67,17 +67,23 @@ export const useDeleteBoardMutation = () => {
   });
 };
 
-export const useLeaveBoardMutation = () => {
+type LeaveBoardMutationHandlers = {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+};
+
+export const useLeaveBoardMutation = (handlers?: LeaveBoardMutationHandlers) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (boardId: string) => boardApi.leave(boardId),
     onSuccess: (_data, boardId) => {
-      queryClient.removeQueries({ queryKey: boardQueryKeys.detail(boardId), exact: true });
+      handlers?.onSuccess?.();
       queryClient.removeQueries({ queryKey: boardQueryKeys.participants(boardId), exact: true });
       queryClient.removeQueries({ queryKey: boardQueryKeys.shareStatus(boardId), exact: true });
       void queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() });
     },
+    onError: (error) => handlers?.onError?.(error),
   });
 };
 
@@ -103,11 +109,15 @@ export const useJoinBoardInvitationMutation = (handlers?: JoinBoardInvitationMut
     onSuccess: (result, { code }) => {
       const { boardId } = result;
       const normalizedCode = code.trim().toUpperCase();
+      handlers?.onSuccess?.(result);
       void queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() });
       void queryClient.invalidateQueries({ queryKey: boardQueryKeys.detail(boardId) });
       void queryClient.invalidateQueries({ queryKey: boardQueryKeys.participants(boardId) });
-      void queryClient.invalidateQueries({ queryKey: boardQueryKeys.invitation(normalizedCode) });
-      handlers?.onSuccess?.(result);
+      void queryClient.invalidateQueries({
+        queryKey: boardQueryKeys.invitation(normalizedCode),
+        exact: true,
+        refetchType: 'none',
+      });
     },
     onError: (error) => handlers?.onError?.(error),
   });

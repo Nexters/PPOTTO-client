@@ -101,18 +101,23 @@ it('보드 참여에 성공하면 참여로 달라지는 캐시를 갱신한다'
   });
   expect(invalidateQueries).toHaveBeenCalledWith({
     queryKey: boardQueryKeys.invitation('K7P2QX'),
+    exact: true,
+    refetchType: 'none',
   });
   client.clear();
 });
 
-it('보드에서 나가면 접근할 수 없는 캐시를 제거하고 목록을 갱신한다', async () => {
+it('보드에서 나가면 현재 상세 화면은 건드리지 않고 관련 캐시와 목록을 갱신한다', async () => {
   const client = new QueryClient();
   const invalidateQueries = vi.spyOn(client, 'invalidateQueries');
   client.setQueryData(boardQueryKeys.detail('board-1'), { id: 'board-1' });
   client.setQueryData(boardQueryKeys.participants('board-1'), { participantCount: 2 });
   client.setQueryData(boardQueryKeys.shareStatus('board-1'), { shareToken: 'token-1' });
   leave.mockResolvedValue(undefined);
-  const { result } = renderHook(useLeaveBoardMutation, {
+  const onSuccess = vi.fn(() => {
+    expect(client.getQueryData(boardQueryKeys.detail('board-1'))).toEqual({ id: 'board-1' });
+  });
+  const { result } = renderHook(() => useLeaveBoardMutation({ onSuccess }), {
     wrapper: ({ children }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     ),
@@ -121,9 +126,14 @@ it('보드에서 나가면 접근할 수 없는 캐시를 제거하고 목록을
   await act(() => result.current.mutateAsync('board-1'));
 
   expect(leave).toHaveBeenCalledWith('board-1');
-  expect(client.getQueryData(boardQueryKeys.detail('board-1'))).toBeUndefined();
+  expect(onSuccess).toHaveBeenCalledOnce();
+  expect(client.getQueryData(boardQueryKeys.detail('board-1'))).toEqual({ id: 'board-1' });
+  expect(client.getQueryState(boardQueryKeys.detail('board-1'))?.isInvalidated).toBe(false);
   expect(client.getQueryData(boardQueryKeys.participants('board-1'))).toBeUndefined();
   expect(client.getQueryData(boardQueryKeys.shareStatus('board-1'))).toBeUndefined();
+  expect(invalidateQueries).not.toHaveBeenCalledWith(
+    expect.objectContaining({ queryKey: boardQueryKeys.detail('board-1') }),
+  );
   expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: boardQueryKeys.summaryList() });
   client.clear();
 });
