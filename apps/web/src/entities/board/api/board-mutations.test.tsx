@@ -102,3 +102,32 @@ it('보드 참여에 성공하면 참여로 달라지는 캐시를 갱신한다'
   });
   client.clear();
 });
+
+it('보드 참여를 시작한 화면이 사라져도 완료 핸들러를 실행한다', async () => {
+  const client = new QueryClient();
+  const onSuccess = vi.fn();
+  let resolveJoin!: (value: { boardId: string; boardName: string; role: 'MEMBER' }) => void;
+  joinInvitation.mockReturnValue(
+    new Promise((resolve) => {
+      resolveJoin = resolve;
+    }),
+  );
+  const { result, unmount } = renderHook(() => useJoinBoardInvitationMutation({ onSuccess }), {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+
+  act(() => result.current.mutate({ code: 'K7P2QX' }));
+  unmount();
+  resolveJoin({ boardId: 'board-1', boardName: '제주 여행', role: 'MEMBER' });
+
+  await waitFor(() =>
+    expect(onSuccess).toHaveBeenCalledWith({
+      boardId: 'board-1',
+      boardName: '제주 여행',
+      role: 'MEMBER',
+    }),
+  );
+  client.clear();
+});
