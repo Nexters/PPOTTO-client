@@ -12,7 +12,7 @@ import {
   toShareBoardContent,
 } from '@/pages/board/model/board-share-layout';
 
-import { SharedBoardCanvas } from './SharedBoardCanvas';
+import { SharedBoardCanvas, type SharedBoardCanvasHandle } from './SharedBoardCanvas';
 import { SharedBoardHeader } from './SharedBoardHeader';
 
 // 처음 열 때는 로고와 제목이 있는 상단(Figma 3356:18674 Top) 아래 영역에 보드를 맞춘다.
@@ -30,6 +30,7 @@ export function SharedBoardView({ shareToken, board }: SharedBoardViewProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLElement>(null);
+  const canvasRef = useRef<SharedBoardCanvasHandle>(null);
   const content = useMemo(() => toShareBoardContent(board), [board]);
   const canOpenRecap = board.scope !== 'BOARD';
 
@@ -78,6 +79,7 @@ export function SharedBoardView({ shareToken, board }: SharedBoardViewProps) {
       ) : (
         initialCamera && (
           <SharedBoardCanvas
+            ref={canvasRef}
             content={content}
             initialCamera={initialCamera}
             onStickerTap={openRecap}
@@ -85,13 +87,21 @@ export function SharedBoardView({ shareToken, board }: SharedBoardViewProps) {
         )
       )}
       <SharedBoardHeader ref={headerRef}>
-        <Logo width={104} height={32} />
-        <div className="flex flex-col gap-1">
-          <span className="text-body-01 text-white">
-            {board.sharerName}님의 {board.boardName}
-          </span>
-          <span className="text-body-06 text-gray-500">스티커 {board.stickers.length}개</span>
-        </div>
+        {/* 보드 화면에서 제목을 누르면 스티커 쪽으로 돌아가듯, 로고·제목을 누르면 처음 위치로 돌아간다 */}
+        <button
+          type="button"
+          aria-label="처음 위치로 이동"
+          className="pointer-events-auto flex flex-col items-start gap-8 text-left"
+          onClick={() => canvasRef.current?.recenter()}
+        >
+          <Logo width={104} height={32} />
+          <div className="flex flex-col gap-1">
+            <span className="text-body-01 text-white">
+              {board.sharerName}님의 {board.boardName}
+            </span>
+            <span className="text-body-06 text-gray-500">스티커 {board.stickers.length}개</span>
+          </div>
+        </button>
       </SharedBoardHeader>
     </main>
   );

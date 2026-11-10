@@ -7,18 +7,25 @@ import {
   type SetStateAction,
 } from 'react';
 
-import { computeBoardPinchZoom, panCamera, zoomCamera, type CameraState } from './board-camera';
+import {
+  computeBoardPinchZoom,
+  panCamera,
+  zoomCamera,
+  zoomCameraTo,
+  type CameraState,
+} from './board-camera';
 import type { Point } from './geometry';
 
-// 탭과 드래그를 구분하는 이동 허용 오차(px) — 보드 화면(use-camera-sticker-gesture)과 같은 값
+// 탭·더블탭 판정 값은 보드 화면(use-camera-sticker-gesture)과 같다
 const TAP_MOVE_THRESHOLD = 6;
+const DOUBLE_TAP_MAX_INTERVAL_MS = 300;
+const DOUBLE_TAP_MAX_DISTANCE = 24;
 
 type UseViewOnlyBoardGestureParams = {
   containerRef: RefObject<HTMLDivElement | null>;
   camera: CameraState;
   setCamera: Dispatch<SetStateAction<CameraState>>;
-  // 끌거나 핀치하지 않고 탭으로 끝났을 때 처음 누른 대상을 넘긴다
-  onTap: (target: EventTarget | null) => void;
+  onStickerTap: (stickerId: string) => void;
 };
 
 function toLocalPoint(container: HTMLElement, event: { clientX: number; clientY: number }): Point {
@@ -34,13 +41,13 @@ function measurePinch(points: Point[]) {
   };
 }
 
-// 편집 없이 보드를 끌어 이동하고, 핀치·휠로 확대·축소하는 제스처 — 공유 웹 페이지용.
+// 편집 없이 보드를 끌어 이동하고, 핀치·휠로 확대·축소하고, 빈 곳을 더블탭하면 1배로 돌아가는 제스처 — 공유 웹 페이지용.
 // 카메라 계산은 보드 화면과 같은 함수를 써서 손에 붙는 느낌을 맞춘다.
 export function useViewOnlyBoardGesture({
   containerRef,
   camera,
   setCamera,
-  onTap,
+  onStickerTap,
 }: UseViewOnlyBoardGestureParams) {
   const cameraRef = useRef(camera);
   const pointersRef = useRef(new Map<number, Point>());
@@ -49,6 +56,7 @@ export function useViewOnlyBoardGesture({
     start: ReturnType<typeof measurePinch>;
   } | null>(null);
   const tapRef = useRef<{ start: Point; target: EventTarget | null } | null>(null);
+  const lastBackgroundTapRef = useRef<{ time: number; point: Point } | null>(null);
 
   useEffect(() => {
     cameraRef.current = camera;
@@ -102,7 +110,31 @@ export function useViewOnlyBoardGesture({
 
     const tap = tapRef.current;
     tapRef.current = null;
-    if (pointersRef.current.size === 0 && tap) onTap(tap.target);
+    if (pointersRef.current.size > 0 || !tap) return;
+
+    const stickerId =
+      tap.target instanceof Element
+        ? tap.target.closest<HTMLElement>('[data-sticker-id]')?.dataset.stickerId
+        : undefined;
+    if (stickerId) {
+      onStickerTap(stickerId);
+      return;
+    }
+
+    // 빈 배경 더블탭 — 누른 지점을 기준으로 줌을 1.0x로 되돌린다
+    const lastTap = lastBackgroundTapRef.current;
+    const now = Date.now();
+    const isDoubleTap =
+      lastTap !== null &&
+      now - lastTap.time < DOUBLE_TAP_MAX_INTERVAL_MS &&
+      Math.hypot(lastTap.point.x - tap.start.x, lastTap.point.y - tap.start.y) <
+        DOUBLE_TAP_MAX_DISTANCE;
+    if (isDoubleTap) {
+      lastBackgroundTapRef.current = null;
+      setCamera((current) => zoomCameraTo(current, tap.start, 1));
+    } else {
+      lastBackgroundTapRef.current = { time: now, point: tap.start };
+    }
   };
 
   // React의 onWheel은 passive라 브라우저 확대를 막을 수 없어 직접 등록한다
