@@ -67,6 +67,20 @@ export const useDeleteBoardMutation = () => {
   });
 };
 
+export const useLeaveBoardMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (boardId: string) => boardApi.leave(boardId),
+    onSuccess: (_data, boardId) => {
+      queryClient.removeQueries({ queryKey: boardQueryKeys.detail(boardId), exact: true });
+      queryClient.removeQueries({ queryKey: boardQueryKeys.participants(boardId), exact: true });
+      queryClient.removeQueries({ queryKey: boardQueryKeys.shareStatus(boardId), exact: true });
+      void queryClient.invalidateQueries({ queryKey: boardQueryKeys.summaryList() });
+    },
+  });
+};
+
 export const useIssueBoardInvitationMutation = () =>
   useMutation({
     mutationFn: (boardId: string) => boardApi.issueInvitation(boardId),

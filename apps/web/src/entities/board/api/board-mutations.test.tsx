@@ -2,17 +2,19 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { expect, it, vi } from 'vitest';
 
-const { updateLayout, share, joinInvitation, track } = vi.hoisted(() => ({
+const { updateLayout, share, joinInvitation, leave, track } = vi.hoisted(() => ({
   updateLayout: vi.fn(),
   share: vi.fn(),
   joinInvitation: vi.fn(),
+  leave: vi.fn(),
   track: vi.fn(),
 }));
-vi.mock('./board-api', () => ({ boardApi: { updateLayout, share, joinInvitation } }));
+vi.mock('./board-api', () => ({ boardApi: { updateLayout, share, joinInvitation, leave } }));
 vi.mock('@/shared/lib/bridge', () => ({ track }));
 
 import {
   useJoinBoardInvitationMutation,
+  useLeaveBoardMutation,
   useShareBoardMutation,
   useUpdateBoardLayoutMutation,
 } from './board-mutations';
@@ -100,6 +102,29 @@ it('보드 참여에 성공하면 참여로 달라지는 캐시를 갱신한다'
   expect(invalidateQueries).toHaveBeenCalledWith({
     queryKey: boardQueryKeys.invitation('K7P2QX'),
   });
+  client.clear();
+});
+
+it('보드에서 나가면 접근할 수 없는 캐시를 제거하고 목록을 갱신한다', async () => {
+  const client = new QueryClient();
+  const invalidateQueries = vi.spyOn(client, 'invalidateQueries');
+  client.setQueryData(boardQueryKeys.detail('board-1'), { id: 'board-1' });
+  client.setQueryData(boardQueryKeys.participants('board-1'), { participantCount: 2 });
+  client.setQueryData(boardQueryKeys.shareStatus('board-1'), { shareToken: 'token-1' });
+  leave.mockResolvedValue(undefined);
+  const { result } = renderHook(useLeaveBoardMutation, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+
+  await act(() => result.current.mutateAsync('board-1'));
+
+  expect(leave).toHaveBeenCalledWith('board-1');
+  expect(client.getQueryData(boardQueryKeys.detail('board-1'))).toBeUndefined();
+  expect(client.getQueryData(boardQueryKeys.participants('board-1'))).toBeUndefined();
+  expect(client.getQueryData(boardQueryKeys.shareStatus('board-1'))).toBeUndefined();
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: boardQueryKeys.summaryList() });
   client.clear();
 });
 

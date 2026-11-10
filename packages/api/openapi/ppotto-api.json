@@ -6384,6 +6384,137 @@
           }
         ]
       }
+    },
+    "/boards/{boardId}/members/me": {
+      "delete": {
+        "tags": ["보드 초대"],
+        "summary": "보드 나가기",
+        "description": "참여 중인 공동 보드에서 나감. 방장은 나갈 수 없음",
+        "operationId": "leaveBoard",
+        "parameters": [
+          {
+            "name": "boardId",
+            "in": "path",
+            "description": "나갈 보드 ID (uuidv7)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          },
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "description": "API 버전. 생략하면 서버 기본값 1로 처리합니다",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "enum": ["1", "2"]
+            },
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "처리 완료. data는 항상 null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUnit"
+                },
+                "examples": {
+                  "성공": {
+                    "description": "성공",
+                    "value": {
+                      "success": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "access token이 없거나 유효하지 않음 (COMMON-004)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "COMMON-004": {
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "COMMON-004",
+                        "message": "인증이 필요합니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "보드를 찾을 수 없음 (BOARD-002)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-002": {
+                    "summary": "보드 없음, 보드 삭제 또는 참여자가 아님",
+                    "description": "BOARD-002",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-002",
+                        "message": "보드를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "방장은 나갈 수 없음 (BOARD-012)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-012": {
+                    "summary": "방장의 나가기 요청",
+                    "description": "BOARD-012",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-012",
+                        "message": "방장은 보드를 나갈 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
