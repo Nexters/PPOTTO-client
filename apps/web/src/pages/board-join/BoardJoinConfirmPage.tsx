@@ -1,6 +1,5 @@
 'use client';
 
-import { HttpError } from '@ppotto/api';
 import { AlertCircle, ChevronLeft, Logo } from '@ppotto/assets';
 import { useFlow } from '@stackflow/react';
 import type { ReactNode } from 'react';
@@ -12,6 +11,8 @@ import { BoardInvitationPreview } from '@/entities/board/ui/BoardInvitationPrevi
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/common/Button';
 import { useToast } from '@/shared/ui/common/Toast';
+
+import { getBoardJoinErrorMessage } from './model/board-join-error';
 
 export function BoardJoinConfirmPage({ code }: { code: string }) {
   const { pop, push } = useFlow();
@@ -42,7 +43,7 @@ export function BoardJoinConfirmPage({ code }: { code: string }) {
           pop(2, { animate: false });
           push('Board', { boardId });
         },
-        onError: (error) => toast(getJoinErrorMessage(error)),
+        onError: (error) => toast(getBoardJoinErrorMessage(error)),
       },
     );
   };
@@ -157,14 +158,6 @@ function InvitationConfirm({
       </footer>
     </main>
   );
-}
-
-function getJoinErrorMessage(error: unknown) {
-  if (error instanceof HttpError) {
-    if (error.status === 404) return '유효하지 않거나 만료된 초대예요';
-    if (error.status === 409) return '참여 인원이 모두 찼어요';
-  }
-  return '보드에 참여하지 못했어요';
 }
 
 function balanceParticipantRows(names: string[]) {

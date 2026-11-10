@@ -33,7 +33,10 @@ function analysisLoadingParams(boardId: string | undefined) {
 export function BoardScreen() {
   const navigation = useNavigation();
   const allowPendingNavigation = useRef(false);
-  const { boardId } = useLocalSearchParams<{ boardId?: string }>();
+  const { boardId, invitationCode } = useLocalSearchParams<{
+    boardId?: string;
+    invitationCode?: string;
+  }>();
   const [screenState, setScreenState] = useState<BoardScreenState>(() => {
     const upload = photoUploadService.getViewState();
     if (photoUploadService.getCurrent() && upload.status === 'FAILED') {
@@ -152,9 +155,15 @@ export function BoardScreen() {
     <View style={{ flex: 1 }}>
       {screenState.status === 'CHECKING' || screenState.status === 'READY' ? (
         <AppWebView
-          path={boardId ? `/board?boardId=${encodeURIComponent(boardId)}` : '/home'}
+          path={
+            invitationCode
+              ? `/board-invitation-join?code=${encodeURIComponent(invitationCode)}`
+              : boardId
+                ? `/board?boardId=${encodeURIComponent(boardId)}`
+                : '/home'
+          }
           onReady={clearPreviousScreens}
-          waitForBoardReady
+          waitForBoardReady={!invitationCode}
         />
       ) : (
         <AppBackground />

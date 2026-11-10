@@ -3,7 +3,11 @@ import { fireEvent, render, screen, userEvent } from '@testing-library/react-nat
 import { BoardScreen } from './BoardScreen';
 jest.mock('@/shared/lib/analytics', () => ({ track: jest.fn() }));
 
-let mockSearchParams: { boardId?: string; confirmResume?: string } = { boardId: 'board-1' };
+let mockSearchParams: {
+  boardId?: string;
+  confirmResume?: string;
+  invitationCode?: string;
+} = { boardId: 'board-1' };
 let mockPreventRemoveCallback:
   ((event: { data: { action: { type: string } } }) => void) | undefined;
 const mockNavigationDispatch = jest.fn();
@@ -218,6 +222,15 @@ it('보드 ID와 함께 들어오면 웹뷰에서 그 보드를 연다', async (
 
   expect(await screen.findByText('보드 웹뷰')).toBeOnTheScreen();
   expect(mockWebViewPath).toBe('/board?boardId=board-1');
+});
+
+it('초대 코드와 함께 들어오면 웹뷰에서 자동 참여 화면을 연다', async () => {
+  mockSearchParams = { invitationCode: 'K7P2QX' };
+
+  await render(<BoardScreen />);
+
+  expect(await screen.findByText('보드 웹뷰')).toBeOnTheScreen();
+  expect(mockWebViewPath).toBe('/board-invitation-join?code=K7P2QX');
 });
 
 it('보드 ID 없이 들어와도 완료된 저장 작업이 있으면 그 작업의 보드로 로딩 화면을 연다', async () => {

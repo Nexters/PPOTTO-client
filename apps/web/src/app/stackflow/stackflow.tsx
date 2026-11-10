@@ -11,7 +11,11 @@ import { stackflow, type ActivityComponentType } from '@stackflow/react';
 import { BoardPage } from '@/pages/board';
 import { BoardNamePage } from '@/pages/board-name';
 import { AnalysisLoadingPage } from '@/pages/analysis-loading';
-import { BoardJoinCodePage, BoardJoinConfirmPage } from '@/pages/board-join';
+import {
+  BoardInvitationJoinPage,
+  BoardJoinCodePage,
+  BoardJoinConfirmPage,
+} from '@/pages/board-join';
 import { HomePage } from '@/pages/home';
 import { LoginPage } from '@/pages/login';
 import { OnboardingPage } from '@/pages/onboarding';
@@ -60,6 +64,12 @@ const BoardJoinConfirmActivity: ActivityComponentType<'BoardJoinConfirm'> = ({ p
   <AppScreen>
     <ScreenView name="board_join_confirm" />
     <BoardJoinConfirmPage code={params.code} />
+  </AppScreen>
+);
+
+const BoardInvitationJoinActivity: ActivityComponentType<'BoardInvitationJoin'> = ({ params }) => (
+  <AppScreen preventSwipeBack>
+    <BoardInvitationJoinPage code={params.code} />
   </AppScreen>
 );
 
@@ -138,6 +148,7 @@ export const { Stack, actions } = stackflow({
     Home: HomeActivity,
     BoardJoinCode: BoardJoinCodeActivity,
     BoardJoinConfirm: BoardJoinConfirmActivity,
+    BoardInvitationJoin: BoardInvitationJoinActivity,
     Board: BoardActivity,
     BoardName: BoardNameActivity,
     Recap: RecapActivity,

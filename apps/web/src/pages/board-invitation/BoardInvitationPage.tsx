@@ -9,6 +9,8 @@ import { copyTextToClipboard } from '@/shared/lib/copy-text-to-clipboard';
 import { Button } from '@/shared/ui/common/Button';
 import { useToast } from '@/shared/ui/common/Toast';
 
+import { openBoardInvitationInApp } from './model/open-board-invitation-in-app';
+
 type BoardInvitationPageProps = {
   invitation: BoardInvitationDetail;
 };
@@ -82,7 +84,7 @@ export function BoardInvitationPage({ invitation }: BoardInvitationPageProps) {
           </div>
 
           <div className="mt-auto -mx-1.5 pt-8">
-            <Button disabled={isFull} aria-disabled="true" className="pointer-events-none">
+            <Button disabled={isFull} onClick={() => openBoardInvitationInApp(invitation.code)}>
               {isFull ? '참여 인원이 모두 찼어요' : '앱에서 참여하기'}
             </Button>
           </div>

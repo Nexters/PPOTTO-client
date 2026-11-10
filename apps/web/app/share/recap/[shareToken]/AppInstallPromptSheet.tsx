@@ -3,15 +3,13 @@
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
+import { APP_SCHEME, APP_STORE_URL, GOOGLE_PLAY_URL } from '@/shared/config/app-links';
 import { cn } from '@/shared/lib/cn';
+import { openAppWithStoreFallback } from '@/shared/lib/open-app-with-store-fallback';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 
-const GOOGLE_PLAY_URL =
-  'https://play.google.com/store/apps/details?id=com.ppotto.mobile&pcampaignid=web_share';
-const APP_STORE_URL = 'https://apps.apple.com/kr/app/id6796674900';
-const APP_SCHEME_URL = 'mobile://';
+const APP_SCHEME_URL = `${APP_SCHEME}://`;
 const SHOW_DELAY_MS = 3_000;
-const APP_OPEN_FALLBACK_MS = 1_500;
 
 function isIOSDevice(): boolean {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -44,7 +42,6 @@ type AppInstallPromptSheetProps = {
 export function AppInstallPromptSheet({ dismissKey }: AppInstallPromptSheetProps) {
   const [platform, setPlatform] = useState<Platform | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelFallbackRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -74,27 +71,7 @@ export function AppInstallPromptSheet({ dismissKey }: AppInstallPromptSheetProps
   const handleOpenApp = (event: React.MouseEvent) => {
     event.preventDefault();
     cancelFallbackRef.current?.();
-
-    const onVisibilityChange = () => {
-      if (document.hidden) cancel();
-    };
-    const onPageHide = () => cancel();
-    const cancel = () => {
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
-      fallbackTimerRef.current = null;
-      cancelFallbackRef.current = null;
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      window.removeEventListener('pagehide', onPageHide);
-    };
-    cancelFallbackRef.current = cancel;
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    window.addEventListener('pagehide', onPageHide);
-
-    fallbackTimerRef.current = setTimeout(() => {
-      cancel();
-      window.location.href = storeUrl;
-    }, APP_OPEN_FALLBACK_MS);
-    window.location.href = APP_SCHEME_URL;
+    cancelFallbackRef.current = openAppWithStoreFallback(APP_SCHEME_URL);
   };
 
   return (
