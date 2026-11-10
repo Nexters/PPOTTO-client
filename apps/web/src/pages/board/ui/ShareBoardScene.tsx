@@ -1,4 +1,4 @@
-import type { CameraState } from '../model/board-camera';
+import { computeBadgeOpacity, type CameraState } from '../model/board-camera';
 import { drawingZIndex } from '../model/board-drawing';
 import type { ShareBoardContent } from '../model/board-share-layout';
 
@@ -10,7 +10,8 @@ import { StickerBadgeMark } from './StickerBadgeMark';
 type ShareBoardSceneProps = {
   content: ShareBoardContent;
   camera: CameraState;
-  // true면 스티커 이름표도 눌러 스티커를 고를 수 있다 (공유 웹 페이지)
+  // true면 보드 화면처럼 이름표가 줌과 무관하게 같은 크기를 유지하고, 많이 줄이면 사라지며,
+  // 눌러서 스티커를 고를 수 있다 (공유 웹 페이지)
   interactive?: boolean;
 };
 
@@ -24,8 +25,8 @@ export function ShareBoardScene({ content, camera, interactive = false }: ShareB
           inset: 0,
           transformOrigin: '0 0',
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
-          // 뱃지도 스티커와 같은 비율로 줄어야 시안처럼 보인다
-          '--inv-camera-scale': 1,
+          // 공유 카드는 뱃지도 스티커와 같은 비율로 줄어야 시안처럼 보인다
+          '--inv-camera-scale': interactive ? 1 / camera.scale : 1,
         } as React.CSSProperties
       }
     >
@@ -78,7 +79,7 @@ export function ShareBoardScene({ content, camera, interactive = false }: ShareB
           key={sticker.id}
           sticker={sticker}
           isEditMode={!interactive}
-          opacity={1}
+          opacity={interactive ? computeBadgeOpacity(camera.scale) : 1}
         />
       ))}
     </div>
