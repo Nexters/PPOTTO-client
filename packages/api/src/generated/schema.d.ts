@@ -324,6 +324,26 @@ export interface paths {
         patch: operations["rename"];
         trace?: never;
     };
+    "/boards/{boardId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공동 보드 변경 이벤트 구독
+         * @description 접근 가능한 보드의 레이아웃 확정 이벤트를 SSE로 구독함
+         */
+        get: operations["subscribeBoardEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/boards/{boardId}/invitations": {
         parameters: {
             query?: never;
@@ -3604,6 +3624,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 보드를 찾을 수 없음 (BOARD-002) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    subscribeBoardEvents: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description API 버전. 생략하면 서버 기본값 1로 처리합니다
+                 * @example 1
+                 */
+                "X-API-Version"?: "1" | "2";
+            };
+            path: {
+                /**
+                 * @description 구독할 보드 ID (uuidv7)
+                 * @example 01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b
+                 */
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 보드 변경 이벤트 스트림 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
                 };
             };
             /** @description access token이 없거나 유효하지 않음 (COMMON-004) */
