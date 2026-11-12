@@ -19,6 +19,7 @@ import { useSinglePop } from '@/shared/lib/use-single-pop';
 import { KakaoSdkScript } from '@/shared/ui/KakaoSdkScript';
 
 import { useBoardInvitation } from './model/use-board-invitation';
+import { useBoardEventSync } from './model/use-board-event-sync';
 import { useBoardShare } from './model/use-board-share';
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
@@ -74,6 +75,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     hasStickers,
     openPhotoSelect,
   } = useBoardPageState(boardIdParam);
+  useBoardEventSync(boardId);
   const { pop, push, replace } = useFlow();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
   const deleteBoard = useDeleteBoard({ onDeleted: goBack });
