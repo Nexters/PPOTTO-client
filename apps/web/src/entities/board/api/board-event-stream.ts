@@ -18,6 +18,7 @@ export type BoardEventSubscription = {
 
 type SubscribeBoardEventsOptions = {
   boardId: string;
+  onOpen?: () => void;
   onEvent: (event: BoardLayoutUpdatedEvent) => void;
 };
 
@@ -60,7 +61,7 @@ async function fetchBoardEventStream(boardId: string, signal: AbortSignal) {
       if (getErrorCode(error) === 'COMMON-004') response = await request(true);
     }
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') throw error;
+    if (isAbortError(error)) throw error;
     throw new NetworkError(error);
   }
 
@@ -107,6 +108,7 @@ function dispatchEvent(
 async function consumeBoardEventStream(
   stream: ReadableStream<Uint8Array>,
   onEvent: (event: BoardLayoutUpdatedEvent) => void,
+  onActivity: () => void,
 ) {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
@@ -137,6 +139,7 @@ async function consumeBoardEventStream(
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
+      onActivity();
       // 청크가 줄 중간에서 끊길 수 있어 버퍼에 누적 후 완성된 줄만 꺼내 처리
       buffer += decoder.decode(value, { stream: true });
 
@@ -159,18 +162,39 @@ async function consumeBoardEventStream(
 
 export function subscribeBoardEvents({
   boardId,
+  onOpen,
   onEvent,
 }: SubscribeBoardEventsOptions): BoardEventSubscription {
   const controller = new AbortController();
+  let inactivityTimer: ReturnType<typeof setTimeout> | undefined;
+  const resetInactivityTimer = () => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => controller.abort(), STREAM_INACTIVITY_TIMEOUT_MS);
+  };
   const done = fetchBoardEventStream(boardId, controller.signal)
-    .then((stream) => consumeBoardEventStream(stream, onEvent))
+    .then((stream) => {
+      onOpen?.();
+      resetInactivityTimer();
+      return consumeBoardEventStream(stream, onEvent, resetInactivityTimer);
+    })
     .catch((error: unknown) => {
-      if (error instanceof Error && error.name === 'AbortError') return;
+      if (isAbortError(error)) return;
       throw error;
+    })
+    .finally(() => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
     });
 
   return {
     close: () => controller.abort(),
     done,
   };
+}
+
+const STREAM_INACTIVITY_TIMEOUT_MS = 35_000;
+
+function isAbortError(error: unknown) {
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  );
 }

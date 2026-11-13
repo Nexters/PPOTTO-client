@@ -28,6 +28,7 @@ function createEventResponse(chunks: string[]) {
 
 describe('subscribeBoardEvents', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
@@ -44,9 +45,10 @@ describe('subscribeBoardEvents', () => {
         ]),
       );
     vi.stubGlobal('fetch', fetch);
+    const onOpen = vi.fn();
     const onEvent = vi.fn();
 
-    const subscription = subscribeBoardEvents({ boardId: 'board-1', onEvent });
+    const subscription = subscribeBoardEvents({ boardId: 'board-1', onOpen, onEvent });
     await subscription.done;
 
     expect(fetch).toHaveBeenCalledWith('/boards/board-1/events', {
@@ -57,6 +59,7 @@ describe('subscribeBoardEvents', () => {
       },
       signal: expect.any(AbortSignal),
     });
+    expect(onOpen).toHaveBeenCalledOnce();
     expect(onEvent).toHaveBeenCalledWith({
       eventId: 'event-1',
       type: 'BOARD_LAYOUT_UPDATED',
@@ -118,6 +121,45 @@ describe('subscribeBoardEvents', () => {
 
     await subscription.done;
     const request = fetch.mock.calls[0]?.[1] as RequestInit;
+    expect(request.signal?.aborted).toBe(true);
+  });
+
+  it('heartbeat가 끊긴 연결을 종료해 재연결할 수 있게 한다', async () => {
+    vi.useFakeTimers();
+    getApiAccessToken.mockResolvedValue('access-token');
+    let openConnection!: () => void;
+    const opened = new Promise<void>((resolve) => {
+      openConnection = resolve;
+    });
+    const fetch = vi.fn((_url: string, init: RequestInit) => {
+      const signal = init.signal!;
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          signal.addEventListener('abort', () => {
+            controller.error(new DOMException('Aborted', 'AbortError'));
+          });
+        },
+      });
+      return Promise.resolve(
+        new Response(stream, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+      );
+    });
+    vi.stubGlobal('fetch', fetch);
+
+    const subscription = subscribeBoardEvents({
+      boardId: 'board-1',
+      onOpen: openConnection,
+      onEvent: vi.fn(),
+    });
+    await opened;
+    const request = fetch.mock.calls[0]?.[1] as RequestInit;
+
+    await vi.advanceTimersByTimeAsync(35_000);
+    await subscription.done;
+
     expect(request.signal?.aborted).toBe(true);
   });
 });
