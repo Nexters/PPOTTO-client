@@ -33,6 +33,7 @@ export const useBoardQuery = (boardId?: string) =>
     queryFn: () => boardApi.get(boardId!),
     enabled: !!boardId,
     staleTime: SIGNED_URL_STALE_TIME_MS,
+    refetchOnMount: 'always',
     retry: shouldRetryBoardQuery,
   });
 
