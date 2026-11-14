@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -49,14 +49,48 @@ function mockRects() {
 
 describe('CoachMarkTip', () => {
   let anchor: HTMLDivElement;
+  let boardCanvas: HTMLDivElement;
 
   beforeEach(() => {
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      value: VIEWPORT_WIDTH,
+      configurable: true,
+    });
+    Object.defineProperty(document.documentElement, 'clientHeight', {
+      value: VIEWPORT_HEIGHT,
+      configurable: true,
+    });
+
+    rectsByTestId.clear();
+    rectsByTestId.set('board-canvas', { x: 50, y: 30, width: 800, height: 600 });
+    rectsByTestId.set('anchor', { x: 350, y: 200, width: 100, height: 40 });
+    rectsByTestId.set('coach-mark-pill', { x: 0, y: 0, ...PILL_SIZE });
+    rectsByTestId.set('coach-mark-arrow', { x: 0, y: 0, ...ARROW_SIZE });
+    mockRects();
+
+    boardCanvas = document.createElement('div');
+    boardCanvas.dataset.testid = 'board-canvas';
+    boardCanvas.setAttribute('data-board-canvas', '');
+    boardCanvas.style.position = 'relative';
+    Object.defineProperty(boardCanvas, 'clientWidth', {
+      get: () => rectsByTestId.get('board-canvas')?.width ?? 0,
+    });
+    Object.defineProperty(boardCanvas, 'clientHeight', {
+      get: () => rectsByTestId.get('board-canvas')?.height ?? 0,
+    });
     anchor = document.createElement('div');
-    document.body.appendChild(anchor);
+    anchor.dataset.testid = 'anchor';
+    boardCanvas.appendChild(anchor);
+    document.body.appendChild(boardCanvas);
+    vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.dataset.testid === 'coach-mark-pill' ? boardCanvas : null;
+    });
   });
 
   afterEach(() => {
-    anchor.remove();
+    boardCanvas.remove();
     vi.restoreAllMocks();
   });
 
@@ -126,86 +160,77 @@ describe('CoachMarkTip', () => {
     document.removeEventListener('pointerdown', onOuterPointerDown);
   });
 
-  describe('보드 월드 좌표 배치', () => {
-    let boardCanvas: HTMLDivElement;
+  describe('대상의 화면 위치 추적', () => {
+    it('화면에서 보이는 대상 아래에 말풍선을 배치한다', async () => {
+      render(
+        <CoachMarkTip
+          anchorElement={anchor}
+          message="안내 문구"
+          onDismiss={vi.fn()}
+          camera={IDENTITY_CAMERA}
+        />,
+      );
 
-    beforeEach(() => {
-      Object.defineProperty(document.documentElement, 'clientWidth', {
-        value: VIEWPORT_WIDTH,
-        configurable: true,
-      });
-      Object.defineProperty(document.documentElement, 'clientHeight', {
-        value: VIEWPORT_HEIGHT,
-        configurable: true,
-      });
-
-      rectsByTestId.clear();
-      rectsByTestId.set('board-canvas', { x: 50, y: 30, width: 800, height: 600 });
-      // anchor 중심 x = 400, 하단 y = 240 — 화면 clamp가 필요 없는 케이스
-      rectsByTestId.set('anchor', { x: 350, y: 200, width: 100, height: 40 });
-      rectsByTestId.set('coach-mark-pill', { x: 0, y: 0, ...PILL_SIZE });
-      rectsByTestId.set('coach-mark-arrow', { x: 0, y: 0, ...ARROW_SIZE });
-      mockRects();
-
-      boardCanvas = document.createElement('div');
-      boardCanvas.dataset.testid = 'board-canvas';
-      boardCanvas.setAttribute('data-board-canvas', '');
-      anchor.dataset.testid = 'anchor';
-      boardCanvas.appendChild(anchor);
-      document.body.appendChild(boardCanvas);
+      const pill = await screen.findByRole('tooltip');
+      expect(pill.style.left).toBe('200px');
+      expect(pill.style.top).toBe('238px');
+      expect(pill.style.transform).toBe('');
     });
 
-    afterEach(() => {
-      boardCanvas.remove();
-    });
-
-    it('anchor의 화면 위치를 그 시점의 카메라 기준 월드 좌표로 변환해 배치한다', async () => {
-      // screen pill 위치 = (250, 268) [anchor center 400 - pill폭/2 150, anchor bottom 240 + gap 28]
-      // container 오프셋 (50, 30)을 뺀 로컬 좌표 = (200, 238)
-      // camera{x:20, y:10, scale:2} 기준 월드 좌표 = ((200-20)/2, (238-10)/2) = (90, 114)
-      const camera: CameraState = { x: 20, y: 10, scale: 2 };
+    it('대상이 화면 밖으로 이동해도 말풍선은 대상 위치를 따라가며 보드 경계에서 잘린다', async () => {
+      rectsByTestId.set('board-canvas', { x: 50, y: 30, width: 350, height: 600 });
+      rectsByTestId.set('anchor', { x: 410, y: 200, width: 20, height: 40 });
+      boardCanvas.style.overflow = 'hidden';
 
       render(
         <CoachMarkTip
           anchorElement={anchor}
           message="안내 문구"
           onDismiss={vi.fn()}
-          camera={camera}
+          camera={IDENTITY_CAMERA}
         />,
       );
 
       const pill = await screen.findByRole('tooltip');
-
-      expect(pill.style.left).toBe('90px');
-      expect(pill.style.top).toBe('114px');
+      expect(pill.parentElement).toBe(boardCanvas);
+      expect(pill.style.visibility).toBe('visible');
+      expect(pill.style.left).toBe('220px');
+      expect(parseFloat(pill.style.left) + PILL_SIZE.width).toBeGreaterThan(350);
     });
 
-    it('최초 배치 이후 camera가 바뀌어도 위치를 다시 계산하지 않는다', async () => {
-      const initialCamera: CameraState = { x: 20, y: 10, scale: 2 };
-
+    it('줌이나 이동으로 대상의 화면 위치가 바뀌면 말풍선과 화살표가 함께 따라간다', async () => {
       const { rerender } = render(
         <CoachMarkTip
           anchorElement={anchor}
           message="안내 문구"
           onDismiss={vi.fn()}
-          camera={initialCamera}
+          camera={IDENTITY_CAMERA}
         />,
       );
 
       const pill = await screen.findByRole('tooltip');
-      expect(pill.style.left).toBe('90px');
+      expect(pill.style.left).toBe('200px');
 
+      rectsByTestId.set('anchor', { x: 550, y: 300, width: 100, height: 80 });
       rerender(
         <CoachMarkTip
           anchorElement={anchor}
           message="안내 문구"
           onDismiss={vi.fn()}
-          camera={{ x: 500, y: 500, scale: 0.5 }}
+          camera={{ x: 200, y: 100, scale: 2 }}
         />,
       );
 
-      expect(pill.style.left).toBe('90px');
-      expect(pill.style.top).toBe('114px');
+      await waitFor(() => {
+        expect(pill.style.left).toBe('400px');
+        expect(pill.style.top).toBe('378px');
+      });
+
+      const arrow = screen.getByTestId('coach-mark-arrow');
+      const arrowX = parseFloat(
+        arrow.style.transform.match(/translateX\(([-\d.]+)px\)/)?.[1] ?? 'NaN',
+      );
+      expect(parseFloat(pill.style.left) + arrowX + ARROW_SIZE.width / 2).toBe(550);
     });
   });
 });
