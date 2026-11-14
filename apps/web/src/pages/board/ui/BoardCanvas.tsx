@@ -950,7 +950,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               }
             />
           )}
-          {stickerCoachMark.anchorElement && (
+          {isActive && stickerCoachMark.anchorElement && (
             <CoachMarkTip
               key={stickerCoachMark.anchorKey}
               anchorElement={stickerCoachMark.anchorElement}
@@ -959,7 +959,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
               camera={camera}
             />
           )}
-          {drawingCoachMark.anchorElement && (
+          {isActive && drawingCoachMark.anchorElement && (
             <CoachMarkTip
               key={drawingCoachMark.anchorKey}
               anchorElement={drawingCoachMark.anchorElement}
