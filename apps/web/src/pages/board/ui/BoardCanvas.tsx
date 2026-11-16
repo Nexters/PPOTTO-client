@@ -90,6 +90,7 @@ const STICKER_MENU_COACH_MARK_MESSAGE = '스티커를 꾹 누르면 스티커 �
 
 type BoardCanvasProps = {
   boardId: string;
+  isShared: boolean;
   mode: ToolbarMode;
   drawColor: string;
   drawStrokeWidth: number;
@@ -136,6 +137,7 @@ function hitTestSticker(target: EventTarget | null): HTMLElement | null {
 export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(function BoardCanvas(
   {
     boardId,
+    isShared,
     mode,
     drawColor,
     drawStrokeWidth,
@@ -212,6 +214,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       id: EMPTY_BOARD_STICKER_ID,
       type: 'IMAGE',
       title: emptyBoardStickerTitle,
+      creatorName: '',
       isNew: false,
       imageUrl: null,
       textContent: null,
@@ -988,6 +991,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       )}
       <StickerQuickMenu
         sticker={quickMenuSticker}
+        showCreator={isShared}
         isOpen={quickMenu.quickMenuStickerId !== null}
         onClose={quickMenu.closeQuickMenu}
         openedFromEdit={quickMenu.quickMenuOpenedFromEdit}

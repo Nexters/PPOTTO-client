@@ -18,6 +18,7 @@ import { SharedBoardView } from './SharedBoardView';
 const sticker = {
   id: '01990000-0000-7000-8000-000000000004',
   title: '언제까지 일해요',
+  creatorName: '김용희',
   isNew: false,
   type: 'TEXT',
   textContent: 'whats in my mac',

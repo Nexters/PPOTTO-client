@@ -11,6 +11,7 @@ import { StickerPreview } from './StickerPreview';
 
 type StickerQuickMenuProps = {
   sticker: StickerData | undefined;
+  showCreator: boolean;
   isOpen: boolean;
   onClose: () => void;
   openedFromEdit: boolean;
@@ -46,6 +47,7 @@ export function QuickMenuButton({ Icon, label, onClick, disabled }: QuickMenuBut
 
 export function StickerQuickMenu({
   sticker,
+  showCreator,
   isOpen,
   onClose,
   openedFromEdit,
@@ -66,7 +68,12 @@ export function StickerQuickMenu({
   return (
     <>
       {isOpen && sticker && (
-        <StickerPreview sticker={sticker} imageRef={previewImageRef} bottomReserveHeight={198} />
+        <StickerPreview
+          sticker={sticker}
+          creatorName={showCreator ? sticker.creatorName : undefined}
+          imageRef={previewImageRef}
+          bottomReserveHeight={198}
+        />
       )}
       <BottomSheet
         isOpen={isOpen}
