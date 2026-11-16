@@ -24,6 +24,26 @@ export function useBoardEventSync(boardId?: string) {
         refetchType: 'active',
       });
 
+    const refreshSummaryList = () =>
+      queryClient.invalidateQueries({
+        queryKey: boardQueryKeys.summaryList(),
+        exact: true,
+        refetchType: 'active',
+      });
+
+    const refreshParticipants = () =>
+      queryClient.invalidateQueries({
+        queryKey: boardQueryKeys.participants(boardId),
+        exact: true,
+        refetchType: 'active',
+      });
+
+    const refreshBoardState = () => {
+      void refreshBoard();
+      void refreshSummaryList();
+      void refreshParticipants();
+    };
+
     const scheduleReconnect = () => {
       if (disposed || retryTimer) return;
       shouldRefreshOnOpen = true;
@@ -40,13 +60,19 @@ export function useBoardEventSync(boardId?: string) {
         boardId,
         onOpen: () => {
           if (disposed) return;
-          if (shouldRefreshOnOpen) void refreshBoard();
+          if (shouldRefreshOnOpen) refreshBoardState();
           shouldRefreshOnOpen = false;
           retryCount = 0;
         },
         onEvent: (event) => {
-          if (event.boardId !== boardId || event.type !== 'BOARD_UPDATED') return;
-          void refreshBoard();
+          if (event.boardId !== boardId) return;
+          if (event.type === 'BOARD_UPDATED') {
+            void refreshBoard();
+          } else if (event.type === 'BOARD_PARTICIPANTS_UPDATED') {
+            void refreshBoard();
+            void refreshSummaryList();
+            void refreshParticipants();
+          }
         },
       });
       closeSubscription = subscription.close;

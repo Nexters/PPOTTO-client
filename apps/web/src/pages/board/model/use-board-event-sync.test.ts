@@ -1,5 +1,5 @@
-import { act, renderHook } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider, QueryObserver } from '@tanstack/react-query';
 import { createElement, type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -27,9 +27,9 @@ function createWrapper(queryClient: QueryClient) {
   };
 }
 
-const boardEvent = (boardId: string): BoardEvent => ({
+const boardEvent = (boardId: string, type: BoardEvent['type'] = 'BOARD_UPDATED'): BoardEvent => ({
   eventId: 'event-1',
-  type: 'BOARD_UPDATED',
+  type,
   boardId,
   occurredAt: '2026-11-13T00:00:00Z',
 });
@@ -44,7 +44,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-it('현재 보드 이벤트를 받으면 활성 상세 쿼리를 다시 조회한다', () => {
+it('보드 변경 이벤트를 받으면 상세만 갱신한다', () => {
   const queryClient = new QueryClient();
   const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
   subscribeBoardEvents.mockReturnValue(createSubscription());
@@ -58,6 +58,72 @@ it('현재 보드 이벤트를 받으면 활성 상세 쿼리를 다시 조회�
     exact: true,
     refetchType: 'active',
   });
+  expect(invalidateQueries).toHaveBeenCalledTimes(1);
+  queryClient.clear();
+});
+
+it('참여자 변경 이벤트를 받으면 보드 내용과 인원수 및 열린 참여자 목록을 갱신한다', () => {
+  const queryClient = new QueryClient();
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+  subscribeBoardEvents.mockReturnValue(createSubscription());
+  renderHook(() => useBoardEventSync('board-1'), { wrapper: createWrapper(queryClient) });
+  const { onEvent } = subscribeBoardEvents.mock.calls[0]?.[0];
+
+  act(() => onEvent(boardEvent('board-1', 'BOARD_PARTICIPANTS_UPDATED')));
+
+  expect(invalidateQueries).toHaveBeenCalledWith({
+    queryKey: boardQueryKeys.detail('board-1'),
+    exact: true,
+    refetchType: 'active',
+  });
+  expect(invalidateQueries).toHaveBeenCalledWith({
+    queryKey: boardQueryKeys.summaryList(),
+    exact: true,
+    refetchType: 'active',
+  });
+  expect(invalidateQueries).toHaveBeenCalledWith({
+    queryKey: boardQueryKeys.participants('board-1'),
+    exact: true,
+    refetchType: 'active',
+  });
+  queryClient.clear();
+});
+
+it('참여자 변경 이벤트가 활성 목록과 참여자 쿼리를 실제로 재조회한다', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const getSummaries = vi.fn().mockResolvedValue({ boards: [] });
+  const getParticipants = vi.fn().mockResolvedValue({ participants: [] });
+  const summaryObserver = new QueryObserver(queryClient, {
+    queryKey: boardQueryKeys.summaryList(),
+    queryFn: getSummaries,
+  });
+  const participantsObserver = new QueryObserver(queryClient, {
+    queryKey: boardQueryKeys.participants('board-1'),
+    queryFn: getParticipants,
+  });
+  const unsubscribeSummary = summaryObserver.subscribe(() => {});
+  const unsubscribeParticipants = participantsObserver.subscribe(() => {});
+  subscribeBoardEvents.mockReturnValue(createSubscription());
+  const { unmount } = renderHook(() => useBoardEventSync('board-1'), {
+    wrapper: createWrapper(queryClient),
+  });
+
+  await waitFor(() => {
+    expect(getSummaries).toHaveBeenCalledOnce();
+    expect(getParticipants).toHaveBeenCalledOnce();
+  });
+
+  const { onEvent } = subscribeBoardEvents.mock.calls[0]?.[0];
+  act(() => onEvent(boardEvent('board-1', 'BOARD_PARTICIPANTS_UPDATED')));
+
+  await waitFor(() => {
+    expect(getSummaries).toHaveBeenCalledTimes(2);
+    expect(getParticipants).toHaveBeenCalledTimes(2);
+  });
+
+  unmount();
+  unsubscribeSummary();
+  unsubscribeParticipants();
   queryClient.clear();
 });
 
@@ -69,19 +135,6 @@ it('현재 보드와 다른 이벤트는 반영하지 않는다', () => {
   const { onEvent } = subscribeBoardEvents.mock.calls[0]?.[0];
 
   act(() => onEvent(boardEvent('board-2')));
-
-  expect(invalidateQueries).not.toHaveBeenCalled();
-  queryClient.clear();
-});
-
-it('아직 화면에서 처리하지 않는 이벤트는 상세 쿼리를 갱신하지 않는다', () => {
-  const queryClient = new QueryClient();
-  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
-  subscribeBoardEvents.mockReturnValue(createSubscription());
-  renderHook(() => useBoardEventSync('board-1'), { wrapper: createWrapper(queryClient) });
-  const { onEvent } = subscribeBoardEvents.mock.calls[0]?.[0];
-
-  act(() => onEvent({ ...boardEvent('board-1'), type: 'BOARD_DELETED' }));
 
   expect(invalidateQueries).not.toHaveBeenCalled();
   queryClient.clear();
@@ -134,6 +187,16 @@ it('끊어진 스트림을 다시 연결하고 최신 보드 상태를 조회한
   expect(subscribeBoardEvents).toHaveBeenCalledTimes(2);
   expect(invalidateQueries).toHaveBeenCalledWith({
     queryKey: boardQueryKeys.detail('board-1'),
+    exact: true,
+    refetchType: 'active',
+  });
+  expect(invalidateQueries).toHaveBeenCalledWith({
+    queryKey: boardQueryKeys.summaryList(),
+    exact: true,
+    refetchType: 'active',
+  });
+  expect(invalidateQueries).toHaveBeenCalledWith({
+    queryKey: boardQueryKeys.participants('board-1'),
     exact: true,
     refetchType: 'active',
   });
