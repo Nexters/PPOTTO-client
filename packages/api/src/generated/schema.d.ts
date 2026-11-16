@@ -333,7 +333,7 @@ export interface paths {
         };
         /**
          * 공동 보드 변경 이벤트 구독
-         * @description 접근 가능한 보드의 레이아웃 확정 이벤트를 SSE로 구독함
+         * @description 접근 가능한 보드의 변경, 참여자 변경과 보드 삭제 이벤트를 SSE로 구독함
          */
         get: operations["subscribeBoardEvents"];
         put?: never;
@@ -615,7 +615,7 @@ export interface paths {
         put?: never;
         /**
          * 리캡 열람 처리
-         * @description 새 리캡 표시(빨간 점)를 제거하며 여러 번 호출해도 같은 결과를 보장함
+         * @description 요청 사용자의 새 리캡 표시(빨간 점)를 제거하며 여러 번 호출해도 같은 결과를 보장함
          */
         post: operations["markViewed"];
         delete?: never;
