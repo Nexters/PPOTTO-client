@@ -1330,6 +1330,11 @@ export interface components {
              */
             badgeRotation: number;
             /**
+             * @description 스티커를 생성한 참여자의 이름
+             * @example 김용희
+             */
+            creatorName: string;
+            /**
              * Format: uuid
              * @description 스티커 ID (uuidv7)
              * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
@@ -2350,6 +2355,11 @@ export interface components {
              * @example 0
              */
             badgeRotation: number;
+            /**
+             * @description 스티커를 생성한 사용자의 이름
+             * @example 김용희
+             */
+            creatorName: string;
             /**
              * Format: uuid
              * @description 스티커 ID (uuidv7)
