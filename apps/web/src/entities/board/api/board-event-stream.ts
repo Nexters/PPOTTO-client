@@ -2,11 +2,13 @@ import { HttpError, NetworkError } from '@ppotto/api';
 
 import { getApiAccessToken, handleApiAuthExpired } from '@/shared/api/auth-session';
 
-const BOARD_LAYOUT_UPDATED = 'BOARD_LAYOUT_UPDATED';
+const BOARD_EVENT_TYPES = ['BOARD_UPDATED', 'BOARD_PARTICIPANTS_UPDATED', 'BOARD_DELETED'] as const;
 
-export type BoardLayoutUpdatedEvent = {
+export type BoardEventType = (typeof BOARD_EVENT_TYPES)[number];
+
+export type BoardEvent = {
   eventId: string;
-  type: typeof BOARD_LAYOUT_UPDATED;
+  type: BoardEventType;
   boardId: string;
   occurredAt: string;
 };
@@ -19,7 +21,7 @@ export type BoardEventSubscription = {
 type SubscribeBoardEventsOptions = {
   boardId: string;
   onOpen?: () => void;
-  onEvent: (event: BoardLayoutUpdatedEvent) => void;
+  onEvent: (event: BoardEvent) => void;
 };
 
 type ApiErrorBody = {
@@ -80,11 +82,11 @@ async function fetchBoardEventStream(boardId: string, signal: AbortSignal) {
   return response.body;
 }
 
-function isBoardLayoutUpdatedEvent(value: unknown): value is BoardLayoutUpdatedEvent {
+function isBoardEvent(value: unknown): value is BoardEvent {
   if (typeof value !== 'object' || value === null) return false;
-  const event = value as Partial<BoardLayoutUpdatedEvent>;
+  const event = value as Partial<BoardEvent>;
   return (
-    event.type === BOARD_LAYOUT_UPDATED &&
+    BOARD_EVENT_TYPES.some((type) => type === event.type) &&
     typeof event.eventId === 'string' &&
     typeof event.boardId === 'string' &&
     typeof event.occurredAt === 'string'
@@ -94,12 +96,12 @@ function isBoardLayoutUpdatedEvent(value: unknown): value is BoardLayoutUpdatedE
 function dispatchEvent(
   eventName: string,
   dataLines: string[],
-  onEvent: (event: BoardLayoutUpdatedEvent) => void,
+  onEvent: (event: BoardEvent) => void,
 ) {
-  if (eventName !== BOARD_LAYOUT_UPDATED || dataLines.length === 0) return;
+  if (!BOARD_EVENT_TYPES.some((type) => type === eventName) || dataLines.length === 0) return;
 
   const event: unknown = JSON.parse(dataLines.join('\n'));
-  if (!isBoardLayoutUpdatedEvent(event)) {
+  if (!isBoardEvent(event) || event.type !== eventName) {
     throw new TypeError('보드 이벤트 데이터 형식이 올바르지 않습니다');
   }
   onEvent(event);
@@ -107,7 +109,7 @@ function dispatchEvent(
 
 async function consumeBoardEventStream(
   stream: ReadableStream<Uint8Array>,
-  onEvent: (event: BoardLayoutUpdatedEvent) => void,
+  onEvent: (event: BoardEvent) => void,
   onActivity: () => void,
 ) {
   const reader = stream.getReader();

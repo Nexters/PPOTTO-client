@@ -368,7 +368,7 @@
       "post": {
         "tags": ["스티커"],
         "summary": "리캡 열람 처리",
-        "description": "새 리캡 표시(빨간 점)를 제거하며 여러 번 호출해도 같은 결과를 보장함",
+        "description": "요청 사용자의 새 리캡 표시(빨간 점)를 제거하며 여러 번 호출해도 같은 결과를 보장함",
         "operationId": "markViewed",
         "parameters": [
           {
@@ -5573,7 +5573,7 @@
       "get": {
         "tags": ["보드"],
         "summary": "공동 보드 변경 이벤트 구독",
-        "description": "접근 가능한 보드의 레이아웃 확정 이벤트를 SSE로 구독함",
+        "description": "접근 가능한 보드의 변경, 참여자 변경과 보드 삭제 이벤트를 SSE로 구독함",
         "operationId": "subscribeBoardEvents",
         "parameters": [
           {
@@ -5611,7 +5611,7 @@
                 "examples": {
                   "레이아웃 확정": {
                     "description": "레이아웃 확정",
-                    "value": "id: 019a72c0-4d8e-7f10-a2b3-c4d5e6f70819\nevent: BOARD_LAYOUT_UPDATED\nretry: 3000\ndata: {\"eventId\":\"019a72c0-4d8e-7f10-a2b3-c4d5e6f70819\",\"type\":\"BOARD_LAYOUT_UPDATED\",\"boardId\":\"01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b\",\"occurredAt\":\"2026-11-12T12:00:00Z\"}\n"
+                    "value": "id: 019a72c0-4d8e-7f10-a2b3-c4d5e6f70819\nevent: BOARD_UPDATED\nretry: 3000\ndata: {\"eventId\":\"019a72c0-4d8e-7f10-a2b3-c4d5e6f70819\",\"type\":\"BOARD_UPDATED\",\"boardId\":\"01983f2a-3c4d-7e5f-a6b7-8c9d0e1f2a3b\",\"occurredAt\":\"2026-11-12T12:00:00Z\"}\n"
                   }
                 }
               }
@@ -9525,11 +9525,11 @@
             "description": "현재 분석의 완료 알림 신청 여부",
             "example": true
           },
-          "boardId": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
-          "id": {
+          "boardId": {
             "type": "string",
             "format": "uuid"
           }

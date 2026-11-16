@@ -665,7 +665,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     );
   }
 
-  if (!data && isBoardNotFoundError(error)) return <BoardNotFound />;
+  if (isBoardNotFoundError(error)) return <BoardNotFound />;
 
   if (shouldShowLoadError(isError, data)) {
     return (
