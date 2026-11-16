@@ -1,12 +1,17 @@
 import { HttpError } from '@ppotto/api';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { subscribeBoardEvents } from '@/entities/board/api/board-event-stream';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 
-export function useBoardEventSync(boardId?: string) {
+export function useBoardEventSync(boardId?: string, onBoardDeleted?: () => void) {
   const queryClient = useQueryClient();
+  const onBoardDeletedRef = useRef(onBoardDeleted);
+
+  useEffect(() => {
+    onBoardDeletedRef.current = onBoardDeleted;
+  }, [onBoardDeleted]);
 
   useEffect(() => {
     if (!boardId) return;
@@ -65,8 +70,17 @@ export function useBoardEventSync(boardId?: string) {
           retryCount = 0;
         },
         onEvent: (event) => {
-          if (event.boardId !== boardId) return;
-          if (event.type === 'BOARD_UPDATED') {
+          if (disposed || event.boardId !== boardId) return;
+          if (event.type === 'BOARD_DELETED') {
+            disposed = true;
+            closeSubscription?.();
+            void queryClient.invalidateQueries({
+              queryKey: boardQueryKeys.summaryList(),
+              exact: true,
+              refetchType: 'none',
+            });
+            onBoardDeletedRef.current?.();
+          } else if (event.type === 'BOARD_UPDATED') {
             void refreshBoard();
           } else if (event.type === 'BOARD_PARTICIPANTS_UPDATED') {
             void refreshBoard();

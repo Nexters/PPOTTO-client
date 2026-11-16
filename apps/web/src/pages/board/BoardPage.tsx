@@ -17,6 +17,7 @@ import { bridge, track } from '@/shared/lib/bridge';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 import { useSinglePop } from '@/shared/lib/use-single-pop';
 import { KakaoSdkScript } from '@/shared/ui/KakaoSdkScript';
+import { useToast } from '@/shared/ui/common/Toast';
 
 import { useBoardInvitation } from './model/use-board-invitation';
 import { useBoardEventSync } from './model/use-board-event-sync';
@@ -75,10 +76,16 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     hasStickers,
     openPhotoSelect,
   } = useBoardPageState(boardIdParam);
-  useBoardEventSync(boardId);
   const { pop, push, replace } = useFlow();
+  const toast = useToast();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
   const deleteBoard = useDeleteBoard({ onDeleted: goBack });
+  const onBoardDeleted = useCallback(() => {
+    if (deleteBoard.isPending) return;
+    toast('보드가 삭제되었어요');
+    replace('Home', {}, { animate: false });
+  }, [deleteBoard.isPending, replace, toast]);
+  useBoardEventSync(boardId, onBoardDeleted);
   const leaveBoard = useLeaveBoard({
     onLeft: () => replace('Home', {}, { animate: false }),
   });

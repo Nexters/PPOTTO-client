@@ -127,6 +127,40 @@ it('참여자 변경 이벤트가 활성 목록과 참여자 쿼리를 실제로
   queryClient.clear();
 });
 
+it('보드 삭제 이벤트를 받으면 상세를 재조회하지 않고 화면 종료를 요청한다', () => {
+  const queryClient = new QueryClient();
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+  const subscription = createSubscription();
+  const previousCallback = vi.fn();
+  const onBoardDeleted = vi.fn();
+  subscribeBoardEvents.mockReturnValue(subscription);
+  const { rerender, unmount } = renderHook(
+    ({ onDeleted }) => useBoardEventSync('board-1', onDeleted),
+    {
+      initialProps: { onDeleted: previousCallback },
+      wrapper: createWrapper(queryClient),
+    },
+  );
+  rerender({ onDeleted: onBoardDeleted });
+  const { onEvent } = subscribeBoardEvents.mock.calls[0]?.[0];
+
+  act(() => onEvent(boardEvent('board-1', 'BOARD_DELETED')));
+  act(() => onEvent(boardEvent('board-1', 'BOARD_DELETED')));
+
+  expect(subscription.close).toHaveBeenCalledOnce();
+  expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith({
+    queryKey: boardQueryKeys.summaryList(),
+    exact: true,
+    refetchType: 'none',
+  });
+  expect(subscribeBoardEvents).toHaveBeenCalledOnce();
+  expect(previousCallback).not.toHaveBeenCalled();
+  expect(onBoardDeleted).toHaveBeenCalledOnce();
+
+  unmount();
+  queryClient.clear();
+});
+
 it('현재 보드와 다른 이벤트는 반영하지 않는다', () => {
   const queryClient = new QueryClient();
   const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
