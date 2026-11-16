@@ -481,6 +481,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           ))}
         <BoardContent
           boardId={boardId}
+          isShared={boardSummary?.kind === 'SHARED'}
           isLoading={isBoardListLoading}
           mode={toolbarMode}
           drawColor={drawColor}
@@ -672,6 +673,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
 
 function BoardContent({
   boardId,
+  isShared,
   isLoading,
   mode,
   drawColor,
@@ -688,6 +690,7 @@ function BoardContent({
   trashButtonRef,
 }: {
   boardId?: string;
+  isShared: boolean;
   isLoading: boolean;
   mode: ToolbarMode;
   drawColor: string;
@@ -708,6 +711,7 @@ function BoardContent({
       <BoardCanvas
         ref={canvasRef}
         boardId={boardId}
+        isShared={isShared}
         mode={mode}
         drawColor={drawColor}
         drawStrokeWidth={drawStrokeWidth}

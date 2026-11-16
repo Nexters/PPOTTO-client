@@ -13,6 +13,7 @@ function fakeSticker(overrides: Partial<StickerData> = {}): StickerData {
     id: 'sticker-1',
     type: 'IMAGE',
     title: '제목',
+    creatorName: '김용희',
     isNew: false,
     imageUrl: 'sticker.png',
     textContent: null,

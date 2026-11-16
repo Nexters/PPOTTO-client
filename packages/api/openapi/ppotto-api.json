@@ -776,6 +776,7 @@
                         "sticker": {
                           "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                           "title": "동물 밈 짤줍",
+                          "creatorName": "김용희",
                           "isNew": false,
                           "type": "IMAGE",
                           "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
@@ -3487,6 +3488,7 @@
                         "sticker": {
                           "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                           "title": "동물 밈 짤줍",
+                          "creatorName": "김용희",
                           "isNew": false,
                           "type": "IMAGE",
                           "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
@@ -4168,6 +4170,7 @@
                           {
                             "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                             "title": "동물 밈 짤줍",
+                            "creatorName": "김용희",
                             "isNew": false,
                             "type": "IMAGE",
                             "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Expires=3600&X-Goog-Signature=sample",
@@ -4183,6 +4186,7 @@
                           {
                             "id": "01983f2b-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
                             "title": "언제까지 일해요",
+                            "creatorName": "김용희",
                             "isNew": true,
                             "type": "TEXT",
                             "textContent": "whats in my mac",
@@ -4241,6 +4245,7 @@
                           {
                             "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                             "title": "동물 밈 짤줍",
+                            "creatorName": "김용희",
                             "isNew": false,
                             "type": "IMAGE",
                             "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Expires=3600&X-Goog-Signature=sample",
@@ -4256,6 +4261,7 @@
                           {
                             "id": "01983f2b-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
                             "title": "언제까지 일해요",
+                            "creatorName": "김용희",
                             "isNew": true,
                             "type": "TEXT",
                             "textContent": "whats in my mac",
@@ -5319,6 +5325,7 @@
                         "sticker": {
                           "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                           "title": "동물 밈 짤줍",
+                          "creatorName": "김용희",
                           "isNew": false,
                           "type": "IMAGE",
                           "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
@@ -5724,6 +5731,7 @@
                           {
                             "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                             "title": "동물 밈 짤줍",
+                            "creatorName": "김용희",
                             "isNew": false,
                             "type": "IMAGE",
                             "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Expires=3600&X-Goog-Signature=sample",
@@ -5845,6 +5853,7 @@
                         "sticker": {
                           "id": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                           "title": "동물 밈 짤줍",
+                          "creatorName": "김용희",
                           "isNew": false,
                           "type": "IMAGE",
                           "imageUrl": "https://storage.googleapis.com/ppotto-stickers/01983f2b.png?X-Goog-Signature=sample",
@@ -7032,6 +7041,11 @@
             "description": "제목 뱃지 문구이자 리캡 제목",
             "example": "동물 밈 짤줍"
           },
+          "creatorName": {
+            "type": "string",
+            "description": "스티커를 생성한 사용자의 이름",
+            "example": "김용희"
+          },
           "type": {
             "type": "string",
             "description": "스티커 형식",
@@ -7117,6 +7131,7 @@
           "badgeOffsetX",
           "badgeOffsetY",
           "badgeRotation",
+          "creatorName",
           "id",
           "isNew",
           "mainColor",
@@ -8768,6 +8783,11 @@
             "description": "제목 뱃지 문구이자 리캡 제목",
             "example": "동물 밈 짤줍"
           },
+          "creatorName": {
+            "type": "string",
+            "description": "스티커를 생성한 참여자의 이름",
+            "example": "김용희"
+          },
           "type": {
             "type": "string",
             "description": "스티커 형식",
@@ -8848,6 +8868,7 @@
           "badgeOffsetX",
           "badgeOffsetY",
           "badgeRotation",
+          "creatorName",
           "id",
           "isNew",
           "rotation",
@@ -9525,11 +9546,11 @@
             "description": "현재 분석의 완료 알림 신청 여부",
             "example": true
           },
-          "id": {
+          "boardId": {
             "type": "string",
             "format": "uuid"
           },
-          "boardId": {
+          "id": {
             "type": "string",
             "format": "uuid"
           }

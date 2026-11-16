@@ -1,11 +1,12 @@
 'use client';
 
 import type { Ref } from 'react';
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { drawOutlinedSticker, useCachedStickerImage } from '@/shared/lib/sticker-raster';
 import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
+import { Bubble } from '@/shared/ui/Bubble';
 
 import type { StickerData } from './Sticker';
 import { StickerBadge } from './StickerBadge';
@@ -17,9 +18,20 @@ const PREVIEW_MAX_WIDTH = 280;
 const BADGE_HEIGHT = 30;
 const CONTENT_GAP = 8;
 const BREATHING_ROOM = 16;
+const MAX_CREATOR_NAME_LENGTH = 12;
+
+function creatorBubbleContent(name: string): string {
+  const characters = Array.from(name);
+  const visibleName =
+    characters.length > MAX_CREATOR_NAME_LENGTH
+      ? `${characters.slice(0, MAX_CREATOR_NAME_LENGTH).join('')}…`
+      : name;
+  return `by. ${visibleName}`;
+}
 
 type StickerPreviewProps = {
   sticker: StickerData;
+  creatorName?: string;
   isEditingTitle?: boolean;
   onSubmitTitle?: (title: string) => void;
   onCancelEditTitle?: () => void;
@@ -31,6 +43,7 @@ type StickerPreviewProps = {
 
 export function StickerPreview({
   sticker,
+  creatorName,
   isEditingTitle,
   onSubmitTitle,
   onCancelEditTitle,
@@ -40,6 +53,8 @@ export function StickerPreview({
   bottomReserveHeight = DEFAULT_BOTTOM_RESERVE_HEIGHT,
 }: StickerPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [stickerSize, setStickerSize] = useState<{ width: number; height: number } | null>(null);
   const keyboardInset = useKeyboardHeight(Boolean(isEditingTitle || followKeyboard));
 
   const photoImage = useCachedStickerImage(sticker.imageUrl ?? undefined);
@@ -49,6 +64,31 @@ export function StickerPreview({
       drawOutlinedSticker(canvasRef.current, photoImage, PREVIEW_MAX_WIDTH);
     }
   }, [photoImage]);
+
+  useLayoutEffect(() => {
+    if (!creatorName || !photoImage || !previewRef.current || !canvasRef.current) return;
+
+    const preview = previewRef.current;
+    const canvas = canvasRef.current;
+    const updateSize = () => {
+      if (!preview.clientWidth || !preview.clientHeight || !canvas.width || !canvas.height) return;
+      const scale = Math.min(
+        preview.clientWidth / canvas.width,
+        preview.clientHeight / canvas.height,
+      );
+      const width = canvas.width * scale;
+      const height = canvas.height * scale;
+      setStickerSize((current) =>
+        current?.width === width && current.height === height ? current : { width, height },
+      );
+    };
+
+    updateSize();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(preview);
+    return () => observer.disconnect();
+  }, [creatorName, photoImage]);
 
   if (!sticker.imageUrl) return null;
 
@@ -67,7 +107,7 @@ export function StickerPreview({
       style={{ top: HEADER_HEIGHT, bottom }}
     >
       <div
-        ref={imageRef}
+        ref={previewRef}
         className="relative"
         style={{
           width: PREVIEW_MAX_WIDTH,
@@ -75,17 +115,33 @@ export function StickerPreview({
           height: `min(${PREVIEW_MAX_HEIGHT}px, calc(100dvh - ${HEADER_HEIGHT}px - ${bottom}px - ${BADGE_HEIGHT}px - ${CONTENT_GAP}px - ${BREATHING_ROOM}px))`,
         }}
       >
-        <canvas
-          ref={canvasRef}
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-          }}
-        />
+        <div ref={imageRef} className="absolute inset-0">
+          <canvas
+            ref={canvasRef}
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+            }}
+          />
+        </div>
+        {creatorName && photoImage && stickerSize && (
+          <div
+            className="pointer-events-none absolute top-1/2 left-1/2"
+            style={{
+              width: stickerSize.width,
+              height: stickerSize.height,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <div className="absolute top-0 -right-6">
+              <Bubble content={creatorBubbleContent(creatorName)} direction="left" />
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex w-full shrink-0 justify-center">
         <StickerBadge
