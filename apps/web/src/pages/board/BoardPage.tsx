@@ -1,6 +1,6 @@
 'use client';
 
-import { useFlow } from '@stackflow/react';
+import { useActivity, useFlow } from '@stackflow/react';
 import { toCanvas } from 'html-to-image';
 import dynamic from 'next/dynamic';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
@@ -20,7 +20,7 @@ import { KakaoSdkScript } from '@/shared/ui/KakaoSdkScript';
 import { useToast } from '@/shared/ui/common/Toast';
 
 import { useBoardInvitation } from './model/use-board-invitation';
-import { useBoardEventSync } from './model/use-board-event-sync';
+import { useBoardEventSync, type BoardUnavailableReason } from './model/use-board-event-sync';
 import { useBoardShare } from './model/use-board-share';
 import { type EyedropperPixels, readCanvasPixels, sampleColorAt } from './model/eyedropper';
 import { useBoardPageState } from './model/use-board-page-state';
@@ -76,16 +76,31 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     hasStickers,
     openPhotoSelect,
   } = useBoardPageState(boardIdParam);
+  const { isActive } = useActivity();
   const { pop, push, replace } = useFlow();
   const toast = useToast();
   const goBack = useSinglePop(useCallback(() => pop(), [pop]));
   const deleteBoard = useDeleteBoard({ onDeleted: goBack });
-  const onBoardDeleted = useCallback(() => {
-    if (deleteBoard.isPending) return;
-    toast('보드가 삭제되었어요');
-    replace('Home', {}, { animate: false });
-  }, [deleteBoard.isPending, replace, toast]);
-  useBoardEventSync(boardId, onBoardDeleted);
+  const pendingUnavailableReason = useRef<BoardUnavailableReason | null>(null);
+  const onBoardUnavailable = useCallback(
+    (reason: BoardUnavailableReason) => {
+      if (deleteBoard.isPending) return;
+      if (!isActive) {
+        pendingUnavailableReason.current = reason;
+        return;
+      }
+      pendingUnavailableReason.current = null;
+      toast(reason === 'deleted' ? '보드가 삭제되었어요' : '보드를 더 이상 이용할 수 없어요');
+      replace('Home', {}, { animate: false });
+    },
+    [deleteBoard.isPending, isActive, replace, toast],
+  );
+  useBoardEventSync(boardId, onBoardUnavailable);
+  useEffect(() => {
+    if (isActive && pendingUnavailableReason.current) {
+      onBoardUnavailable(pendingUnavailableReason.current);
+    }
+  }, [isActive, onBoardUnavailable]);
   const leaveBoard = useLeaveBoard({
     onLeft: () => replace('Home', {}, { animate: false }),
   });

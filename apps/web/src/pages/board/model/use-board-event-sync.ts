@@ -5,13 +5,18 @@ import { useEffect, useRef } from 'react';
 import { subscribeBoardEvents } from '@/entities/board/api/board-event-stream';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 
-export function useBoardEventSync(boardId?: string, onBoardDeleted?: () => void) {
+export type BoardUnavailableReason = 'deleted' | 'unavailable';
+
+export function useBoardEventSync(
+  boardId?: string,
+  onBoardUnavailable?: (reason: BoardUnavailableReason) => void,
+) {
   const queryClient = useQueryClient();
-  const onBoardDeletedRef = useRef(onBoardDeleted);
+  const onBoardUnavailableRef = useRef(onBoardUnavailable);
 
   useEffect(() => {
-    onBoardDeletedRef.current = onBoardDeleted;
-  }, [onBoardDeleted]);
+    onBoardUnavailableRef.current = onBoardUnavailable;
+  }, [onBoardUnavailable]);
 
   useEffect(() => {
     if (!boardId) return;
@@ -21,6 +26,18 @@ export function useBoardEventSync(boardId?: string, onBoardDeleted?: () => void)
     let retryCount = 0;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let closeSubscription: (() => void) | undefined;
+
+    const leaveUnavailableBoard = (reason: BoardUnavailableReason) => {
+      if (disposed) return;
+      disposed = true;
+      closeSubscription?.();
+      void queryClient.invalidateQueries({
+        queryKey: boardQueryKeys.summaryList(),
+        exact: true,
+        refetchType: 'none',
+      });
+      onBoardUnavailableRef.current?.(reason);
+    };
 
     const refreshBoard = () =>
       queryClient.invalidateQueries({
@@ -72,14 +89,7 @@ export function useBoardEventSync(boardId?: string, onBoardDeleted?: () => void)
         onEvent: (event) => {
           if (disposed || event.boardId !== boardId) return;
           if (event.type === 'BOARD_DELETED') {
-            disposed = true;
-            closeSubscription?.();
-            void queryClient.invalidateQueries({
-              queryKey: boardQueryKeys.summaryList(),
-              exact: true,
-              refetchType: 'none',
-            });
-            onBoardDeletedRef.current?.();
+            leaveUnavailableBoard('deleted');
           } else if (event.type === 'BOARD_UPDATED') {
             void refreshBoard();
           } else if (event.type === 'BOARD_PARTICIPANTS_UPDATED') {
@@ -94,6 +104,10 @@ export function useBoardEventSync(boardId?: string, onBoardDeleted?: () => void)
       void subscription.done.then(
         () => scheduleReconnect(),
         (error: unknown) => {
+          if (shouldRefreshOnOpen && error instanceof HttpError && error.status === 404) {
+            leaveUnavailableBoard('unavailable');
+            return;
+          }
           if (shouldReconnect(error)) scheduleReconnect();
         },
       );
