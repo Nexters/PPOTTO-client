@@ -1,11 +1,11 @@
 import { useFlow } from '@stackflow/react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { StickerCommentPosition, StickerRecap } from '@/entities/sticker/api/sticker-api';
 import { useUpdateStickerCommentPositionsMutation } from '@/entities/sticker/api/sticker-mutations';
 import { stickerQueryKeys } from '@/entities/sticker/api/sticker-query-keys';
-import { useStickerQuery } from '@/entities/sticker/api/sticker-queries';
+import { stickerQueryOptions } from '@/entities/sticker/api/sticker-queries';
 import { hexToRgba } from '@/shared/lib/hex-to-rgba';
 import { addNavigationBreadcrumb } from '@/shared/lib/navigation-breadcrumb';
 import { useRefetchOnActive } from '@/shared/lib/use-refetch-on-active';
@@ -34,7 +34,10 @@ type RecapPageProps = {
 };
 
 export function RecapPage({ stickerId, boardId }: RecapPageProps) {
-  const { data, refetch, isStale } = useStickerQuery(stickerId);
+  const { data, refetch, isStale } = useQuery({
+    ...stickerQueryOptions(stickerId),
+    refetchOnMount: 'always',
+  });
   const { markViewed } = useMarkStickerViewed(boardId);
   const { mutateAsync: updateCommentPositions } = useUpdateStickerCommentPositionsMutation();
   const queryClient = useQueryClient();
