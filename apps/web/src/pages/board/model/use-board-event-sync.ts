@@ -45,7 +45,7 @@ export function useBoardEventSync(boardId?: string) {
           retryCount = 0;
         },
         onEvent: (event) => {
-          if (event.boardId !== boardId) return;
+          if (event.boardId !== boardId || event.type !== 'BOARD_UPDATED') return;
           void refreshBoard();
         },
       });

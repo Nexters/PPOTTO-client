@@ -39,8 +39,8 @@ describe('subscribeBoardEvents', () => {
       .fn()
       .mockResolvedValue(
         createEventResponse([
-          ':heartbeat\r\n\r\nevent: BOARD_LAYOUT_',
-          'UPDATED\r\ndata: {"eventId":"event-1","type":"BOARD_LAYOUT_UPDATED",',
+          ':heartbeat\r\n\r\nevent: BOARD_',
+          'UPDATED\r\ndata: {"eventId":"event-1","type":"BOARD_UPDATED",',
           '"boardId":"board-1","occurredAt":"2026-11-13T00:00:00Z"}\r\n\r\n',
         ]),
       );
@@ -62,10 +62,73 @@ describe('subscribeBoardEvents', () => {
     expect(onOpen).toHaveBeenCalledOnce();
     expect(onEvent).toHaveBeenCalledWith({
       eventId: 'event-1',
-      type: 'BOARD_LAYOUT_UPDATED',
+      type: 'BOARD_UPDATED',
       boardId: 'board-1',
       occurredAt: '2026-11-13T00:00:00Z',
     });
+  });
+
+  it.each(['BOARD_UPDATED', 'BOARD_PARTICIPANTS_UPDATED', 'BOARD_DELETED'] as const)(
+    '%s 이벤트를 전달한다',
+    async (type) => {
+      getApiAccessToken.mockResolvedValue('access-token');
+      const event = {
+        eventId: 'event-1',
+        type,
+        boardId: 'board-1',
+        occurredAt: '2026-11-13T00:00:00Z',
+      };
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(
+            createEventResponse([`event: ${type}\ndata: ${JSON.stringify(event)}\n\n`]),
+          ),
+      );
+      const onEvent = vi.fn();
+
+      await subscribeBoardEvents({ boardId: 'board-1', onEvent }).done;
+
+      expect(onEvent).toHaveBeenCalledExactlyOnceWith(event);
+    },
+  );
+
+  it('알 수 없는 이벤트는 무시한다', async () => {
+    getApiAccessToken.mockResolvedValue('access-token');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          createEventResponse([
+            'event: FUTURE_EVENT\ndata: {"eventId":"event-1","type":"FUTURE_EVENT"}\n\n',
+          ]),
+        ),
+    );
+    const onEvent = vi.fn();
+
+    await subscribeBoardEvents({ boardId: 'board-1', onEvent }).done;
+
+    expect(onEvent).not.toHaveBeenCalled();
+  });
+
+  it('이벤트 이름과 데이터 타입이 다르면 거부한다', async () => {
+    getApiAccessToken.mockResolvedValue('access-token');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          createEventResponse([
+            'event: BOARD_UPDATED\ndata: {"eventId":"event-1","type":"BOARD_DELETED","boardId":"board-1","occurredAt":"2026-11-13T00:00:00Z"}\n\n',
+          ]),
+        ),
+    );
+
+    await expect(
+      subscribeBoardEvents({ boardId: 'board-1', onEvent: vi.fn() }).done,
+    ).rejects.toThrow('보드 이벤트 데이터 형식이 올바르지 않습니다');
   });
 
   it('만료된 토큰이면 한 번 갱신해 다시 연결한다', async () => {

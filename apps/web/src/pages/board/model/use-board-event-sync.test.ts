@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const { subscribeBoardEvents } = vi.hoisted(() => ({ subscribeBoardEvents: vi.fn() }));
 vi.mock('@/entities/board/api/board-event-stream', () => ({ subscribeBoardEvents }));
 
-import type { BoardLayoutUpdatedEvent } from '@/entities/board/api/board-event-stream';
+import type { BoardEvent } from '@/entities/board/api/board-event-stream';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 
 import { useBoardEventSync } from './use-board-event-sync';
@@ -27,9 +27,9 @@ function createWrapper(queryClient: QueryClient) {
   };
 }
 
-const boardEvent = (boardId: string): BoardLayoutUpdatedEvent => ({
+const boardEvent = (boardId: string): BoardEvent => ({
   eventId: 'event-1',
-  type: 'BOARD_LAYOUT_UPDATED',
+  type: 'BOARD_UPDATED',
   boardId,
   occurredAt: '2026-11-13T00:00:00Z',
 });
@@ -69,6 +69,19 @@ it('현재 보드와 다른 이벤트는 반영하지 않는다', () => {
   const { onEvent } = subscribeBoardEvents.mock.calls[0]?.[0];
 
   act(() => onEvent(boardEvent('board-2')));
+
+  expect(invalidateQueries).not.toHaveBeenCalled();
+  queryClient.clear();
+});
+
+it('아직 화면에서 처리하지 않는 이벤트는 상세 쿼리를 갱신하지 않는다', () => {
+  const queryClient = new QueryClient();
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+  subscribeBoardEvents.mockReturnValue(createSubscription());
+  renderHook(() => useBoardEventSync('board-1'), { wrapper: createWrapper(queryClient) });
+  const { onEvent } = subscribeBoardEvents.mock.calls[0]?.[0];
+
+  act(() => onEvent({ ...boardEvent('board-1'), type: 'BOARD_DELETED' }));
 
   expect(invalidateQueries).not.toHaveBeenCalled();
   queryClient.clear();
