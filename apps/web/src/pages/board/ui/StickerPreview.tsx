@@ -18,6 +18,16 @@ const PREVIEW_MAX_WIDTH = 280;
 const BADGE_HEIGHT = 30;
 const CONTENT_GAP = 8;
 const BREATHING_ROOM = 16;
+const MAX_CREATOR_NAME_LENGTH = 12;
+
+function creatorBubbleContent(name: string): string {
+  const characters = Array.from(name);
+  const visibleName =
+    characters.length > MAX_CREATOR_NAME_LENGTH
+      ? `${characters.slice(0, MAX_CREATOR_NAME_LENGTH).join('')}…`
+      : name;
+  return `by. ${visibleName}`;
+}
 
 type StickerPreviewProps = {
   sticker: StickerData;
@@ -128,7 +138,7 @@ export function StickerPreview({
             }}
           >
             <div className="absolute top-0 -right-6">
-              <Bubble content={`by. ${creatorName}`} direction="left" />
+              <Bubble content={creatorBubbleContent(creatorName)} direction="left" />
             </div>
           </div>
         )}
