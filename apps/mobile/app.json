@@ -41,6 +41,7 @@
     "plugins": [
       "expo-router",
       "./plugins/with-analysis-notification-channel",
+      "./plugins/with-pod-deployment-target",
       "expo-apple-authentication",
       [
         "@react-native-firebase/app",
