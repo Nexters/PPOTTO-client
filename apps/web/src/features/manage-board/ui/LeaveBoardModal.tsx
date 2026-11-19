@@ -24,7 +24,13 @@ export function LeaveBoardModal({
       open={open}
       onOpenChange={(open) => !open && onCancel()}
       title={`'${target?.name ?? ''}' 보드에서 나갈까요?`}
-      description="나가면 이 보드를 더 이상 볼 수 없어요"
+      description={
+        <>
+          내가 올린 스티커와 리캡이 삭제되며
+          <br />
+          복구할 수 없어요
+        </>
+      }
       layerClassName="z-80"
     >
       <Modal.Cancel disabled={isPending}>취소</Modal.Cancel>
