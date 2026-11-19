@@ -28,6 +28,7 @@ import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardInvitationPreviewCard } from './ui/BoardInvitationPreviewCard';
 import { BoardKakaoShareCard } from './ui/BoardKakaoShareCard';
+import { BoardLayoutConflictModal } from './ui/BoardLayoutConflictModal';
 import { BoardMenuSheet, type BoardMenuView } from './ui/BoardMenuSheet';
 import { BoardShareCard } from './ui/BoardShareCard';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
@@ -125,6 +126,10 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   const participantListQuery = useBoardParticipantsQuery(boardId, isParticipantsView);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
   const [isSavingMove, setIsSavingMove] = useState(false);
+  const [moveConflict, setMoveConflict] = useState<{
+    open: boolean;
+    kind: 'changed' | 'deleted';
+  }>({ open: false, kind: 'changed' });
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
   const [isDrawingActive, setIsDrawingActive] = useState(false);
@@ -523,6 +528,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             });
           }}
           onMoveSaveStateChange={setIsSavingMove}
+          onMoveConflict={(kind) => setMoveConflict({ open: true, kind })}
           canvasRef={canvasRef}
           trashButtonRef={trashButtonRef}
         />
@@ -671,6 +677,27 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           onConfirm={leaveBoard.confirm}
           onCancel={leaveBoard.cancel}
         />
+        <BoardLayoutConflictModal
+          open={moveConflict.open}
+          kind={moveConflict.kind}
+          onAll={() => {
+            setMoveConflict((previous) => ({ ...previous, open: false }));
+            void canvasRef.current?.resolveMoveConflict('all');
+          }}
+          onExclude={() => {
+            setMoveConflict((previous) => ({ ...previous, open: false }));
+            void canvasRef.current?.resolveMoveConflict('exclude');
+          }}
+          onBack={() => {
+            setMoveConflict((previous) => ({ ...previous, open: false }));
+            void canvasRef.current?.resolveMoveConflict('back');
+            changeToolbarMode('move');
+          }}
+          onSaveRest={() => {
+            setMoveConflict((previous) => ({ ...previous, open: false }));
+            void canvasRef.current?.resolveMoveConflict('rest');
+          }}
+        />
       </div>
       {/* 캡처 도중 시트가 닫혀도 캡처 대상 DOM이 언마운트되지 않게 작업 중에는 유지한다 */}
       {boardId &&
@@ -728,6 +755,7 @@ function BoardContent({
   onDrawingDragOverTrashChange,
   onMoveSaveError,
   onMoveSaveStateChange,
+  onMoveConflict,
   canvasRef,
   trashButtonRef,
 }: {
@@ -747,6 +775,7 @@ function BoardContent({
   onDrawingDragOverTrashChange: (isOver: boolean) => void;
   onMoveSaveError: (error: Error) => void;
   onMoveSaveStateChange: (isSaving: boolean) => void;
+  onMoveConflict: (kind: 'changed' | 'deleted') => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
   trashButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
@@ -769,6 +798,7 @@ function BoardContent({
         onDrawingDragOverTrashChange={onDrawingDragOverTrashChange}
         onMoveSaveError={onMoveSaveError}
         onMoveSaveStateChange={onMoveSaveStateChange}
+        onMoveConflict={onMoveConflict}
         trashButtonRef={trashButtonRef}
       />
     );

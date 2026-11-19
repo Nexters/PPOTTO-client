@@ -113,6 +113,7 @@ type BoardCanvasProps = {
   onDrawingDragOverTrashChange?: (isOver: boolean) => void;
   onMoveSaveError?: (error: Error) => void;
   onMoveSaveStateChange?: (isSaving: boolean) => void;
+  onMoveConflict?: (kind: 'changed' | 'deleted') => void;
   // 그림 드래그-삭제 드롭 판정에 쓰는 휴지통 버튼의 DOM ref
   trashButtonRef?: RefObject<HTMLButtonElement | null>;
 };
@@ -121,6 +122,7 @@ export type BoardCanvasHandle = {
   undoLastStroke: () => void;
   redoLastStroke: () => void;
   confirmMoveSession: () => Promise<boolean>;
+  resolveMoveConflict: (choice: 'all' | 'exclude' | 'rest' | 'back') => Promise<boolean>;
   cancelMoveSession: () => void;
   createText: (text: string, fontSize: number, editWidth: number) => void;
   getViewportElement: () => HTMLDivElement | null;
@@ -147,6 +149,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     isPointerInputSuspended = false,
     onMoveSaveError,
     onMoveSaveStateChange,
+    onMoveConflict,
     onDrawingActiveChange,
     onCanUndoChange,
     onCanRedoChange,
@@ -263,6 +266,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     applyTextChange,
     markDrawingDeleted,
     confirm: confirmMoveSession,
+    resolveConflict: resolveMoveConflict,
     discard: discardMoveSession,
   } = useMoveSession(
     boardId,
@@ -271,6 +275,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     baseTexts,
     onMoveSaveError,
     onMoveSaveStateChange,
+    onMoveConflict,
   );
   // 선택 시 zIndex가 올라간 스티커가 바로 맨 위로 그려지도록, 세션 반영분 기준으로 정렬한다
   const stickers = useMemo(
@@ -461,6 +466,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
   });
 
   const confirmMoveSessionRef = useRef(confirmMoveSession);
+  const resolveMoveConflictRef = useRef(resolveMoveConflict);
   const discardMoveSessionRef = useRef(discardMoveSession);
   // 포인터 이펙트가 등록될 때의 정적 클로저에서도 항상 최신 draw 모드/그림선택/카메라·스티커 훅 결과를 읽기 위함
   const drawModeRef = useRef(drawMode);
@@ -480,6 +486,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     isDrawModeRef.current = isDrawMode;
     isPointerInputSuspendedRef.current = isPointerInputSuspended;
     confirmMoveSessionRef.current = confirmMoveSession;
+    resolveMoveConflictRef.current = resolveMoveConflict;
     discardMoveSessionRef.current = discardMoveSession;
     drawModeRef.current = drawMode;
     drawingSelectionRef.current = drawingSelection;
@@ -511,6 +518,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       undoLastStroke: () => drawModeRef.current.undoLastStroke(),
       redoLastStroke: () => drawModeRef.current.redoLastStroke(),
       confirmMoveSession: () => confirmMoveSessionRef.current(),
+      resolveMoveConflict: (choice) => resolveMoveConflictRef.current(choice),
       // 이동 모드 세션의 변경분을 버린다
       cancelMoveSession: () => {
         discardMoveSessionRef.current();

@@ -21,6 +21,15 @@ import {
   type ParsedDrawing,
   type ParsedText,
 } from './board-drawing';
+import {
+  getBoardLayoutConflict,
+  hasConflictIds,
+  hasLayoutChanges,
+  isBoardLayoutConflictError,
+  rebaseLayoutInput,
+  type BoardLayoutConflict,
+  type LayoutConflictIds,
+} from './board-layout-conflict';
 
 type StickerOverride = Partial<
   Pick<
@@ -32,6 +41,7 @@ type DrawingOverride = Partial<Pick<ParsedDrawing, 'points' | 'strokeWidth' | 'z
 type TextOverride = Partial<
   Pick<ParsedText, 'x' | 'y' | 'fontSize' | 'maxWidth' | 'rotation' | 'zIndex'>
 >;
+type LayoutAnalytics = { kind: 'sticker' | 'drawing'; id: string; event: AnalyticsTrackArgs }[];
 
 // 이동 모드 세션 동안의 스티커/그림/텍스트 변경분을 로컬에만 들고 있다가, confirm()에서 한 번에
 // 저장하거나 discard()로 그냥 버릴 수 있게 한다. 서버엔 confirm() 시점에만 요청이 나간다.
@@ -43,6 +53,7 @@ export function useMoveSession(
   rawTexts: ParsedText[],
   onSaveError?: (error: Error) => void,
   onSaveStateChange?: (isSaving: boolean) => void,
+  onConflict?: (kind: 'changed' | 'deleted') => void,
 ) {
   const { mutateAsync: saveLayout } = useUpdateBoardLayoutMutation();
   const queryClient = useQueryClient();
@@ -56,6 +67,12 @@ export function useMoveSession(
   const [textBases, setTextBases] = useState(() => new Map<string, ParsedText>());
   const originalDrawings = useRef(new Map<string, BoardDetail['drawings'][number]>());
   const isSaving = useRef(false);
+  const pendingConflict = useRef<{
+    input: UpdateBoardLayoutInput;
+    analytics: LayoutAnalytics;
+    latest: BoardDetail;
+    conflict: BoardLayoutConflict;
+  } | null>(null);
 
   const rememberDrawing = (id: string) => {
     const original = queryClient
@@ -168,6 +185,7 @@ export function useMoveSession(
 
   // 세션 변경분을 버리고 서버 데이터로 되돌린다(취소)
   const discard = () => {
+    pendingConflict.current = null;
     setStickerBases(new Map());
     setDrawingBases(new Map());
     setTextBases(new Map());
@@ -176,6 +194,167 @@ export function useMoveSession(
     setDrawingOverrides({});
     setTextOverrides({});
     setDeletedDrawingIds(new Set());
+  };
+
+  const saveAttempt = async (
+    input: UpdateBoardLayoutInput,
+    analytics: LayoutAnalytics,
+  ): Promise<boolean> => {
+    if (isSaving.current) return false;
+    isSaving.current = true;
+    onSaveStateChange?.(true);
+    try {
+      try {
+        const stickerIds = new Set(input.stickers?.map((sticker) => sticker.id));
+        const drawingIds = new Set([
+          ...(input.drawings?.updated?.map((drawing) => drawing.id) ?? []),
+          ...(input.drawings?.deleted?.map((drawing) => drawing.id) ?? []),
+        ]);
+        await saveLayout({
+          boardId,
+          input,
+          analytics: analytics
+            .filter(({ kind, id }) =>
+              kind === 'sticker' ? stickerIds.has(id) : drawingIds.has(id),
+            )
+            .map(({ event }) => event),
+        });
+      } catch (error) {
+        if (isBoardLayoutConflictError(error)) {
+          try {
+            await queryClient.cancelQueries({
+              queryKey: boardQueryKeys.detail(boardId),
+              exact: true,
+            });
+            const latest = await boardApi.get(boardId);
+            const conflict = getBoardLayoutConflict(error, input, latest);
+            if (conflict) {
+              queryClient.setQueryData(boardQueryKeys.detail(boardId), latest);
+              pendingConflict.current = { input, analytics, latest, conflict };
+              onConflict?.(hasConflictIds(conflict.deleted) ? 'deleted' : 'changed');
+              return false;
+            }
+          } catch {
+            // 최신 조회 실패 시 원래 저장 오류를 전달한다.
+          }
+        }
+        onSaveError?.(error instanceof Error ? error : new Error('보드 배치를 저장하지 못했어요'));
+        return false;
+      }
+
+      try {
+        await queryClient.cancelQueries({ queryKey: boardQueryKeys.detail(boardId), exact: true });
+        await queryClient.fetchQuery({
+          queryKey: boardQueryKeys.detail(boardId),
+          queryFn: () => boardApi.get(boardId),
+          staleTime: 0,
+          retry: false,
+        });
+      } catch {
+        const changedStickersById = new Map(input.stickers?.map((item) => [item.id, item]));
+        const changedDrawingsById = new Map(
+          input.drawings?.updated?.map((item) => [item.id, item]),
+        );
+        const deletedIds = new Set(input.drawings?.deleted?.map((item) => item.id));
+        queryClient.setQueryData(
+          boardQueryKeys.detail(boardId),
+          (current: BoardDetail | undefined) =>
+            current
+              ? {
+                  ...current,
+                  stickers: current.stickers.map((sticker) => {
+                    const updated = changedStickersById.get(sticker.id);
+                    return updated
+                      ? {
+                          ...sticker,
+                          ...updated,
+                          layoutVersion: updated.expectedLayoutVersion + 1,
+                        }
+                      : sticker;
+                  }),
+                  drawings: current.drawings
+                    .filter((drawing) => !deletedIds.has(drawing.id))
+                    .map((drawing) => {
+                      const updated = changedDrawingsById.get(drawing.id);
+                      return updated
+                        ? {
+                            ...drawing,
+                            ...updated,
+                            layoutVersion: updated.expectedLayoutVersion + 1,
+                          }
+                        : drawing;
+                    }),
+                }
+              : current,
+        );
+        void queryClient.invalidateQueries({
+          queryKey: boardQueryKeys.detail(boardId),
+          exact: true,
+          refetchType: 'none',
+        });
+      }
+      discard();
+      return true;
+    } finally {
+      isSaving.current = false;
+      onSaveStateChange?.(false);
+    }
+  };
+
+  const resolveConflict = async (choice: 'all' | 'exclude' | 'rest' | 'back'): Promise<boolean> => {
+    const pending = pendingConflict.current;
+    if (!pending || isSaving.current) return false;
+
+    if (choice === 'back') {
+      const removedStickers = new Set(pending.conflict.deleted.stickerIds);
+      const removedDrawings = new Set(pending.conflict.deleted.drawingIds);
+      setStickerBases(
+        (previous) => new Map([...previous].filter(([id]) => !removedStickers.has(id))),
+      );
+      setStickerOverrides((previous) =>
+        Object.fromEntries(Object.entries(previous).filter(([id]) => !removedStickers.has(id))),
+      );
+      setDrawingBases(
+        (previous) => new Map([...previous].filter(([id]) => !removedDrawings.has(id))),
+      );
+      setDrawingOverrides((previous) =>
+        Object.fromEntries(Object.entries(previous).filter(([id]) => !removedDrawings.has(id))),
+      );
+      setTextBases((previous) => new Map([...previous].filter(([id]) => !removedDrawings.has(id))));
+      setTextOverrides((previous) =>
+        Object.fromEntries(Object.entries(previous).filter(([id]) => !removedDrawings.has(id))),
+      );
+      setDeletedDrawingIds(
+        (previous) => new Set([...previous].filter((id) => !removedDrawings.has(id))),
+      );
+      removedDrawings.forEach((id) => originalDrawings.current.delete(id));
+      pendingConflict.current = null;
+      return false;
+    }
+
+    let excluded: LayoutConflictIds = { stickerIds: [], drawingIds: [] };
+    if (choice === 'rest') excluded = pending.conflict.deleted;
+    if (choice === 'exclude') excluded = pending.conflict.changed;
+    const input = rebaseLayoutInput(pending.input, pending.latest, excluded);
+
+    if (choice === 'rest' && hasConflictIds(pending.conflict.changed)) {
+      pendingConflict.current = {
+        ...pending,
+        input,
+        conflict: {
+          changed: pending.conflict.changed,
+          deleted: { stickerIds: [], drawingIds: [] },
+        },
+      };
+      onConflict?.('changed');
+      return false;
+    }
+    pendingConflict.current = null;
+    if (!hasLayoutChanges(input)) {
+      discard();
+      return true;
+    }
+    return saveAttempt(input, pending.analytics);
   };
 
   const confirm = async (): Promise<boolean> => {
@@ -260,7 +439,7 @@ export function useMoveSession(
       };
     }
 
-    const analytics: AnalyticsTrackArgs[] = [];
+    const analytics: LayoutAnalytics = [];
     changedStickers.forEach((sticker) => {
       const previous = rawStickers.find((item) => item.id === sticker.id);
       // 선택만 해 zIndex가 바뀐 경우는 변형으로 세지 않는다.
@@ -270,7 +449,11 @@ export function useMoveSession(
           (key) => previous[key as keyof StickerData] !== sticker[key as keyof StickerData],
         )
       )
-        analytics.push(['sticker_edit_completed', { edit_type: 'transform' }]);
+        analytics.push({
+          kind: 'sticker',
+          id: sticker.id,
+          event: ['sticker_edit_completed', { edit_type: 'transform' }],
+        });
     });
     changedDrawingIds.forEach((id) => {
       const previous = rawDrawings.find((drawing) => drawing.id === id);
@@ -282,7 +465,11 @@ export function useMoveSession(
             JSON.stringify(value) !== JSON.stringify(Reflect.get(previous, key)),
         )
       ) {
-        analytics.push(['board_drawing_edit_completed', { action: 'transform' }]);
+        analytics.push({
+          kind: 'drawing',
+          id,
+          event: ['board_drawing_edit_completed', { action: 'transform' }],
+        });
       }
     });
     changedTextIds.forEach((id) => {
@@ -293,73 +480,28 @@ export function useMoveSession(
           ([key, value]) => key !== 'zIndex' && value !== Reflect.get(previous, key),
         )
       ) {
-        analytics.push(['board_text_edit_completed', { action: 'transform' }]);
+        analytics.push({
+          kind: 'drawing',
+          id,
+          event: ['board_text_edit_completed', { action: 'transform' }],
+        });
       }
     });
     deletedIds.forEach((id) => {
       if (rawTexts.some((text) => text.id === id))
-        analytics.push(['board_text_edit_completed', { action: 'delete' }]);
+        analytics.push({
+          kind: 'drawing',
+          id,
+          event: ['board_text_edit_completed', { action: 'delete' }],
+        });
       else if (rawDrawings.some((drawing) => drawing.id === id))
-        analytics.push(['board_drawing_edit_completed', { action: 'delete' }]);
+        analytics.push({
+          kind: 'drawing',
+          id,
+          event: ['board_drawing_edit_completed', { action: 'delete' }],
+        });
     });
-    isSaving.current = true;
-    onSaveStateChange?.(true);
-    try {
-      await saveLayout({ boardId, input, analytics });
-    } catch (error) {
-      onSaveError?.(error instanceof Error ? error : new Error('보드 배치를 저장하지 못했어요'));
-      isSaving.current = false;
-      onSaveStateChange?.(false);
-      return false;
-    }
-    try {
-      await queryClient.cancelQueries({ queryKey: boardQueryKeys.detail(boardId), exact: true });
-      await queryClient.fetchQuery({
-        queryKey: boardQueryKeys.detail(boardId),
-        queryFn: () => boardApi.get(boardId),
-        staleTime: 0,
-        retry: false,
-      });
-    } catch {
-      const changedItemsById = new Map(changedItems.map((item) => [item.id, item]));
-      queryClient.setQueryData(
-        boardQueryKeys.detail(boardId),
-        (current: BoardDetail | undefined) =>
-          current
-            ? {
-                ...current,
-                stickers: current.stickers.map((sticker) =>
-                  overrides[sticker.id]
-                    ? {
-                        ...sticker,
-                        ...overrides[sticker.id],
-                        layoutVersion:
-                          (stickerBases.get(sticker.id)?.layoutVersion ?? sticker.layoutVersion) +
-                          1,
-                      }
-                    : sticker,
-                ),
-                drawings: current.drawings
-                  .filter((drawing) => !deletedIds.has(drawing.id))
-                  .map((drawing) => {
-                    const updated = changedItemsById.get(drawing.id);
-                    return updated
-                      ? { ...drawing, ...updated, layoutVersion: updated.expectedLayoutVersion + 1 }
-                      : drawing;
-                  }),
-              }
-            : current,
-      );
-      void queryClient.invalidateQueries({
-        queryKey: boardQueryKeys.detail(boardId),
-        exact: true,
-        refetchType: 'none',
-      });
-    }
-    discard();
-    isSaving.current = false;
-    onSaveStateChange?.(false);
-    return true;
+    return saveAttempt(input, analytics);
   };
 
   return {
@@ -371,6 +513,7 @@ export function useMoveSession(
     applyTextChange,
     markDrawingDeleted,
     confirm,
+    resolveConflict,
     discard,
   };
 }

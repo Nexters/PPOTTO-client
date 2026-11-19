@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { HttpError } from '@ppotto/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { expect, it, vi } from 'vitest';
@@ -208,6 +209,217 @@ it('저장 응답 전에는 편집 내용을 유지하고 중복 요청을 보�
   rerender({ sticker: { ...original, posX: 99, layoutVersion: 3 } });
   expect(result.current.stickers[0]).toMatchObject({ posX: 99, layoutVersion: 3 });
   expect(onSaveStateChange).toHaveBeenLastCalledWith(false);
+  getBoard.mockRestore();
+  client.clear();
+  saveLayout.mockClear();
+});
+
+it('수정 충돌에서 모두 적용을 선택하면 최신 버전으로 로컬 위치를 재저장한다', async () => {
+  const client = new QueryClient();
+  const boardId = boardFixture.id;
+  const original = {
+    ...boardFixture.stickers[0]!,
+    posX: 10,
+    posY: 20,
+    zIndex: 1,
+    layoutVersion: 2,
+  } as StickerData;
+  const latest = {
+    ...boardFixture,
+    stickers: [{ ...boardFixture.stickers[0]!, posX: 50, layoutVersion: 3 }],
+  };
+  const saved = {
+    ...boardFixture,
+    stickers: [{ ...boardFixture.stickers[0]!, posX: 99, layoutVersion: 4 }],
+  };
+  const error = new HttpError(409, 'BOARD-013', {
+    error: { details: { stickerIds: [original.id], drawingIds: [] } },
+  });
+  saveLayout.mockRejectedValueOnce(error).mockResolvedValueOnce(undefined);
+  const getBoard = vi
+    .spyOn(boardApi, 'get')
+    .mockResolvedValueOnce(latest)
+    .mockResolvedValueOnce(saved);
+  const onConflict = vi.fn();
+  client.setQueryData(boardQueryKeys.detail(boardId), { ...boardFixture, stickers: [original] });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  const { result, rerender } = renderHook(
+    ({ sticker }) => useMoveSession(boardId, [sticker], [], [], undefined, undefined, onConflict),
+    { initialProps: { sticker: original }, wrapper },
+  );
+
+  act(() => result.current.applyStickerChange(original.id, { posX: 99 }));
+  expect(await act(async () => result.current.confirm())).toBe(false);
+  expect(onConflict).toHaveBeenCalledWith('changed');
+  rerender({ sticker: { ...original, posX: 50, layoutVersion: 3 } });
+  expect(result.current.stickers[0]?.posX).toBe(99);
+
+  expect(await act(async () => result.current.resolveConflict('all'))).toBe(true);
+  expect(saveLayout.mock.calls[1]?.[0].input.stickers[0]).toMatchObject({
+    posX: 99,
+    expectedLayoutVersion: 3,
+  });
+  getBoard.mockRestore();
+  client.clear();
+  saveLayout.mockClear();
+});
+
+it('삭제 충돌에서 나머지 저장을 선택하면 삭제된 항목을 요청에서 제외한다', async () => {
+  const client = new QueryClient();
+  const boardId = boardFixture.id;
+  const first = {
+    ...boardFixture.stickers[0]!,
+    posX: 10,
+    posY: 20,
+    zIndex: 1,
+    layoutVersion: 2,
+  } as StickerData;
+  const second = { ...first, id: 'second-sticker', posX: 20 };
+  const latest = {
+    ...boardFixture,
+    stickers: [
+      { ...boardFixture.stickers[0]!, id: second.id, posX: second.posX, layoutVersion: 2 },
+    ],
+  };
+  const error = new HttpError(409, 'BOARD-013', {
+    error: { details: { stickerIds: [first.id], drawingIds: [] } },
+  });
+  saveLayout.mockRejectedValueOnce(error).mockResolvedValueOnce(undefined);
+  const getBoard = vi
+    .spyOn(boardApi, 'get')
+    .mockResolvedValueOnce(latest)
+    .mockResolvedValueOnce(latest);
+  const onConflict = vi.fn();
+  client.setQueryData(boardQueryKeys.detail(boardId), {
+    ...boardFixture,
+    stickers: [first, second],
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  const { result } = renderHook(
+    () => useMoveSession(boardId, [first, second], [], [], undefined, undefined, onConflict),
+    { wrapper },
+  );
+
+  act(() => {
+    result.current.applyStickerChange(first.id, { posX: 99 });
+    result.current.applyStickerChange(second.id, { posX: 88 });
+  });
+  expect(await act(async () => result.current.confirm())).toBe(false);
+  expect(onConflict).toHaveBeenCalledWith('deleted');
+  expect(await act(async () => result.current.resolveConflict('rest'))).toBe(true);
+  expect(saveLayout.mock.calls[1]?.[0].input.stickers).toEqual([
+    expect.objectContaining({ id: second.id, posX: 88, expectedLayoutVersion: 2 }),
+  ]);
+  expect(saveLayout.mock.calls[1]?.[0].analytics).toHaveLength(1);
+  getBoard.mockRestore();
+  client.clear();
+  saveLayout.mockClear();
+});
+
+it('수정 충돌에서 나머지 저장을 선택하면 저장한 항목만 편집 기록에 남긴다', async () => {
+  const client = new QueryClient();
+  const boardId = boardFixture.id;
+  const first = {
+    ...boardFixture.stickers[0]!,
+    posX: 10,
+    posY: 20,
+    zIndex: 1,
+    layoutVersion: 2,
+  } as StickerData;
+  const second = { ...first, id: 'second-sticker', posX: 20 };
+  const latest = {
+    ...boardFixture,
+    stickers: [
+      { ...boardFixture.stickers[0]!, posX: 50, layoutVersion: 3 },
+      { ...boardFixture.stickers[0]!, id: second.id, posX: 20, layoutVersion: 2 },
+    ],
+  };
+  const error = new HttpError(409, 'BOARD-013', {
+    error: { details: { stickerIds: [first.id], drawingIds: [] } },
+  });
+  saveLayout.mockRejectedValueOnce(error).mockResolvedValueOnce(undefined);
+  const getBoard = vi.spyOn(boardApi, 'get').mockResolvedValue(latest);
+  client.setQueryData(boardQueryKeys.detail(boardId), {
+    ...boardFixture,
+    stickers: [first, second],
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  const { result } = renderHook(() => useMoveSession(boardId, [first, second], [], []), {
+    wrapper,
+  });
+
+  act(() => {
+    result.current.applyStickerChange(first.id, { posX: 99 });
+    result.current.applyStickerChange(second.id, { posX: 88 });
+  });
+  expect(await act(async () => result.current.confirm())).toBe(false);
+  expect(await act(async () => result.current.resolveConflict('exclude'))).toBe(true);
+  expect(saveLayout.mock.calls[1]?.[0].input.stickers).toEqual([
+    expect.objectContaining({ id: second.id, posX: 88 }),
+  ]);
+  expect(saveLayout.mock.calls[1]?.[0].analytics).toHaveLength(1);
+  getBoard.mockRestore();
+  client.clear();
+  saveLayout.mockClear();
+});
+
+it('삭제 충돌에서 돌아가면 삭제된 스티커만 편집 화면에서 제거한다', async () => {
+  const client = new QueryClient();
+  const boardId = boardFixture.id;
+  const deleted = {
+    ...boardFixture.stickers[0]!,
+    posX: 10,
+    posY: 20,
+    zIndex: 1,
+    layoutVersion: 2,
+  };
+  const remaining = {
+    ...boardFixture.stickers[0]!,
+    id: 'remaining-sticker',
+    posX: 20,
+    posY: 20,
+    zIndex: 1,
+    layoutVersion: 2,
+  };
+  const latest = { ...boardFixture, stickers: [remaining] };
+  const error = new HttpError(409, 'BOARD-013', {
+    error: { details: { stickerIds: [deleted.id], drawingIds: [] } },
+  });
+  saveLayout.mockRejectedValueOnce(error).mockResolvedValueOnce(undefined);
+  const getBoard = vi.spyOn(boardApi, 'get').mockResolvedValue(latest);
+  client.setQueryData(boardQueryKeys.detail(boardId), {
+    ...boardFixture,
+    stickers: [deleted, remaining],
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  const { result, rerender } = renderHook(
+    ({ stickers }) => useMoveSession(boardId, stickers, [], []),
+    { initialProps: { stickers: [deleted, remaining] }, wrapper },
+  );
+
+  act(() => {
+    result.current.applyStickerChange(deleted.id, { posX: 99 });
+    result.current.applyStickerChange(remaining.id, { posX: 88 });
+  });
+  expect(await act(async () => result.current.confirm())).toBe(false);
+  await act(async () => result.current.resolveConflict('back'));
+  rerender({ stickers: [remaining] });
+
+  expect(result.current.stickers).toEqual([
+    expect.objectContaining({ id: remaining.id, posX: 88 }),
+  ]);
+  expect(await act(async () => result.current.confirm())).toBe(true);
+  expect(saveLayout.mock.calls[1]?.[0].input.stickers).toEqual([
+    expect.objectContaining({ id: remaining.id, posX: 88 }),
+  ]);
   getBoard.mockRestore();
   client.clear();
   saveLayout.mockClear();
