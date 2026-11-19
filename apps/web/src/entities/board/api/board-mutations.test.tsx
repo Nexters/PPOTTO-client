@@ -32,6 +32,7 @@ it('자동 배치·실패는 제외하고 각 저장 성공마다 이벤트를 �
   await act(() => result.current.mutateAsync(variables));
   expect(track).not.toHaveBeenCalled();
   updateLayout.mockRejectedValue(new Error('offline'));
+  const callsBeforeFailure = updateLayout.mock.calls.length;
   await act(async () => {
     await expect(
       result.current.mutateAsync({
@@ -41,6 +42,7 @@ it('자동 배치·실패는 제외하고 각 저장 성공마다 이벤트를 �
     ).rejects.toThrow('offline');
   });
   expect(track).not.toHaveBeenCalled();
+  expect(updateLayout).toHaveBeenCalledTimes(callsBeforeFailure + 1);
   updateLayout.mockResolvedValue(undefined);
   act(() => {
     result.current.mutate({

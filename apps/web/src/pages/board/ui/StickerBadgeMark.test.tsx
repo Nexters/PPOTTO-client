@@ -22,6 +22,7 @@ function fakeSticker(overrides: Partial<StickerData> = {}): StickerData {
     rotation: 0,
     scale: 1,
     zIndex: 1,
+    layoutVersion: 0,
     badgeOffsetX: 0,
     badgeOffsetY: 0,
     ...overrides,

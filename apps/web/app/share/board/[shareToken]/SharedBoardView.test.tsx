@@ -27,6 +27,7 @@ const sticker = {
   scale: 1,
   rotation: 0,
   zIndex: 1,
+  layoutVersion: 0,
   badgeOffsetX: 0,
   badgeOffsetY: 0,
   badgeRotation: 0,

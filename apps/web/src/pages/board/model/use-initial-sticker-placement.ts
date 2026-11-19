@@ -66,7 +66,13 @@ export function useInitialStickerPlacement({
         : current,
     );
 
-    saveLayout({ boardId, input: toLayoutInput(laidOut) });
+    const versions = new Map(pending.map((sticker) => [sticker.id, sticker.layoutVersion]));
+    saveLayout({
+      boardId,
+      input: toLayoutInput(
+        laidOut.map((sticker) => ({ ...sticker, layoutVersion: versions.get(sticker.id)! })),
+      ),
+    });
 
     const targets = computeStickerFitTargets(laidOut);
     if (placedStickers.length === 0) {

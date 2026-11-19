@@ -30,6 +30,8 @@ import {
   parseStrokePoints,
   shouldSampleStrokePoint,
   toDrawingCreateInput,
+  toDrawingUpdateInput,
+  toTextUpdateInput,
   toPathData,
   type ParsedDrawing,
 } from './board-drawing';
@@ -58,6 +60,65 @@ describe('shouldSampleStrokePoint', () => {
     ];
 
     expect(shouldSampleStrokePoint(points, { x: 101, y: 100 })).toBe(false);
+  });
+});
+
+describe('기존 항목 배치 저장', () => {
+  it('선의 원래 소속과 색상, 조회 당시 버전을 유지하면서 좌표만 바꾼다', () => {
+    const result = toDrawingUpdateInput(
+      {
+        id: 'stroke-1',
+        type: 'STROKE',
+        scope: 'STICKER',
+        stickerId: 'sticker-1',
+        color: '#AABBCC',
+        zIndex: 1,
+        layoutVersion: 4,
+        stroke: { points: [[0, 0]], custom: 'kept' },
+        strokeWidth: 2,
+      },
+      { points: [{ x: 2, y: 3 }], strokeWidth: 3, zIndex: 5 },
+    );
+
+    expect(result).toMatchObject({
+      id: 'stroke-1',
+      scope: 'STICKER',
+      stickerId: 'sticker-1',
+      color: '#AABBCC',
+      zIndex: 5,
+      expectedLayoutVersion: 4,
+      stroke: { points: [[2, 3]], custom: 'kept' },
+    });
+  });
+
+  it('텍스트 이동 요청에 원래 색상과 소속, 조회 당시 버전을 담는다', () => {
+    const result = toTextUpdateInput(
+      {
+        id: 'text-1',
+        type: 'TEXT',
+        scope: 'BOARD',
+        color: '#123456',
+        zIndex: 1,
+        layoutVersion: 7,
+        content: '기존 글',
+        posX: 0,
+        posY: 0,
+        fontSize: 16,
+        maxWidth: 100,
+        rotation: 0,
+      },
+      { text: '기존 글', x: 20, y: 30, fontSize: 16, maxWidth: 100, rotation: 0, zIndex: 2 },
+    );
+
+    expect(result).toMatchObject({
+      id: 'text-1',
+      color: '#123456',
+      scope: 'BOARD',
+      posX: 20,
+      posY: 30,
+      zIndex: 2,
+      expectedLayoutVersion: 7,
+    });
   });
 });
 

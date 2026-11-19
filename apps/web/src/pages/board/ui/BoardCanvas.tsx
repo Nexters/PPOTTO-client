@@ -223,6 +223,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
       rotation: emptyBoardStickerTransform.rotation,
       scale: emptyBoardStickerTransform.scale,
       zIndex: 0,
+      layoutVersion: 0,
       badgeOffsetX: 0,
       badgeOffsetY: 0,
     }),

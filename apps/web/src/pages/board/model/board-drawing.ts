@@ -13,6 +13,8 @@ export type DrawingCreateInput = NonNullable<NonNullable<DrawingChanges['created
 export type DrawingItem = BoardDetail['drawings'][number];
 type StrokeCreateInput = components['schemas']['DrawingCreateStrokeRequest'];
 type TextCreateInput = components['schemas']['DrawingCreateTextRequest'];
+type StrokeUpdateInput = components['schemas']['DrawingUpdateStrokeRequest'] & { zIndex: number };
+type TextUpdateInput = components['schemas']['DrawingUpdateTextRequest'] & { zIndex: number };
 
 export type ParsedDrawing = {
   id: string;
@@ -123,6 +125,44 @@ export function toDrawingMoveInput(
   options: { color: string; strokeWidth: number; zIndex?: number },
 ): StrokeCreateInput {
   return toDrawingInput(id, points, options);
+}
+
+export function toDrawingUpdateInput(
+  original: StrokeDrawingItem,
+  changes: Pick<ParsedDrawing, 'points' | 'strokeWidth' | 'zIndex'>,
+): StrokeUpdateInput {
+  return {
+    id: original.id,
+    type: 'STROKE',
+    scope: original.scope,
+    stickerId: original.stickerId,
+    color: original.color,
+    zIndex: changes.zIndex,
+    stroke: { ...original.stroke, points: changes.points.map(({ x, y }) => [x, y]) },
+    strokeWidth: changes.strokeWidth,
+    expectedLayoutVersion: original.layoutVersion,
+  };
+}
+
+export function toTextUpdateInput(
+  original: TextDrawingItem,
+  changes: Pick<ParsedText, 'text' | 'x' | 'y' | 'fontSize' | 'maxWidth' | 'rotation' | 'zIndex'>,
+): TextUpdateInput {
+  return {
+    id: original.id,
+    type: 'TEXT',
+    scope: original.scope,
+    stickerId: original.stickerId,
+    color: original.color,
+    zIndex: changes.zIndex,
+    content: changes.text,
+    posX: changes.x,
+    posY: changes.y,
+    fontSize: changes.fontSize,
+    maxWidth: changes.maxWidth,
+    rotation: changes.rotation,
+    expectedLayoutVersion: original.layoutVersion,
+  };
 }
 
 // 저장된 그림의 stroke(자유 형식 JSON)에서 점 배열을 복원한다.

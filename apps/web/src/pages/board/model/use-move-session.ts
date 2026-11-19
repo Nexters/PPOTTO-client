@@ -10,8 +10,10 @@ import type { StickerData } from '../ui/Sticker';
 
 import { toLayoutInput } from './board-layout';
 import {
-  toDrawingMoveInput,
-  toTextCreateInput,
+  isStrokeDrawing,
+  isTextDrawing,
+  toDrawingUpdateInput,
+  toTextUpdateInput,
   type ParsedDrawing,
   type ParsedText,
 } from './board-drawing';
@@ -133,6 +135,7 @@ export function useMoveSession(
     }
 
     const input: UpdateBoardLayoutInput = {};
+    const board = queryClient.getQueryData<BoardDetail>(boardQueryKeys.detail(boardId));
 
     const changedStickers = Object.keys(overrides)
       .map((id) => stickersRef.current.find((sticker) => sticker.id === id))
@@ -144,32 +147,55 @@ export function useMoveSession(
     const changedDrawings = changedDrawingIds
       .map((id) => drawingsRef.current.find((drawing) => drawing.id === id))
       .filter((drawing): drawing is ParsedDrawing => !!drawing)
-      .map((drawing) =>
-        toDrawingMoveInput(drawing.id, drawing.points, {
-          color: drawing.color,
-          strokeWidth: drawing.strokeWidth,
-          zIndex: drawing.zIndex,
-        }),
-      );
+      .flatMap((drawing) => {
+        const original = board?.drawings.find((item) => item.id === drawing.id);
+        return original && isStrokeDrawing(original)
+          ? [
+              toDrawingUpdateInput(original, {
+                points: drawing.points,
+                strokeWidth: drawing.strokeWidth,
+                zIndex: drawing.zIndex,
+              }),
+            ]
+          : [];
+      });
     const changedTexts = changedTextIds
       .map((id) => textsRef.current.find((text) => text.id === id))
       .filter((text): text is ParsedText => !!text)
-      .map((text) =>
-        toTextCreateInput(text.id, {
-          text: text.text,
-          x: text.x,
-          y: text.y,
-          fontSize: text.fontSize,
-          maxWidth: text.maxWidth,
-          zIndex: text.zIndex,
-          rotation: text.rotation,
-        }),
-      );
+      .flatMap((text) => {
+        const original = board?.drawings.find((item) => item.id === text.id);
+        return original && isTextDrawing(original)
+          ? [
+              toTextUpdateInput(original, {
+                text: text.text,
+                x: text.x,
+                y: text.y,
+                fontSize: text.fontSize,
+                maxWidth: text.maxWidth,
+                zIndex: text.zIndex,
+                rotation: text.rotation,
+              }),
+            ]
+          : [];
+      });
     const changedItems = [...changedDrawings, ...changedTexts];
-    if (changedItems.length > 0 || deletedIds.size > 0) {
+    const deleted = [...deletedIds].flatMap((id) => {
+      const original = board?.drawings.find((item) => item.id === id);
+      return original ? [{ id, expectedLayoutVersion: original.layoutVersion }] : [];
+    });
+    if (
+      changedStickers.length !== Object.keys(overrides).length ||
+      changedDrawings.length !== changedDrawingIds.length ||
+      changedTexts.length !== changedTextIds.length ||
+      deleted.length !== deletedIds.size
+    ) {
+      void queryClient.invalidateQueries({ queryKey: boardQueryKeys.detail(boardId) });
+      return;
+    }
+    if (changedItems.length > 0 || deleted.length > 0) {
       input.drawings = {
-        ...(changedItems.length > 0 && { created: changedItems }),
-        ...(deletedIds.size > 0 && { deletedIds: [...deletedIds] }),
+        ...(changedItems.length > 0 && { updated: changedItems }),
+        ...(deleted.length > 0 && { deleted }),
       };
     }
 
@@ -185,7 +211,12 @@ export function useMoveSession(
             ),
             drawings: current.drawings
               .filter((drawing) => !deletedIds.has(drawing.id))
-              .map((drawing) => changedItemsById.get(drawing.id) ?? drawing),
+              .map((drawing) => {
+                const updated = changedItemsById.get(drawing.id);
+                return updated
+                  ? { ...drawing, ...updated, layoutVersion: drawing.layoutVersion }
+                  : drawing;
+              }),
           }
         : current,
     );
