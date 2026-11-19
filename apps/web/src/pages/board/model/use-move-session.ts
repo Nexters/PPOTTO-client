@@ -2,7 +2,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { AnalyticsTrackArgs } from '@ppotto/bridge';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { BoardDetail, UpdateBoardLayoutInput } from '@/entities/board/api/board-api';
+import {
+  boardApi,
+  type BoardDetail,
+  type UpdateBoardLayoutInput,
+} from '@/entities/board/api/board-api';
 import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutations';
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 
@@ -37,32 +41,62 @@ export function useMoveSession(
   rawStickers: StickerData[],
   rawDrawings: ParsedDrawing[],
   rawTexts: ParsedText[],
+  onSaveError?: (error: Error) => void,
+  onSaveStateChange?: (isSaving: boolean) => void,
 ) {
-  const { mutate: saveLayout } = useUpdateBoardLayoutMutation();
+  const { mutateAsync: saveLayout } = useUpdateBoardLayoutMutation();
   const queryClient = useQueryClient();
 
   const [stickerOverrides, setStickerOverrides] = useState<Record<string, StickerOverride>>({});
   const [drawingOverrides, setDrawingOverrides] = useState<Record<string, DrawingOverride>>({});
   const [textOverrides, setTextOverrides] = useState<Record<string, TextOverride>>({});
   const [deletedDrawingIds, setDeletedDrawingIds] = useState<ReadonlySet<string>>(new Set());
+  const [stickerBases, setStickerBases] = useState(() => new Map<string, StickerData>());
+  const [drawingBases, setDrawingBases] = useState(() => new Map<string, ParsedDrawing>());
+  const [textBases, setTextBases] = useState(() => new Map<string, ParsedText>());
+  const originalDrawings = useRef(new Map<string, BoardDetail['drawings'][number]>());
+  const isSaving = useRef(false);
+
+  const rememberDrawing = (id: string) => {
+    const original = queryClient
+      .getQueryData<BoardDetail>(boardQueryKeys.detail(boardId))
+      ?.drawings.find((item) => item.id === id);
+    if (original && !originalDrawings.current.has(id)) originalDrawings.current.set(id, original);
+  };
 
   const stickers = useMemo(
-    () => rawStickers.map((sticker) => ({ ...sticker, ...stickerOverrides[sticker.id] })),
-    [rawStickers, stickerOverrides],
+    () => [
+      ...rawStickers.map((sticker) => ({
+        ...(stickerBases.get(sticker.id) ?? sticker),
+        ...stickerOverrides[sticker.id],
+      })),
+      ...[...stickerBases.values()]
+        .filter((sticker) => !rawStickers.some((item) => item.id === sticker.id))
+        .map((sticker) => ({ ...sticker, ...stickerOverrides[sticker.id] })),
+    ],
+    [rawStickers, stickerOverrides, stickerBases],
   );
   const drawings = useMemo(
     () =>
-      rawDrawings
+      [
+        ...rawDrawings.map((drawing) => drawingBases.get(drawing.id) ?? drawing),
+        ...[...drawingBases.values()].filter(
+          (drawing) => !rawDrawings.some((item) => item.id === drawing.id),
+        ),
+      ]
         .filter((drawing) => !deletedDrawingIds.has(drawing.id))
         .map((drawing) => ({ ...drawing, ...drawingOverrides[drawing.id] })),
-    [rawDrawings, drawingOverrides, deletedDrawingIds],
+    [rawDrawings, drawingOverrides, deletedDrawingIds, drawingBases],
   );
   const texts = useMemo(
     () =>
-      rawTexts
+      [
+        ...rawTexts.map((text) => textBases.get(text.id) ?? text),
+        ...[...textBases.values()].filter((text) => !rawTexts.some((item) => item.id === text.id)),
+      ]
         .filter((text) => !deletedDrawingIds.has(text.id))
         .map((text) => ({ ...text, ...textOverrides[text.id] })),
-    [rawTexts, textOverrides, deletedDrawingIds],
+    [rawTexts, textOverrides, deletedDrawingIds, textBases],
   );
 
   // confirm()이 effect/포인터 핸들러 안에서 최신값을 읽어야 해서 state와 별도로 ref에도 들고 있는다
@@ -84,6 +118,11 @@ export function useMoveSession(
   });
 
   const applyStickerChange = (stickerId: string, overrides: StickerOverride) => {
+    const original = stickersRef.current.find((item) => item.id === stickerId);
+    if (original)
+      setStickerBases((prev) =>
+        prev.has(stickerId) ? prev : new Map(prev).set(stickerId, original),
+      );
     setStickerOverrides((prev) => ({
       ...prev,
       [stickerId]: { ...prev[stickerId], ...overrides },
@@ -91,6 +130,12 @@ export function useMoveSession(
   };
 
   const applyDrawingChange = (drawingId: string, overrides: DrawingOverride) => {
+    const original = drawingsRef.current.find((item) => item.id === drawingId);
+    if (original)
+      setDrawingBases((prev) =>
+        prev.has(drawingId) ? prev : new Map(prev).set(drawingId, original),
+      );
+    rememberDrawing(drawingId);
     setDrawingOverrides((prev) => ({
       ...prev,
       [drawingId]: { ...prev[drawingId], ...overrides },
@@ -98,6 +143,10 @@ export function useMoveSession(
   };
 
   const applyTextChange = (textId: string, overrides: TextOverride) => {
+    const original = textsRef.current.find((item) => item.id === textId);
+    if (original)
+      setTextBases((prev) => (prev.has(textId) ? prev : new Map(prev).set(textId, original)));
+    rememberDrawing(textId);
     setTextOverrides((prev) => ({
       ...prev,
       [textId]: { ...prev[textId], ...overrides },
@@ -105,19 +154,32 @@ export function useMoveSession(
   };
 
   const markDrawingDeleted = (drawingId: string) => {
+    const drawing = drawingsRef.current.find((item) => item.id === drawingId);
+    const text = textsRef.current.find((item) => item.id === drawingId);
+    if (drawing)
+      setDrawingBases((prev) =>
+        prev.has(drawingId) ? prev : new Map(prev).set(drawingId, drawing),
+      );
+    if (text)
+      setTextBases((prev) => (prev.has(drawingId) ? prev : new Map(prev).set(drawingId, text)));
+    rememberDrawing(drawingId);
     setDeletedDrawingIds((prev) => new Set(prev).add(drawingId));
   };
 
   // 세션 변경분을 버리고 서버 데이터로 되돌린다(취소)
   const discard = () => {
+    setStickerBases(new Map());
+    setDrawingBases(new Map());
+    setTextBases(new Map());
+    originalDrawings.current.clear();
     setStickerOverrides({});
     setDrawingOverrides({});
     setTextOverrides({});
     setDeletedDrawingIds(new Set());
   };
 
-  // 세션 변경분을 하나의 요청으로 저장하고 비운다(확정)
-  const confirm = () => {
+  const confirm = async (): Promise<boolean> => {
+    if (isSaving.current) return false;
     const overrides = stickerOverridesRef.current;
     const dOverrides = drawingOverridesRef.current;
     const tOverrides = textOverridesRef.current;
@@ -131,12 +193,10 @@ export function useMoveSession(
       changedTextIds.length === 0 &&
       deletedIds.size === 0
     ) {
-      return;
+      return true;
     }
 
     const input: UpdateBoardLayoutInput = {};
-    const board = queryClient.getQueryData<BoardDetail>(boardQueryKeys.detail(boardId));
-
     const changedStickers = Object.keys(overrides)
       .map((id) => stickersRef.current.find((sticker) => sticker.id === id))
       .filter((sticker): sticker is StickerData => !!sticker);
@@ -148,7 +208,7 @@ export function useMoveSession(
       .map((id) => drawingsRef.current.find((drawing) => drawing.id === id))
       .filter((drawing): drawing is ParsedDrawing => !!drawing)
       .flatMap((drawing) => {
-        const original = board?.drawings.find((item) => item.id === drawing.id);
+        const original = originalDrawings.current.get(drawing.id);
         return original && isStrokeDrawing(original)
           ? [
               toDrawingUpdateInput(original, {
@@ -163,7 +223,7 @@ export function useMoveSession(
       .map((id) => textsRef.current.find((text) => text.id === id))
       .filter((text): text is ParsedText => !!text)
       .flatMap((text) => {
-        const original = board?.drawings.find((item) => item.id === text.id);
+        const original = originalDrawings.current.get(text.id);
         return original && isTextDrawing(original)
           ? [
               toTextUpdateInput(original, {
@@ -180,7 +240,7 @@ export function useMoveSession(
       });
     const changedItems = [...changedDrawings, ...changedTexts];
     const deleted = [...deletedIds].flatMap((id) => {
-      const original = board?.drawings.find((item) => item.id === id);
+      const original = originalDrawings.current.get(id);
       return original ? [{ id, expectedLayoutVersion: original.layoutVersion }] : [];
     });
     if (
@@ -190,7 +250,8 @@ export function useMoveSession(
       deleted.length !== deletedIds.size
     ) {
       void queryClient.invalidateQueries({ queryKey: boardQueryKeys.detail(boardId) });
-      return;
+      onSaveError?.(new Error('편집 중인 항목을 찾지 못했어요'));
+      return false;
     }
     if (changedItems.length > 0 || deleted.length > 0) {
       input.drawings = {
@@ -198,28 +259,6 @@ export function useMoveSession(
         ...(deleted.length > 0 && { deleted }),
       };
     }
-
-    // 캐시(서버 데이터)에 확정된 값을 먼저 반영한다 — 이 mutation엔 onSuccess가 없어서,
-    // 로컬 변경분을 지우기 전에 직접 반영해두지 않으면 확정 순간 화면이 저장 전으로 돌아가 보인다
-    const changedItemsById = new Map(changedItems.map((item) => [item.id, item]));
-    queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
-      current
-        ? {
-            ...current,
-            stickers: current.stickers.map((sticker) =>
-              overrides[sticker.id] ? { ...sticker, ...overrides[sticker.id] } : sticker,
-            ),
-            drawings: current.drawings
-              .filter((drawing) => !deletedIds.has(drawing.id))
-              .map((drawing) => {
-                const updated = changedItemsById.get(drawing.id);
-                return updated
-                  ? { ...drawing, ...updated, layoutVersion: drawing.layoutVersion }
-                  : drawing;
-              }),
-          }
-        : current,
-    );
 
     const analytics: AnalyticsTrackArgs[] = [];
     changedStickers.forEach((sticker) => {
@@ -263,8 +302,64 @@ export function useMoveSession(
       else if (rawDrawings.some((drawing) => drawing.id === id))
         analytics.push(['board_drawing_edit_completed', { action: 'delete' }]);
     });
-    saveLayout({ boardId, input, analytics });
+    isSaving.current = true;
+    onSaveStateChange?.(true);
+    try {
+      await saveLayout({ boardId, input, analytics });
+    } catch (error) {
+      onSaveError?.(error instanceof Error ? error : new Error('보드 배치를 저장하지 못했어요'));
+      isSaving.current = false;
+      onSaveStateChange?.(false);
+      return false;
+    }
+    try {
+      await queryClient.cancelQueries({ queryKey: boardQueryKeys.detail(boardId), exact: true });
+      await queryClient.fetchQuery({
+        queryKey: boardQueryKeys.detail(boardId),
+        queryFn: () => boardApi.get(boardId),
+        staleTime: 0,
+        retry: false,
+      });
+    } catch {
+      const changedItemsById = new Map(changedItems.map((item) => [item.id, item]));
+      queryClient.setQueryData(
+        boardQueryKeys.detail(boardId),
+        (current: BoardDetail | undefined) =>
+          current
+            ? {
+                ...current,
+                stickers: current.stickers.map((sticker) =>
+                  overrides[sticker.id]
+                    ? {
+                        ...sticker,
+                        ...overrides[sticker.id],
+                        layoutVersion:
+                          (stickerBases.get(sticker.id)?.layoutVersion ?? sticker.layoutVersion) +
+                          1,
+                      }
+                    : sticker,
+                ),
+                drawings: current.drawings
+                  .filter((drawing) => !deletedIds.has(drawing.id))
+                  .map((drawing) => {
+                    const updated = changedItemsById.get(drawing.id);
+                    return updated
+                      ? { ...drawing, ...updated, layoutVersion: updated.expectedLayoutVersion + 1 }
+                      : drawing;
+                  }),
+              }
+            : current,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: boardQueryKeys.detail(boardId),
+        exact: true,
+        refetchType: 'none',
+      });
+    }
     discard();
+    isSaving.current = false;
+    onSaveStateChange?.(false);
+    return true;
   };
 
   return {

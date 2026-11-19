@@ -124,6 +124,7 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     isBoardMenuOpen && (boardMenuView.type === 'share' || boardMenuView.type === 'shareScope');
   const participantListQuery = useBoardParticipantsQuery(boardId, isParticipantsView);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
+  const [isSavingMove, setIsSavingMove] = useState(false);
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
   const [isDrawingActive, setIsDrawingActive] = useState(false);
@@ -383,6 +384,19 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   );
 
   const handleToolbarModeChange = (next: ToolbarMode) => {
+    if (isSavingMove) return;
+    if (toolbarModeRef.current === 'move' && next !== 'move') {
+      const saving = canvasRef.current?.confirmMoveSession();
+      changeToolbarMode('default');
+      if (next !== 'default') {
+        void saving?.then((saved) => {
+          if (!saved) return;
+          if (next === 'text') flushSync(() => changeToolbarMode(next));
+          else changeToolbarMode(next);
+        });
+      }
+      return;
+    }
     if (next === 'text') {
       flushSync(() => changeToolbarMode(next));
       return;
@@ -457,7 +471,10 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
                 canvasRef.current?.cancelMoveSession();
                 changeToolbarMode('default');
               }}
-              onConfirm={() => changeToolbarMode('default')}
+              onConfirm={() => {
+                void canvasRef.current?.confirmMoveSession();
+                changeToolbarMode('default');
+              }}
             />
           ) : toolbarMode === 'text' ? (
             <ConfirmCancelHeader
@@ -471,8 +488,11 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             <BoardHeader
               title={boardName}
               participantCount={participantCount}
-              onBack={goBack}
+              onBack={() => {
+                if (!isSavingMove) goBack();
+              }}
               onOpenMenu={() => {
+                if (isSavingMove) return;
                 setBoardMenuView({ type: 'menu' });
                 setIsBoardMenuOpen(true);
               }}
@@ -486,7 +506,9 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           mode={toolbarMode}
           drawColor={drawColor}
           drawStrokeWidth={drawStrokeWidth}
-          isPointerInputSuspended={isPreparingColor || isPickingColor || toolbarMode === 'text'}
+          isPointerInputSuspended={
+            isSavingMove || isPreparingColor || isPickingColor || toolbarMode === 'text'
+          }
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
           onCanRedoChange={setCanRedo}
@@ -494,6 +516,13 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           onVisualChange={handleBoardVisualChange}
           onDrawingDeleteArmedChange={setIsDrawingDeleteArmed}
           onDrawingDragOverTrashChange={setIsDrawingOverTrash}
+          onMoveSaveError={() => {
+            queueMicrotask(() => {
+              toast('변경 사항을 저장하지 못했어요');
+              changeToolbarMode('move');
+            });
+          }}
+          onMoveSaveStateChange={setIsSavingMove}
           canvasRef={canvasRef}
           trashButtonRef={trashButtonRef}
         />
@@ -545,6 +574,17 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             onModeChange={handleToolbarModeChange}
             isAddStickerDisabled={!canAddSticker}
             onAddSticker={() => {
+              if (isSavingMove) return;
+              if (toolbarModeRef.current === 'move') {
+                const saving = canvasRef.current?.confirmMoveSession();
+                changeToolbarMode('default');
+                void saving?.then((saved) => {
+                  if (!saved) return;
+                  track('board_add_sticker_clicked');
+                  openPhotoSelect();
+                });
+                return;
+              }
               track('board_add_sticker_clicked');
               openPhotoSelect();
             }}
@@ -686,6 +726,8 @@ function BoardContent({
   onVisualChange,
   onDrawingDeleteArmedChange,
   onDrawingDragOverTrashChange,
+  onMoveSaveError,
+  onMoveSaveStateChange,
   canvasRef,
   trashButtonRef,
 }: {
@@ -703,6 +745,8 @@ function BoardContent({
   onVisualChange: () => void;
   onDrawingDeleteArmedChange: (isArmed: boolean) => void;
   onDrawingDragOverTrashChange: (isOver: boolean) => void;
+  onMoveSaveError: (error: Error) => void;
+  onMoveSaveStateChange: (isSaving: boolean) => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
   trashButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
@@ -723,6 +767,8 @@ function BoardContent({
         onVisualChange={onVisualChange}
         onDrawingDeleteArmedChange={onDrawingDeleteArmedChange}
         onDrawingDragOverTrashChange={onDrawingDragOverTrashChange}
+        onMoveSaveError={onMoveSaveError}
+        onMoveSaveStateChange={onMoveSaveStateChange}
         trashButtonRef={trashButtonRef}
       />
     );

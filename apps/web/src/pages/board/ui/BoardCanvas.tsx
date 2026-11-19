@@ -111,6 +111,8 @@ type BoardCanvasProps = {
   onDrawingDeleteArmedChange?: (isArmed: boolean) => void;
   // 그림을 드래그하는 동안 휴지통 버튼 위에 있는지 여부가 바뀔 때마다 호출 — 놓기 전 확대 피드백에 사용
   onDrawingDragOverTrashChange?: (isOver: boolean) => void;
+  onMoveSaveError?: (error: Error) => void;
+  onMoveSaveStateChange?: (isSaving: boolean) => void;
   // 그림 드래그-삭제 드롭 판정에 쓰는 휴지통 버튼의 DOM ref
   trashButtonRef?: RefObject<HTMLButtonElement | null>;
 };
@@ -118,6 +120,7 @@ type BoardCanvasProps = {
 export type BoardCanvasHandle = {
   undoLastStroke: () => void;
   redoLastStroke: () => void;
+  confirmMoveSession: () => Promise<boolean>;
   cancelMoveSession: () => void;
   createText: (text: string, fontSize: number, editWidth: number) => void;
   getViewportElement: () => HTMLDivElement | null;
@@ -142,6 +145,8 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     drawColor,
     drawStrokeWidth,
     isPointerInputSuspended = false,
+    onMoveSaveError,
+    onMoveSaveStateChange,
     onDrawingActiveChange,
     onCanUndoChange,
     onCanRedoChange,
@@ -259,7 +264,14 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     markDrawingDeleted,
     confirm: confirmMoveSession,
     discard: discardMoveSession,
-  } = useMoveSession(boardId, baseStickers, baseDrawings, baseTexts);
+  } = useMoveSession(
+    boardId,
+    baseStickers,
+    baseDrawings,
+    baseTexts,
+    onMoveSaveError,
+    onMoveSaveStateChange,
+  );
   // 선택 시 zIndex가 올라간 스티커가 바로 맨 위로 그려지도록, 세션 반영분 기준으로 정렬한다
   const stickers = useMemo(
     () => [...sessionStickers].sort((a, b) => a.zIndex - b.zIndex),
@@ -493,18 +505,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(funct
     onVisualChange,
   ]);
 
-  // 이동 모드를 나가면 이번 세션의 변경분을 저장하고 비운다. 명시적으로 취소(X)한 경우가
-  // 아닌 모든 종료 경로(확정 버튼, 다른 툴바 모드로 전환 등)는 그리기 모드와 동일하게 자동 확정된다
-  useEffect(() => {
-    if (isEditMode) return;
-    confirmMoveSessionRef.current();
-  }, [isEditMode]);
-
   useImperativeHandle(
     ref,
     () => ({
       undoLastStroke: () => drawModeRef.current.undoLastStroke(),
       redoLastStroke: () => drawModeRef.current.redoLastStroke(),
+      confirmMoveSession: () => confirmMoveSessionRef.current(),
       // 이동 모드 세션의 변경분을 버린다
       cancelMoveSession: () => {
         discardMoveSessionRef.current();
