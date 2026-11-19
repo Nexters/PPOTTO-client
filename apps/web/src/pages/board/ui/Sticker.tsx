@@ -1,8 +1,8 @@
 'use client';
 
-import type { paths } from '@ppotto/api';
 import { memo, useLayoutEffect, useRef } from 'react';
 
+import type { BoardDetail } from '@/entities/board/api/board-api';
 import {
   drawOutlinedSticker,
   STICKER_OUTLINE_WIDTH,
@@ -13,9 +13,6 @@ import type { StickerTransform } from '../model/board-transform';
 
 const STICKER_MAX_EDGE = 160;
 
-type BoardDetail = NonNullable<
-  paths['/boards/{boardId}']['get']['responses']['200']['content']['application/json']['data']
->;
 type ApiSticker = BoardDetail['stickers'][number];
 
 export type StickerData = Omit<ApiSticker, 'badgeRotation' | 'posX' | 'posY' | 'zIndex'> & {

@@ -17,6 +17,7 @@ describe('toLayoutInput', () => {
         rotation: 12,
         scale: 1,
         zIndex: 1,
+        layoutVersion: 3,
         badgeOffsetX: 5,
         badgeOffsetY: -10,
       },
@@ -36,6 +37,7 @@ describe('toLayoutInput', () => {
         rotation: 12,
         scale: 1,
         zIndex: 1,
+        layoutVersion: 3,
         badgeOffsetX: 5,
         badgeOffsetY: -10,
       },
@@ -45,6 +47,7 @@ describe('toLayoutInput', () => {
 
     expect(result.stickers?.[0]).toEqual({
       id: 'a',
+      expectedLayoutVersion: 3,
       posX: 10,
       posY: 20,
       rotation: 12,

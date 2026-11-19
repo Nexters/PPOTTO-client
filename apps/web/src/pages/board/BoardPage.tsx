@@ -28,6 +28,7 @@ import type { BoardCanvasHandle } from './ui/BoardCanvas';
 import { BoardHeader } from './ui/BoardHeader';
 import { BoardInvitationPreviewCard } from './ui/BoardInvitationPreviewCard';
 import { BoardKakaoShareCard } from './ui/BoardKakaoShareCard';
+import { BoardLayoutConflictModal } from './ui/BoardLayoutConflictModal';
 import { BoardMenuSheet, type BoardMenuView } from './ui/BoardMenuSheet';
 import { BoardShareCard } from './ui/BoardShareCard';
 import { BoardSizeSlider } from './ui/BoardSizeSlider';
@@ -124,6 +125,11 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
     isBoardMenuOpen && (boardMenuView.type === 'share' || boardMenuView.type === 'shareScope');
   const participantListQuery = useBoardParticipantsQuery(boardId, isParticipantsView);
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>('default');
+  const [isSavingMove, setIsSavingMove] = useState(false);
+  const [moveConflict, setMoveConflict] = useState<{
+    open: boolean;
+    kind: 'changed' | 'deleted';
+  }>({ open: false, kind: 'changed' });
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(DRAW_STROKE_WIDTH_DEFAULT);
   const [isDrawingActive, setIsDrawingActive] = useState(false);
@@ -383,6 +389,19 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
   );
 
   const handleToolbarModeChange = (next: ToolbarMode) => {
+    if (isSavingMove) return;
+    if (toolbarModeRef.current === 'move' && next !== 'move') {
+      const saving = canvasRef.current?.confirmMoveSession();
+      changeToolbarMode('default');
+      if (next !== 'default') {
+        void saving?.then((saved) => {
+          if (!saved) return;
+          if (next === 'text') flushSync(() => changeToolbarMode(next));
+          else changeToolbarMode(next);
+        });
+      }
+      return;
+    }
     if (next === 'text') {
       flushSync(() => changeToolbarMode(next));
       return;
@@ -457,7 +476,10 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
                 canvasRef.current?.cancelMoveSession();
                 changeToolbarMode('default');
               }}
-              onConfirm={() => changeToolbarMode('default')}
+              onConfirm={() => {
+                void canvasRef.current?.confirmMoveSession();
+                changeToolbarMode('default');
+              }}
             />
           ) : toolbarMode === 'text' ? (
             <ConfirmCancelHeader
@@ -471,8 +493,11 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             <BoardHeader
               title={boardName}
               participantCount={participantCount}
-              onBack={goBack}
+              onBack={() => {
+                if (!isSavingMove) goBack();
+              }}
               onOpenMenu={() => {
+                if (isSavingMove) return;
                 setBoardMenuView({ type: 'menu' });
                 setIsBoardMenuOpen(true);
               }}
@@ -486,7 +511,9 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           mode={toolbarMode}
           drawColor={drawColor}
           drawStrokeWidth={drawStrokeWidth}
-          isPointerInputSuspended={isPreparingColor || isPickingColor || toolbarMode === 'text'}
+          isPointerInputSuspended={
+            isSavingMove || isPreparingColor || isPickingColor || toolbarMode === 'text'
+          }
           onDrawingActiveChange={setIsDrawingActive}
           onCanUndoChange={setCanUndo}
           onCanRedoChange={setCanRedo}
@@ -494,6 +521,14 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           onVisualChange={handleBoardVisualChange}
           onDrawingDeleteArmedChange={setIsDrawingDeleteArmed}
           onDrawingDragOverTrashChange={setIsDrawingOverTrash}
+          onMoveSaveError={() => {
+            queueMicrotask(() => {
+              toast('변경 사항을 저장하지 못했어요');
+              changeToolbarMode('move');
+            });
+          }}
+          onMoveSaveStateChange={setIsSavingMove}
+          onMoveConflict={(kind) => setMoveConflict({ open: true, kind })}
           canvasRef={canvasRef}
           trashButtonRef={trashButtonRef}
         />
@@ -545,6 +580,17 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
             onModeChange={handleToolbarModeChange}
             isAddStickerDisabled={!canAddSticker}
             onAddSticker={() => {
+              if (isSavingMove) return;
+              if (toolbarModeRef.current === 'move') {
+                const saving = canvasRef.current?.confirmMoveSession();
+                changeToolbarMode('default');
+                void saving?.then((saved) => {
+                  if (!saved) return;
+                  track('board_add_sticker_clicked');
+                  openPhotoSelect();
+                });
+                return;
+              }
               track('board_add_sticker_clicked');
               openPhotoSelect();
             }}
@@ -631,6 +677,27 @@ export function BoardPage({ boardId: boardIdParam }: { boardId?: string }) {
           onConfirm={leaveBoard.confirm}
           onCancel={leaveBoard.cancel}
         />
+        <BoardLayoutConflictModal
+          open={moveConflict.open}
+          kind={moveConflict.kind}
+          onAll={() => {
+            setMoveConflict((previous) => ({ ...previous, open: false }));
+            void canvasRef.current?.resolveMoveConflict('all');
+          }}
+          onExclude={() => {
+            setMoveConflict((previous) => ({ ...previous, open: false }));
+            void canvasRef.current?.resolveMoveConflict('exclude');
+          }}
+          onBack={() => {
+            setMoveConflict((previous) => ({ ...previous, open: false }));
+            void canvasRef.current?.resolveMoveConflict('back');
+            changeToolbarMode('move');
+          }}
+          onSaveRest={() => {
+            setMoveConflict((previous) => ({ ...previous, open: false }));
+            void canvasRef.current?.resolveMoveConflict('rest');
+          }}
+        />
       </div>
       {/* 캡처 도중 시트가 닫혀도 캡처 대상 DOM이 언마운트되지 않게 작업 중에는 유지한다 */}
       {boardId &&
@@ -686,6 +753,9 @@ function BoardContent({
   onVisualChange,
   onDrawingDeleteArmedChange,
   onDrawingDragOverTrashChange,
+  onMoveSaveError,
+  onMoveSaveStateChange,
+  onMoveConflict,
   canvasRef,
   trashButtonRef,
 }: {
@@ -703,6 +773,9 @@ function BoardContent({
   onVisualChange: () => void;
   onDrawingDeleteArmedChange: (isArmed: boolean) => void;
   onDrawingDragOverTrashChange: (isOver: boolean) => void;
+  onMoveSaveError: (error: Error) => void;
+  onMoveSaveStateChange: (isSaving: boolean) => void;
+  onMoveConflict: (kind: 'changed' | 'deleted') => void;
   canvasRef: RefObject<BoardCanvasHandle | null>;
   trashButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
@@ -723,6 +796,9 @@ function BoardContent({
         onVisualChange={onVisualChange}
         onDrawingDeleteArmedChange={onDrawingDeleteArmedChange}
         onDrawingDragOverTrashChange={onDrawingDragOverTrashChange}
+        onMoveSaveError={onMoveSaveError}
+        onMoveSaveStateChange={onMoveSaveStateChange}
+        onMoveConflict={onMoveConflict}
         trashButtonRef={trashButtonRef}
       />
     );

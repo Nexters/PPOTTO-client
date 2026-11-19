@@ -4181,7 +4181,8 @@
                             "zIndex": 3,
                             "badgeOffsetX": -24,
                             "badgeOffsetY": 96,
-                            "badgeRotation": 0
+                            "badgeRotation": 0,
+                            "layoutVersion": 0
                           },
                           {
                             "id": "01983f2b-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
@@ -4197,7 +4198,8 @@
                             "zIndex": 5,
                             "badgeOffsetX": 12,
                             "badgeOffsetY": -60,
-                            "badgeRotation": -4
+                            "badgeRotation": -4,
+                            "layoutVersion": 0
                           }
                         ],
                         "drawings": [
@@ -4208,6 +4210,7 @@
                             "stickerId": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
                             "color": "#FFD400",
                             "zIndex": 6,
+                            "layoutVersion": 0,
                             "stroke": {
                               "points": [
                                 [10.5, 22],
@@ -4223,6 +4226,7 @@
                             "scope": "BOARD",
                             "color": "#FFFFFF",
                             "zIndex": 7,
+                            "layoutVersion": 0,
                             "content": "여름 휴가",
                             "fontSize": 26,
                             "posX": 80,
@@ -4256,7 +4260,8 @@
                             "zIndex": 3,
                             "badgeOffsetX": -24,
                             "badgeOffsetY": 96,
-                            "badgeRotation": 0
+                            "badgeRotation": 0,
+                            "layoutVersion": 0
                           },
                           {
                             "id": "01983f2b-3c4d-7e5f-a6b7-8c9d0e1f2a3b",
@@ -4272,7 +4277,8 @@
                             "zIndex": 5,
                             "badgeOffsetX": 12,
                             "badgeOffsetY": -60,
-                            "badgeRotation": -4
+                            "badgeRotation": -4,
+                            "layoutVersion": 0
                           }
                         ],
                         "drawings": [
@@ -4289,7 +4295,8 @@
                               "zIndex": 6
                             },
                             "color": "#FFD400",
-                            "strokeWidth": 4
+                            "strokeWidth": 4,
+                            "layoutVersion": 0
                           },
                           {
                             "id": "01983f2c-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
@@ -4303,7 +4310,8 @@
                               "zIndex": 4
                             },
                             "color": "#FFFFFF",
-                            "strokeWidth": 2.5
+                            "strokeWidth": 2.5,
+                            "layoutVersion": 0
                           }
                         ]
                       }
@@ -4800,7 +4808,12 @@
                           "strokeWidth": 4
                         }
                       ],
-                      "deletedIds": ["01983f2c-2b3c-7d4e-9f5a-6b7c8d9e0f1a"]
+                      "deleted": [
+                        {
+                          "id": "01983f2c-2b3c-7d4e-9f5a-6b7c8d9e0f1a",
+                          "expectedLayoutVersion": 0
+                        }
+                      ]
                     }
                   }
                 },
@@ -4995,6 +5008,31 @@
                       "error": {
                         "code": "BOARD-002",
                         "message": "보드를 찾을 수 없습니다.",
+                        "fieldErrors": [],
+                        "timestamp": "2026-07-27T05:02:11Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "조회한 뒤 스티커 또는 선·텍스트 배치가 변경되거나 삭제됨 (BOARD-013). error.details에 충돌한 ID 목록 포함",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "examples": {
+                  "BOARD-013": {
+                    "summary": "조회한 뒤 스티커, 그림 또는 텍스트의 배치가 변경되거나 삭제됨",
+                    "description": "BOARD-013",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "BOARD-013",
+                        "message": "보드 항목이 변경되거나 삭제되었습니다.",
                         "fieldErrors": [],
                         "timestamp": "2026-07-27T05:02:11Z"
                       }
@@ -5742,7 +5780,8 @@
                             "zIndex": 3,
                             "badgeOffsetX": -24,
                             "badgeOffsetY": 96,
-                            "badgeRotation": 0
+                            "badgeRotation": 0,
+                            "layoutVersion": 0
                           }
                         ],
                         "drawings": [
@@ -5752,6 +5791,7 @@
                             "scope": "BOARD",
                             "color": "#FFFFFF",
                             "zIndex": 7,
+                            "layoutVersion": 0,
                             "content": "여름 휴가",
                             "fontSize": 26,
                             "posX": 80,
@@ -6678,6 +6718,16 @@
             "format": "date-time",
             "description": "에러 발생 시각. UTC ISO-8601",
             "example": "2026-07-27T05:02:11Z"
+          },
+          "details": {
+            "type": ["object", "null"],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "오류별 추가 정보. 해당하지 않으면 생략"
           }
         },
         "required": ["code", "fieldErrors", "message", "timestamp"]
@@ -8006,13 +8056,13 @@
       },
       "BoardLayoutV2Request": {
         "type": "object",
-        "description": "보드 편집 결과 일괄 저장 요청 (v2). 편집 모드에서 바뀐 것만 보냄",
+        "description": "보드 편집 결과 일괄 저장 요청 (v2). 변경된 항목만 보냄",
         "properties": {
           "stickers": {
             "type": ["array", "null"],
-            "description": "변경된 스티커 배치. v1과 동일",
+            "description": "변경된 스티커 배치",
             "items": {
-              "$ref": "#/components/schemas/StickerLayoutRequest"
+              "$ref": "#/components/schemas/StickerLayoutV2Request"
             }
           },
           "drawings": {
@@ -8029,22 +8079,27 @@
       },
       "DrawingChangesV2Request": {
         "type": "object",
-        "description": "선과 텍스트의 생성·삭제 변경분",
+        "description": "선과 텍스트의 생성·수정·삭제 변경분",
         "properties": {
           "created": {
             "type": ["array", "null"],
-            "description": "새로 만든 선과 텍스트. 클라이언트가 만든 id로 upsert하므로 재시도해도 멱등이고, 같은 id를 다시 보내면 수정이 된다",
+            "description": "새로 만든 선과 텍스트. 이미 존재하는 ID는 생성할 수 없음",
             "items": {
               "$ref": "#/components/schemas/DrawingCreateV2Request"
             }
           },
-          "deletedIds": {
+          "updated": {
             "type": ["array", "null"],
-            "description": "삭제할 그림 ID 목록. 선과 텍스트를 구분하지 않는다",
-            "example": ["01983f2c-2b3c-7d4e-9f5a-6b7c8d9e0f1a"],
+            "description": "기존 선과 텍스트의 수정. 조회 당시 배치 버전이 필요함",
             "items": {
-              "type": "string",
-              "format": "uuid"
+              "$ref": "#/components/schemas/DrawingUpdateV2Request"
+            }
+          },
+          "deleted": {
+            "type": ["array", "null"],
+            "description": "삭제할 선과 텍스트의 ID와 조회 당시 배치 버전",
+            "items": {
+              "$ref": "#/components/schemas/DrawingDeleteV2Request"
             }
           }
         }
@@ -8085,17 +8140,17 @@
             "description": "선 굵기",
             "example": 4
           },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "클라이언트가 생성한 새 선의 uuidv7",
+            "example": "01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          },
           "stickerId": {
             "type": ["string", "null"],
             "format": "uuid",
             "description": "scope=STICKER일 때 필수",
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함",
-            "example": "01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
           },
           "zIndex": {
             "type": "integer",
@@ -8165,17 +8220,17 @@
             "description": "회전 각도(degree)",
             "example": 0
           },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "클라이언트가 생성한 새 텍스트의 uuidv7",
+            "example": "01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d"
+          },
           "stickerId": {
             "type": ["string", "null"],
             "format": "uuid",
             "description": "scope=STICKER일 때 필수",
             "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함",
-            "example": "01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d"
           },
           "zIndex": {
             "type": "integer",
@@ -8221,18 +8276,170 @@
           }
         ]
       },
-      "StickerLayoutRequest": {
+      "DrawingDeleteV2Request": {
         "type": "object",
-        "description": "스티커 배치와 제목",
         "properties": {
-          "title": {
-            "type": ["string", "null"],
-            "description": "텍스트 모드에서 제목을 바꿨을 때만 보냄. 최대 15자",
-            "example": "고양이 모음집",
-            "maxLength": 15,
-            "minLength": 0,
-            "pattern": "(?s).*\\S.*"
+          "expectedLayoutVersion": {
+            "type": "integer",
+            "format": "int64"
           },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["expectedLayoutVersion", "id"]
+      },
+      "DrawingUpdateStrokeRequest": {
+        "type": "object",
+        "description": "기존 선 수정",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": ["STICKER", "BOARD"]
+          },
+          "color": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "stroke": {
+            "type": "object",
+            "additionalProperties": {},
+            "minProperties": 1
+          },
+          "strokeWidth": {
+            "type": "number",
+            "format": "double"
+          },
+          "expectedLayoutVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stickerId": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "zindex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "type": "string",
+            "description": "판별자. 항상 STROKE",
+            "enum": ["STROKE"]
+          }
+        },
+        "required": [
+          "color",
+          "expectedLayoutVersion",
+          "id",
+          "scope",
+          "stroke",
+          "strokeWidth",
+          "type"
+        ]
+      },
+      "DrawingUpdateTextRequest": {
+        "type": "object",
+        "description": "기존 텍스트 수정",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": ["STICKER", "BOARD"]
+          },
+          "color": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          },
+          "fontSize": {
+            "type": "number",
+            "format": "double"
+          },
+          "posX": {
+            "type": "number",
+            "format": "double"
+          },
+          "posY": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxWidth": {
+            "type": "number",
+            "format": "double"
+          },
+          "rotation": {
+            "type": "number",
+            "format": "double"
+          },
+          "expectedLayoutVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stickerId": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "zindex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "type": "string",
+            "description": "판별자. 항상 TEXT",
+            "enum": ["TEXT"]
+          }
+        },
+        "required": [
+          "color",
+          "content",
+          "expectedLayoutVersion",
+          "fontSize",
+          "id",
+          "maxWidth",
+          "posX",
+          "posY",
+          "rotation",
+          "scope",
+          "type"
+        ]
+      },
+      "DrawingUpdateV2Request": {
+        "description": "기존 선 또는 텍스트의 수정. type이 판별자다",
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "STROKE": "#/components/schemas/DrawingUpdateStrokeRequest",
+            "TEXT": "#/components/schemas/DrawingUpdateTextRequest"
+          }
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DrawingUpdateStrokeRequest"
+          },
+          {
+            "$ref": "#/components/schemas/DrawingUpdateTextRequest"
+          }
+        ]
+      },
+      "StickerLayoutV2Request": {
+        "type": "object",
+        "description": "스티커 배치 (v2)",
+        "properties": {
           "posX": {
             "type": "number",
             "format": "double",
@@ -8248,7 +8455,7 @@
           "scale": {
             "type": "number",
             "format": "double",
-            "description": "확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용",
+            "description": "확대 비율",
             "example": 1.1
           },
           "rotation": {
@@ -8275,6 +8482,12 @@
             "description": "뱃지 회전 각도(degree)",
             "example": 0
           },
+          "expectedLayoutVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "조회 당시의 스티커 배치 버전",
+            "example": 0
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -8292,6 +8505,7 @@
           "badgeOffsetX",
           "badgeOffsetY",
           "badgeRotation",
+          "expectedLayoutVersion",
           "id",
           "posX",
           "posY",
@@ -8380,20 +8594,99 @@
             "description": "선 굵기",
             "example": 4
           },
-          "stickerId": {
-            "type": ["string", "null"],
-            "format": "uuid",
-            "description": "scope=STICKER일 때 필수",
-            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          },
           "id": {
             "type": "string",
             "format": "uuid",
             "description": "클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함",
             "example": "01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b"
+          },
+          "stickerId": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "scope=STICKER일 때 필수",
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
         },
         "required": ["color", "id", "scope", "stroke", "strokeWidth"]
+      },
+      "StickerLayoutRequest": {
+        "type": "object",
+        "description": "스티커 배치와 제목",
+        "properties": {
+          "title": {
+            "type": ["string", "null"],
+            "description": "텍스트 모드에서 제목을 바꿨을 때만 보냄. 최대 15자",
+            "example": "고양이 모음집",
+            "maxLength": 15,
+            "minLength": 0,
+            "pattern": "(?s).*\\S.*"
+          },
+          "posX": {
+            "type": "number",
+            "format": "double",
+            "description": "보드 좌표 X",
+            "example": 80
+          },
+          "posY": {
+            "type": "number",
+            "format": "double",
+            "description": "보드 좌표 Y",
+            "example": 290.5
+          },
+          "scale": {
+            "type": "number",
+            "format": "double",
+            "description": "확대 비율. 1.0이 원본 크기 기준이며 0.8=80% 축소, 1.1=110% 확대처럼 사용. 0보다 큰 값만 허용",
+            "example": 1.1
+          },
+          "rotation": {
+            "type": "number",
+            "format": "double",
+            "description": "회전 각도(degree)",
+            "example": -8
+          },
+          "badgeOffsetX": {
+            "type": "number",
+            "format": "double",
+            "description": "스티커 기준 뱃지 상대 좌표 X",
+            "example": -24
+          },
+          "badgeOffsetY": {
+            "type": "number",
+            "format": "double",
+            "description": "스티커 기준 뱃지 상대 좌표 Y",
+            "example": 96
+          },
+          "badgeRotation": {
+            "type": "number",
+            "format": "double",
+            "description": "뱃지 회전 각도(degree)",
+            "example": 0
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "스티커 ID (uuidv7)",
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "zIndex": {
+            "type": "integer",
+            "format": "int32",
+            "description": "겹침 순서",
+            "example": 6
+          }
+        },
+        "required": [
+          "badgeOffsetX",
+          "badgeOffsetY",
+          "badgeRotation",
+          "id",
+          "posX",
+          "posY",
+          "rotation",
+          "scale",
+          "zIndex"
+        ]
       },
       "ApiResponseUserResponse": {
         "type": "object",
@@ -8846,6 +9139,12 @@
             "description": "뱃지 회전 각도(degree)",
             "example": 0
           },
+          "layoutVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "배치 변경 버전. 새 스티커와 기존 스티커는 0부터 시작",
+            "example": 0
+          },
           "isNew": {
             "type": "boolean",
             "description": "미열람 여부. 뱃지에 빨간 점 표시",
@@ -8871,6 +9170,7 @@
           "creatorName",
           "id",
           "isNew",
+          "layoutVersion",
           "rotation",
           "scale",
           "title",
@@ -8892,6 +9192,12 @@
             "description": "선 색상",
             "example": "#FFD400"
           },
+          "layoutVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "배치 변경 버전. 새 선은 0부터 시작",
+            "example": 0
+          },
           "stroke": {
             "type": "object",
             "additionalProperties": {},
@@ -8910,17 +9216,17 @@
             "description": "선 굵기",
             "example": 4
           },
-          "stickerId": {
-            "type": ["string", "null"],
-            "format": "uuid",
-            "description": "scope=STICKER일 때만 값이 있음",
-            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          },
           "id": {
             "type": "string",
             "format": "uuid",
             "description": "그림 ID (uuidv7)",
             "example": "01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "stickerId": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "scope=STICKER일 때만 값이 있음",
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           },
           "zIndex": {
             "type": "integer",
@@ -8934,7 +9240,16 @@
             "enum": ["STROKE"]
           }
         },
-        "required": ["color", "id", "scope", "stroke", "strokeWidth", "type", "zIndex"]
+        "required": [
+          "color",
+          "id",
+          "layoutVersion",
+          "scope",
+          "stroke",
+          "strokeWidth",
+          "type",
+          "zIndex"
+        ]
       },
       "DrawingTextResponse": {
         "type": "object",
@@ -8950,6 +9265,12 @@
             "type": "string",
             "description": "글자 색상",
             "example": "#FFFFFF"
+          },
+          "layoutVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "배치 변경 버전. 새 텍스트는 0부터 시작",
+            "example": 0
           },
           "content": {
             "type": "string",
@@ -8986,17 +9307,17 @@
             "description": "회전 각도(degree)",
             "example": 0
           },
-          "stickerId": {
-            "type": ["string", "null"],
-            "format": "uuid",
-            "description": "scope=STICKER일 때만 값이 있음",
-            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
-          },
           "id": {
             "type": "string",
             "format": "uuid",
             "description": "그림 ID (uuidv7)",
             "example": "01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d"
+          },
+          "stickerId": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "scope=STICKER일 때만 값이 있음",
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           },
           "zIndex": {
             "type": "integer",
@@ -9015,6 +9336,7 @@
           "content",
           "fontSize",
           "id",
+          "layoutVersion",
           "maxWidth",
           "posX",
           "posY",
@@ -9140,20 +9462,26 @@
             "description": "선 굵기",
             "example": 4
           },
-          "stickerId": {
-            "type": ["string", "null"],
-            "format": "uuid",
-            "description": "scope=STICKER일 때만 값이 있음",
-            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          "layoutVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "배치 변경 버전. 새 선은 0부터 시작",
+            "example": 0
           },
           "id": {
             "type": "string",
             "format": "uuid",
             "description": "그림 ID (uuidv7)",
             "example": "01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
+          },
+          "stickerId": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "scope=STICKER일 때만 값이 있음",
+            "example": "01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f"
           }
         },
-        "required": ["color", "id", "scope", "stroke", "strokeWidth"]
+        "required": ["color", "id", "layoutVersion", "scope", "stroke", "strokeWidth"]
       },
       "ApiResponseBoardShareStatusResponse": {
         "type": "object",

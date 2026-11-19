@@ -1212,11 +1212,11 @@ export interface components {
             /** @description 변경된 스티커 배치 */
             stickers?: components["schemas"]["StickerLayoutRequest"][] | null;
         };
-        /** @description 보드 편집 결과 일괄 저장 요청 (v2). 편집 모드에서 바뀐 것만 보냄 */
+        /** @description 보드 편집 결과 일괄 저장 요청 (v2). 변경된 항목만 보냄 */
         BoardLayoutV2Request: {
             drawings?: components["schemas"]["DrawingChangesV2Request"] | null;
-            /** @description 변경된 스티커 배치. v1과 동일 */
-            stickers?: components["schemas"]["StickerLayoutRequest"][] | null;
+            /** @description 변경된 스티커 배치 */
+            stickers?: components["schemas"]["StickerLayoutV2Request"][] | null;
         };
         /** @description 홈 보드 목록과 탭별 개수 (v2) */
         BoardListV2Response: {
@@ -1350,6 +1350,12 @@ export interface components {
              * @example false
              */
             isNew: boolean;
+            /**
+             * Format: int64
+             * @description 배치 변경 버전. 새 스티커와 기존 스티커는 0부터 시작
+             * @example 0
+             */
+            layoutVersion: number;
             /**
              * Format: double
              * @description 보드 좌표 X. null이면 클라이언트가 아직 배치를 정하지 않은 스티커. 보드 상태를 보고 계산해 레이아웃 수정 API로 채워야 함
@@ -1490,17 +1496,14 @@ export interface components {
              */
             deletedIds?: string[] | null;
         };
-        /** @description 선과 텍스트의 생성·삭제 변경분 */
+        /** @description 선과 텍스트의 생성·수정·삭제 변경분 */
         DrawingChangesV2Request: {
-            /** @description 새로 만든 선과 텍스트. 클라이언트가 만든 id로 upsert하므로 재시도해도 멱등이고, 같은 id를 다시 보내면 수정이 된다 */
+            /** @description 새로 만든 선과 텍스트. 이미 존재하는 ID는 생성할 수 없음 */
             created?: components["schemas"]["DrawingCreateV2Request"][] | null;
-            /**
-             * @description 삭제할 그림 ID 목록. 선과 텍스트를 구분하지 않는다
-             * @example [
-             *       "01983f2c-2b3c-7d4e-9f5a-6b7c8d9e0f1a"
-             *     ]
-             */
-            deletedIds?: string[] | null;
+            /** @description 삭제할 선과 텍스트의 ID와 조회 당시 배치 버전 */
+            deleted?: components["schemas"]["DrawingDeleteV2Request"][] | null;
+            /** @description 기존 선과 텍스트의 수정. 조회 당시 배치 버전이 필요함 */
+            updated?: components["schemas"]["DrawingUpdateV2Request"][] | null;
         };
         /** @description 새 그림 */
         DrawingCreateRequest: {
@@ -1565,7 +1568,7 @@ export interface components {
             color: string;
             /**
              * Format: uuid
-             * @description 클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함
+             * @description 클라이언트가 생성한 새 선의 uuidv7
              * @example 01983f2c-3c4d-7e5f-a6b7-8c9d0e1f2a3b
              */
             id: string;
@@ -1641,7 +1644,7 @@ export interface components {
             fontSize: number;
             /**
              * Format: uuid
-             * @description 클라이언트가 생성한 uuidv7. 서버가 이 id로 upsert함
+             * @description 클라이언트가 생성한 새 텍스트의 uuidv7
              * @example 01983f2c-5e6f-7a8b-9c0d-1e2f3a4b5c6d
              */
             id: string;
@@ -1695,6 +1698,12 @@ export interface components {
         };
         /** @description 새 선 또는 텍스트. type이 판별자다 */
         DrawingCreateV2Request: components["schemas"]["DrawingCreateStrokeRequest"] | components["schemas"]["DrawingCreateTextRequest"];
+        DrawingDeleteV2Request: {
+            /** Format: int64 */
+            expectedLayoutVersion: number;
+            /** Format: uuid */
+            id: string;
+        };
         /** @description 보드 또는 스티커 위의 그림 */
         DrawingResponse: {
             /**
@@ -1708,6 +1717,12 @@ export interface components {
              * @example 01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
             id: string;
+            /**
+             * Format: int64
+             * @description 배치 변경 버전. 새 선은 0부터 시작
+             * @example 0
+             */
+            layoutVersion: number;
             /**
              * @description 그림이 붙는 대상
              * @example STICKER
@@ -1763,6 +1778,12 @@ export interface components {
              * @example 01983f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f
              */
             id: string;
+            /**
+             * Format: int64
+             * @description 배치 변경 버전. 새 선은 0부터 시작
+             * @example 0
+             */
+            layoutVersion: number;
             /**
              * @description 선이 붙는 대상
              * @example STICKER
@@ -1840,6 +1861,12 @@ export interface components {
              */
             id: string;
             /**
+             * Format: int64
+             * @description 배치 변경 버전. 새 텍스트는 0부터 시작
+             * @example 0
+             */
+            layoutVersion: number;
+            /**
              * Format: double
              * @description 줄바꿈 기준이 된 편집창 폭
              * @example 280
@@ -1887,6 +1914,62 @@ export interface components {
              */
             zIndex: number;
         };
+        /** @description 기존 선 수정 */
+        DrawingUpdateStrokeRequest: {
+            color: string;
+            /** Format: int64 */
+            expectedLayoutVersion: number;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            scope: "STICKER" | "BOARD";
+            /** Format: uuid */
+            stickerId?: string | null;
+            stroke: {
+                [key: string]: unknown;
+            };
+            /** Format: double */
+            strokeWidth: number;
+            /**
+             * @description 판별자. 항상 STROKE (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "STROKE";
+            /** Format: int32 */
+            zindex?: number;
+        };
+        /** @description 기존 텍스트 수정 */
+        DrawingUpdateTextRequest: {
+            color: string;
+            content: string;
+            /** Format: int64 */
+            expectedLayoutVersion: number;
+            /** Format: double */
+            fontSize: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: double */
+            maxWidth: number;
+            /** Format: double */
+            posX: number;
+            /** Format: double */
+            posY: number;
+            /** Format: double */
+            rotation: number;
+            /** @enum {string} */
+            scope: "STICKER" | "BOARD";
+            /** Format: uuid */
+            stickerId?: string | null;
+            /**
+             * @description 판별자. 항상 TEXT (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "TEXT";
+            /** Format: int32 */
+            zindex?: number;
+        };
+        /** @description 기존 선 또는 텍스트의 수정. type이 판별자다 */
+        DrawingUpdateV2Request: components["schemas"]["DrawingUpdateStrokeRequest"] | components["schemas"]["DrawingUpdateTextRequest"];
         /** @description 보드 또는 스티커 위의 선이나 텍스트. type이 판별자다 */
         DrawingV2Response: components["schemas"]["DrawingStrokeResponse"] | components["schemas"]["DrawingTextResponse"];
         /** @description 실패 응답 상세 */
@@ -1896,6 +1979,10 @@ export interface components {
              * @example COMMON-001
              */
             code: string;
+            /** @description 오류별 추가 정보. 해당하지 않으면 생략 */
+            details?: {
+                [key: string]: string[];
+            } | null;
             /** @description 요청 바디 검증 실패 시 필드별 오류. 그 외 빈 배열 */
             fieldErrors: components["schemas"]["FieldErrorDetail"][];
             /**
@@ -2328,6 +2415,69 @@ export interface components {
              * @example 고양이 모음집
              */
             title?: string | null;
+            /**
+             * Format: int32
+             * @description 겹침 순서
+             * @example 6
+             */
+            zIndex: number;
+        };
+        /** @description 스티커 배치 (v2) */
+        StickerLayoutV2Request: {
+            /**
+             * Format: double
+             * @description 스티커 기준 뱃지 상대 좌표 X
+             * @example -24
+             */
+            badgeOffsetX: number;
+            /**
+             * Format: double
+             * @description 스티커 기준 뱃지 상대 좌표 Y
+             * @example 96
+             */
+            badgeOffsetY: number;
+            /**
+             * Format: double
+             * @description 뱃지 회전 각도(degree)
+             * @example 0
+             */
+            badgeRotation: number;
+            /**
+             * Format: int64
+             * @description 조회 당시의 스티커 배치 버전
+             * @example 0
+             */
+            expectedLayoutVersion: number;
+            /**
+             * Format: uuid
+             * @description 스티커 ID (uuidv7)
+             * @example 01983f2b-1a2b-7c3d-8e4f-5a6b7c8d9e0f
+             */
+            id: string;
+            /**
+             * Format: double
+             * @description 보드 좌표 X
+             * @example 80
+             */
+            posX: number;
+            /**
+             * Format: double
+             * @description 보드 좌표 Y
+             * @example 290.5
+             */
+            posY: number;
+            /**
+             * Format: double
+             * @description 회전 각도(degree)
+             * @example -8
+             */
+            rotation: number;
+            /**
+             * Format: double
+             * @description 확대 비율
+             * @example 1.1
+             */
+            scale: number;
             /**
              * Format: int32
              * @description 겹침 순서
@@ -3816,6 +3966,15 @@ export interface operations {
             };
             /** @description 보드를 찾을 수 없음 (BOARD-002) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description 조회한 뒤 스티커 또는 선·텍스트 배치가 변경되거나 삭제됨 (BOARD-013). error.details에 충돌한 ID 목록 포함 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

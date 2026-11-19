@@ -5,7 +5,14 @@ import { useUpdateBoardLayoutMutation } from '@/entities/board/api/board-mutatio
 import { boardQueryKeys } from '@/entities/board/api/board-query-keys';
 
 import type { DrawingCreateInput, ParsedDrawing } from './board-drawing';
-import { parseStrokePoints, toDrawingMoveInput } from './board-drawing';
+import {
+  isStrokeDrawing,
+  isTextDrawing,
+  parseStrokePoints,
+  toDrawingMoveInput,
+  toDrawingUpdateInput,
+  toTextUpdateInput,
+} from './board-drawing';
 
 type UseDrawingPersistenceParams = {
   boardId: string;
@@ -25,13 +32,14 @@ export function useDrawingPersistence({
     const drawing = queryClient
       .getQueryData<BoardDetail>(boardQueryKeys.detail(boardId))
       ?.drawings.find((item) => item.id === id);
+    if (!drawing) return;
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
       current ? { ...current, drawings: current.drawings.filter((d) => d.id !== id) } : current,
     );
 
     saveLayout({
       boardId,
-      input: { drawings: { deletedIds: [id] } },
+      input: { drawings: { deleted: [{ id, expectedLayoutVersion: drawing.layoutVersion }] } },
       analytics: drawing
         ? [
             [
@@ -46,7 +54,9 @@ export function useDrawingPersistence({
   // 새 그림을 캐시에 낙관적으로 추가하고 저장 요청을 보냄
   const createDrawing = (input: DrawingCreateInput) => {
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
-      current ? { ...current, drawings: [...current.drawings, input] } : current,
+      current
+        ? { ...current, drawings: [...current.drawings, { ...input, layoutVersion: 0 }] }
+        : current,
     );
 
     saveLayout({
@@ -66,25 +76,52 @@ export function useDrawingPersistence({
     const previous = queryClient
       .getQueryData<BoardDetail>(boardQueryKeys.detail(boardId))
       ?.drawings.find((item) => item.id === input.id);
+    if (!previous) return;
+    const update =
+      'content' in input && isTextDrawing(previous)
+        ? toTextUpdateInput(previous, {
+            text: input.content,
+            x: input.posX,
+            y: input.posY,
+            fontSize: input.fontSize,
+            maxWidth: input.maxWidth,
+            rotation: input.rotation,
+            zIndex: input.zIndex,
+          })
+        : 'stroke' in input && isStrokeDrawing(previous)
+          ? toDrawingUpdateInput(previous, {
+              points: parseStrokePoints(input.stroke),
+              strokeWidth: input.strokeWidth,
+              zIndex: input.zIndex,
+            })
+          : null;
+    if (!update) return;
     const changed =
       previous &&
-      ('content' in input
+      ('content' in update
         ? ['content', 'posX', 'posY', 'fontSize', 'maxWidth', 'rotation', 'color'].some(
-            (key) => Reflect.get(previous, key) !== Reflect.get(input, key),
+            (key) => Reflect.get(previous, key) !== Reflect.get(update, key),
           )
-        : previous.color !== input.color ||
-          Reflect.get(previous, 'strokeWidth') !== input.strokeWidth ||
+        : previous.color !== update.color ||
+          Reflect.get(previous, 'strokeWidth') !== update.strokeWidth ||
           JSON.stringify(parseStrokePoints(Reflect.get(previous, 'stroke'))) !==
-            JSON.stringify(parseStrokePoints(input.stroke)));
+            JSON.stringify(parseStrokePoints(update.stroke)));
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
       current
-        ? { ...current, drawings: current.drawings.map((d) => (d.id === input.id ? input : d)) }
+        ? {
+            ...current,
+            drawings: current.drawings.map((d) =>
+              d.id === input.id
+                ? { ...d, ...input, color: d.color, scope: d.scope, stickerId: d.stickerId }
+                : d,
+            ),
+          }
         : current,
     );
 
     saveLayout({
       boardId,
-      input: { drawings: { created: [input] } },
+      input: { drawings: { updated: [update] } },
       analytics: changed
         ? [
             'content' in input
@@ -114,7 +151,15 @@ export function useDrawingPersistence({
     );
 
     queryClient.setQueryData(boardQueryKeys.detail(boardId), (current: BoardDetail | undefined) =>
-      current ? { ...current, drawings: [...current.drawings, ...inputs] } : current,
+      current
+        ? {
+            ...current,
+            drawings: [
+              ...current.drawings,
+              ...inputs.map((input) => ({ ...input, layoutVersion: 0 })),
+            ],
+          }
+        : current,
     );
 
     saveLayout({

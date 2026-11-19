@@ -8,7 +8,12 @@ export type LayoutSlot = {
   badgeOffsetY: number;
 };
 
-type LaidOutSticker = LayoutSlot & { id: string; scale: number; zIndex: number };
+type LaidOutSticker = LayoutSlot & {
+  id: string;
+  scale: number;
+  zIndex: number;
+  layoutVersion: number;
+};
 
 export type UnplacedCheckSticker = {
   posX?: number | null;
@@ -44,8 +49,9 @@ export function computeTopZIndex(items: { zIndex: number }[]): number {
 export function toLayoutInput(stickers: LaidOutSticker[]): UpdateBoardLayoutInput {
   return {
     stickers: stickers.map(
-      ({ id, posX, posY, rotation, scale, zIndex, badgeOffsetX, badgeOffsetY }) => ({
+      ({ id, posX, posY, rotation, scale, zIndex, layoutVersion, badgeOffsetX, badgeOffsetY }) => ({
         id,
+        expectedLayoutVersion: layoutVersion,
         posX,
         posY,
         rotation,

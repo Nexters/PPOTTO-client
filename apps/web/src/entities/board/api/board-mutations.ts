@@ -26,7 +26,8 @@ export const useUpdateBoardLayoutMutation = () => {
   return useMutation({
     mutationFn: ({ boardId, input }: UpdateBoardLayoutVariables) =>
       boardApi.updateLayout(boardId, input),
-    retry: 2,
+    // 응답만 유실된 성공 요청을 재전송하면 버전 충돌이나 생성 ID 중복이 발생할 수 있다.
+    retry: false,
     onSuccess: (_data, { analytics }) => {
       analytics?.forEach((event) => track(...event));
     },
