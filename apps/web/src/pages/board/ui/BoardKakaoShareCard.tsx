@@ -40,7 +40,7 @@ export function BoardKakaoShareCard({ boardId, now }: BoardKakaoShareCardProps) 
         )}
       >
         <p className="text-body-01 w-full text-center text-white">{boardName}</p>
-        <div className="flex w-full items-center justify-between">
+        <div className="flex w-max items-center gap-2 whitespace-nowrap">
           <span className="flex items-center gap-1">
             <Clock width={14} height={14} color={META_ICON_COLOR} />
             <span className="text-caption-01 text-gray-600">
