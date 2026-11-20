@@ -10,7 +10,6 @@ import {
 } from '@/entities/board/api/board-mutations';
 import { getBoardErrorMessage } from '@/features/manage-board';
 import { cn } from '@/shared/lib/cn';
-import { useKeyboardHeight } from '@/shared/lib/use-keyboard-height';
 import { Button } from '@/shared/ui/common/Button';
 import { useToast } from '@/shared/ui/common/Toast';
 
@@ -27,7 +26,6 @@ export function BoardNamePage({ boardId, initialName = '' }: BoardNamePageProps)
   const isRename = boardId !== undefined;
   const { pop, replace } = useFlow();
   const toast = useToast();
-  const keyboardHeight = useKeyboardHeight(true);
   const [name, setName] = useState(initialName);
   const createBoard = useCreateBoardMutation();
   const updateBoard = useUpdateBoardMutation();
@@ -100,7 +98,6 @@ export function BoardNamePage({ boardId, initialName = '' }: BoardNamePageProps)
           onChange={(event) => setName(event.target.value)}
           maxLength={MAX_NAME_LENGTH}
           placeholder={isRename ? undefined : '새 보드'}
-          autoFocus
           enterKeyHint="done"
           className={cn(
             'h-14 w-full rounded-16 bg-gray-900 px-4',
@@ -118,10 +115,7 @@ export function BoardNamePage({ boardId, initialName = '' }: BoardNamePageProps)
         </p>
       </form>
 
-      <div
-        className="mt-auto px-[18px]"
-        style={{ paddingBottom: keyboardHeight > 0 ? keyboardHeight + 12 : 48 }}
-      >
+      <footer className="absolute inset-x-0 bottom-0 px-6 pb-12">
         <Button
           onClick={submit}
           disabled={!canSubmit || isPending}
@@ -129,7 +123,7 @@ export function BoardNamePage({ boardId, initialName = '' }: BoardNamePageProps)
         >
           {isRename ? '변경하기' : '보드 만들기'}
         </Button>
-      </div>
+      </footer>
     </main>
   );
 }
